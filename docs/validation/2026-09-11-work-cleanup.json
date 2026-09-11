@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-11",
+  "before_work_kib": 72520816,
+  "after_work_kib": 1572440,
+  "removed_work_kib": 70948376,
+  "deleted_cargo_cache_directories": 46,
+  "named_binary_references": 184,
+  "unique_archived_binaries": 183,
+  "archived_bytes": 1008321520,
+  "retained": [
+    "source snapshots",
+    "frozen delivery packages",
+    "raw failures and RPC evidence",
+    "private profiles and grants",
+    "Cargo dependency registry"
+  ],
+  "local_archive": "outputs/work-cleanup-20260911/preserved-binaries",
+  "plan_sha256": "9fec9dfcdcbf29e2d473cdd3bcdab02f0d60bc1ddcee8d16fbdce83c9eca7faf",
+  "not_a_source_or_evidence_deletion": true
+}
