@@ -4,3 +4,4 @@
 //! snapshots. Transport invokes presentation only after validating raw replies.
 pub mod codex_plugin;
 pub mod model_output;
+pub mod startup_diagnostic;

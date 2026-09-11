@@ -368,17 +368,22 @@ async fn actual_runtime_and_authenticated_server_reject_short_model_before_inten
                 .contains("full_model")
         );
         assert_eq!(before, journal_tree(&case.runtime));
-        let (server, mut stream, _) = case.open().await;
+        let (server, mut stream, attach) = case.open().await;
         let returned = tokio::time::timeout(
             Duration::from_secs(5),
             frame::read_frame(&mut stream, frame::ATTACH_CAP),
         )
         .await
         .unwrap();
-        assert!(
-            matches!(returned, Ok(None) | Err(_)),
-            "no attach admission ACK for short budget"
-        );
+        let denial: Value = serde_json::from_slice(&returned.unwrap().unwrap()).unwrap();
+        assert_eq!(denial["attached"], false);
+        assert_eq!(denial["version"], rcu_native_link::TRANSPORT_VERSION);
+        assert_eq!(denial["task"], attach.task);
+        assert_eq!(denial["nonce"], attach.nonce);
+        assert_eq!(denial["role"], "model");
+        assert!(denial["reason"].as_str().unwrap().contains("full_model"));
+        assert!(denial["hold_reason"].is_null());
+        assert_eq!(denial["next_stage"], "model");
         assert_eq!(before, journal_tree(&case.runtime));
         assert!(case.runtime.live.lock().unwrap().is_empty());
         assert_eq!(

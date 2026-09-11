@@ -14,6 +14,13 @@ an SDK client or a screenshot from another tool is not native plugin acceptance.
 This plugin does not start/approve a native-link task. The controller must have
 prepared its authorized model stage before connecting. Do not retry a lost link.
 
+If `computer.targets` reports `mode: diagnostic_only` or
+`code: native_session_unavailable`, the MCP entry is loaded but its native task is
+not ready. These are recorded tool schemas, not a live Windows inventory. Report
+the task ID and startup error; do not execute cleanup, reset HOLD, or disable the
+MCP entry. A new Codex session does not renew task scope or expiry. A Notepad test
+grant cannot be reused to clean processes in Task Manager.
+
 ## Fast bounded workflow
 
 1. Read `computer.targets` once. Match the allocated host/guest/session/desktop;

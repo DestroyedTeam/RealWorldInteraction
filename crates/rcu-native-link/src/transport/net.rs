@@ -23,6 +23,7 @@ use tokio::{
 
 #[path = "model_attach.rs"]
 mod model_attach;
+pub use model_attach::StartupFailure;
 
 pub const IO_TIMEOUT: Duration = Duration::from_secs(5);
 pub const MODEL_LIMIT: Duration = Duration::from_secs(1200);
@@ -441,7 +442,9 @@ where
     } else {
         None
     };
-    let (stream, nonce) = model_attach::open(config).await?;
+    let (stream, nonce) = model_attach::open(config)
+        .await
+        .map_err(|e| io::Error::other(StartupFailure(e)))?;
     // Keep BufReader's already-received bytes; extracting its inner stream would
     // discard a coalesced MCP frame following AttachAck.
     let (remote_read, remote_write) = tokio::io::split(stream);

@@ -68,7 +68,30 @@ async fn connection(
     if attach.role == Role::Model {
         // This is the atomic ownership boundary. A wrong-order/duplicate model
         // attach is denied without touching a different active stage.
-        runtime.begin(Stage::Model, &runtime.previous()?)?;
+        let admission = runtime
+            .previous()
+            .and_then(|previous| runtime.begin(Stage::Model, &previous));
+        if let Err(error) = admission {
+            let (hold_reason, next_stage) = {
+                let journal = runtime.journal()?;
+                (
+                    journal.state.as_ref().and_then(|s| s.hold_reason.clone()),
+                    journal.state.as_ref().map(|s| s.next),
+                )
+            };
+            // Only the already authenticated matching Model peer receives this
+            // denial. No nonce, worker, retry, input or stage progress is minted.
+            net::write_json(
+                &mut output,
+                &json!({"version":crate::TRANSPORT_VERSION,
+                "attached":false,"task":attach.task,"nonce":attach.nonce,"role":"model",
+                "reason":error.to_string().chars().take(256).collect::<String>(),
+                "hold_reason":hold_reason,"next_stage":next_stage}),
+                frame::ATTACH_CAP,
+            )
+            .await?;
+            return Err(error);
+        }
         let result = async {
             // Rejected model attaches do not consume a controller nonce budget.
             nonce(&nonces,&attach)?;

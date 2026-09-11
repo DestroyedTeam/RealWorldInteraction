@@ -445,6 +445,35 @@ impl Rpc {
         )?;
         Ok((observed, lease))
     }
+    async fn assert_diagnostic_only(&mut self) -> io::Result<()> {
+        self.send(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"held-session-test","version":"1"}}})).await?;
+        let initialized = self.receive().await?;
+        expect(
+            initialized["result"]["instructions"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("DIAGNOSTIC ONLY")),
+            "held session must identify diagnostic-only MCP",
+        )?;
+        self.send(json!({"jsonrpc":"2.0","method":"notifications/initialized"}))
+            .await?;
+        let reply = self.call("computer.targets", json!({})).await?;
+        let diagnostic = &reply["result"]["structuredContent"];
+        expect(
+            reply["result"]["isError"] == true
+                && diagnostic["code"] == "native_session_unavailable"
+                && diagnostic["operation_dispatched"] == false
+                && diagnostic["goal_verified"] == false,
+            "held entry cannot admit operations or claim a goal",
+        )?;
+        expect(self.close().await?, "diagnostic EOF should close cleanly")?;
+        expect(
+            !self.transcript.last().unwrap()["stderr"]
+                .as_str()
+                .unwrap()
+                .contains("model_end_ack_verified"),
+            "diagnostic exit must never claim ModelEnd",
+        )
+    }
     async fn close(&mut self) -> io::Result<bool> {
         if let Some(mut input) = self.input.take() {
             input.shutdown().await?;
@@ -559,8 +588,7 @@ async fn actual_unknown_effect_and_no_effect_ack_never_become_goal_or_replay() {
             expect(status["result"]["hold_cleared"]==false,"readonly reconciliation never clears HOLD")?;
             expect(status["result"]["file_readback"]["all_match"]==effect,"read-only file reconciliation independently confirms actual bytes without clearing HOLD")?;
             let mut retried=case.relay()?;
-            expect(retried.setup().await.is_err(),"new TLS/entry connection must not restart held worker")?;
-            expect(!retried.close().await?,"held entry exits nonzero")?;
+            retried.assert_diagnostic_only().await?;
             expect(std::fs::read(case.install.join("state/native-state/fixture-model.json"))?==before,"reconnection cannot replay or reset actual effect")?;
             transcript.extend(retried.transcript);
             Ok(())
@@ -656,8 +684,7 @@ async fn actual_physical_tcp_loss_after_file_effect_and_agent_restart_stay_held(
         case.restart_same_installation().await?;
         let restarted=case.control(ControlOp::Reconcile).await?;
         expect(restarted["result"]["status"]["state"]["hold"]==true,"actual agent restart preserves HOLD")?;
-        let mut rpc=case.relay()?;expect(rpc.setup().await.is_err(),"restarted agent must not admit model again")?;
-        expect(!rpc.close().await?,"held relay restart exits nonzero")?;transcript=rpc.transcript;
+        let mut rpc=case.relay()?;rpc.assert_diagnostic_only().await?;transcript=rpc.transcript;
         expect(before==std::fs::read(case.install.join("state/native-state/fixture-model.json"))?,"actual restarted agent did not replay physical effect")?;
         transcript.push(json!({"physical_tcp_dropped_after_actual_file_effect":true,"action_reply_intentionally_unread":true,"agent_restarted_same_installation":true,"model_end_receipt":null,"replay_count":0}));
         Ok(())

@@ -26,11 +26,33 @@ fn main() {
             .worker_threads(2)
             .enable_all()
             .build()?;
-        let result = runtime.block_on(rcu_native_link::net::relay_model(
-            &config,
-            tokio::io::stdin(),
-            tokio::io::stdout(),
-        ));
+        let result = runtime.block_on(async {
+            match rcu_native_link::net::relay_model(
+                &config,
+                tokio::io::stdin(),
+                tokio::io::stdout(),
+            )
+            .await
+            {
+                Ok(receipt) => Ok(Some(receipt)),
+                Err(error)
+                    if error
+                        .get_ref()
+                        .is_some_and(|e| e.is::<rcu_native_link::net::StartupFailure>()) =>
+                {
+                    // This typed boundary guarantees no MCP input was consumed.
+                    // Do not reconnect, forward, recover a task or grant input.
+                    eprintln!("rcu-native-relay: startup_blocked_diagnostic_only: {error}");
+                    rcu_native_link::integration::startup_diagnostic::serve(
+                        &config.task,
+                        &error.to_string(),
+                    )
+                    .await?;
+                    Ok(None)
+                }
+                Err(error) => Err(error),
+            }
+        });
         // Tokio's stdin helper may retain an OS-blocked blocking-pool read when
         // the model keeps stdin open. Never let runtime Drop wait indefinitely.
         // The relay owns no worker process; its owned TLS/tasks are closed or
@@ -39,8 +61,14 @@ fn main() {
         result
     });
     match result {
-        Ok(receipt) => {
+        Ok(Some(receipt)) => {
             eprintln!("rcu-native-relay: model_end_ack_verified stage_receipt={receipt}");
+            std::process::exit(0);
+        }
+        Ok(None) => {
+            eprintln!(
+                "rcu-native-relay: diagnostic_server_closed; no native ModelEnd or goal claimed"
+            );
             std::process::exit(0);
         }
         Err(error) => {

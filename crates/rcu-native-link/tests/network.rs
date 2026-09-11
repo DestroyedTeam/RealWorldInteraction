@@ -17,6 +17,9 @@ use std::{
 };
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
+#[path = "network/startup_discovery.rs"]
+mod startup_discovery;
+
 struct Case {
     _temp: tempfile::TempDir,
     root: PathBuf,
