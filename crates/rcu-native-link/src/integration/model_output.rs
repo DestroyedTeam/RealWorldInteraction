@@ -55,12 +55,14 @@ impl Presenter {
 }
 
 fn project_result(result: &mut Value, evidence: Value) {
+    let is_error = result.get("isError") == Some(&Value::Bool(true));
+    let original = result["structuredContent"].clone();
     let data = result["structuredContent"]
         .as_object_mut()
         .expect("checked object");
     // Only project successful observations. Fault payloads, action receipts and
     // independent verification facts remain exact, including uncertainty.
-    if data.get("scene").is_some_and(Value::is_object) && result_is_success(data) {
+    if !is_error && data.get("scene").is_some_and(Value::is_object) && result_is_success(data) {
         let details: BTreeMap<String, Value> = data
             .get("adapter_status")
             .and_then(|a| a.pointer("/native_details/uia/walk/details"))
@@ -145,10 +147,27 @@ fn project_result(result: &mut Value, evidence: Value) {
         json!({"schema":"rcu.model-output.compact.v1","full_response":evidence}),
     );
     let text = Value::Object(data.clone()).to_string();
-    // One canonical textual fallback, not SDK structured payload plus a second
-    // metadata text block. Keep all image/resource blocks untouched and ordered.
+    // Remove only exact structured-content mirrors. Extra text can carry the
+    // mapping/view_id for an inline downscaled image and MUST remain available.
+    // Unknown textual content and every image/resource block are retained.
     let content = result["content"].as_array_mut().expect("checked content");
-    content.retain(|c| c["type"] != "text");
+    content.retain(|c| {
+        if c["type"] != "text" {
+            return true;
+        }
+        let mirror = c["text"]
+            .as_str()
+            .and_then(|text| serde_json::from_str::<Value>(text).ok());
+        !mirror
+            .as_ref()
+            .and_then(Value::as_object)
+            .is_some_and(|fields| {
+                !fields.is_empty()
+                    && fields
+                        .iter()
+                        .all(|(key, value)| original.get(key) == Some(value))
+            })
+    });
     content.insert(0, json!({"type":"text","text":text}));
 }
 fn result_is_success(data: &serde_json::Map<String, Value>) -> bool {
@@ -175,7 +194,7 @@ mod tests {
         assert_eq!(s["scene"]["elements"].as_array().unwrap().len(), 1);
         assert!(s.get("cancellation").is_none());
         assert_eq!(
-            output["result"]["content"][1],
+            output["result"]["content"][2],
             original["result"]["content"][1]
         );
         assert_eq!(
@@ -217,5 +236,43 @@ mod tests {
             let raw = serde_json::to_vec(&value).unwrap();
             assert_eq!(p.render(raw.clone()).unwrap(), raw);
         }
+    }
+
+    #[test]
+    fn action_ack_is_not_promoted_to_verified_goal() {
+        let (_temp, p) = presenter();
+        let receipt = json!({"request_id":"actual-request","goal_verified":false,"system_accepted":true,"status":"returned"});
+        let raw = serde_json::to_vec(&json!({"jsonrpc":"2.0","id":3,"result":{"content":[],"structuredContent":receipt,"isError":false}})).unwrap();
+        let out: Value = serde_json::from_slice(&p.render(raw).unwrap()).unwrap();
+        for (key, value) in receipt.as_object().unwrap() {
+            assert_eq!(out["result"]["structuredContent"][key], *value);
+        }
+    }
+
+    #[test]
+    fn corrupted_archive_refuses_to_emit_compact_success() {
+        let (_temp, p) = presenter();
+        let raw = serde_json::to_vec(&json!({"jsonrpc":"2.0","id":4,"result":{"content":[],"structuredContent":{"goal_verified":false},"isError":false}})).unwrap();
+        p.evidence
+            .create_new(
+                &format!("{}.json", sha(&raw)),
+                b"not original bytes",
+                frame::OUTBOUND,
+            )
+            .unwrap();
+        assert!(p.render(raw).is_err());
+    }
+    #[test]
+    fn auxiliary_image_mapping_survives_while_exact_mirrors_are_removed() {
+        let (_temp, p) = presenter();
+        let facts = json!({"frame":"f1","scene":{"elements":[],"mutation_ready":false,"blocked":true},"operation_id":"op1"});
+        let mapping = json!({"type":"text","text":json!({"view_id":"v1","mapping":{"scale":0.25},"resolve_tool":"computer.resolve_view"}).to_string()});
+        let image = json!({"type":"image","data":"unchanged","mimeType":"image/png"});
+        let metadata = json!({"type":"text","text":json!({"operation_id":"op1"}).to_string()});
+        let raw = serde_json::to_vec(&json!({"jsonrpc":"2.0","id":5,"result":{"structuredContent":facts,"content":[{"type":"text","text":facts.to_string()},mapping,image,metadata]}})).unwrap();
+        let out: Value = serde_json::from_slice(&p.render(raw).unwrap()).unwrap();
+        assert_eq!(out["result"]["content"].as_array().unwrap().len(), 3);
+        assert_eq!(out["result"]["content"][1], mapping);
+        assert_eq!(out["result"]["content"][2], image);
     }
 }
