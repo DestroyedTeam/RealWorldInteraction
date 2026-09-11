@@ -121,6 +121,17 @@
     "work/execution-ref-v2-20260912/host-e/response-0008.json": {
       "bytes": 17209,
       "sha256": "bed6a8e08eb0d8e5f0af011c45023c2e89828d03c16a950ecb638e0e7c36cdf8"
+    },
+    "work/execution-ref-v2-20260912/owner-final/current-task-old-entry.json": {
+      "bytes": 592,
+      "sha256": "051c3e8d01ff599e608044a2d12ed430f52c4fae91a4cc0ca36c86f515f074df"
     }
+  },
+  "calling_task_direct_native_probe": {
+    "code": "native_session_unavailable",
+    "mode": "diagnostic_only",
+    "connection": "obsolete admin5",
+    "current_task_switched": false,
+    "new_gui_task_model_acceptance": "not tested; explicit user permission to create requested"
   }
 }

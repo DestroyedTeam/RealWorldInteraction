@@ -65,5 +65,12 @@ metadata/native identity 正常，Host exit 0。原生 PNG/跨 Host 有效引用
 重启的更早验证范围见 `2026-09-12-execution-reference-candidate.md`。
 本轮新增 live 验证是 H/metadata，未发送新 GUI 输入，不是 M 或全局 Plugin 安装验收。
 
+进一步直接探测**当前调用任务**的 `computer.targets`，仍收到旧 admin5 连接的
+`diagnostic_only / connect_and_tls_deadline`。它不是新独立服务的回包；没有按其
+旧指令准备业务 task 或重置 HOLD。该任务当前直接工具入口尚未切换。
+新启动 app-server 的 H 证据不能证明现有 GUI Host 已热加载，也不能证明 GUI 中
+新任务已做 M 级直接调用。已询问用户是否允许创建实际只读验证任务，未获明确
+创建请求前不会自动新建。证据：`owner-final/current-task-old-entry.json`。
+
 同名 JSON 固定二进制与证据 SHA。A01 worker 进程隔离、输出压缩、严格额外 RTT
 基准、多平台驱动/完整 ADR 0002 仍需继续实现与各自验收。
