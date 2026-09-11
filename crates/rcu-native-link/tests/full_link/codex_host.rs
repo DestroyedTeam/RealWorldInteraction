@@ -64,6 +64,11 @@ async fn actual_codex_plugin_skill_and_mcp_call_over_rust_tls() {
             let result = request(&mut rpc,"mcpServer/tool/call",json!({"threadId":thread_id,"server":"real_computer_use_native_link","tool":"computer.targets","arguments":{}})).await?;
             expect(result.to_string().contains("synthetic-only"),"real Codex tool call did not reach the explicit Rust fixture worker")?;
             expect(result.to_string().contains("rcu.model-output.compact.v1"),"native relay compact projection not active")?;
+            let observation = request(&mut rpc,"mcpServer/tool/call",json!({"threadId":thread_id,"server":"real_computer_use_native_link","tool":"computer.observe","arguments":{"target":"synthetic-only","inline_image":false}})).await?;
+            expect(observation["isError"] != true,"Codex observe returned an MCP error")?;
+            expect(observation["structuredContent"]["frame"].is_string(),"Codex observe did not expose the actual frame")?;
+            expect(observation["structuredContent"]["observation_view"].is_object(),"compact native observation missing")?;
+            transcript.push(json!({"actual_codex_observe":observation,"fixture_only":true}));
             transcript.push(json!({"native_codex_host":true,"plugin_install":true,"skill_discovered":true,"actual_mcp_tool_call":true,"actual_tls":true,"model_inference":false,"windows_native":false,"tool_result":result}));
             Ok(())
         }.await;
