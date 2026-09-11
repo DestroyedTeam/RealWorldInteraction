@@ -135,8 +135,15 @@ impl Gateway {
             }
         };
         cancellation.disarm();
-        self.remember(&id, &reply.result.data);
-        reply.result
+        let mut result = reply.result;
+        if !result.data.is_object() {
+            result.data = json!({"value":result.data});
+        }
+        // Even an agent rejection after acceptance (e.g. context closed before
+        // Execute) must retain the caller's exact accepted execution locator.
+        result.data["operation_ref"] = json!(reference);
+        self.remember(&id, &result.data);
+        result
     }
 }
 
@@ -251,6 +258,28 @@ mod tests {
             );
             assert!(!calls.iter().any(|c| matches!(c, Call::Execute { .. })));
         }
+        let accepted = g.request("device", Some(token.into()), Call::Prepare {
+            tool: "computer.observe".into(),
+            arguments: json!({"target":opened.data["targets"][0]["target"],"inline_image":false}),
+        }).await.unwrap().result;
+        let reference: device::OperationRef =
+            serde_json::from_value(accepted.data["operation_ref"].clone()).unwrap();
+        assert!(
+            !g.request("device", Some(token.into()), Call::CloseContext)
+                .await
+                .unwrap()
+                .result
+                .is_error
+        );
+        let rejected = g
+            .dispatch_accepted(
+                reference.clone(),
+                g.shutdown.subscribe(),
+                std::future::pending(),
+            )
+            .await;
+        assert_eq!(rejected.data["code"], "execution_ref_expired");
+        assert_eq!(rejected.data["operation_ref"], json!(reference));
         stop.send_replace(true);
         server.await.unwrap().unwrap();
     }
