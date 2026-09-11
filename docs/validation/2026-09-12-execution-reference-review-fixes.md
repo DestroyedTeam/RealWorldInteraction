@@ -2,19 +2,24 @@
 
 最终产品候选：`e2f35980f641337b32fc65fc3ca9f594e0863c4e`。
 独立原始基线仍是 `839e81b`，报告保留，不因修复移动基线。
-**修复后的独立结论待确认；R01、A01 和完整架构不在本文自行结案。**
+**Control Center 已关闭 ER01/ER02 原缺陷，并确认 orderly ownership 增量；
+R01 综合裁决、A01、完整架构和 M 不自动结案。**
+固定独立报告：`2026-09-12-er01-er02-2f0f774-owner-e2f3598-review.md`；
+保存的平台证据另由 `2026-09-12-e2f3598-saved-platform-evidence-addendum.md` 核对。
 
 ## ER01：已接受后的取消失败仍保留控制引用
 
 `06ebeb7` / `d1f237d`：取消超时、断连以及 Execute 被设备拒绝时，回包均保留
 已取得的 operation_ref。送达确认与取消接受分别报告，不推断原生终止。
 
-除 accepted-only 测试外，`2f0f774` 增加组合 P 测试：真实 adapter + mTLS +
+除 accepted-only 测试外，`2f0f774` 增加组件/认证 RPC 组合测试：Gateway + mTLS +
 Core Operation/NativeCall 的合成 held provider。Execute 已进入 pending scope 后
 Host EOF，Cancel 超时的回包仍能供新控制连接查询同一 pending owner；控制端
 路由断开也不丢 ref。恢复后 Cancel 不提前报告资源释放，显式释放合成 scope 后
 才 terminal/resources_released；Execute 计数始终为 1。
-它不是生产 Runtime/真实 OS provider 卡死注入，也不是 A01 强终止验收。
+它不经过真实 MCP stdio 子进程或生产 Runtime.dispatch，不是完整端到端单路径、
+真实 OS provider 卡死注入或 A01 强终止验收。正式 Runtime.dispatch + 可控阻塞
+Backend + 取消后下一批计数的组合覆盖仍需单列。
 
 ## ER02：namespace 首次写入与旧损坏权威恢复
 

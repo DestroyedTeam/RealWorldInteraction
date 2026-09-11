@@ -1,7 +1,16 @@
 {
   "schema": "rcu.execution-reference-review-followup.v1",
   "source_commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
-  "independent_review": "pending",
+  "independent_review": {
+    "ER01": "closed",
+    "ER02": "closed",
+    "StateOwner_increment": "accepted",
+    "R01_comprehensive": "not automatically closed",
+    "reports": [
+      "docs/validation/2026-09-12-er01-er02-2f0f774-owner-e2f3598-review.md",
+      "docs/validation/2026-09-12-e2f3598-saved-platform-evidence-addendum.md"
+    ]
+  },
   "architecture_complete": false,
   "gates": {
     "default-tests.raw.log": {
@@ -43,7 +52,7 @@
     "followup": "e2f3598 explicit orderly ownership unlock + duplicate descriptor test"
   },
   "still_open": [
-    "independent final closure",
+    "R01 comprehensive verdict and full Runtime.dispatch blocking-backend cancellation matrix",
     "A01 owned-process native isolation",
     "compact output and formal added RTT benchmark",
     "M and global Plugin installation acceptance",

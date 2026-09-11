@@ -1,4 +1,5 @@
-//! P: real adapter + mTLS + Core native ownership, with a synthetic held provider.
+//! Component/authenticated-RPC test: Gateway + Core ownership + synthetic held scope.
+//! Does not traverse a real MCP stdio subprocess or production Runtime.dispatch.
 //! This is not a native OS hang or owned-process-isolation acceptance test.
 use super::*;
 use rcu_core::{
