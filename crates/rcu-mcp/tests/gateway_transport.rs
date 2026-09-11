@@ -1,12 +1,12 @@
 #![cfg(unix)]
 //! P: real MCP child + authenticated RPC, with explicit synthetic device peers.
 //! No native OS input or platform success is inferred from these transport tests.
-use rcu_core::device::{Call, DeviceResult, Reply, Request};
+use rcu_core::device::{Call, DeviceResult, OperationRef, PROTOCOL_VERSION, Reply, Request};
 use rcu_link_trust::{IdentityPaths, PeerPin};
 use rcu_native_link::device::{AdapterProfile, PairedDevice};
 use serde_json::{Value, json};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     io::Write,
     os::unix::fs::{DirBuilderExt, OpenOptionsExt},
     process::Stdio,
@@ -87,6 +87,7 @@ struct Device {
     paired: PairedDevice,
     calls: Arc<Mutex<Vec<Request>>>,
     cancelled: Arc<Mutex<BTreeSet<String>>>,
+    accepted: Arc<Mutex<BTreeMap<String, Value>>>,
     _stop: tokio::sync::watch::Sender<bool>,
     server: tokio::task::JoinHandle<std::io::Result<()>>,
 }
@@ -118,6 +119,8 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
     let calls = Arc::new(Mutex::new(Vec::new()));
     let cancelled = Arc::new(Mutex::new(BTreeSet::new()));
     let seen = calls.clone();
+    let accepted: Arc<Mutex<BTreeMap<String, Value>>> = Default::default();
+    let records = accepted.clone();
     let cancel = cancelled.clone();
     let (stop, rx) = tokio::sync::watch::channel(false);
     let name = id.to_owned();
@@ -125,6 +128,7 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
         listener,
         tls,
         move |_peer: PeerPin, r: Request| {
+            let records = records.clone();
             let seen = seen.clone();
             let cancel = cancel.clone();
             let name = name.clone();
@@ -137,32 +141,55 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                     Call::OpenContext => DeviceResult::value(
                         json!({"context":format!("context-{name}"),"targets":[{"target":format!("target-{name}")}]}),
                     ),
-                    Call::Cancel { operation_id } => {
-                        cancel.lock().unwrap().insert(operation_id.clone());
+                    Call::Prepare { arguments, .. } => {
+                        let operation_ref = OperationRef {
+                            ref_version: 1,
+                            device_id: name.clone(),
+                            agent_instance: "test-instance".into(),
+                            context_generation: format!("context-{name}"),
+                            execution_nonce: uuid::Uuid::new_v4().to_string(),
+                        };
+                        records
+                            .lock()
+                            .unwrap()
+                            .insert(operation_ref.execution_nonce.clone(), arguments.clone());
+                        if arguments["operation_id"] == "hold-prepare" {
+                            std::future::pending::<()>().await;
+                        }
+                        DeviceResult::value(json!({"accepted":true,"operation_ref":operation_ref}))
+                    }
+                    Call::Cancel { operation_ref } => {
+                        cancel
+                            .lock()
+                            .unwrap()
+                            .insert(operation_ref.execution_nonce.clone());
                         DeviceResult::value(
                             json!({"cancel_requested":true,"terminal":false,"resources_released":false}),
                         )
                     }
-                    Call::Invoke { arguments, .. } => {
-                        let op = arguments["operation_id"].as_str().unwrap_or("none");
-                        if op.starts_with("slow") {
+                    Call::Execute { operation_ref } => {
+                        let arguments =
+                            records.lock().unwrap()[&operation_ref.execution_nonce].clone();
+                        let label = arguments["operation_id"].as_str().unwrap_or("none");
+                        if label.starts_with("slow") {
                             loop {
-                                if cancel.lock().unwrap().contains(op) {
+                                if cancel
+                                    .lock()
+                                    .unwrap()
+                                    .contains(&operation_ref.execution_nonce)
+                                {
                                     break;
                                 }
                                 tokio::time::sleep(Duration::from_millis(5)).await;
                             }
                         }
                         DeviceResult::value(
-                            json!({"operation_id":op,"device":name,"synthetic":true}),
+                            json!({"operation_ref":operation_ref,"correlation_id":label,"device":name,"synthetic":true}),
                         )
                     }
-                    Call::Operation {
-                        operation_id,
-                        id_kind,
-                    } => DeviceResult::value(
-                        json!({"operation_id":operation_id,"device":name,"id_kind":id_kind}),
-                    ),
+                    Call::Operation { selector } => {
+                        DeviceResult::value(json!({"selector":selector,"device":name}))
+                    }
                     Call::CloseContext => {
                         if slow_close {
                             std::future::pending::<()>().await;
@@ -172,7 +199,7 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                     _ => DeviceResult::error("synthetic_unsupported", "Transport test only"),
                 };
                 Reply {
-                    version: 1,
+                    version: PROTOCOL_VERSION,
                     id: r.id,
                     device: r.device,
                     instance: "test-instance".into(),
@@ -186,6 +213,7 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
         paired,
         calls,
         cancelled,
+        accepted,
         _stop: stop,
         server,
     }
@@ -229,19 +257,22 @@ async fn multi_device_collision_cancellation_and_bounded_eof() {
     let mut host = Host::start(&profile(&root, &[&a, &b])).await;
     let targets = host.tool(2, "computer.targets", json!({})).await;
     assert_eq!(targets["targets"].as_array().unwrap().len(), 2, "{targets}");
+    let mut references = Vec::new();
     for (id, device) in [(3, "a"), (4, "b")] {
-        host.tool(id,"computer.observe",json!({"target":format!("target-device-{device}"),"operation_id":"same-id","inline_image":false})).await;
+        let result=host.tool(id,"computer.observe",json!({"target":format!("target-device-{device}"),"operation_id":"same-id","inline_image":false})).await;
+        references.push(result["operation_ref"].clone());
     }
+    assert_ne!(references[0], references[1]);
     assert_eq!(
         host.tool(5, "computer.operation", json!({"operation_id":"same-id"}))
             .await["code"],
-        "ambiguous_resource"
+        "invalid_arguments"
     );
     assert_eq!(
         host.tool(
             6,
             "computer.operation",
-            json!({"device_id":"device-a","operation_id":"same-id"})
+            json!({"selector":{"kind":"execution","operation_ref":references[0]}})
         )
         .await["device"],
         "device-a"
@@ -252,17 +283,18 @@ async fn multi_device_collision_cancellation_and_bounded_eof() {
         json!({"target":"target-device-a","operation_id":"slow-cancel","inline_image":false}),
     ))
     .await;
-    wait_until(||a.calls.lock().unwrap().iter().any(|r|matches!(&r.call,Call::Invoke{arguments,..} if arguments["operation_id"]=="slow-cancel"))).await;
+    wait_until(|| executed_label(&a, "slow-cancel")).await;
+    let cancel_nonce = nonce(&a, "slow-cancel");
     host.send(json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":7,"reason":"Host Stop"}})).await;
-    wait_until(|| a.cancelled.lock().unwrap().contains("slow-cancel")).await;
-    assert!(!b.cancelled.lock().unwrap().contains("slow-cancel"));
+    wait_until(|| a.cancelled.lock().unwrap().contains(&cancel_nonce)).await;
+    assert!(!b.cancelled.lock().unwrap().contains(&cancel_nonce));
     assert!(
         a.calls
             .lock()
             .unwrap()
             .iter()
-            .filter(|r| matches!(&r.call,Call::Cancel{operation_id} if operation_id=="slow-cancel"))
-            .all(|r| r.context.as_deref() == Some("context-device-a"))
+            .filter(|r| matches!(&r.call,Call::Cancel{operation_ref} if operation_ref.execution_nonce==cancel_nonce))
+            .all(|r| r.context.is_none())
     );
     let response = host.read().await;
     assert_eq!(response["id"], 7);
@@ -272,7 +304,8 @@ async fn multi_device_collision_cancellation_and_bounded_eof() {
         json!({"target":"target-device-b","operation_id":"slow-eof","inline_image":false}),
     ))
     .await;
-    wait_until(||b.calls.lock().unwrap().iter().any(|r|matches!(&r.call,Call::Invoke{arguments,..} if arguments["operation_id"]=="slow-eof"))).await;
+    wait_until(|| executed_label(&b, "slow-eof")).await;
+    let eof_nonce = nonce(&b, "slow-eof");
     let began = std::time::Instant::now();
     host.stop().await;
     assert!(
@@ -280,15 +313,68 @@ async fn multi_device_collision_cancellation_and_bounded_eof() {
         "EOF cleanup must be one bounded parallel budget, not per device"
     );
     assert!(
-        b.cancelled.lock().unwrap().contains("slow-eof"),
+        b.cancelled.lock().unwrap().contains(&eof_nonce),
         "dropping the Host waiter must request native cancellation"
     );
     for d in [&a, &b] {
         let calls = d.calls.lock().unwrap();
         for id in ["same-id", "slow-cancel", "slow-eof"] {
-            assert!(calls.iter().filter(|r|matches!(&r.call,Call::Invoke{arguments,..} if arguments["operation_id"]==id)).count()<=1,"original operation replayed");
+            assert!(calls.iter().filter(|r|matches!(&r.call,Call::Prepare{arguments,..} if arguments["operation_id"]==id)).count()<=1,"original operation replayed");
         }
     }
+}
+
+fn nonce(d: &Device, label: &str) -> String {
+    d.accepted
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|(_, v)| v["operation_id"] == label)
+        .unwrap()
+        .0
+        .clone()
+}
+fn executed_label(d: &Device, label: &str) -> bool {
+    let records = d.accepted.lock().unwrap();
+    let Some((nonce, _)) = records.iter().find(|(_, v)| v["operation_id"] == label) else {
+        return false;
+    };
+    d.calls.lock().unwrap().iter().any(
+        |r| matches!(&r.call,Call::Execute{operation_ref} if &operation_ref.execution_nonce==nonce),
+    )
+}
+
+#[tokio::test]
+async fn actual_host_eof_before_prepare_reply_never_sends_execute() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap().join("private");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .unwrap();
+    let device = device(&root, "device-a", false).await;
+    let mut host = Host::start(&profile(&root, &[&device])).await;
+    host.tool(2, "computer.targets", json!({})).await;
+    host.send(tool(
+        3,
+        "computer.observe",
+        json!({"target":"target-device-a","operation_id":"hold-prepare","inline_image":false}),
+    ))
+    .await;
+    wait_until(|| !device.accepted.lock().unwrap().is_empty()).await;
+    host.stop().await;
+    assert!(
+        !device
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|r| matches!(r.call, Call::Execute { .. }))
+    );
+    assert!(
+        device.cancelled.lock().unwrap().is_empty(),
+        "no invented reference before acceptance response"
+    );
 }
 
 /// Actual production Runtime + mTLS, explicitly using the synthetic backend.
@@ -344,6 +430,7 @@ async fn runtime_device(root: &std::path::Path) -> Device {
         paired,
         calls,
         cancelled: Default::default(),
+        accepted: Default::default(),
         _stop: stop,
         server,
     }
@@ -384,27 +471,24 @@ async fn crossing_request_and_monitor_ids_stay_correct_across_actual_mcp_hosts()
         first
             .tool(8, "computer.operation", json!({"operation_id":"op-b"}))
             .await["code"],
-        "operation_id_ambiguous"
+        "invalid_arguments"
     );
+    let read = first
+        .tool(
+            9,
+            "computer.observe",
+            json!({"target":target,"correlation_id":"op-b","inline_image":false}),
+        )
+        .await;
+    let reference = read["operation_ref"].clone();
+    // Fresh Host has no volatile routing table, but an exact live reference still routes.
+    let mut second = Host::start(&profile).await;
+    let execution_query = json!({"selector":{"kind":"execution","operation_ref":reference}});
     assert_eq!(
-        first
-            .tool(
-                9,
-                "computer.operation",
-                json!({"operation_id":"op-b","id_kind":"monitor"})
-            )
-            .await["operation_id"],
-        "op-b"
-    );
-    assert_eq!(
-        first
-            .tool(
-                10,
-                "computer.operation",
-                json!({"operation_id":"op-b","id_kind":"request"})
-            )
-            .await["reservation"]["monitor_id"],
-        "op-c"
+        second
+            .tool(2, "computer.operation", execution_query.clone())
+            .await["terminal"],
+        true
     );
     assert_eq!(
         first
@@ -413,20 +497,17 @@ async fn crossing_request_and_monitor_ids_stay_correct_across_actual_mcp_hosts()
         true
     );
     first.stop().await;
-    let mut second = Host::start(&profile).await;
-    // Query before targets/open-context: only authenticated durable storage can answer.
-    let query =
-        |kind: &str| json!({"device_id":"runtime-device","operation_id":"op-b","id_kind":kind});
     assert_eq!(
-        second.tool(2, "computer.operation", query("auto")).await["code"],
-        "operation_id_ambiguous"
+        second.tool(3, "computer.operation", execution_query).await["code"],
+        "execution_ref_expired"
     );
-    let a = second.tool(3, "computer.operation", query("monitor")).await;
-    let b = second.tool(4, "computer.operation", query("request")).await;
+    let query = |id: &str| json!({"selector":{"kind":"request","device_id":"runtime-device","request_id":id}});
+    let a = second.tool(4, "computer.operation", query("req-a")).await;
+    let b = second.tool(5, "computer.operation", query("op-b")).await;
     assert_eq!(a["reservation"]["operation_id"], "req-a");
-    assert_eq!(b["reservation"]["monitor_id"], "op-c");
-    assert_eq!(a["result"]["data"]["request_id"], "req-a");
-    assert_eq!(b["result"]["data"]["request_id"], "op-b");
+    assert_eq!(b["reservation"]["operation_id"], "op-b");
+    assert_eq!(a["result"]["data"]["correlation_id"], "op-b");
+    assert_eq!(b["result"]["data"]["correlation_id"], "op-c");
     assert_eq!(a["replay_allowed"], false);
     assert_eq!(b["replay_allowed"], false);
     second.stop().await;
@@ -436,7 +517,7 @@ async fn crossing_request_and_monitor_ids_stay_correct_across_actual_mcp_hosts()
             .lock()
             .unwrap()
             .iter()
-            .filter(|r| matches!(&r.call,Call::Invoke{tool,..} if tool=="computer.act_checked"))
+            .filter(|r| matches!(&r.call,Call::Prepare{tool,..} if tool=="computer.act_checked"))
             .count(),
         2,
         "queries/reconnect must not replay either mutation"

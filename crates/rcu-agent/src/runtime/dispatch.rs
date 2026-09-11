@@ -1,0 +1,227 @@
+//! One-shot dispatch after service acceptance. Async waiter lifetime does not own native work.
+use super::execution::Execution;
+use super::*;
+use serde_json::Value;
+
+struct Finish(Operation);
+impl Drop for Finish {
+    fn drop(&mut self) {
+        self.0.finish();
+    }
+}
+struct PanicFence {
+    domain: Arc<InputDomain>,
+    writes: bool,
+}
+impl Drop for PanicFence {
+    fn drop(&mut self) {
+        if self.writes && std::thread::panicking() {
+            self.domain.fenced.store(true, Ordering::Release);
+        }
+    }
+}
+impl Runtime {
+    pub(super) async fn execute(
+        self: &Arc<Self>,
+        peer: &PeerPin,
+        policy: &Principal,
+        reference: &OperationRef,
+    ) -> DeviceResult {
+        let (context, entry) = match self.resolve_execution(peer, reference) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let op = match entry.begin(&context.registry) {
+            Ok(op) => op,
+            Err(e) => return entry.envelope(e),
+        };
+        let finish = Finish(op.clone());
+        let result = self
+            .dispatch(peer, policy, context, entry.clone(), finish)
+            .await;
+        let mut result = entry.envelope(result);
+        result.data["operation"] = entry.status().data;
+        result
+    }
+    async fn dispatch(
+        self: &Arc<Self>,
+        peer: &PeerPin,
+        policy: &Principal,
+        context: Arc<Context>,
+        entry: Arc<Execution>,
+        finish: Finish,
+    ) -> DeviceResult {
+        let Ok(permit) = context.gate.clone().try_acquire_owned() else {
+            return DeviceResult::error(
+                "context_busy",
+                "Only this context is busy; this execution was not dispatched.",
+            );
+        };
+        if context.closed.load(Ordering::Acquire) {
+            return DeviceResult::error("context_closed", "No dispatch after context closure.");
+        }
+        if let Err(e) = rcu_core::operation::run(&finish.0, || {
+            rcu_core::operation::checkpoint("before_dispatch")
+        }) {
+            return DeviceResult::error(&e.code, &e.next_step);
+        }
+        let input_permit = if entry.writes {
+            if context.domain.fenced.load(Ordering::Acquire) {
+                return DeviceResult::error(
+                    "input_domain_fenced",
+                    "Inspect uncertain native resources; no new input was dispatched.",
+                );
+            }
+            match context.domain.gate.clone().try_acquire_owned() {
+                Ok(p) => {
+                    if context.domain.fenced.load(Ordering::Acquire) {
+                        return DeviceResult::error(
+                            "input_domain_fenced",
+                            "Reconcile the previous writer before a new action.",
+                        );
+                    }
+                    Some(p)
+                }
+                Err(_) => {
+                    return DeviceResult::error(
+                        "input_busy",
+                        "This desktop has an active writer; do not steal focus.",
+                    );
+                }
+            }
+        } else {
+            None
+        };
+        let mut reservation = None;
+        if entry.writes {
+            let id = entry.arguments["request_id"]
+                .as_str()
+                .expect("validated at acceptance");
+            let Ok(mut storage) = self.ledger.lock() else {
+                return DeviceResult::error(
+                    "operation_storage_unavailable",
+                    "No dispatch without durable reservation.",
+                );
+            };
+            let ledger = match storage.as_mut() {
+                Ok(l) => l,
+                Err(e) => {
+                    return DeviceResult::error("operation_storage_unavailable", &e.to_string());
+                }
+            };
+            match ledger.reserve_execution(
+                peer.as_str(),
+                id,
+                &json!({"tool":entry.tool,"arguments":entry.arguments}),
+                &entry.reference,
+                &context.domain.key,
+            ) {
+                Ok(Reservation::New(key)) => reservation = Some(key),
+                Ok(Reservation::Existing(r)) => return r,
+                Err(e) => {
+                    return DeviceResult::error("operation_reservation_failed", &e.to_string());
+                }
+            }
+        }
+        let service = self.clone();
+        let worker_context = context.clone();
+        let worker_entry = entry.clone();
+        let policy = policy.clone();
+        let result=tokio::task::spawn_blocking(move || {
+            let _panic_fence=PanicFence{domain:worker_context.domain.clone(),writes:worker_entry.writes};
+            // Both permits and finish guard belong to the worker, not its async waiter.
+            let _permit=permit;
+            let _input=input_permit;
+            let entered=&worker_context.entered;
+            entered.store(false,Ordering::Release);
+            let operation=finish.0.clone();
+            let result=rcu_core::operation::run(&operation, || -> rcu_core::Result<DeviceResult> {
+                rcu_core::operation::checkpoint("accepted_execute")?;
+                if worker_entry.tool=="computer.recover_input" {
+                    return Ok(service.recover(&policy,worker_entry.arguments["resource_domain"].as_str().unwrap_or_default(),Some(&worker_entry.reference.execution_nonce)));
+                }
+                worker_context.executor.lock().map_err(|_|rcu_core::fault("executor_unavailable","Native context failed; other contexts remain available."))?
+                    .invoke(&worker_entry.tool,worker_entry.arguments.clone())
+            });
+            let mut result=match result {Ok(r)=>r,Err(e)=>DeviceResult::error(&e.code,&e.next_step)};
+            drop(finish);
+            result=worker_entry.envelope(result);
+            result.data["operation"]=worker_entry.status().data;
+            result.data["native_dispatch_entered"]=json!(entered.load(Ordering::Acquire));
+            if worker_entry.writes && entered.load(Ordering::Acquire) && (result.is_error || result.data["dispatch"]=="uncertain" || result.data["state"]=="uncertain" || !operation.status().resources_released) {
+                worker_context.domain.fenced.store(true,Ordering::Release);
+            }
+            result.data["input_domain_fenced"]=json!(worker_context.domain.fenced.load(Ordering::Acquire));
+            if let Some(key)=reservation {
+                result.data["receipt_ref"]=json!({"device_id":worker_entry.reference.device_id,"request_id":worker_entry.arguments["request_id"]});
+                let saved=service.ledger.lock().ok().and_then(|l|l.as_ref().ok().map(|l|l.finish(&key,&result).is_ok())).unwrap_or(false);
+                if !saved {
+                    worker_context.domain.fenced.store(true,Ordering::Release);
+                    return DeviceResult::error("effect_recording_uncertain","Effect may have occurred; query the durable request without replay.");
+                }
+            }
+            result
+        }).await;
+        match result {
+            Ok(r) => r,
+            Err(_) => {
+                if entry.writes {
+                    context.domain.fenced.store(true, Ordering::Release);
+                }
+                DeviceResult::error(
+                    "native_worker_failed",
+                    "Effect may be unknown; inspect the execution and target without replay.",
+                )
+            }
+        }
+    }
+    pub(super) async fn cached(
+        &self,
+        peer: &PeerPin,
+        policy: &Principal,
+        token: Option<&str>,
+        tool: String,
+        arguments: Value,
+    ) -> DeviceResult {
+        if !catalog::cached_read(&tool) {
+            return DeviceResult::error(
+                "cached_read_not_supported",
+                "Native work requires service acceptance.",
+            );
+        }
+        if let Err(e) = catalog::validate(&tool, &arguments) {
+            return DeviceResult::error("invalid_arguments", &e.to_string());
+        }
+        if !policy.observe {
+            return DeviceResult::error("permission_denied", "No observation authorization.");
+        }
+        let Some(context) = self.context(peer, token) else {
+            return DeviceResult::error("context_unknown", "Read targets for a fresh context.");
+        };
+        if arguments
+            .get("target")
+            .is_some_and(|v| v != &context.target)
+        {
+            return DeviceResult::error("foreign_target", "Use this context's cached handles.");
+        }
+        let Ok(_permit) = context.gate.clone().try_acquire_owned() else {
+            return DeviceResult::error(
+                "context_busy",
+                "Cached data is in use; no native call started.",
+            );
+        };
+        if context.closed.load(Ordering::Acquire) {
+            return DeviceResult::error("context_closed", "The cache context has closed.");
+        }
+        let Ok(mut executor) = context.executor.try_lock() else {
+            return DeviceResult::error("context_busy", "No native call started.");
+        };
+        let mut result = match executor.invoke(&tool, arguments) {
+            Ok(r) => r,
+            Err(e) => DeviceResult::error(&e.code, &e.next_step),
+        };
+        result.data["result_kind"] = json!("cached_read");
+        result.data["native_execution"] = json!(false);
+        result
+    }
+}

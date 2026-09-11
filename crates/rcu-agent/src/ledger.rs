@@ -1,6 +1,6 @@
 //! Persist one reservation before each side effect; never forget/re-dispatch IDs.
 mod recovery;
-use rcu_core::device::{DeviceResult, OperationIdKind};
+use rcu_core::device::{DeviceResult, OperationRef};
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
@@ -75,6 +75,7 @@ impl Ledger {
         }
         Ok(Self { path, entries })
     }
+    #[cfg(test)]
     pub fn reserve(
         &mut self,
         principal: &str,
@@ -83,6 +84,34 @@ impl Ledger {
         monitor_id: &str,
         domain: &str,
     ) -> io::Result<Reservation> {
+        self.reserve_record(principal, operation, payload, monitor_id, domain, None)
+    }
+    pub fn reserve_execution(
+        &mut self,
+        principal: &str,
+        request_id: &str,
+        payload: &Value,
+        reference: &OperationRef,
+        domain: &str,
+    ) -> io::Result<Reservation> {
+        self.reserve_record(
+            principal,
+            request_id,
+            payload,
+            &reference.execution_nonce,
+            domain,
+            Some(reference),
+        )
+    }
+    fn reserve_record(
+        &mut self,
+        principal: &str,
+        operation: &str,
+        payload: &Value,
+        monitor_id: &str,
+        domain: &str,
+        reference: Option<&OperationRef>,
+    ) -> io::Result<Reservation> {
         let key = rcu_core::digest(&serde_json::to_vec(&(principal, operation))?);
         let payload_sha = rcu_core::digest(&serde_json::to_vec(payload)?);
         if let Some(old) = self.entries.get(&key) {
@@ -90,11 +119,11 @@ impl Ledger {
                 if old["payload_sha"] != payload_sha {
                     DeviceResult::error(
                         "operation_payload_conflict",
-                        "This operation ID already identifies different arguments.",
+                        "This durable request ID already identifies different arguments. Never replay it.",
                     )
                 } else {
                     DeviceResult::value(
-                        json!({"operation_id":old["monitor_id"],"request_id":operation,"state":if !self.finished(&key).is_null(){"completed"}else{"reserved_or_effect_unknown"}, "dispatched_again":false,
+                        json!({"request_id":operation,"state":if !self.finished(&key).is_null(){"completed"}else{"reserved_or_effect_unknown"}, "dispatched_again":false,
                     "goal_verified":false,"record":old,"result":self.finished(&key),"automatic_replay":false}),
                     )
                 },
@@ -103,14 +132,9 @@ impl Ledger {
         if self.entries.len() >= 100_000 {
             return Err(io::Error::other("operation_storage_capacity"));
         }
-        if self
-            .entries
-            .values()
-            .any(|v| v["principal"] == principal && v["monitor_id"] == monitor_id)
-        {
-            return Err(io::Error::other("monitor_id_reused"));
-        }
-        let value = json!({"principal":principal,"resource_domain":domain,"monitor_id":monitor_id,"operation_id":operation,"payload_sha":payload_sha,"state":"reserved_before_dispatch"});
+        // Retain the legacy disk key and fields so old immutable bytes stay valid.
+        // monitor_id is historical evidence only, never a lookup or uniqueness key.
+        let value = json!({"principal":principal,"resource_domain":domain,"monitor_id":monitor_id,"operation_id":operation,"original_operation_ref":reference,"payload_sha":payload_sha,"state":"reserved_before_dispatch"});
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -122,32 +146,13 @@ impl Ledger {
         self.entries.insert(key.clone(), value);
         Ok(Reservation::New(key))
     }
-    pub fn status(
-        &self,
-        principal: &str,
-        id: &str,
-        kind: OperationIdKind,
-    ) -> Result<Option<Value>, DeviceResult> {
-        let mut matches = self.entries.iter().filter(|(_, v)| {
-            v["principal"] == principal
-                && match kind {
-                    OperationIdKind::Monitor => v["monitor_id"] == id,
-                    OperationIdKind::Request => v["operation_id"] == id,
-                    OperationIdKind::Auto => v["monitor_id"] == id || v["operation_id"] == id,
-                }
-        });
-        let Some((key, value)) = matches.next() else {
-            return Ok(None);
-        };
-        if matches.next().is_some() {
-            return Err(DeviceResult::error(
-                "operation_id_ambiguous",
-                "This value identifies different operations. Specify id_kind=monitor or id_kind=request; no operation was selected.",
-            ));
-        }
-        Ok(Some(
-            json!({"reservation":value,"result":self.finished(key),"replay_allowed":false,"query":{"id":id,"id_kind":kind}}),
-        ))
+    pub fn request_status(&self, principal: &str, request_id: &str) -> Option<Value> {
+        let key = rcu_core::digest(&serde_json::to_vec(&(principal, request_id)).ok()?);
+        let value = self.entries.get(&key)?;
+        Some(
+            json!({"reservation":value,"result":self.finished(&key),"replay_allowed":false,
+            "legacy_monitor_resolvable":false,"original_execution_reference_is_evidence_only":true}),
+        )
     }
 
     fn finished(&self, key: &str) -> Value {
@@ -216,48 +221,26 @@ fn bounded_json(path: &Path) -> io::Result<Value> {
 mod tests {
     use super::*;
     #[test]
-    fn cross_namespace_ids_never_resolve_by_search_order() {
+    fn legacy_monitor_labels_are_not_request_lookup_keys() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("operations");
         let mut ledger = Ledger::open(path.clone()).unwrap();
         ledger
-            .reserve("p", "req-a", &json!({"action":"a"}), "op-b", "desktop")
+            .reserve("p", "req-a", &json!({}), "op-b", "desktop")
             .unwrap();
         ledger
-            .reserve("p", "op-b", &json!({"action":"b"}), "op-c", "desktop")
+            .reserve("p", "op-b", &json!({}), "op-c", "desktop")
             .unwrap();
         ledger
-            .reserve(
-                "other",
-                "req-a",
-                &json!({"action":"other"}),
-                "op-b",
-                "desktop",
-            )
+            .reserve("p", "req-c", &json!({}), "op-c", "desktop")
             .unwrap();
         for ledger in [ledger, Ledger::open(path).unwrap()] {
-            let error = ledger
-                .status("p", "op-b", OperationIdKind::Auto)
-                .unwrap_err();
-            assert_eq!(error.data["code"], "operation_id_ambiguous");
-            let a = ledger
-                .status("p", "op-b", OperationIdKind::Monitor)
-                .unwrap()
-                .unwrap();
-            let b = ledger
-                .status("p", "op-b", OperationIdKind::Request)
-                .unwrap()
-                .unwrap();
-            assert_eq!(a["reservation"]["operation_id"], "req-a");
-            assert_eq!(b["reservation"]["monitor_id"], "op-c");
-            assert_eq!(a["replay_allowed"], false);
-            assert_eq!(b["replay_allowed"], false);
-            assert!(
-                ledger
-                    .status("other", "op-b", OperationIdKind::Auto)
-                    .unwrap()
-                    .is_some()
+            assert_eq!(
+                ledger.request_status("p", "op-b").unwrap()["reservation"]["operation_id"],
+                "op-b"
             );
+            assert!(ledger.request_status("p", "op-c").is_none());
+            assert!(ledger.request_status("other", "req-a").is_none());
         }
     }
     #[test]

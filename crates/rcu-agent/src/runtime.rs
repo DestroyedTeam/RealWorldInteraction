@@ -1,4 +1,9 @@
 mod capabilities;
+mod dispatch;
+#[cfg(all(test, feature = "fixture"))]
+mod dispatch_tests;
+mod execution;
+mod namespace;
 mod recovery;
 use crate::{
     config::{Config, Principal},
@@ -13,11 +18,11 @@ use rcu_core::{
 use rcu_link_trust::PeerPin;
 use serde_json::json;
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     io,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::Instant,
 };
@@ -30,7 +35,9 @@ struct InputDomain {
 struct Context {
     domain: Arc<InputDomain>,
     closed: AtomicBool,
-    cancelled_ids: Mutex<BTreeSet<String>>,
+    generation: String,
+    executions: Mutex<BTreeMap<String, Arc<execution::Execution>>>,
+    sequence: AtomicU64,
     principal: String,
     executor: Arc<Mutex<Executor>>,
     gate: Arc<tokio::sync::Semaphore>,
@@ -60,6 +67,7 @@ impl Runtime {
         owner
             .try_lock()
             .map_err(|_| io::Error::other("service_state_already_owned"))?;
+        namespace::bind(&config.state_root, &config.device_id)?;
         let ledger = Ledger::open(config.state_root.join("operations"));
         Ok(Arc::new(Self {
             config,
@@ -121,7 +129,6 @@ impl Runtime {
                     json!(token.is_none() || self.context(peer, token).is_some());
                 r
             }
-            Call::RecoverInput { resource_domain } => self.recover(policy, &resource_domain).await,
             Call::OpenContext => {
                 if !policy.observe {
                     return DeviceResult::error(
@@ -170,11 +177,21 @@ impl Runtime {
                     }
                 };
                 contexts.retain(|_, c| {
-                    c.gate.available_permits() == 0
-                        || c.touched
-                            .lock()
-                            .map(|t| t.elapsed().as_secs() < 600)
-                            .unwrap_or(true)
+                    if c.touched
+                        .lock()
+                        .map(|t| t.elapsed().as_secs() < 600)
+                        .unwrap_or(true)
+                    {
+                        return true;
+                    }
+                    let Ok(_idle) = c.gate.clone().try_acquire_owned() else {
+                        return true;
+                    };
+                    if !c.native_quiescent() {
+                        return true;
+                    }
+                    c.closed.store(true, Ordering::Release);
+                    false
                 });
                 if contexts.len() >= 16 {
                     return DeviceResult::error(
@@ -187,7 +204,9 @@ impl Runtime {
                     Arc::new(Context {
                         domain,
                         closed: AtomicBool::new(false),
-                        cancelled_ids: Mutex::new(BTreeSet::new()),
+                        generation: token.clone(),
+                        executions: Mutex::new(BTreeMap::new()),
+                        sequence: AtomicU64::new(1),
                         principal: peer.as_str().into(),
                         executor: Arc::new(Mutex::new(Executor::new(engine))),
                         gate: Arc::new(tokio::sync::Semaphore::new(1)),
@@ -214,352 +233,25 @@ impl Runtime {
                         "Pending native resources remain owned; query/cancel the operation.",
                     );
                 };
+                if !context.native_quiescent() {
+                    return DeviceResult::error(
+                        "native_resources_pending",
+                        "The context remains owned until native termination or isolation recovery is established.",
+                    );
+                }
                 context.closed.store(true, Ordering::Release);
                 if let Ok(mut contexts) = self.contexts.lock() {
                     contexts.remove(token.unwrap());
                 }
                 DeviceResult::value(json!({"closed":true,"business_goal_inferred":false}))
             }
-            Call::Cancel { operation_id } => {
-                self.operation(peer, token, &operation_id, true, OperationIdKind::Monitor)
+            Call::Prepare { tool, arguments } => self.prepare(peer, policy, token, tool, arguments),
+            Call::Execute { operation_ref } => self.execute(peer, policy, &operation_ref).await,
+            Call::Cached { tool, arguments } => {
+                self.cached(peer, policy, token, tool, arguments).await
             }
-            Call::Operation {
-                operation_id,
-                id_kind,
-            } => {
-                // Operation/cancellation requests are served separately below by
-                // the common tool route; this path never acquires an Engine lock.
-                self.operation(peer, token, &operation_id, false, id_kind)
-            }
-            Call::Invoke { tool, arguments } => {
-                if let Err(e) = catalog::validate(&tool, &arguments) {
-                    return DeviceResult::error("invalid_arguments", &e.to_string());
-                }
-                if tool == "computer.operation" || tool == "computer.cancel" {
-                    let kind = if tool == "computer.operation" {
-                        serde_json::from_value::<api::OperationQueryArgs>(arguments.clone())
-                            .expect("query validated against shared schema")
-                            .id_kind
-                    } else {
-                        OperationIdKind::Monitor
-                    };
-                    return self.operation(
-                        peer,
-                        token,
-                        arguments["operation_id"].as_str().unwrap_or_default(),
-                        tool == "computer.cancel",
-                        kind,
-                    );
-                }
-                let Some(context) = self.context(peer, token) else {
-                    return DeviceResult::error(
-                        "context_unknown",
-                        "Open a fresh authenticated context; never replay old actions.",
-                    );
-                };
-                if arguments
-                    .get("target")
-                    .is_some_and(|t| t != &context.target)
-                {
-                    return DeviceResult::error(
-                        "foreign_target",
-                        "Use the target returned by this device and client context.",
-                    );
-                }
-                let writes = catalog::definitions()
-                    .iter()
-                    .any(|t| t.name == tool && t.writes);
-                if !policy.observe || (writes || tool == "computer.claim") && !policy.input {
-                    return DeviceResult::error(
-                        "permission_denied",
-                        "No capability grant for this principal.",
-                    );
-                }
-                let Ok(permit) = context.gate.clone().try_acquire_owned() else {
-                    return DeviceResult::error(
-                        "context_busy",
-                        "Only this context is busy. Device metadata and other contexts remain available.",
-                    );
-                };
-                let input_permit = if writes {
-                    if context.domain.fenced.load(Ordering::Acquire) {
-                        return DeviceResult::error(
-                            "input_domain_fenced",
-                            "Inspect uncertain native resources; reads and unrelated devices remain available.",
-                        );
-                    }
-                    match context.domain.gate.clone().try_acquire_owned() {
-                        Ok(p) => {
-                            if context.domain.fenced.load(Ordering::Acquire) {
-                                return DeviceResult::error(
-                                    "input_domain_fenced",
-                                    "The previous writer left uncertain native resources; reconcile before a new action.",
-                                );
-                            }
-                            Some(p)
-                        }
-                        Err(_) => {
-                            return DeviceResult::error(
-                                "input_busy",
-                                "This desktop has an active writer; do not steal focus.",
-                            );
-                        }
-                    }
-                } else {
-                    None
-                };
-                let mutation_id = arguments["request_id"].as_str().map(str::to_owned);
-                let monitor_id = arguments["operation_id"]
-                    .as_str()
-                    .map(str::to_owned)
-                    .or_else(|| mutation_id.clone())
-                    .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-                if !valid_id(&monitor_id) {
-                    return DeviceResult::error(
-                        "invalid_operation_id",
-                        "Use a bounded operation identifier.",
-                    );
-                }
-                if context.closed.load(Ordering::Acquire)
-                    || context
-                        .cancelled_ids
-                        .lock()
-                        .map(|set| set.contains(&monitor_id))
-                        .unwrap_or(true)
-                {
-                    return DeviceResult::error(
-                        "operation_cancelled_before_dispatch",
-                        "Context closed or this operation was cancelled before registration.",
-                    );
-                }
-                let mut reservation = None;
-                if writes {
-                    let Some(id) = &mutation_id else {
-                        return DeviceResult::error(
-                            "operation_id_required",
-                            "Mutations require a stable request_id.",
-                        );
-                    };
-                    if !valid_id(id) {
-                        return DeviceResult::error(
-                            "invalid_operation_id",
-                            "Use a bounded stable operation identifier.",
-                        );
-                    }
-                    let mut storage = match self.ledger.lock() {
-                        Ok(l) => l,
-                        Err(_) => {
-                            return DeviceResult::error(
-                                "operation_storage_unavailable",
-                                "No dispatch without reservation.",
-                            );
-                        }
-                    };
-                    let ledger = match storage.as_mut() {
-                        Ok(l) => l,
-                        Err(e) => {
-                            return DeviceResult::error(
-                                "operation_storage_unavailable",
-                                &e.to_string(),
-                            );
-                        }
-                    };
-                    match ledger.reserve(
-                        peer.as_str(),
-                        id,
-                        &json!({"tool":tool,"arguments":arguments}),
-                        &monitor_id,
-                        &context.domain.key,
-                    ) {
-                        Ok(Reservation::New(key)) => {
-                            reservation = Some(key);
-                        }
-                        Ok(Reservation::Existing(r)) => return r,
-                        Err(e) => {
-                            return DeviceResult::error(
-                                "operation_reservation_failed",
-                                &e.to_string(),
-                            );
-                        }
-                    }
-                }
-                let op = match context.registry.begin(Some(monitor_id.clone())) {
-                    Ok(o) => o,
-                    Err(e) => {
-                        let result = DeviceResult::error(&e.code, &e.next_step);
-                        if let Some(key) = &reservation
-                            && let Ok(storage) = self.ledger.lock()
-                            && let Ok(ledger) = storage.as_ref()
-                        {
-                            let _ = ledger.finish(key, &result);
-                        }
-                        return result;
-                    }
-                };
-                if context
-                    .cancelled_ids
-                    .lock()
-                    .map(|set| set.contains(&monitor_id))
-                    .unwrap_or(true)
-                {
-                    op.cancel();
-                }
-                let domain = context.domain.clone();
-                let executor = context.executor.clone();
-                let worker_op = op.clone();
-                let service = self.clone();
-                let entered = context.entered.clone();
-                entered.store(false, Ordering::Release);
-                let result = tokio::task::spawn_blocking(move || {
-                    struct Finish(Operation);
-                    impl Drop for Finish {
-                        fn drop(&mut self) {
-                            self.0.finish();
-                        }
-                    }
-                    let _finish = Finish(worker_op.clone());
-                    let _permit = permit;
-                    let _input = input_permit;
-                    let result = rcu_core::operation::run(&worker_op, || {
-                        executor
-                            .lock()
-                            .map_err(|_| {
-                                rcu_core::fault(
-                                    "executor_unavailable",
-                                    "Native context failed; other contexts remain available.",
-                                )
-                            })?
-                            .invoke(&tool, arguments)
-                    });
-                    let mut result = match result {
-                        Ok(r) => r,
-                        Err(e) => DeviceResult::error(&e.code, &e.next_step),
-                    };
-                    drop(_finish);
-                    result.data["operation_id"] = json!(worker_op.status().operation_id);
-                    result.data["operation"] = json!(worker_op.status());
-                    result.data["native_dispatch_entered"] = json!(entered.load(Ordering::Acquire));
-                    if writes
-                        && entered.load(Ordering::Acquire)
-                        && (result.is_error
-                            || result.data["dispatch"] == "uncertain"
-                            || result.data["state"] == "uncertain"
-                            || !worker_op.status().resources_released)
-                    {
-                        domain.fenced.store(true, Ordering::Release);
-                    }
-                    result.data["input_domain_fenced"] =
-                        json!(domain.fenced.load(Ordering::Acquire));
-                    if let Some(key) = reservation {
-                        let saved = service
-                            .ledger
-                            .lock()
-                            .ok()
-                            .and_then(|l| {
-                                l.as_ref()
-                                    .ok()
-                                    .map(|ledger| ledger.finish(&key, &result).is_ok())
-                            })
-                            .unwrap_or(false);
-                        if !saved {
-                            domain.fenced.store(true, Ordering::Release);
-                            return DeviceResult::error(
-                                "effect_recording_uncertain",
-                                "Effect may have occurred; query/reconcile without replay.",
-                            );
-                        }
-                    }
-                    result
-                })
-                .await;
-                let mut result = match result {
-                    Ok(r) => r,
-                    Err(_) => {
-                        if writes {
-                            context.domain.fenced.store(true, Ordering::Release);
-                        }
-                        DeviceResult::error(
-                            "native_worker_failed",
-                            "Effect may be unknown; inspect operation and target without replay.",
-                        )
-                    }
-                };
-                result.data["operation_id"] = json!(op.status().operation_id);
-                result.data["operation"] = json!(op.status());
-                result
-            }
+            Call::Operation { selector } => self.query(peer, &selector),
+            Call::Cancel { operation_ref } => self.cancel(peer, &operation_ref),
         }
-    }
-    fn operation(
-        &self,
-        peer: &PeerPin,
-        token: Option<&str>,
-        id: &str,
-        cancel: bool,
-        kind: OperationIdKind,
-    ) -> DeviceResult {
-        // Disambiguate before consulting the live registry. Lookup order must
-        // not make the same auto query select a different action after reconnect.
-        if kind == OperationIdKind::Monitor
-            && !cancel
-            && let Some(context) = self.context(peer, token)
-            && let Ok(status) = context.registry.get(id, false)
-        {
-            return DeviceResult::value(status);
-        }
-        let durable = if !cancel {
-            let Ok(storage) = self.ledger.lock() else {
-                return DeviceResult::error(
-                    "operation_storage_unavailable",
-                    "Operation identity cannot be established.",
-                );
-            };
-            let Ok(ledger) = storage.as_ref() else {
-                return DeviceResult::error(
-                    "operation_storage_unavailable",
-                    "Preserve the operation history; never replay an unknown effect.",
-                );
-            };
-            match ledger.status(peer.as_str(), id, kind) {
-                Ok(value) => value,
-                Err(error) => return error,
-            }
-        } else {
-            None
-        };
-        if kind != OperationIdKind::Request
-            && let Some(context) = self.context(peer, token)
-        {
-            if let Ok(status) = context.registry.get(id, cancel) {
-                if kind == OperationIdKind::Auto
-                    && durable
-                        .as_ref()
-                        .is_some_and(|d| d["reservation"]["monitor_id"] != id)
-                {
-                    return DeviceResult::error(
-                        "operation_id_ambiguous",
-                        "This value names a live monitor and a different durable request. Specify id_kind.",
-                    );
-                }
-                return DeviceResult::value(status);
-            }
-            if cancel
-                && valid_id(id)
-                && let Ok(mut ids) = context.cancelled_ids.lock()
-                && (ids.len() < 256 || ids.contains(id))
-            {
-                ids.insert(id.into());
-                return DeviceResult::value(
-                    json!({"operation_id":id,"cancel_requested":true,"state":"pending_registration","terminal":false,"resources_released":false}),
-                );
-            }
-        }
-        if let Some(status) = durable {
-            return DeviceResult::value(status);
-        }
-        DeviceResult::error(
-            "operation_unknown",
-            "No operation with this ID belongs to the authenticated principal/context.",
-        )
     }
 }

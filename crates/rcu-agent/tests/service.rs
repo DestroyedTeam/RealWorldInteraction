@@ -3,7 +3,7 @@ use rcu_agent::{
     config::{Config, PlatformPolicy, Principal},
     runtime::Runtime,
 };
-use rcu_core::device::{Call, Request};
+use rcu_core::device::{Call, PROTOCOL_VERSION, Request};
 use rcu_link_trust::{IdentityPaths, PeerPin};
 use std::sync::Arc;
 fn setup(platform: PlatformPolicy) -> (tempfile::TempDir, Arc<Runtime>, PeerPin) {
@@ -25,7 +25,7 @@ fn setup(platform: PlatformPolicy) -> (tempfile::TempDir, Arc<Runtime>, PeerPin)
     .unwrap();
     (temp, runtime, pin)
 }
-async fn call(
+async fn wire_call(
     r: &Arc<Runtime>,
     p: &PeerPin,
     context: Option<&str>,
@@ -35,7 +35,7 @@ async fn call(
         .handle(
             p.clone(),
             Request {
-                version: 1,
+                version: PROTOCOL_VERSION,
                 id: uuid::Uuid::new_v4().to_string(),
                 device: "test-device".into(),
                 context: context.map(str::to_owned),
@@ -44,6 +44,28 @@ async fn call(
         )
         .await
         .result
+}
+// Test-only ordinary invocation helper; race tests use wire_call directly.
+async fn call(
+    r: &Arc<Runtime>,
+    p: &PeerPin,
+    context: Option<&str>,
+    call: Call,
+) -> rcu_core::device::DeviceResult {
+    let execute =
+        matches!(&call,Call::Prepare{tool,..} if rcu_core::device::catalog::executable(tool));
+    let call = match call {
+        Call::Prepare { tool, arguments } if rcu_core::device::catalog::cached_read(&tool) => {
+            Call::Cached { tool, arguments }
+        }
+        other => other,
+    };
+    let accepted = wire_call(r, p, context, call).await;
+    if accepted.is_error || !execute {
+        return accepted;
+    }
+    let operation_ref = serde_json::from_value(accepted.data["operation_ref"].clone()).unwrap();
+    wire_call(r, p, None, Call::Execute { operation_ref }).await
 }
 #[tokio::test]
 async fn service_health_has_no_business_manifest_or_platform_readiness_dependency() {
@@ -114,7 +136,7 @@ async fn principal_receipts_are_isolated_but_desktop_leases_are_shared() {
     assert_eq!(claim["available"], false);
     let a = call(&r, &p, None, Call::OpenContext).await;
     let b = call(&r, &q, None, Call::OpenContext).await;
-    let invoke = |tool: &str, arguments| Call::Invoke {
+    let invoke = |tool: &str, arguments| Call::Prepare {
         tool: tool.into(),
         arguments,
     };
@@ -173,62 +195,58 @@ async fn principal_receipts_are_isolated_but_desktop_leases_are_shared() {
 
 #[cfg(feature = "fixture")]
 #[tokio::test]
-async fn cancellation_before_registration_is_not_lost_or_a_service_hold() {
+async fn cancellation_after_acceptance_never_dispatches_and_recovery_is_independent() {
     use serde_json::json;
     let (_temp, r, p) = setup(PlatformPolicy::Fixture);
     let opened = call(&r, &p, None, Call::OpenContext).await;
     let context = opened.data["context"].as_str();
     let target = &opened.data["targets"][0]["target"];
-    let cancelled = call(
-        &r,
-        &p,
-        context,
-        Call::Cancel {
-            operation_id: "early-cancel".into(),
-        },
-    )
-    .await;
-    assert_eq!(cancelled.data["state"], "pending_registration");
-    assert_eq!(cancelled.data["terminal"], false);
-    let observe = |id: &str| Call::Invoke {
+    let observe = || Call::Prepare {
         tool: "computer.observe".into(),
-        arguments: json!({"target":target,"operation_id":id,"inline_image":false}),
+        arguments: json!({"target":target,"correlation_id":"reused","inline_image":false}),
     };
-    let rejected = call(&r, &p, context, observe("early-cancel")).await;
-    assert_eq!(rejected.data["code"], "operation_cancelled_before_dispatch");
-    assert!(
-        !call(&r, &p, context, observe("fresh-observation"))
-            .await
-            .is_error
-    );
-    let domain = call(&r, &p, None, Call::Describe).await.data["resource_domain"]
-        .as_str()
-        .unwrap()
-        .to_owned();
-    assert!(
-        call(
-            &r,
-            &p,
-            None,
-            Call::RecoverInput {
-                resource_domain: "other-domain".into()
-            }
-        )
-        .await
-        .is_error
-    );
-    let recovered = call(
+    let accepted = wire_call(&r, &p, context, observe()).await;
+    assert_eq!(accepted.data["native_dispatch_started"], false);
+    let operation_ref: rcu_core::device::OperationRef =
+        serde_json::from_value(accepted.data["operation_ref"].clone()).unwrap();
+    let cancelled = wire_call(
         &r,
         &p,
         None,
-        Call::RecoverInput {
-            resource_domain: domain,
+        Call::Cancel {
+            operation_ref: operation_ref.clone(),
         },
     )
     .await;
-    assert!(!recovered.is_error, "{:?}", recovered.data);
-    assert_eq!(recovered.data["business_goal_verified"], false);
-    assert_eq!(recovered.data["old_operations_replayable"], false);
+    assert_eq!(cancelled.data["terminal"], true);
+    assert_eq!(cancelled.data["dispatch_started"], false);
+    assert_eq!(
+        wire_call(&r, &p, None, Call::Execute { operation_ref })
+            .await
+            .data["code"],
+        "execution_cancelled_before_dispatch"
+    );
+    assert!(
+        !call(&r, &p, context, observe()).await.is_error,
+        "correlation label does not poison later work"
+    );
+    let domain = call(&r, &p, None, Call::Describe).await.data["resource_domain"].clone();
+    for (key, ok) in [(json!("other-domain"), false), (domain, true)] {
+        let result = call(
+            &r,
+            &p,
+            context,
+            Call::Prepare {
+                tool: "computer.recover_input".into(),
+                arguments: json!({"device_id":"test-device","resource_domain":key}),
+            },
+        )
+        .await;
+        assert_eq!(!result.is_error, ok, "{:?}", result.data);
+        if ok {
+            assert_eq!(result.data["old_operations_replayable"], false);
+        }
+    }
 }
 
 #[cfg(feature = "fixture")]
@@ -243,7 +261,7 @@ async fn separate_contexts_foreign_handles_bad_actions_and_new_sessions() {
     assert_ne!(ca, cb);
     let ta = a.data["targets"][0]["target"].as_str().unwrap();
     let tb = b.data["targets"][0]["target"].as_str().unwrap();
-    let invoke = |tool: &str, args: Value| Call::Invoke {
+    let invoke = |tool: &str, args: Value| Call::Prepare {
         tool: tool.into(),
         arguments: args,
     };
@@ -294,7 +312,7 @@ async fn lease_is_shared_and_repeated_operation_does_not_dispatch() {
     let cb = b.data["context"].as_str().unwrap();
     let ta = &a.data["targets"][0]["target"];
     let tb = &b.data["targets"][0]["target"];
-    let invoke = |tool: &str, args: Value| Call::Invoke {
+    let invoke = |tool: &str, args: Value| Call::Prepare {
         tool: tool.into(),
         arguments: args,
     };
@@ -343,14 +361,16 @@ async fn lease_is_shared_and_repeated_operation_does_not_dispatch() {
         &p,
         None,
         Call::Operation {
-            operation_id: "monitor-action".into(),
-            id_kind: Default::default(),
+            selector: rcu_core::device::OperationSelector::Request {
+                device_id: "test-device".into(),
+                request_id: "stable-action".into(),
+            },
         },
     )
     .await;
     assert!(!queried.is_error);
     assert_eq!(
-        queried.data["result"]["data"]["operation_id"],
+        queried.data["result"]["data"]["correlation_id"],
         "monitor-action"
     );
     assert!(

@@ -1,5 +1,6 @@
 //! Standard MCP adapter over the task-independent device API. No OS FFI.
 mod cancellation;
+mod invocation;
 mod routing;
 mod shutdown;
 use rcu_core::device::{self, Call, DeviceResult, Request};
@@ -161,112 +162,6 @@ impl Gateway {
         let mut result = description.result;
         result.data["targets"] = context.as_ref().unwrap().targets.clone();
         result
-    }
-    async fn invoke(
-        &self,
-        tool: &str,
-        mut args: Value,
-        context: Option<RequestContext<RoleServer>>,
-    ) -> DeviceResult {
-        let mut shutdown = self.shutdown.subscribe();
-        if *shutdown.borrow() {
-            return DeviceResult::error(
-                "host_disconnected",
-                "No new operation is forwarded after Host EOF.",
-            );
-        }
-        if tool == "computer.targets" {
-            return self.targets().await;
-        }
-        if context.as_ref().is_some_and(|c| c.ct.is_cancelled()) {
-            return DeviceResult::error(
-                "operation_cancelled_before_dispatch",
-                "The Host cancelled before forwarding.",
-            );
-        }
-        let supports_operation = device::catalog::definitions()
-            .iter()
-            .any(|d| d.name == tool && d.input_schema["properties"].get("operation_id").is_some());
-        let cancellable =
-            supports_operation && !matches!(tool, "computer.cancel" | "computer.operation");
-        if cancellable && !args["operation_id"].is_string() {
-            args["operation_id"] = json!(uuid::Uuid::new_v4().to_string());
-        }
-        let operation = args["operation_id"].as_str().map(str::to_owned);
-        numeric_inputs(&mut args);
-        if let Err(e) = device::catalog::validate(tool, &args) {
-            return DeviceResult::error("invalid_arguments", &e.to_string());
-        }
-        let id = match self.route_id(tool, &args) {
-            Ok(id) => id,
-            Err(e) => return e,
-        };
-        let Some(route) = self.routes.get(&id) else {
-            return DeviceResult::error("device_unknown", "Device is not paired.");
-        };
-        let token = route.context.lock().await.as_ref().map(|c| c.token.clone());
-        let mut cancellation = if cancellable {
-            operation.clone().map(|op| {
-                self.remember(
-                    &id,
-                    &json!({"operation_id":op,"request_id":args.get("request_id")}),
-                );
-                cancellation::CancelDispatch::new(self.clone(), id.clone(), token.clone(), op)
-            })
-        } else {
-            None
-        };
-        let call = if tool == "computer.recover_input" {
-            Call::RecoverInput {
-                resource_domain: args["resource_domain"].as_str().unwrap_or_default().into(),
-            }
-        } else if tool == "computer.operation" {
-            let query: device::api::OperationQueryArgs = serde_json::from_value(args.clone())
-                .expect("operation query already validated against its shared schema");
-            Call::Operation {
-                operation_id: query.operation_id,
-                id_kind: query.id_kind,
-            }
-        } else if tool == "computer.cancel" {
-            Call::Cancel {
-                operation_id: args["operation_id"].as_str().unwrap_or_default().into(),
-            }
-        } else {
-            Call::Invoke {
-                tool: tool.into(),
-                arguments: args,
-            }
-        };
-        let request = self.request(&id, token, call);
-        let host_cancelled = async {
-            if let Some(context) = context {
-                context.ct.cancelled().await;
-            } else {
-                std::future::pending::<()>().await;
-            }
-        };
-        let response = tokio::select! {
-            biased;
-            _=shutdown.changed()=>{
-                return match cancellation.as_mut(){Some(cancel)=>cancel.request().await,None=>DeviceResult::error("host_disconnected","Native completion remains unconfirmed.")};
-            },
-            _=host_cancelled=>{
-                return match cancellation.as_mut(){Some(cancel)=>cancel.request().await,None=>DeviceResult::error("operation_cancelled","No native cancellation/termination was inferred.")};
-            },
-            result=request=>result,
-        };
-        let reply = match response {
-            Ok(reply) => reply,
-            Err(e) => return e,
-        };
-        if let Some(cancel) = &mut cancellation {
-            cancel.disarm();
-        }
-        if reply.result.data["code"] == "context_unknown" {
-            *route.context.lock().await = None;
-        }
-        self.remember(&id, &reply.result.data);
-        reply.result
     }
     async fn close(&self) {
         let mut jobs = tokio::task::JoinSet::new();

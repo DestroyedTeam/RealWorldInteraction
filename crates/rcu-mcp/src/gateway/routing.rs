@@ -8,28 +8,10 @@ impl Gateway {
                     for (k, v) in o {
                         if matches!(
                             k.as_str(),
-                            "target"
-                                | "frame"
-                                | "artifact_id"
-                                | "lease"
-                                | "view_id"
-                                | "operation_id"
-                                | "request_id"
-                                | "monitor_id"
+                            "target" | "frame" | "artifact_id" | "lease" | "view_id"
                         ) && let Some(s) = v.as_str()
                         {
-                            // Persisted v1 reservations call the replay key
-                            // operation_id, but expose a separate monitor_id.
-                            let kind = if k == "monitor_id" {
-                                "operation_id"
-                            } else if k == "operation_id" && o.contains_key("monitor_id") {
-                                "request_id"
-                            } else {
-                                k.as_str()
-                            };
-                            map.entry(format!("{kind}:{s}"))
-                                .or_default()
-                                .insert(id.into());
+                            map.entry(format!("{k}:{s}")).or_default().insert(id.into());
                         }
                         visit(map, id, v)
                     }
@@ -56,6 +38,20 @@ impl Gateway {
         }
     }
     pub(super) fn route_id(&self, tool: &str, args: &Value) -> Result<String, DeviceResult> {
+        // Routing fields are hints; the agent validates the complete authenticated reference.
+        if tool == "computer.operation" {
+            let query: device::api::OperationQueryArgs = serde_json::from_value(args.clone())
+                .map_err(|e| DeviceResult::error("invalid_arguments", &e.to_string()))?;
+            return Ok(match query.selector {
+                device::OperationSelector::Execution { operation_ref } => operation_ref.device_id,
+                device::OperationSelector::Request { device_id, .. } => device_id,
+            });
+        }
+        if tool == "computer.cancel" {
+            let query: device::api::OperationArgs = serde_json::from_value(args.clone())
+                .map_err(|e| DeviceResult::error("invalid_arguments", &e.to_string()))?;
+            return Ok(query.operation_ref.device_id);
+        }
         let map = self
             .handles
             .lock()
@@ -63,33 +59,12 @@ impl Gateway {
         let mut candidates = args["device_id"]
             .as_str()
             .map(|id| BTreeSet::from([id.to_owned()]));
-        for kind in [
-            "target",
-            "artifact_id",
-            "lease",
-            "view_id",
-            "frame",
-            "operation_id",
-        ] {
-            if kind == "operation_id" && !matches!(tool, "computer.operation" | "computer.cancel") {
-                continue;
-            }
+        for kind in ["target", "artifact_id", "lease", "view_id", "frame"] {
             if let Some(value) = args[kind].as_str() {
-                let kinds: &[&str] = if kind == "operation_id" && tool == "computer.operation" {
-                    match args["id_kind"].as_str().unwrap_or("auto") {
-                        "monitor" => &["operation_id"],
-                        "request" => &["request_id"],
-                        _ => &["operation_id", "request_id"],
-                    }
-                } else {
-                    &[kind]
-                };
-                let devices: BTreeSet<_> = kinds
-                    .iter()
-                    .filter_map(|k| map.get(&format!("{k}:{value}")))
-                    .flatten()
+                let devices = map
+                    .get(&format!("{kind}:{value}"))
                     .cloned()
-                    .collect();
+                    .unwrap_or_default();
                 if devices.is_empty() {
                     continue;
                 }
@@ -123,55 +98,38 @@ impl Gateway {
 mod tests {
     use super::*;
     #[test]
-    fn request_and_monitor_handles_route_in_distinct_namespaces() {
-        let gateway = Gateway::new(Ok(AdapterProfile::default()));
-        gateway.remember(
-            "a",
-            &json!({"operation_id":"shared","request_id":"request-a"}),
+    fn fresh_gateway_routes_only_explicit_execution_or_request_selectors() {
+        let g = Gateway::new(Ok(AdapterProfile::default()));
+        let reference = json!({"ref_version":1,"device_id":"a","agent_instance":"instance","context_generation":"context","execution_nonce":"nonce"});
+        g.remember(
+            "wrong",
+            &json!({"operation_id":"nonce","request_id":"request","monitor_id":"nonce"}),
         );
-        gateway.remember(
-            "b",
-            &json!({"operation_id":"monitor-b","request_id":"shared"}),
-        );
-        let route = |kind: &str| {
-            gateway.route_id(
+        assert!(g.handles.lock().unwrap().is_empty());
+        assert_eq!(
+            g.route_id(
                 "computer.operation",
-                &json!({"operation_id":"shared","id_kind":kind}),
+                &json!({"selector":{"kind":"execution","operation_ref":reference}})
             )
-        };
-        assert_eq!(
-            route("auto").unwrap_err().data["code"],
-            "ambiguous_resource"
+            .unwrap(),
+            "a"
         );
-        assert_eq!(route("monitor").unwrap(), "a");
-        assert_eq!(route("request").unwrap(), "b");
         assert_eq!(
-            gateway
-                .route_id("computer.cancel", &json!({"operation_id":"shared"}))
+            g.route_id("computer.cancel", &json!({"operation_ref":reference}))
                 .unwrap(),
             "a"
         );
-        // A legacy reservation stores the replay key under operation_id;
-        // observing its history must not poison the monitor routing table.
-        gateway.remember("c", &json!({"reservation":{"operation_id":"request-c","monitor_id":"monitor-c","payload_sha":"hash"}}));
         assert_eq!(
-            gateway
-                .route_id(
-                    "computer.operation",
-                    &json!({"operation_id":"request-c","id_kind":"monitor"})
-                )
-                .unwrap_err()
-                .data["code"],
-            "resource_unknown"
+            g.route_id(
+                "computer.operation",
+                &json!({"selector":{"kind":"request","device_id":"b","request_id":"request"}})
+            )
+            .unwrap(),
+            "b"
         );
-        assert_eq!(
-            gateway
-                .route_id(
-                    "computer.operation",
-                    &json!({"operation_id":"request-c","id_kind":"request"})
-                )
-                .unwrap(),
-            "c"
+        assert!(
+            g.route_id("computer.cancel", &json!({"operation_id":"nonce"}))
+                .is_err()
         );
     }
 }

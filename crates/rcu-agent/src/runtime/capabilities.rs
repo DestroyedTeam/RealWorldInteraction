@@ -92,6 +92,10 @@ impl Runtime {
             capabilities,
         });
         result.data["service"] = json!("healthy");
+        result.data["device_protocol_version"] = json!(PROTOCOL_VERSION);
+        result.data["execution_ref_version"] = json!(EXECUTION_REF_VERSION);
+        result.data["execution_identity"] =
+            json!("service_reference; correlation_labels_are_not_lookup_keys");
         result.data["capability_scope"] = json!(
             "device_support_and_policy; frame, binding, focus and lease prerequisites are checked per operation"
         );

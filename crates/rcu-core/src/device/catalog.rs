@@ -124,13 +124,13 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.cancel",
-            description: "Request cooperative cancellation by returned or caller-supplied operation_id, even while the engine is busy. Acknowledgement does NOT mean native worker stopped; inspect terminal/resources_released. Never replay input.",
+            description: "Request cancellation using the exact service-issued operation_ref. Bare monitor/request IDs are not accepted. Acknowledgement does NOT prove native work stopped: inspect the execution status. Expired references never resolve to another execution. Never replay input.",
             input_schema: serde_json::to_value(schemars::schema_for!(OperationArgs)).unwrap(),
             writes: false,
         },
         ToolDefinition {
             name: "computer.operation",
-            description: "Query an operation without waiting for a busy engine. id_kind=monitor selects an operation_id; id_kind=request selects a durable mutation request_id. Default auto refuses ambiguous IDs, never chooses one by lookup order. Supply device_id on a new Host or a device collision. native_call_pending/resources_released are distinct from cancellation acknowledgement; no hard native preemption.",
+            description: "Query with one tagged selector: execution + exact service-issued operation_ref, or request + device_id + durable request_id. No auto lookup or bare monitor IDs. Expired execution references never fall back to durable requests or newer contexts. A stale reference does not prove that work stopped or no effect occurred.",
             input_schema: serde_json::to_value(schemars::schema_for!(OperationQueryArgs)).unwrap(),
             writes: false,
         },
@@ -220,4 +220,20 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
         }
         _ => Err(serde::de::Error::custom("unknown capability")),
     }
+}
+
+/// These operations only access already-cached data; no native provider or lease.
+pub fn cached_read(tool: &str) -> bool {
+    matches!(
+        tool,
+        "computer.artifact" | "computer.resolve" | "computer.resolve_view"
+    )
+}
+pub fn executable(tool: &str) -> bool {
+    definitions().iter().any(|d| d.name == tool)
+        && !matches!(
+            tool,
+            "computer.targets" | "computer.operation" | "computer.cancel"
+        )
+        && !cached_read(tool)
 }

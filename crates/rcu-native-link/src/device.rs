@@ -94,8 +94,10 @@ impl Client {
                 .await?
                 .ok_or_else(|| invalid("device_response_lost"))?;
             let reply: Reply = serde_json::from_slice(&raw)?;
-            if reply.version != PROTOCOL_VERSION
-                || reply.id != request.id
+            if reply.version != PROTOCOL_VERSION {
+                return Err(invalid("device_protocol_version_unsupported; update adapter and agent together; no downgrade or retry"));
+            }
+            if reply.id != request.id
                 || reply.device != request.device
                 || !valid_id(&reply.instance)
             {
@@ -150,10 +152,12 @@ where
                         let peer = rcu_link_trust::peer_sha(stream.get_ref().1.peer_certificates())?;
                         let mut stream = BufReader::new(stream);
                         let raw = super::wire::read_frame(&mut stream, REQUEST_CAP).await?.ok_or_else(|| invalid("empty_request"))?;
-                        let request: Request = serde_json::from_slice(&raw)?;
-                        Ok::<_, io::Error>((peer, request, stream))
+                        Ok::<_, io::Error>((peer, raw, stream))
                     }).await.map_err(|_| invalid("handshake_deadline"))??;
-                    let reply = handler(peer, request).await;
+                    let reply = match decode_request(&request)? {
+                        Ok(request) => handler(peer, request).await,
+                        Err(rejection) => rejection,
+                    };
                     tokio::time::timeout(Duration::from_secs(10), write(&mut stream, &reply, RESPONSE_CAP)).await.map_err(|_| invalid("reply_timeout"))??;
                     let _ = stream.shutdown().await;
                     Ok::<_, io::Error>(())
@@ -164,4 +168,56 @@ where
     tasks.abort_all();
     while tasks.join_next().await.is_some() {}
     Ok(())
+}
+
+/// Reject obsolete/invalid calls before invoking any device handler or native metadata.
+fn decode_request(raw: &[u8]) -> io::Result<Result<Request, Reply>> {
+    let value: serde_json::Value = serde_json::from_slice(raw)?;
+    let parsed = serde_json::from_value::<Request>(value.clone());
+    if value["version"] == PROTOCOL_VERSION
+        && let Ok(request) = parsed
+    {
+        return Ok(Ok(request));
+    }
+    let id = value["id"]
+        .as_str()
+        .filter(|s| valid_id(s))
+        .ok_or_else(|| invalid("invalid_envelope_id"))?;
+    let device = value["device"]
+        .as_str()
+        .filter(|s| valid_id(s))
+        .ok_or_else(|| invalid("invalid_envelope_device"))?;
+    let code = if value["version"] != PROTOCOL_VERSION {
+        "device_protocol_version_unsupported"
+    } else {
+        "invalid_device_call"
+    };
+    Ok(Err(Reply {
+        version: PROTOCOL_VERSION,
+        id: id.into(),
+        device: device.into(),
+        instance: "protocol-rejected".into(),
+        result: rcu_core::device::DeviceResult::error(
+            code,
+            "No device handler ran. Use device wire v2 selectors and acceptance references; no fallback or replay.",
+        ),
+    }))
+}
+
+#[cfg(test)]
+mod contract_tests {
+    use super::*;
+    #[test]
+    fn old_wire_and_bare_labels_fail_without_native_handler() {
+        for value in [
+            serde_json::json!({"version":1,"id":"id","device":"device","call":{"kind":"invoke","tool":"computer.observe","arguments":{}}}),
+            serde_json::json!({"version":2,"id":"id","device":"device","call":{"kind":"cancel","operation_id":"old-label"}}),
+        ] {
+            let result = decode_request(&serde_json::to_vec(&value).unwrap())
+                .unwrap()
+                .unwrap_err();
+            assert!(result.result.is_error);
+            assert_eq!(result.instance, "protocol-rejected");
+        }
+    }
 }

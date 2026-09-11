@@ -46,7 +46,12 @@ impl Runtime {
         domains.insert(key.into(), domain.clone());
         Ok(domain)
     }
-    pub(super) async fn recover(&self, policy: &Principal, key: &str) -> DeviceResult {
+    pub(super) fn recover(
+        &self,
+        policy: &Principal,
+        key: &str,
+        own_execution: Option<&str>,
+    ) -> DeviceResult {
         if !policy.input {
             return DeviceResult::error(
                 "permission_denied",
@@ -82,9 +87,10 @@ impl Runtime {
                     c.registry
                         .statuses()
                         .map(|statuses| {
-                            statuses
-                                .iter()
-                                .all(|s| s.terminal && !s.native_call_pending)
+                            statuses.iter().all(|s| {
+                                own_execution == Some(s.operation_id.as_str())
+                                    || s.terminal && !s.native_call_pending
+                            })
                         })
                         .unwrap_or(false)
                 })
@@ -100,6 +106,9 @@ impl Runtime {
             Ok(p) => p,
             Err(e) => return DeviceResult::error(&e.code, &e.next_step),
         };
+        if let Err(e) = rcu_core::operation::checkpoint("recovery_commit") {
+            return DeviceResult::error(&e.code, &e.next_step);
+        }
         let record=self.ledger.lock().map_err(|_|io::Error::other("ledger_lock")).and_then(|l|l.as_ref().map_err(|e|io::Error::other(e.to_string()))?.reconcile(key,json!({"native":proof,"service_instance":self.instance,"exclusive_service_state_owner":true,"native_writers_idle":true})));
         match record {
             Ok(record) => {
@@ -167,18 +176,18 @@ mod tests {
         let mut readonly = policy.clone();
         readonly.input = false;
         assert_eq!(
-            runtime.recover(&readonly, &key).await.data["code"],
+            runtime.recover(&readonly, &key, None).data["code"],
             "permission_denied"
         );
         let domain = runtime.domain(&key).unwrap();
         let held = domain.gate.clone().try_acquire_owned().unwrap();
         assert_eq!(
-            runtime.recover(&policy, &key).await.data["code"],
+            runtime.recover(&policy, &key, None).data["code"],
             "native_writer_pending"
         );
         assert_eq!(std::fs::read_dir(&recovery_dir).unwrap().count(), 1);
         drop(held);
-        let recovered = runtime.recover(&policy, &key).await;
+        let recovered = runtime.recover(&policy, &key, None);
         assert!(!recovered.is_error, "{:?}", recovered.data);
         assert_eq!(
             recovered.data["proof"]["native"]["source"],
@@ -193,12 +202,7 @@ mod tests {
             .unwrap()
             .as_ref()
             .unwrap()
-            .status(
-                policy.certificate.as_str(),
-                "uncertain",
-                OperationIdKind::Request,
-            )
-            .unwrap()
+            .request_status(policy.certificate.as_str(), "uncertain")
             .unwrap();
         assert_eq!(prior["replay_allowed"], false);
         drop(runtime);

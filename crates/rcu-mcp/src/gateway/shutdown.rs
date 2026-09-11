@@ -63,12 +63,12 @@ mod tests {
             listener,
             tls,
             move |_peer, request| {
-                if matches!(request.call, Call::Invoke { .. }) {
+                if matches!(request.call, Call::Prepare { .. } | Call::Execute { .. }) {
                     seen.fetch_add(1, Ordering::SeqCst);
                 }
                 async move {
                     Reply {
-                        version: 1,
+                        version: rcu_core::device::PROTOCOL_VERSION,
                         id: request.id,
                         device: request.device,
                         instance: "synthetic-peer".into(),

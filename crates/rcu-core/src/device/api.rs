@@ -14,6 +14,8 @@ pub struct ObserveArgs {
     pub target: String,
     #[serde(default = "yes")]
     pub inline_image: bool,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
     pub region: Option<[u32; 4]>,
 }
@@ -53,6 +55,8 @@ pub struct ActArgs {
     pub request_id: String,
     pub intent: Intent,
     pub value: Option<String>,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -65,6 +69,8 @@ pub struct CheckedActArgs {
     pub request_id: String,
     pub intent: Intent,
     pub value: Option<String>,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -76,6 +82,8 @@ pub struct LaunchArgs {
     pub request_id: String,
     #[serde(default = "timeout")]
     pub timeout_ms: u64,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -83,6 +91,8 @@ pub struct LaunchArgs {
 pub struct LifecyclePreflightArgs {
     pub target: String,
     pub authorization_id: String,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -93,6 +103,8 @@ pub struct ActivateArgs {
     pub authorization_id: String,
     pub request_id: String,
     pub expected_foreground: Option<crate::lifecycle::WindowIdentity>,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -116,6 +128,8 @@ pub struct VerifyArgs {
     pub timeout_ms: u64,
     #[serde(default = "samples")]
     pub stable_samples: u32,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 fn timeout() -> u64 {
@@ -144,6 +158,8 @@ fn chunk() -> usize {
 #[serde(deny_unknown_fields)]
 pub struct TargetArgs {
     pub target: String,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
     pub cursor: Option<String>,
     pub pid: Option<u32>,
@@ -154,24 +170,19 @@ pub struct TargetArgs {
 pub struct BindArgs {
     pub target: String,
     pub selection: crate::WindowSelection,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OperationArgs {
-    #[serde(default)]
-    pub device_id: Option<String>,
-    pub operation_id: String,
+    pub operation_ref: super::OperationRef,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OperationQueryArgs {
-    #[serde(default)]
-    pub device_id: Option<String>,
-    pub operation_id: String,
-    /// auto refuses cross-namespace ambiguity; request looks up a mutation request_id.
-    #[serde(default)]
-    pub id_kind: super::OperationIdKind,
+    pub selector: super::OperationSelector,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -182,6 +193,8 @@ pub struct ImageArgs {
     pub crop: Option<[u32; 4]>,
     #[serde(default = "edge")]
     pub max_edge: u32,
+    /// Correlation only; never an execution/query/cancellation identity.
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
     pub operation_id: Option<String>,
 }
 fn edge() -> u32 {

@@ -3,23 +3,14 @@
 use super::*;
 pub(super) struct CancelDispatch {
     gateway: Gateway,
-    device: String,
-    context: Option<String>,
-    operation: String,
+    reference: device::OperationRef,
     armed: bool,
 }
 impl CancelDispatch {
-    pub fn new(
-        gateway: Gateway,
-        device: String,
-        context: Option<String>,
-        operation: String,
-    ) -> Self {
+    pub fn new(gateway: Gateway, reference: device::OperationRef) -> Self {
         Self {
             gateway,
-            device,
-            context,
-            operation,
+            reference,
             armed: true,
         }
     }
@@ -30,10 +21,10 @@ impl CancelDispatch {
         let reply = tokio::time::timeout(
             std::time::Duration::from_secs(2),
             self.gateway.request(
-                &self.device,
-                self.context.clone(),
+                &self.reference.device_id,
+                None,
                 Call::Cancel {
-                    operation_id: self.operation.clone(),
+                    operation_ref: self.reference.clone(),
                 },
             ),
         )
@@ -48,7 +39,7 @@ impl CancelDispatch {
         match reply {
             Ok(r) => DeviceResult {
                 is_error: true,
-                data: json!({"code":"operation_cancel_requested","operation_id":self.operation,"device_id":self.device,"cancellation":r.result,"goal_verified":false,"original_action_replayed":false}),
+                data: json!({"code":"operation_cancel_requested","operation_ref":self.reference,"device_id":self.reference.device_id,"cancellation":r.result,"goal_verified":false,"original_action_replayed":false}),
                 images: vec![],
             },
             Err(e) => e,
@@ -70,17 +61,15 @@ impl Drop for CancelDispatch {
             return;
         }
         let gateway = self.gateway.clone();
-        let device = self.device.clone();
-        let context = self.context.clone();
-        let operation = self.operation.clone();
+        let reference = self.reference.clone();
         let job = tokio::spawn(async move {
             let result = tokio::time::timeout(
                 std::time::Duration::from_secs(2),
                 gateway.request(
-                    &device,
-                    context,
+                    &reference.device_id.clone(),
+                    None,
                     Call::Cancel {
-                        operation_id: operation,
+                        operation_ref: reference,
                     },
                 ),
             )

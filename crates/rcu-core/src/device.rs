@@ -4,23 +4,37 @@ use serde_json::Value;
 pub mod api;
 pub mod catalog;
 
-pub const PROTOCOL_VERSION: u16 = 1;
-/// Mutation replay keys and monitoring IDs are separate namespaces.
-/// Legacy unqualified queries are accepted only when their meaning is unique.
-#[derive(
-    Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema,
-)]
-#[serde(rename_all = "snake_case")]
-pub enum OperationIdKind {
-    #[default]
-    Auto,
-    Monitor,
-    Request,
+pub const PROTOCOL_VERSION: u16 = 2;
+pub const EXECUTION_REF_VERSION: u16 = 1;
+/// Service-issued routing envelope; authority always remains in agent records.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OperationRef {
+    pub ref_version: u16,
+    pub device_id: String,
+    pub agent_instance: String,
+    pub context_generation: String,
+    pub execution_nonce: String,
 }
-impl OperationIdKind {
-    pub fn is_auto(&self) -> bool {
-        *self == Self::Auto
+impl OperationRef {
+    pub fn valid_shape(&self) -> bool {
+        self.ref_version == EXECUTION_REF_VERSION
+            && valid_id(&self.device_id)
+            && valid_id(&self.agent_instance)
+            && valid_id(&self.context_generation)
+            && valid_id(&self.execution_nonce)
     }
+}
+#[derive(Clone, Debug, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum OperationSelector {
+    Execution {
+        operation_ref: OperationRef,
+    },
+    Request {
+        device_id: String,
+        request_id: String,
+    },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -54,23 +68,27 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Call {
-    RecoverInput {
-        resource_domain: String,
-    },
     Describe,
     OpenContext,
     CloseContext,
-    Invoke {
+    /// Metadata-only acceptance. No native calls or input-resource acquisition.
+    Prepare {
+        tool: String,
+        arguments: Value,
+    },
+    Execute {
+        operation_ref: OperationRef,
+    },
+    /// Strictly bounded cached queries, never native execution or input leases.
+    Cached {
         tool: String,
         arguments: Value,
     },
     Operation {
-        operation_id: String,
-        #[serde(default, skip_serializing_if = "OperationIdKind::is_auto")]
-        id_kind: OperationIdKind,
+        selector: OperationSelector,
     },
     Cancel {
-        operation_id: String,
+        operation_ref: OperationRef,
     },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
