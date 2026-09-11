@@ -25,13 +25,33 @@ async fn run() -> io::Result<()> {
         println!("{}", serde_json::to_string(&owner)?);
         return Ok(());
     }
-    if args.len() != 2 || args[0] != "--config" {
+    if args.len() != 2 || (args[0] != "--config" && args[0] != "--repair-namespace") {
         return Err(io::Error::other(
-            "usage: rcu-agent --config ABS_PRIVATE_SERVICE_CONFIG",
+            "usage: rcu-agent --config ABS_PRIVATE_SERVICE_CONFIG | --repair-namespace ABS_PRIVATE_REPAIR_SPEC",
         ));
     }
+    let repair: Option<rcu_agent::runtime::NamespaceRepair> = if args[0] == "--repair-namespace" {
+        Some(serde_json::from_slice(&private_read(
+            Path::new(&args[1]),
+            65536,
+        )?)?)
+    } else {
+        None
+    };
+    if repair
+        .as_ref()
+        .is_some_and(|p| !p.config.is_absolute() || !p.committed_backup.is_absolute())
+    {
+        return Err(io::Error::other(
+            "namespace repair requires absolute private config and backup paths",
+        ));
+    }
+    let config_path = repair
+        .as_ref()
+        .map(|p| p.config.as_path())
+        .unwrap_or_else(|| Path::new(&args[1]));
     let config: rcu_agent::config::Config =
-        serde_json::from_slice(&private_read(Path::new(&args[1]), 65536)?)?;
+        serde_json::from_slice(&private_read(config_path, 65536)?)?;
     config.validate()?;
     #[cfg(windows)]
     let _state_guard = if config.state_root.exists() {
@@ -46,6 +66,14 @@ async fn run() -> io::Result<()> {
     } else {
         rcu_link_trust::PrivateDirectory::create(&config.state_root)?
     };
+    if let Some(proof) = repair {
+        let backup = private_read(&proof.committed_backup, 1024)?;
+        println!(
+            "{}",
+            rcu_agent::runtime::Runtime::repair_namespace(&config, &proof, &backup)?
+        );
+        return Ok(());
+    }
     let identity = config.identity.load_with(private_read)?;
     let tls = identity.server_config(
         &config

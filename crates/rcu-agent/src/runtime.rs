@@ -4,6 +4,7 @@ mod dispatch;
 mod dispatch_tests;
 mod execution;
 mod namespace;
+pub use namespace::NamespaceRepair;
 mod recovery;
 use crate::{
     config::{Config, Principal},
@@ -55,6 +56,22 @@ pub struct Runtime {
     _owner: std::fs::File,
 }
 impl Runtime {
+    /// Explicit offline operator repair. No RPC/native endpoint exposes this.
+    pub fn repair_namespace(
+        config: &Config,
+        proof: &NamespaceRepair,
+        backup: &[u8],
+    ) -> io::Result<serde_json::Value> {
+        config.validate()?;
+        let owner = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(config.state_root.join("service.lock"))?;
+        owner
+            .try_lock()
+            .map_err(|_| io::Error::other("service_state_already_owned"))?;
+        namespace::repair(&config.state_root, &config.device_id, proof, backup)
+    }
     pub fn new(config: Config) -> io::Result<Arc<Self>> {
         config.validate()?;
         std::fs::create_dir_all(&config.state_root)?;

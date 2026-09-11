@@ -395,3 +395,33 @@ async fn state_root_cannot_be_reused_under_another_device_identity() {
             .contains("device_namespace_mismatch")
     );
 }
+
+#[tokio::test]
+async fn namespace_repair_requires_offline_state_owner_and_does_not_reset_ledger() {
+    let (t, r, _p, _q) = setup();
+    let config = r.config.clone();
+    let namespace = config.state_root.join("device-namespace.json");
+    let backup = std::fs::read(&namespace).unwrap();
+    let backup_path = t.path().join("committed-backup.json");
+    std::fs::write(&backup_path, &backup).unwrap();
+    std::fs::write(&namespace, b"{truncated").unwrap();
+    let proof = rcu_agent::runtime::NamespaceRepair {
+        config: t.path().join("config.json"),
+        committed_backup: backup_path,
+        committed_backup_sha256: rcu_core::digest(&backup),
+        damaged_sha256: rcu_core::digest(b"{truncated"),
+    };
+    assert!(
+        Runtime::repair_namespace(&config, &proof, &backup)
+            .unwrap_err()
+            .to_string()
+            .contains("service_state_already_owned")
+    );
+    assert_eq!(std::fs::read(&namespace).unwrap(), b"{truncated");
+    drop(r);
+    let repaired = Runtime::repair_namespace(&config, &proof, &backup).unwrap();
+    assert_eq!(repaired["ledger_modified"], false);
+    assert_eq!(repaired["input_sent"], false);
+    assert_eq!(std::fs::read(&namespace).unwrap(), backup);
+    assert!(Runtime::new(config).is_ok());
+}
