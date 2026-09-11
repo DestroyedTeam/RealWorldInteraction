@@ -39,10 +39,19 @@ impl CancelDispatch {
         match reply {
             Ok(r) => DeviceResult {
                 is_error: true,
-                data: json!({"code":"operation_cancel_requested","operation_ref":self.reference,"device_id":self.reference.device_id,"cancellation":r.result,"goal_verified":false,"original_action_replayed":false}),
+                data: json!({"code":"operation_cancel_requested","operation_ref":self.reference,"device_id":self.reference.device_id,"cancellation_delivery_confirmed":true,"cancellation_accepted":!r.result.is_error,"cancellation":r.result,"goal_verified":false,"original_action_replayed":false}),
                 images: vec![],
             },
-            Err(e) => e,
+            Err(mut e) => {
+                // Read-only work has no durable request ID fallback. Preserve its
+                // only public locator even when cancellation delivery is unknown.
+                e.data["operation_ref"] = json!(self.reference);
+                e.data["device_id"] = json!(self.reference.device_id);
+                e.data["cancellation_delivery_confirmed"] = json!(false);
+                e.data["cancellation_accepted"] = Value::Null;
+                e.data["original_action_replayed"] = json!(false);
+                e
+            }
         }
     }
 }

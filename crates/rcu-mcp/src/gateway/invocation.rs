@@ -254,4 +254,87 @@ mod tests {
         stop.send_replace(true);
         server.await.unwrap().unwrap();
     }
+
+    #[tokio::test]
+    async fn cancellation_timeout_and_disconnect_preserve_accepted_read_reference() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap().join("private");
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&root)
+            .unwrap();
+        let pairing = rcu_link_trust::provision(&root.join("trust")).unwrap();
+        let identity = IdentityPaths::in_profile(&root.join("trust/agent"));
+        let tls = identity
+            .load()
+            .unwrap()
+            .server_config(std::slice::from_ref(&pairing.model.certificate_sha256))
+            .unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let runtime = Runtime::new(Config {
+            version: 1,
+            device_id: "device".into(),
+            bind: endpoint,
+            identity,
+            principals: vec![Principal {
+                certificate: pairing.model.certificate_sha256,
+                observe: true,
+                input: true,
+            }],
+            state_root: root.join("state"),
+            platform: PlatformPolicy::Fixture,
+        })
+        .unwrap();
+        let (_stop, rx) = tokio::sync::watch::channel(false);
+        let server = tokio::spawn(rcu_native_link::device::serve(
+            listener,
+            tls,
+            move |peer, request: Request| {
+                let runtime = runtime.clone();
+                async move {
+                    if matches!(request.call, Call::Cancel { .. }) {
+                        std::future::pending::<()>().await;
+                    }
+                    runtime.handle(peer, request).await
+                }
+            },
+            rx,
+        ));
+        let g = Gateway::new(Ok(AdapterProfile {
+            devices: vec![PairedDevice {
+                device_id: "device".into(),
+                endpoint,
+                identity: IdentityPaths::in_profile(&root.join("trust/model")),
+                agent_pin: pairing.agent.certificate_sha256,
+            }],
+        }));
+        let opened = g
+            .request("device", None, Call::OpenContext)
+            .await
+            .unwrap()
+            .result;
+        let accepted=g.request("device",Some(opened.data["context"].as_str().unwrap().into()),Call::Prepare{tool:"computer.observe".into(),arguments:json!({"target":opened.data["targets"][0]["target"],"inline_image":false})}).await.unwrap().result;
+        let reference: device::OperationRef =
+            serde_json::from_value(accepted.data["operation_ref"].clone()).unwrap();
+        let mut cancellation = cancellation::CancelDispatch::new(g.clone(), reference.clone());
+        let timeout = cancellation.request().await;
+        assert_eq!(timeout.data["code"], "cancellation_delivery_unconfirmed");
+        assert_eq!(timeout.data["operation_ref"], json!(reference));
+        assert_eq!(timeout.data["cancellation_delivery_confirmed"], false);
+        assert!(timeout.data["cancellation_accepted"].is_null());
+        // The returned locator still addresses the exact service record; no
+        // durable request ID exists and no execution is guessed/replayed.
+        let status=g.invoke("computer.operation",json!({"selector":{"kind":"execution","operation_ref":timeout.data["operation_ref"]}}),None).await;
+        assert_eq!(status.data["phase"], "accepted");
+        server.abort();
+        let _ = server.await;
+        let disconnected = cancellation::CancelDispatch::new(g, reference.clone())
+            .request()
+            .await;
+        assert_eq!(disconnected.data["code"], "device_connection_failed");
+        assert_eq!(disconnected.data["operation_ref"], json!(reference));
+        assert_eq!(disconnected.data["cancellation_delivery_confirmed"], false);
+        assert_eq!(disconnected.data["original_action_replayed"], false);
+    }
 }
