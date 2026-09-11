@@ -29,6 +29,13 @@ For `computer.operation`, `id_kind: "monitor"` selects a monitoring operation ID
 a lost response). Default `auto` refuses cross-namespace ambiguity. Do not resolve
 an ambiguous ID by retrying a mutation. Cancellation uses the monitoring ID only.
 
+Current limitation, until service-issued generation-bound execution references
+are implemented: use explicit `id_kind: "request"` plus the known `request_id`
+for historical mutation queries. Never use `auto` or an old bare monitor ID to
+identify work after a Host/context/agent change. Prefer adapter-generated monitor
+IDs; never reuse a caller-supplied monitor ID. These caller precautions do not
+constitute server-enforced reference-lifetime correctness.
+
 ## Act and verify
 
 Select the next action before claiming a short cooperative desktop input lease.
