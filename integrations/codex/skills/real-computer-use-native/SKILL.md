@@ -18,23 +18,38 @@ business result. A window closing does not invalidate the installation.
   different facts; action-specific binding/focus/lease checks still apply.
 - Discover and bind a fresh exact window when needed. Binding does not focus it.
   A returned device/context/window generation belongs only to that context.
-  Pass `device_id` when operation or artifact identifiers collide across devices.
+  Pass `device_id` when cached artifact identifiers collide across devices.
 - Observe before grounded input. `inline_image: false` omits the inline image;
   it does not guarantee that the current backend avoids capture internally.
   Obtain images/tiles through `computer.image`; view coordinates need
   `computer.resolve_view`, not original-image pixel interpretation.
 
-For `computer.operation`, `id_kind: "monitor"` selects a monitoring operation ID;
-`id_kind: "request"` selects the mutation's stable `request_id` (including after
-a lost response). Default `auto` refuses cross-namespace ambiguity. Do not resolve
-an ambiguous ID by retrying a mutation. Cancellation uses the monitoring ID only.
+## Execution identity (device wire v2)
 
-Current limitation, until service-issued generation-bound execution references
-are implemented: use explicit `id_kind: "request"` plus the known `request_id`
-for historical mutation queries. Never use `auto` or an old bare monitor ID to
-identify work after a Host/context/agent change. Prefer adapter-generated monitor
-IDs; never reuse a caller-supplied monitor ID. These caller precautions do not
-constitute server-enforced reference-lifetime correctness.
+Native work returns a service-issued `operation_ref`. Pass it unchanged:
+- Query execution: `computer.operation` with
+  `{"selector":{"kind":"execution","operation_ref":<returned reference>}}`.
+- Query a durable mutation, including after a lost response/restart:
+  `{"selector":{"kind":"request","device_id":"paired device","request_id":"original request"}}`.
+- Cancel: `computer.cancel` with `{"operation_ref":<returned reference>}`.
+
+These are mutually exclusive selectors, not an auto lookup. Bare `operation_id`,
+`monitor_id`, and `request_id` cannot cancel execution. Optional `correlation_id`
+is a caller label only; it cannot query, cancel or route work. The legacy input
+alias `operation_id` is also only a label, never an execution identity.
+
+A fresh Host may query an exact still-live reference without first opening a
+context. Agent restart, actual context closure or bounded terminal-history
+retirement expires it. Never reconstruct a reference or replace an expired ref
+with a similar label. Expiry is not evidence that native work stopped or that no
+effect occurred; use the explicit durable request query where applicable.
+
+Acceptance and cancellation are internal adapter/agent mechanics, not extra
+model preparation tools or business stages. Host Stop before acceptance prevents
+Execute; later Stop addresses the exact accepted instance. Cached artifact/resolve
+reads are not native executions and do not receive execution references.
+Adapter and agent must both support device wire v2; a version mismatch must not
+be worked around by enabling the obsolete task-bound entry.
 
 ## Act and verify
 
@@ -45,8 +60,8 @@ precondition for every button. Text/key input still requires the correct focused
 editable element and fresh state. Do not downgrade a rejected checked action to
 unchecked/pixel input to bypass its failed preconditions.
 
-Use a stable `request_id` per intended mutation, and distinct `operation_id` for
-monitoring/cancellation. Dispatch once; independently read the expected native
+Use a stable `request_id` per intended mutation. Keep its returned `operation_ref`
+for execution status/cancellation. Dispatch once; independently read the expected native
 predicate with `computer.verify`; release promptly. A dispatch acknowledgement or
 a matched single predicate is not proof of the entire business task.
 

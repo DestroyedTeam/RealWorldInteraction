@@ -1,6 +1,6 @@
 # ADR 0003：执行引用与耐久请求身份分离
 
-状态：**Control Center 已确认的 ADR 0002 契约细化；当前实现尚未满足。**
+状态：**Control Center 已确认的 ADR 0002 契约细化；839e81b 为实现候选，独立复核待结论。**
 日期：2026-09-12。完整架构约束持续生效，不是临时替代架构。
 
 ## 决策
@@ -60,6 +60,12 @@ wire/schema 使用版本或能力声明，不暗改 MCP 协议版本，也不增
 `a5e41be` 的 id_kind 修复解决已知耐久 request/monitor 交叉案例，但不是最终契约；
 R01 的历史执行引用生命周期继续保持未关闭。A01 owned-process native worker
 隔离仍是独立的未实现结构项。
+
+`839e81b` 已替换上述中间契约：device wire v2 + service-issued operation_ref +
+内部 Prepare/Execute；关联标签不再是身份。源码回归、Windows executable 与真实
+Codex Host 的有限 native read 验证见
+`docs/validation/2026-09-12-execution-reference-candidate.md`，不据此自行关闭 R01
+或宣告完整架构完成。
 
 ## R01 整体关闭的最低测试范围
 
