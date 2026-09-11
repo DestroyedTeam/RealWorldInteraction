@@ -49,6 +49,9 @@ binding; a dispatch acknowledgement never proves the requested goal.
 - Generic application launch policy, full native failure/recovery and privilege
   matrix, other platform integration, remaining legacy-harness migration, actual
   global plugin installation and registered App integration remain open.
+- Native operations currently run in same-process `spawn_blocking`. Owned-process
+  worker isolation for provider hangs/crashes is **not implemented**, not merely
+  missing native tests; see [the implementation gap](docs/migrations/2026-09-12-owned-worker-isolation-gap.md).
 - [Current evidence and remaining work](docs/validation/2026-09-12-service-migration-progress.md)
 
 ## Engineering and integration

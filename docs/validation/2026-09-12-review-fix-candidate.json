@@ -1,0 +1,161 @@
+{
+  "schema": "rcu.review_fix_candidate.v1",
+  "date": "2026-09-12",
+  "reviewed_baseline": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+  "refactor_commit": "2a37999",
+  "implementation_commit": "a5e41be",
+  "eof_test_commit": "78f9df6",
+  "independent_verifier_status": "pending_new_review",
+  "architecture_complete": false,
+  "R01": {
+    "status": "reported_durable_cross_namespace_case_fixed_broader_reference_lifetime_open",
+    "id_kinds": [
+      "auto",
+      "monitor",
+      "request"
+    ],
+    "actual_mcp_processes_and_runtime_test": true,
+    "known_remaining": "Old volatile monitoring IDs are not generation-qualified; reuse in a later context/instance can still make an unqualified historical lookup ambiguous. A generation-qualified reference contract has been requested from Control Center."
+  },
+  "R02": {
+    "status": "candidate_fixed",
+    "publication": "unique pending file -> complete write -> fsync -> atomic no-overwrite hard-link commit -> directory sync where supported",
+    "crash_stages": [
+      "created",
+      "partial",
+      "written",
+      "file_synced",
+      "published",
+      "directory_synced"
+    ],
+    "bad_evidence_preserved": true,
+    "reservations_never_deleted": true,
+    "other_domain_unchanged": true,
+    "windows_filesystem_test_passed": true,
+    "physical_power_loss_tested": false
+  },
+  "R03": {
+    "status": "candidate_fixed",
+    "sticky_send_replace": true,
+    "no_subscriber_test": true,
+    "buffered_and_later_invokes_at_authenticated_test_peer": 0,
+    "active_invoke_eof_process_test_retained": true,
+    "native_preemption_claimed": false
+  },
+  "A01": {
+    "status": "not_implemented",
+    "current_executor": "same-process spawn_blocking",
+    "gap_doc": "docs/migrations/2026-09-12-owned-worker-isolation-gap.md"
+  },
+  "tests": {
+    "default-tests.log": {
+      "passed": 205,
+      "failed": 0,
+      "ignored": 1
+    },
+    "all-feature-tests.log": {
+      "passed": 292,
+      "failed": 0,
+      "ignored": 2
+    }
+  },
+  "windows_unit_tests": {
+    "passed": 8,
+    "failed": 0,
+    "scope": "unit and process-crash filesystem tests, not native GUI input"
+  },
+  "deployment": {
+    "old_agent_pid": 6820,
+    "new_agent_pid": 4808,
+    "agent_sha256": "c0bc720656e3f6e804f99c674d28a942c61f0eb1c7a9fe207a22d1238c2b2c0c",
+    "agent_instance": "c18fdabd-79c9-4f08-bf3c-491d57b1339e",
+    "agent_window_handle": 0,
+    "preserved_ledger_json_files": 4,
+    "ledger_hashes_unchanged": true,
+    "adapter_sha256": "1ca1f9e532c4d5183d3d748a5d18baa90ee66434d384cd95287d84ef3f6202e5",
+    "config_and_pairing_unchanged": true,
+    "user_applications_untouched": true
+  },
+  "host_verification": {
+    "actual_codex_host": true,
+    "tool_count": 20,
+    "new_query_schema_visible": true,
+    "request_and_monitor_selected_same_existing_action_receipt": true,
+    "other_existing_request_receipt_query_succeeded": true,
+    "replay_allowed": false,
+    "new_native_input_sent": false,
+    "model_autonomous_acceptance_claimed": false
+  },
+  "evidence": [
+    {
+      "path": "work/review-fixes-20260912/default-tests.log",
+      "bytes": 25188,
+      "sha256": "38303a8a6514b6a56beb6120f7e2860ee14491a864146ea486a847b6ce01d5d8"
+    },
+    {
+      "path": "work/review-fixes-20260912/all-feature-tests.log",
+      "bytes": 34189,
+      "sha256": "3d1da0beea2266ff51b19a7a7086c1c2a9dc9241d4ba32739ccdd5af9f04ba6d"
+    },
+    {
+      "path": "work/review-fixes-20260912/clippy.log",
+      "bytes": 180,
+      "sha256": "17ec66e13854fb59e320495e8dd246d8f3bbcf2bd24707eddd277de8a185660f"
+    },
+    {
+      "path": "work/review-fixes-20260912/windows-clippy.log",
+      "bytes": 688,
+      "sha256": "a9c8f2b43b392837c4c01d8ffac7b6c0c2429d01d0fe522263865d5fa302200e"
+    },
+    {
+      "path": "work/review-fixes-20260912/architecture.json",
+      "bytes": 1923,
+      "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924"
+    },
+    {
+      "path": "work/review-fixes-20260912/windows-tests-executed.stdout",
+      "bytes": 923,
+      "sha256": "1dbdfb7e07603936e9a449650eba1dc4d85c7b0bc026c8d88c9340618b6f6db9"
+    },
+    {
+      "path": "work/review-fixes-20260912/agent-update-verified.stdout",
+      "bytes": 2638,
+      "sha256": "0afd719fad88c99e4c1491a7a77f8d9e2c434b471c683d60c806abb2b30dce58"
+    },
+    {
+      "path": "work/review-fixes-20260912/adapter-updated.json",
+      "bytes": 231,
+      "sha256": "6c5e7b4c8f90a1800d033e4633e271e40d5ede41a2804ee915e8cd2622a80ef8"
+    },
+    {
+      "path": "work/review-fixes-20260912/codex-updated-query.log",
+      "bytes": 13129,
+      "sha256": "6b38f1974e7c88c1a16ffbd2f4d684a7545f3a021032580d9ebecbbb75ddc370"
+    },
+    {
+      "path": "work/review-fixes-20260912/codex-updated-query/response-0005.json",
+      "bytes": 538184,
+      "sha256": "7f98953d6192f840b213ae3b18c2eb163e560150f6412128f425ffa851019937"
+    },
+    {
+      "path": "work/review-fixes-20260912/codex-updated-query/response-0006.json",
+      "bytes": 2765,
+      "sha256": "7541ad6b08ccbf5248187d365860f5d15f9be60476d136da02f97819db74f8a7"
+    },
+    {
+      "path": "work/review-fixes-20260912/codex-updated-query/response-0007.json",
+      "bytes": 2737,
+      "sha256": "f663633af87fa9519c15b6afe5dd6f9fb10a53f1609900dafdd695ff99fab20d"
+    },
+    {
+      "path": "work/review-fixes-20260912/codex-updated-query/response-0008.json",
+      "bytes": 2741,
+      "sha256": "b1ee1962879476e3d3465067bcd61049c3e69d55264afa5e71c1307cb9dbdb12"
+    },
+    {
+      "path": "work/review-fixes-20260912/codex-updated-query/response-0009.json",
+      "bytes": 16931,
+      "sha256": "966946543a590dc0067343630d315c41ea77f4f0a9477e0c5332cf2f3a65aaf1"
+    }
+  ]
+}
