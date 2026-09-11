@@ -1,5 +1,7 @@
 //! Standard MCP adapter over the task-independent device API. No OS FFI.
 mod cancellation;
+#[cfg(all(test, unix))]
+mod cancellation_tests;
 mod invocation;
 mod routing;
 mod shutdown;
