@@ -15,7 +15,8 @@
       "request"
     ],
     "actual_mcp_processes_and_runtime_test": true,
-    "known_remaining": "Old volatile monitoring IDs are not generation-qualified; reuse in a later context/instance can still make an unqualified historical lookup ambiguous. A generation-qualified reference contract has been requested from Control Center."
+    "known_remaining": "Generation-qualified service-issued execution references are not implemented. Control Center confirmed ADR 0003: operation_ref plus an independent durable request_id; no bare-label/auto lookup fallback.",
+    "confirmed_contract": "docs/adr/0003-execution-reference-and-durable-request-identity.md"
   },
   "R02": {
     "status": "candidate_fixed",

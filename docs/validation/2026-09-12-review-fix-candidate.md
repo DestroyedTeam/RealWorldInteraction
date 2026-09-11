@@ -8,7 +8,7 @@
 
 真实 MCP 进程＋实际 Runtime＋mTLS＋显式 fixture 测试构造 A `(req-a,op-b)`、B `(op-b,op-c)`：原 Host 的 auto 查询拒绝歧义，明确类型分别选对；关闭原 Host，新 Host 在打开 context 之前仍能正确查询两个耐久记录；只收到两次原始 mutation Invoke，没有重放。另测不同设备、主体和同字符串不同类型。
 
-**尚不关闭 R01 整体引用生命周期问题。** 旧只读操作的 monitor ID 未持久化，也没有带 instance/context 的限定引用；在后续 context/instance 中重用该字符串，仍可能与一个持久 request 或 monitor 混淆。`id_kind` 修正了已记录的持久交叉案例，但不能凭空恢复已遗失的代际信息。已向 Control Center 请求确认限定 `operation_ref`/规范操作句柄的通用契约，不为某个业务任务添加特例。
+**尚不关闭 R01 整体引用生命周期问题。** 旧只读操作的 monitor ID 未持久化，也没有带 instance/context 的限定引用；在后续 context/instance 中重用该字符串，仍可能与一个持久 request 或 monitor 混淆。`id_kind` 修正了已记录的持久交叉案例，但不能凭空恢复已遗失的代际信息。Control Center 已确认[服务签发 operation_ref＋独立耐久 request_id 的规范契约](../adr/0003-execution-reference-and-durable-request-identity.md)；必须继续实现，不能再叠加标签查找规则或业务特例。
 
 ## R02：可以保留坏记录，再提交新恢复证明
 
