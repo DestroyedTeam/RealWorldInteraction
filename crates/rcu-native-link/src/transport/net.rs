@@ -21,6 +21,9 @@ use tokio::{
     task::JoinHandle,
 };
 
+#[path = "model_attach.rs"]
+mod model_attach;
+
 pub const IO_TIMEOUT: Duration = Duration::from_secs(5);
 pub const MODEL_LIMIT: Duration = Duration::from_secs(1200);
 pub const END_ACK_TIMEOUT: Duration = Duration::from_secs(30);
@@ -438,33 +441,7 @@ where
     } else {
         None
     };
-    let mut stream = connect(config).await?;
-    let nonce = uuid::Uuid::new_v4().to_string();
-    let attach = Attach {
-        version: crate::TRANSPORT_VERSION,
-        task: config.task.clone(),
-        approval_sha256: config.approval_sha256.clone(),
-        role: Role::Model,
-        nonce: nonce.clone(),
-    };
-    write_json(&mut stream, &attach, frame::ATTACH_CAP).await?;
-    let mut stream = BufReader::new(stream);
-    let raw = tokio::time::timeout(
-        IO_TIMEOUT,
-        frame::read_frame(&mut stream, frame::ATTACH_CAP),
-    )
-    .await
-    .map_err(|_| invalid("attach_ack_deadline"))??
-    .ok_or_else(|| invalid("attach_ack_missing"))?;
-    let ack: AttachAck = serde_json::from_slice(&raw)?;
-    if ack.version != crate::TRANSPORT_VERSION
-        || !ack.attached
-        || ack.task != config.task
-        || ack.nonce != nonce
-        || ack.role != Role::Model
-    {
-        return Err(invalid("attach_ack_exact_binding_mismatch"));
-    }
+    let (stream, nonce) = model_attach::open(config).await?;
     // Keep BufReader's already-received bytes; extracting its inner stream would
     // discard a coalesced MCP frame following AttachAck.
     let (remote_read, remote_write) = tokio::io::split(stream);
