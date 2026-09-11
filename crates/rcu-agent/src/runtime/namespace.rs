@@ -161,6 +161,40 @@ pub(super) fn repair(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn orderly_owner_unlocks_even_if_an_incidental_descriptor_is_still_open() {
+        let t = tempfile::tempdir().unwrap();
+        let path = t.path().join("owner");
+        let file = OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        file.try_lock().unwrap();
+        let incidental = file.try_clone().unwrap();
+        let candidate = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        assert!(candidate.try_lock().is_err());
+        drop(super::super::StateOwner(file));
+        candidate.try_lock().unwrap();
+        drop(incidental);
+        assert!(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&path)
+                .unwrap()
+                .try_lock()
+                .is_err(),
+            "closing an old descriptor must not unlock the new owner"
+        );
+        candidate.unlock().unwrap();
+    }
     #[test]
     fn crash_child() {
         if let Ok(root) = std::env::var("RCU_NAMESPACE_CRASH_ROOT") {

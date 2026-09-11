@@ -47,13 +47,24 @@ struct Context {
     target: String,
     entered: Arc<AtomicBool>,
 }
+/// Orderly service ownership ends here, not when an incidental duplicate OS
+/// descriptor (e.g. during concurrent process creation) is eventually closed.
+/// This field is dropped last, after all contexts and durable state handles.
+struct StateOwner(std::fs::File);
+impl Drop for StateOwner {
+    fn drop(&mut self) {
+        if let Err(error) = self.0.unlock() {
+            eprintln!("rcu-agent: state owner unlock unconfirmed: {error}");
+        }
+    }
+}
 pub struct Runtime {
     pub config: Config,
     pub instance: String,
     contexts: Mutex<BTreeMap<String, Arc<Context>>>,
     ledger: Mutex<io::Result<Ledger>>,
     domains: Mutex<BTreeMap<String, Arc<InputDomain>>>,
-    _owner: std::fs::File,
+    _owner: StateOwner,
 }
 impl Runtime {
     /// Explicit offline operator repair. No RPC/native endpoint exposes this.
@@ -70,6 +81,7 @@ impl Runtime {
         owner
             .try_lock()
             .map_err(|_| io::Error::other("service_state_already_owned"))?;
+        let _owner = StateOwner(owner);
         namespace::repair(&config.state_root, &config.device_id, proof, backup)
     }
     pub fn new(config: Config) -> io::Result<Arc<Self>> {
@@ -84,6 +96,7 @@ impl Runtime {
         owner
             .try_lock()
             .map_err(|_| io::Error::other("service_state_already_owned"))?;
+        let owner = StateOwner(owner);
         namespace::bind(&config.state_root, &config.device_id)?;
         let ledger = Ledger::open(config.state_root.join("operations"));
         Ok(Arc::new(Self {
