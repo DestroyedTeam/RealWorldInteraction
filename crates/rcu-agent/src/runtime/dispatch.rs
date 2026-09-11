@@ -9,16 +9,45 @@ impl Drop for Finish {
         self.0.finish();
     }
 }
-struct PanicFence {
+struct WorkerOwnership {
     domain: Arc<InputDomain>,
     writes: bool,
+    _context: tokio::sync::OwnedSemaphorePermit,
+    _input: Option<tokio::sync::OwnedSemaphorePermit>,
 }
-impl Drop for PanicFence {
+impl Drop for WorkerOwnership {
     fn drop(&mut self) {
+        // Drop runs before our permit fields are released. Another writer must
+        // observe the fence even if the original async waiter already vanished.
         if self.writes && std::thread::panicking() {
             self.domain.fenced.store(true, Ordering::Release);
         }
     }
+}
+#[cfg(test)]
+#[test]
+fn panic_fences_the_domain_before_owned_permits_are_dropped() {
+    let domain = Arc::new(InputDomain {
+        key: "synthetic".into(),
+        gate: Arc::new(tokio::sync::Semaphore::new(1)),
+        fenced: AtomicBool::new(false),
+    });
+    let context = Arc::new(tokio::sync::Semaphore::new(1));
+    let ownership = WorkerOwnership {
+        domain: domain.clone(),
+        writes: true,
+        _context: context.clone().try_acquire_owned().unwrap(),
+        _input: Some(domain.gate.clone().try_acquire_owned().unwrap()),
+    };
+    assert_eq!(domain.gate.available_permits(), 0);
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+        let _owned = ownership;
+        panic!("synthetic worker panic");
+    }));
+    assert!(result.is_err());
+    assert!(domain.fenced.load(Ordering::Acquire));
+    assert_eq!(domain.gate.available_permits(), 1);
+    assert_eq!(context.available_permits(), 1);
 }
 impl Runtime {
     pub(super) async fn execute(
@@ -128,10 +157,8 @@ impl Runtime {
         let worker_entry = entry.clone();
         let policy = policy.clone();
         let result=tokio::task::spawn_blocking(move || {
-            let _panic_fence=PanicFence{domain:worker_context.domain.clone(),writes:worker_entry.writes};
             // Both permits and finish guard belong to the worker, not its async waiter.
-            let _permit=permit;
-            let _input=input_permit;
+            let _ownership=WorkerOwnership{domain:worker_context.domain.clone(),writes:worker_entry.writes,_context:permit,_input:input_permit};
             let entered=&worker_context.entered;
             entered.store(false,Ordering::Release);
             let operation=finish.0.clone();
