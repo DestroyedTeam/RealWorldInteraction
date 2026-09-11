@@ -38,7 +38,12 @@ impl Case {
             .create(&install)
             .unwrap();
         let path = install.join(entry::RELAY_BASENAME);
-        std::fs::hard_link(env!("CARGO_BIN_EXE_rcu-native-relay"), &path).unwrap();
+        // Independent test cases must not share an executable inode: creating
+        // or dropping another hard link changes ctime while entry::load is
+        // legitimately checking that the selected image did not change.
+        std::fs::copy(env!("CARGO_BIN_EXE_rcu-native-relay"), &path).unwrap();
+        use std::os::unix::fs::MetadataExt;
+        assert_eq!(std::fs::metadata(&path).unwrap().nlink(), 1);
         let relay = Image {
             sha256: sha(&std::fs::read(&path).unwrap()),
             path,

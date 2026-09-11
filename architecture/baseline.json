@@ -1,6 +1,6 @@
 {
   "schema": "rcu.architecture.ratchet.v1",
-  "source_status": "migration candidate, not root acceptance",
+  "source_status": "root workspace; debt ratchet, not full architecture acceptance",
   "new_file_line_limit": 600,
   "allowed_production_dependencies": {
     "rcu-core": [],
@@ -44,6 +44,6 @@
     "crates/rcu-macos/src/native.rs": 1020,
     "crates/rcu-native-link/src/transport/net.rs": 721,
     "crates/rcu-native-link/src/orchestration/control.rs": 1257,
-    "crates/rcu-native-link/src/orchestration/worker.rs": 1143
+    "crates/rcu-native-link/src/orchestration/worker.rs": 773
   }
 }
