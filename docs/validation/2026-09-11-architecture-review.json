@@ -1,0 +1,775 @@
+{
+  "schema": "rcu.architecture_review.v1",
+  "recorded_utc": "2026-09-11T14:13:26.956137+00:00",
+  "decision": "proposed_headless_multi_device_infrastructure_redesign",
+  "implementation_started_by_this_review": false,
+  "review_baseline": {
+    "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+    "head": "aeb56851a37d570179eacb046ea0177b894a7002",
+    "branch": "engineering/governance-native-mcp",
+    "includes_preexisting_uncommitted_changes": true,
+    "protected_file_count": 141,
+    "protected_baseline_sha256": "d5acce6eb4f3dbd2afe0d288d169064134d05ed929f99e3fdfaeb93dde953bbf",
+    "all_protected_files_unchanged": true
+  },
+  "reference": {
+    "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+    "user_confirmed_identity": "alper-han/CrossMacro",
+    "tag": "v1.4.0",
+    "commit": "c13c93163478848655d86695385400876c9a5200",
+    "local_patches_are_not_pristine_upstream": true,
+    "manifest_file_count": 2327,
+    "all_manifest_files_match": true,
+    "full_repository_semantic_review": false,
+    "base_blob_comparison": [
+      {
+        "path": "src/CrossMacro.Mcp/StdioMcpServer.cs",
+        "working_sha256": "95c87c4207eb32ecdd010bc18d557e01db4c313b3e842de6a27aa67d2cd25c83",
+        "base_blob_exists": true,
+        "base_sha256": "d733d5e7b0f5e16e6ade11e5e8181d676f4f76052e1a6944ea1f2968759750af",
+        "same_as_base": false
+      },
+      {
+        "path": "src/CrossMacro.Mcp/Tools/McpToolRegistrationExtensions.cs",
+        "working_sha256": "d6dbcc4ecb2cff421f930fefb8c0972d45ec85e821f0ec5d47c6506905896571",
+        "base_blob_exists": true,
+        "base_sha256": "d6dbcc4ecb2cff421f930fefb8c0972d45ec85e821f0ec5d47c6506905896571",
+        "same_as_base": true
+      },
+      {
+        "path": "src/CrossMacro.Mcp/Contracts/CrossMacroMcpToolCatalog.cs",
+        "working_sha256": "23621b97e6eca97ec37e1c697abf3e2debe82f6d542b77e6615c8a72303fb248",
+        "base_blob_exists": true,
+        "base_sha256": "23621b97e6eca97ec37e1c697abf3e2debe82f6d542b77e6615c8a72303fb248",
+        "same_as_base": true
+      },
+      {
+        "path": "src/CrossMacro.Mcp/Tools/McpScreenTools.cs",
+        "working_sha256": "15c23b4e8e21e1a08d58b8ca176c7d2bbcc4345ed829bb1d1a5eb77dfbea9341",
+        "base_blob_exists": true,
+        "base_sha256": "799dc650a58d4322bc24ef1fa630f4c971973c08fa9723f261b62ee77ea1e84a",
+        "same_as_base": false
+      },
+      {
+        "path": "src/CrossMacro.Platform.Windows/Services/WindowsInputSimulator.cs",
+        "working_sha256": "d917b7deb2a2c019182f98e6f9ba6a2cd5edb59c51a1e4714954e099ef18f75f",
+        "base_blob_exists": true,
+        "base_sha256": "d917b7deb2a2c019182f98e6f9ba6a2cd5edb59c51a1e4714954e099ef18f75f",
+        "same_as_base": true
+      },
+      {
+        "path": "reliability/baseline/installed/WindowsBridge.cs",
+        "working_sha256": "1c0b406d4180c1d3f57a84484718edf2ed932a5a51e50981782924214ebe36d7",
+        "base_blob_exists": false,
+        "base_sha256": null,
+        "same_as_base": false
+      },
+      {
+        "path": "reliability/baseline/installed/ClientMain.cs",
+        "working_sha256": "19696a4a656c3d041c8194f09674bfd05164f2bb4fbf3e2d0014eb0cec31ef6d",
+        "base_blob_exists": false,
+        "base_sha256": null,
+        "same_as_base": false
+      }
+    ]
+  },
+  "reading_evidence": {
+    "selected_file_count": 56,
+    "ranges": [
+      {
+        "at": "2026-09-11T13:32:39.153945+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/orchestration/runtime.rs",
+        "start": 23,
+        "end": 204,
+        "sha256": "593b550d03b6e451b541a629231001a4e10c718838f52c8f1762eab6520ad48d"
+      },
+      {
+        "at": "2026-09-11T13:32:39.154508+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/transport/server.rs",
+        "start": 1,
+        "end": 170,
+        "sha256": "fc0d7a2fc2082bf004463d28fd04ea809a2b0ed8dea0da2100a2a58f8f84dc54"
+      },
+      {
+        "at": "2026-09-11T13:32:39.154789+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/transport/model_attach.rs",
+        "start": 1,
+        "end": 87,
+        "sha256": "2da4653361a572a36d91cbaad492b9e14836f3927afe4e0df06fa3050392628f"
+      },
+      {
+        "at": "2026-09-11T13:32:39.155076+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/integration/startup_diagnostic.rs",
+        "start": 1,
+        "end": 92,
+        "sha256": "a59b2509f5e0cc1836a8ec546d41a34a2679da66373152ed16509165594e49db"
+      },
+      {
+        "at": "2026-09-11T13:33:51.600477+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Services/McpRequestGuard.cs",
+        "start": 1,
+        "end": 150,
+        "sha256": "8f61aee5b299b183b4982dbf0e361a6aefb1caba5439365a96bda054b075a07b"
+      },
+      {
+        "at": "2026-09-11T13:33:51.600888+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Services/McpCapabilityPolicy.cs",
+        "start": 1,
+        "end": 64,
+        "sha256": "089f00fd968f6175f9e5a0fc2faab62a17ed5a0764ec2eae0637a2f8326e9363"
+      },
+      {
+        "at": "2026-09-11T13:33:51.601272+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Tools/McpCommandTools.cs",
+        "start": 1,
+        "end": 100,
+        "sha256": "c72d13444b2e6eecf3e9a2a4fffe540b720a0062f674d0ea9c50e5a5fa0e8422"
+      },
+      {
+        "at": "2026-09-11T13:33:51.601512+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Tools/McpWindowTools.cs",
+        "start": 1,
+        "end": 110,
+        "sha256": "df4c8dd1dd6f4f5c82e4d1d1fe2f41b37ec9458b499f25effecc535d682600d4"
+      },
+      {
+        "at": "2026-09-11T13:34:12.014720+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-mcp/src/bootstrap.rs",
+        "start": 1,
+        "end": 155,
+        "sha256": "5b3836b36b2eeae70f6b2bd55f58a31156f9a31b5ef40c9ca4c9584b6fc4a68e"
+      },
+      {
+        "at": "2026-09-11T13:34:12.015286+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-mcp/src/server/mod.rs",
+        "start": 1,
+        "end": 125,
+        "sha256": "303ca6e85aa169fa3bb275bb533e3a860e733c6a385a85d4633e745df1a959f9"
+      },
+      {
+        "at": "2026-09-11T13:34:12.015626+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/deployment/plan.rs",
+        "start": 1,
+        "end": 110,
+        "sha256": "97da80912b05bc91a4569b376226207b628312f2c65583af8dccdb78472f0481"
+      },
+      {
+        "at": "2026-09-11T13:34:12.015786+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/orchestration/process_goal.rs",
+        "start": 1,
+        "end": 74,
+        "sha256": "81477256565cf8e5aaa7f1faf17360df0576c9f246614193835e5724b9ec1661"
+      },
+      {
+        "at": "2026-09-11T13:34:12.015896+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/orchestration/oracle.rs",
+        "start": 1,
+        "end": 36,
+        "sha256": "62be7d058c1c92b5ef8f8b7d0780323cb13cab1840e2586fe6927e3943fdcc87"
+      },
+      {
+        "at": "2026-09-11T13:36:37.307912+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-core/src/lib.rs",
+        "start": 60,
+        "end": 298,
+        "sha256": "ae5b37c85a12f1f62cef5d08dc5f5d382efe39aea5c482e5d75ea8c38d821561"
+      },
+      {
+        "at": "2026-09-11T13:36:37.308544+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-core/src/lib.rs",
+        "start": 350,
+        "end": 436,
+        "sha256": "ae5b37c85a12f1f62cef5d08dc5f5d382efe39aea5c482e5d75ea8c38d821561"
+      },
+      {
+        "at": "2026-09-11T13:36:37.308974+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-core/src/checked_action.rs",
+        "start": 1,
+        "end": 126,
+        "sha256": "3e16431c878500c40ae10f64f7c5f6356aef449cf64691cba9648e35076709cb"
+      },
+      {
+        "at": "2026-09-11T13:36:37.309153+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-mcp/src/server/mod.rs",
+        "start": 53,
+        "end": 107,
+        "sha256": "303ca6e85aa169fa3bb275bb533e3a860e733c6a385a85d4633e745df1a959f9"
+      },
+      {
+        "at": "2026-09-11T13:36:53.879785+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Abstractions/IInputSimulator.cs",
+        "start": 1,
+        "end": 28,
+        "sha256": "4f4bb094a37de34ee9d3712d17099818e4f6cc1b71be054623957ccbb531a37c"
+      },
+      {
+        "at": "2026-09-11T13:36:53.880225+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Abstractions/IScreenFrameProvider.cs",
+        "start": 1,
+        "end": 11,
+        "sha256": "20d775e708f1e4f71ee5030d19077cc95cfed064ce2400a4cf01f41da37e7def"
+      },
+      {
+        "at": "2026-09-11T13:36:53.880548+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Abstractions/IWindowQueryService.cs",
+        "start": 1,
+        "end": 14,
+        "sha256": "86146e6de9099196b353009e9df8e8485d8a346001f7c961fcd52e8ad4d57930"
+      },
+      {
+        "at": "2026-09-11T13:36:53.880660+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Abstractions/IWindowMutationService.cs",
+        "start": 1,
+        "end": 41,
+        "sha256": "d4f0088d92786ecda0484a474daeaa47df8d9d323d1c6aca66635a8ba4b0eb1d"
+      },
+      {
+        "at": "2026-09-11T13:36:53.880822+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Windows/Services/WindowsInputSimulator.cs",
+        "start": 1,
+        "end": 94,
+        "sha256": "d917b7deb2a2c019182f98e6f9ba6a2cd5edb59c51a1e4714954e099ef18f75f"
+      },
+      {
+        "at": "2026-09-11T13:36:53.880980+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Infrastructure/Services/ScreenCapture/ScreenshotCaptureService.cs",
+        "start": 1,
+        "end": 118,
+        "sha256": "35d5891334d6dbfb345cd5198315a8a1716fc6423910003ac6cc0b49b388e633"
+      },
+      {
+        "at": "2026-09-11T13:37:20.679189+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Services/McpOperationCoordinator.cs",
+        "start": 1,
+        "end": 125,
+        "sha256": "2934e7a30bc1ff81781d18801600cc5bcb174476f1b33b036d7dc0e44e2e883b"
+      },
+      {
+        "at": "2026-09-11T13:37:20.680040+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Daemon.Contracts/Ipc/IpcProtocol.cs",
+        "start": 1,
+        "end": 20,
+        "sha256": "c57787c970155f285288109889f78664b069212e84d603f93feec557bb13cde4"
+      },
+      {
+        "at": "2026-09-11T13:37:20.680288+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Daemon/Services/DaemonProtocolSession.cs",
+        "start": 1,
+        "end": 31,
+        "sha256": "f17dbbadbd67ad6f169783b59aabf1dd751695532ee18ec73aa78904eb6b33fb"
+      },
+      {
+        "at": "2026-09-11T13:37:20.680571+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Windows/Services/ScreenReading/WindowsScreenFrameProvider.cs",
+        "start": 1,
+        "end": 90,
+        "sha256": "1220dc894127f6bb794ba38d9bc86f2037c4bd4baac503ab6342a3a3cca5051b"
+      },
+      {
+        "at": "2026-09-11T13:39:23.514715+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/process_inventory.rs",
+        "start": 1,
+        "end": 154,
+        "sha256": "f6bb7e78af093f6dfe7fdff6798f9f767a7a64be0a2c0f333467bbc2c6f3fb74"
+      },
+      {
+        "at": "2026-09-11T13:39:23.515594+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/document_context.rs",
+        "start": 1,
+        "end": 79,
+        "sha256": "9eeb859bf042ab4f478eb0879b3fb06927b6187a3d6e6b18719784f3db1af5be"
+      },
+      {
+        "at": "2026-09-11T13:39:23.515809+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-mcp/src/agent_worker.rs",
+        "start": 1,
+        "end": 108,
+        "sha256": "f57a6f53ef316454b2507ce16514004eb6a028f6c3e87ae0d786a4a94e94217c"
+      },
+      {
+        "at": "2026-09-11T13:39:23.515961+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-mcp/src/agent_worker/native.rs",
+        "start": 188,
+        "end": 246,
+        "sha256": "e24e4045c5db539eda4ff72f962639e9c8d38270ebc3de73a8ccc52557a28670"
+      },
+      {
+        "at": "2026-09-11T13:39:23.516143+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/orchestration/control.rs",
+        "start": 836,
+        "end": 857,
+        "sha256": "23b5f39f124c2162cb0bf296d29e1671e408b4309c3f769fb0bd025fe2779f59"
+      },
+      {
+        "at": "2026-09-11T13:39:23.602528+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Tools/McpScreenTools.cs",
+        "start": 373,
+        "end": 462,
+        "sha256": "15c23b4e8e21e1a08d58b8ca176c7d2bbcc4345ed829bb1d1a5eb77dfbea9341"
+      },
+      {
+        "at": "2026-09-11T13:39:23.603174+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Linux/Services/ScreenReading/LinuxScreenReaderCapabilityDetector.cs",
+        "start": 85,
+        "end": 169,
+        "sha256": "28624275c232b1fda46ee4df2153863582cf3d4d45b42ae45b783878fa05aa8b"
+      },
+      {
+        "at": "2026-09-11T13:39:23.603681+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.MacOS/Services/MacOSInputSimulator.cs",
+        "start": 1,
+        "end": 72,
+        "sha256": "d0de2646c27026afe5f20d9954e9e58b0b9fba58d313be954a8fbf1f43560222"
+      },
+      {
+        "at": "2026-09-11T13:39:23.604064+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.MacOS/Services/ScreenReading/MacOSScreenFrameProvider.cs",
+        "start": 21,
+        "end": 80,
+        "sha256": "d2726afe41a198438c44deff33a9309294a65176c038a1091c90bae4e17c79a4"
+      },
+      {
+        "at": "2026-09-11T13:41:22.264831+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "docs/mcp.md",
+        "start": 1,
+        "end": 98,
+        "sha256": "a74ca2ca39f072d4362bed81e321fe67b9f83580eaaa093d0f900f8b376a9e53"
+      },
+      {
+        "at": "2026-09-11T13:41:22.265314+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/bin/rcu-native-agent.rs",
+        "start": 1,
+        "end": 115,
+        "sha256": "a161dddda516b6a30a466c04c2ba64734e78aa0e03d5560d2f00e32e4d6f6633"
+      },
+      {
+        "at": "2026-09-11T13:41:22.265445+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/integration/codex_plugin.rs",
+        "start": 1,
+        "end": 52,
+        "sha256": "ed3d5e85c7684f5068f5d249f666b22d5f96db8762496c48f6636984f938054f"
+      },
+      {
+        "at": "2026-09-11T13:41:22.265578+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-core/src/lease.rs",
+        "start": 55,
+        "end": 145,
+        "sha256": "b09e36b66006a6d48fc790e887ffc9e6aac3670ff0c65bca36249ef3424124bc"
+      },
+      {
+        "at": "2026-09-11T13:44:53.984809+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Cli/CliHost.cs",
+        "start": 43,
+        "end": 74,
+        "sha256": "ea88fe6a0abd0d8897361bacf2a298121cfbcc6a0f4e3c461383412d0f7b6af3"
+      },
+      {
+        "at": "2026-09-11T13:44:53.985282+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Cli/CliHost.cs",
+        "start": 130,
+        "end": 151,
+        "sha256": "ea88fe6a0abd0d8897361bacf2a298121cfbcc6a0f4e3c461383412d0f7b6af3"
+      },
+      {
+        "at": "2026-09-11T13:44:53.985641+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Cli/Commands/McpCommandHandler.cs",
+        "start": 1,
+        "end": 18,
+        "sha256": "3b7ad2e973c00cb8a6344bc76c14d8b01b43ba6201ef11f1be4b7e3b9f843ab9"
+      },
+      {
+        "at": "2026-09-11T13:44:53.986077+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "reliability/baseline/installed/WindowsBridge.cs",
+        "start": 1,
+        "end": 130,
+        "sha256": "1c0b406d4180c1d3f57a84484718edf2ed932a5a51e50981782924214ebe36d7"
+      },
+      {
+        "at": "2026-09-11T13:44:53.986595+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "reliability/baseline/installed/ClientMain.cs",
+        "start": 1,
+        "end": 41,
+        "sha256": "19696a4a656c3d041c8194f09674bfd05164f2bb4fbf3e2d0014eb0cec31ef6d"
+      },
+      {
+        "at": "2026-09-11T13:52:34.161377+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/integration/model_output.rs",
+        "start": 16,
+        "end": 91,
+        "sha256": "10e712e12e5f928421ac0ab46e63a4b85f606991c69a0256141f417f0cef8467"
+      },
+      {
+        "at": "2026-09-11T13:52:34.162016+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/capture.rs",
+        "start": 1,
+        "end": 101,
+        "sha256": "43874ee591cf3db5ff9667b2b398c211404274790e06a6dd7d1897c8a6893060"
+      },
+      {
+        "at": "2026-09-11T13:52:34.162176+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/input.rs",
+        "start": 210,
+        "end": 244,
+        "sha256": "d02080a3916c6c309e86b8a568ce589a69278513a1e59a6f207af31659d6e7ca"
+      },
+      {
+        "at": "2026-09-11T13:52:34.162438+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-macos/src/native.rs",
+        "start": 84,
+        "end": 122,
+        "sha256": "76c5f13a5b0518767eb8c3f277edc2b2b93a64a74e39f5932522db01b354533a"
+      },
+      {
+        "at": "2026-09-11T13:52:34.162651+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-macos/src/native.rs",
+        "start": 306,
+        "end": 337,
+        "sha256": "76c5f13a5b0518767eb8c3f277edc2b2b93a64a74e39f5932522db01b354533a"
+      },
+      {
+        "at": "2026-09-11T13:52:34.162991+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-imaging/src/lib.rs",
+        "start": 220,
+        "end": 260,
+        "sha256": "025cc372cab5a183026aece8dd1e3baac39137a895237cf222349915dfde4891"
+      },
+      {
+        "at": "2026-09-11T13:53:23.482137+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Tools/McpCommandTools.cs",
+        "start": 1,
+        "end": 34,
+        "sha256": "c72d13444b2e6eecf3e9a2a4fffe540b720a0062f674d0ea9c50e5a5fa0e8422"
+      },
+      {
+        "at": "2026-09-11T13:53:23.482645+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Tools/McpCommandTools.cs",
+        "start": 101,
+        "end": 130,
+        "sha256": "c72d13444b2e6eecf3e9a2a4fffe540b720a0062f674d0ea9c50e5a5fa0e8422"
+      },
+      {
+        "at": "2026-09-11T13:53:23.484243+00:00",
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Platform.Abstractions/ScreenFrame.cs",
+        "start": 1,
+        "end": 95,
+        "sha256": "491c0c396384d2cd01577dc0dcfef45e2462646c8a863d2e7c1bdf9d2b69ec93"
+      },
+      {
+        "at": "2026-09-11T13:53:23.484405+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/pipe.rs",
+        "start": 38,
+        "end": 88,
+        "sha256": "550f493f279b3ce96de2541efda06849d423a3f2798e8641e58a920df7c14f92"
+      },
+      {
+        "at": "2026-09-11T13:53:23.484532+00:00",
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/pipe.rs",
+        "start": 178,
+        "end": 220,
+        "sha256": "550f493f279b3ce96de2541efda06849d423a3f2798e8641e58a920df7c14f92"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/StdioMcpServer.cs",
+        "start": 1,
+        "end": 90,
+        "sha256": "95c87c4207eb32ecdd010bc18d557e01db4c313b3e842de6a27aa67d2cd25c83",
+        "method": "earlier_read_or_exact_selected_source"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Tools/McpToolRegistrationExtensions.cs",
+        "start": 1,
+        "end": 34,
+        "sha256": "d6dbcc4ecb2cff421f930fefb8c0972d45ec85e821f0ec5d47c6506905896571",
+        "method": "earlier_read_or_exact_selected_source"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/Contracts/CrossMacroMcpToolCatalog.cs",
+        "start": 1,
+        "end": 86,
+        "sha256": "23621b97e6eca97ec37e1c697abf3e2debe82f6d542b77e6615c8a72303fb248",
+        "method": "earlier_read_or_exact_selected_source"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/Documents/Codex/2026-09-10/crossmacro-mcp-reliability/outputs/CrossMacro",
+        "path": "src/CrossMacro.Mcp/CrossMacro.Mcp.csproj",
+        "start": 1,
+        "end": 24,
+        "sha256": "dd52fac2f3a189fee0bab5c412f7d11904e5fd2facc8e8573157f5c639c730f9",
+        "method": "earlier_read_or_exact_selected_source"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/protocol/types.rs",
+        "start": 1,
+        "end": 235,
+        "sha256": "fec06ff9e605dee0a97099d772c0944c3229def3c1c691831618a510c3d085c0",
+        "method": "earlier_read_or_exact_selected_source"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-native-link/src/orchestration/store.rs",
+        "start": 1,
+        "end": 210,
+        "sha256": "c9e4df2b30c32d65e0a5aaef5c0af592536540e1e6aba332dca3952ba2587145",
+        "method": "earlier_read_or_exact_selected_source"
+      },
+      {
+        "root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+        "path": "crates/rcu-windows/src/native.rs",
+        "start": 401,
+        "end": 411,
+        "sha256": "d648799b3934a5abcb3a758f6236ce14dd3716f2e07da7f4456364b2d551b71c",
+        "method": "earlier_read_or_exact_selected_source"
+      }
+    ],
+    "reading_scope": "selected source excerpts, not whole repository implementation certification",
+    "frozen_excerpts": {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-review-20260911/source-excerpts.json",
+      "sha256": "37bdc23e779a821e9235c15d783e8c04730aa37b044884e666bde0c032138dc3",
+      "bytes": 297304
+    }
+  },
+  "current_workspace_dependency_edges": {
+    "rcu-core": [],
+    "rcu-imaging": [
+      {
+        "dependency": "rcu-core",
+        "kind": "dependencies",
+        "optional": false
+      }
+    ],
+    "rcu-link-trust": [],
+    "rcu-macos": [
+      {
+        "dependency": "rcu-core",
+        "kind": "dependencies",
+        "optional": false
+      }
+    ],
+    "rcu-mcp": [
+      {
+        "dependency": "rcu-core",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-macos",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-windows",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-imaging",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-native-link",
+        "kind": "dependencies",
+        "optional": true
+      },
+      {
+        "dependency": "rcu-core",
+        "kind": "dev-dependencies",
+        "optional": false
+      }
+    ],
+    "rcu-native-link": [
+      {
+        "dependency": "rcu-core",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-windows",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-link-trust",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-imaging",
+        "kind": "dev-dependencies",
+        "optional": false
+      }
+    ],
+    "rcu-windows": [
+      {
+        "dependency": "rcu-core",
+        "kind": "dependencies",
+        "optional": false
+      },
+      {
+        "dependency": "rcu-imaging",
+        "kind": "dependencies",
+        "optional": false
+      }
+    ]
+  },
+  "sdk": {
+    "file": "/Users/vincentadamnemessis/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rmcp-1.7.0/src/model.rs",
+    "sha256": "9551f909005c004b2c6c83d6f494a136a6ed42aa8c13ef73e8f9452b7995fcad",
+    "version": "1.7.0",
+    "latest_declared_protocol": "2025-11-25",
+    "modern_protocol_2026_07_28_implementation_claimed": false
+  },
+  "saved_native_evidence": {
+    "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/windows-native-plugin-20260911/process-cleanup3-model-setup.json",
+    "sha256": "c44b49c9674ad2cf8b8a3a2ff8bf2063b8e16220e9181deef7918bc31f44a6b2",
+    "ready_for_model_attachment": false,
+    "failed_stage": "launch",
+    "error": "catalog_only_current_activate_worker",
+    "fresh_vm_status_queried": false
+  },
+  "source_comparison_rows": 23,
+  "proposed_acceptance_cases": {
+    "count": 22,
+    "ids": [
+      "V01",
+      "V02",
+      "V03",
+      "V04",
+      "V05",
+      "V06",
+      "V07",
+      "V08",
+      "V09",
+      "V10",
+      "V11",
+      "V12",
+      "V13",
+      "V14",
+      "V15",
+      "V16",
+      "V17",
+      "V18",
+      "V19",
+      "V20",
+      "V21",
+      "V22"
+    ],
+    "status": "not_run_in_this_review"
+  },
+  "scope": {
+    "product_source_edits": 0,
+    "configuration_edits": 0,
+    "vm_connections": 0,
+    "screenshots": 0,
+    "native_input": 0,
+    "deployments": 0,
+    "model_inference_runs": 0,
+    "cargo_test_build_or_clippy_runs": 0,
+    "commits": 0,
+    "pushes": 0,
+    "codegraph_index_created": false,
+    "native_control_mcp_calls": 0
+  },
+  "document_validation": {
+    "all_local_links_exist_or_are_this_delivery": true,
+    "local_link_count": 135,
+    "code_fences_balanced": true,
+    "table_case_counts_checked": true,
+    "table_columns_consistent": true
+  },
+  "primary_sources_opened": [
+    "https://github.com/alper-han/CrossMacro/tree/v1.4.0",
+    "https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture",
+    "https://modelcontextprotocol.io/specification/2026-07-28/basic/transports",
+    "https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning",
+    "https://modelcontextprotocol.io/specification/2025-11-25/server/tools",
+    "https://learn.chatgpt.com/docs/extend/mcp?surface=cli",
+    "https://learn.microsoft.com/en-us/windows/win32/services/interactive-services",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput",
+    "https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html",
+    "https://developer.android.com/reference/android/accessibilityservice/AccessibilityService",
+    "https://developer.android.com/media/grow/media-projection",
+    "https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web",
+    "https://support.apple.com/en-euro/guide/mac-help/mh43185/mac"
+  ],
+  "documents": [
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/docs/adr/0002-headless-control-infrastructure-review.md",
+      "bytes": 30746,
+      "sha256": "dfe08ba8131750f70762a30b54422a3fe2a71da9e8676b6db5f6934217b25601",
+      "lines": 265
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/docs/architecture-crossmacro-comparison-2026-09-11.md",
+      "bytes": 25074,
+      "sha256": "083040251a23ca4a40f577afccfe2b676c4383128dd1e9253e611038115aa4d6",
+      "lines": 87
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/docs/migrations/2026-09-11-infrastructure-migration-plan.md",
+      "bytes": 25229,
+      "sha256": "da951bd00ae0dc0ba6b1599f4e1273af7c6b3edd2943f1cb427bf02d5bc52fa7",
+      "lines": 198
+    }
+  ]
+}
