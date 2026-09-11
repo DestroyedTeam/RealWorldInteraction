@@ -1,6 +1,6 @@
 # ADR 0003：执行引用与耐久请求身份分离
 
-状态：**Control Center 已确认的 ADR 0002 契约细化；839e81b 为实现候选，独立复核待结论。**
+状态：**Control Center 已确认的 ADR 0002 契约细化；839e81b 的固定复核发现 ER01/ER02，e2f3598 为后续修复候选，等待修复复核。**
 日期：2026-09-12。完整架构约束持续生效，不是临时替代架构。
 
 ## 决策
@@ -66,6 +66,10 @@ R01 的历史执行引用生命周期继续保持未关闭。A01 owned-process n
 Codex Host 的有限 native read 验证见
 `docs/validation/2026-09-12-execution-reference-candidate.md`，不据此自行关闭 R01
 或宣告完整架构完成。
+
+后续修复与未过滤回归、Windows executable、最新 Host 部署证据见
+`docs/validation/2026-09-12-execution-reference-review-fixes.md`。保留原独立报告与
+首轮失败记录，后续成功不覆盖历史基线。
 
 ## R01 整体关闭的最低测试范围
 

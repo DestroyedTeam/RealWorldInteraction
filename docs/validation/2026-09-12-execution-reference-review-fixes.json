@@ -1,0 +1,126 @@
+{
+  "schema": "rcu.execution-reference-review-followup.v1",
+  "source_commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
+  "independent_review": "pending",
+  "architecture_complete": false,
+  "gates": {
+    "default-tests.raw.log": {
+      "passed": 223,
+      "failed": 0,
+      "ignored": 1
+    },
+    "all-features-tests.raw.log": {
+      "passed": 310,
+      "failed": 0,
+      "ignored": 2
+    }
+  },
+  "windows_executables": {
+    "passed": 25,
+    "failed": 0,
+    "suites": 3
+  },
+  "live": {
+    "agent_pid": 2024,
+    "agent_instance": "079a5177-6192-4b1f-8d78-aa05047b5320",
+    "agent_sha256": "338647877fc47d8c232c718cc2d8eea1e9a839d7694a4317f80bc1188c9a4353",
+    "adapter_sha256": "631a8ed1ec6dbc940b5574b60fd1e27492178bd4254ba007df5d1cea6586c8c7",
+    "main_window_handle": 0,
+    "preserved_state_files": 5,
+    "legacy_request_unchanged": true,
+    "old_execution_ref": "execution_ref_expired",
+    "tool_count": 20,
+    "live_namespace_repair_performed": false,
+    "new_gui_input_sent": false,
+    "model_inference": false,
+    "same_entry_profile_and_firewall": true
+  },
+  "retained_failure": {
+    "source_commit": "2f0f774",
+    "code": "service_state_already_owned",
+    "test": "runtime::recovery::tests::corrupt_commit_requires_new_authorized_idle_resource_check_and_remains_evidence",
+    "concurrent_child_descriptor_inheritance": "inference; exact failing fork timing not captured",
+    "followup": "e2f3598 explicit orderly ownership unlock + duplicate descriptor test"
+  },
+  "still_open": [
+    "independent final closure",
+    "A01 owned-process native isolation",
+    "compact output and formal added RTT benchmark",
+    "M and global Plugin installation acceptance",
+    "complete multi-platform architecture delivery"
+  ],
+  "evidence": {
+    "work/execution-ref-v2-20260912/owner-final/start-commit.txt": {
+      "bytes": 41,
+      "sha256": "0524f78373d40d20cc97f148d7b3a1ef4c79af878658a35373e2da7e0aa99085"
+    },
+    "work/execution-ref-v2-20260912/owner-final/end-commit.txt": {
+      "bytes": 41,
+      "sha256": "0524f78373d40d20cc97f148d7b3a1ef4c79af878658a35373e2da7e0aa99085"
+    },
+    "work/execution-ref-v2-20260912/owner-final/default-tests.raw.log": {
+      "bytes": 27164,
+      "sha256": "e3a13a969cc8ccf82826b6a58874cce5bbc6fb809b4154fbc7f1df76f3344b64"
+    },
+    "work/execution-ref-v2-20260912/owner-final/all-features-tests.raw.log": {
+      "bytes": 36165,
+      "sha256": "0f835502ebd3de0fe041bd4e3116d26daebd58f7ac1edea2d8add9766713681f"
+    },
+    "work/execution-ref-v2-20260912/owner-final/clippy.raw.log": {
+      "bytes": 292,
+      "sha256": "a3b0fb800011146df9c92d76921fb305ccc49fc548325791864603b6de852789"
+    },
+    "work/execution-ref-v2-20260912/owner-final/windows-clippy.raw.log": {
+      "bytes": 184,
+      "sha256": "4357880d20dc0bb7cf34ef6be94becfd5071467d02b99198d908167a09db7dd7"
+    },
+    "work/execution-ref-v2-20260912/owner-final/windows-test-run.stdout": {
+      "bytes": 2953,
+      "sha256": "f0c7b34c8d11042e346cf6cad54a64dc7e2caed12f9807ff3c77830ec736bd41"
+    },
+    "work/execution-ref-v2-20260912/owner-final/cli-repair.stdout": {
+      "bytes": 392,
+      "sha256": "533e2c830a180288a02dec761180f61652d263ece99c91bec4a7cb80402c8b6c"
+    },
+    "work/execution-ref-v2-20260912/owner-final/verify-update.stdout": {
+      "bytes": 3089,
+      "sha256": "10d48330c72a488bc76fbc1f4e8af0ee058b6f0655231a71a5450f49185943a5"
+    },
+    "work/execution-ref-v2-20260912/owner-final/deployment.json": {
+      "bytes": 199,
+      "sha256": "75480e3327e1a3b59754e651eebbbe65ad0c718f90165bb22a5f98df1fc3183d"
+    },
+    "work/execution-ref-v2-20260912/owner-final/architecture.json": {
+      "bytes": 1923,
+      "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924"
+    },
+    "work/execution-ref-v2-20260912/owner-final/source-hygiene.json": {
+      "bytes": 57,
+      "sha256": "fa8ce783911a7db1c8c2047532efb293f7bcd0d17197d14fd68449d87399b181"
+    },
+    "work/execution-ref-v2-20260912/review-final/all-features-tests.raw.log": {
+      "bytes": 2380,
+      "sha256": "2b94c9377058a8aa3a2acd0f6c7b799e851ce665711c9314eb543d732e3ded24"
+    },
+    "work/execution-ref-v2-20260912/running-cancel-final.raw.log": {
+      "bytes": 602,
+      "sha256": "d63023ca8695f56eb90c222af50a427d96e9bdfd3661a47cc77d45527a5e9ac4"
+    },
+    "work/execution-ref-v2-20260912/host-e/response-0005.json": {
+      "bytes": 539004,
+      "sha256": "7d69ba2b2b35d92850075a2ffeaaafb44215a61cf7e4d6f76b1fc07cd8625eb0"
+    },
+    "work/execution-ref-v2-20260912/host-e/response-0006.json": {
+      "bytes": 2977,
+      "sha256": "bd9718bcc94b1678920fec02405b0c693f3fe467a4aa88af0806930c375cb89d"
+    },
+    "work/execution-ref-v2-20260912/host-e/response-0007.json": {
+      "bytes": 552,
+      "sha256": "b62410f6e5e41242174eafbc6c1e55163f34714e6812370d07c1091d84839199"
+    },
+    "work/execution-ref-v2-20260912/host-e/response-0008.json": {
+      "bytes": 17209,
+      "sha256": "bed6a8e08eb0d8e5f0af011c45023c2e89828d03c16a950ecb638e0e7c36cdf8"
+    }
+  }
+}
