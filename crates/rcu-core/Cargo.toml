@@ -1,0 +1,23 @@
+[package]
+name = "rcu-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+fixture = []
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+libc = "=0.2.189"
+
+[[example]]
+name = "lifecycle"
+required-features = ["fixture"]

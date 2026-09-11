@@ -1,0 +1,22 @@
+[workspace]
+members = ["crates/rcu-core", "crates/rcu-mcp", "crates/rcu-macos", "crates/rcu-windows", "crates/rcu-imaging"]
+resolver = "2"
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+license = "GPL-3.0-only"
+rust-version = "1.95"
+
+[workspace.dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "1"
+schemars = "=1.2.1"
+sha2 = "=0.10.9"
+uuid = { version = "=1.23.4", features = ["v4"] }
+tempfile = "=3.27.0"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

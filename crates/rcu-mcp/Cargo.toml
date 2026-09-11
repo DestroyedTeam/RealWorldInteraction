@@ -1,0 +1,20 @@
+[package]
+name = "rcu-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rcu-core = { path = "../rcu-core" }
+rcu-macos = { path = "../rcu-macos" }
+rcu-windows = { path = "../rcu-windows" }
+rcu-imaging = { path = "../rcu-imaging" }
+rmcp = { version = "=1.7.0", default-features = false, features = ["server", "macros", "transport-io"] }
+tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+base64 = "=0.22.1"
+
+[dev-dependencies]
+tempfile.workspace = true
