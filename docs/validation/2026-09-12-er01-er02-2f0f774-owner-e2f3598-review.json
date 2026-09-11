@@ -1,0 +1,263 @@
+{
+  "schema": "rcu.er01_er02_and_owner_independent_review.v1",
+  "recorded_utc": "2026-09-11T19:11:33.929667+00:00",
+  "base_candidate": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+  "separate_owner_followup": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
+  "followup_is_descendant": true,
+  "decisions": {
+    "ER01": {
+      "status": "closed_original_reference_retention_defect",
+      "source_candidate": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "proof": "Fixed-source checks and matching default/follow-up raw tests",
+      "coverage_limit": "Running-scope combined test directly calls Gateway plus authenticated custom peer/Core NativeCall; not an external stdio process or Runtime.dispatch in that test"
+    },
+    "ER02": {
+      "status": "closed_original_namespace_initialization_defect",
+      "source_candidate": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "proof": "Unique staged publication, pinned offline repair under live-owner exclusion, six process-exit points and immutable evidence tests"
+    },
+    "base_full_gate": {
+      "status": "not_passed",
+      "reason": "all-feature first agent suite 13 passed/1 failed, service_state_already_owned; no successful end marker"
+    },
+    "owner_followup": {
+      "status": "incremental_review_and_recorded_gates_passed",
+      "source_candidate": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
+      "precise_root_cause_of_original_fork_timing": "unproven; descriptor inheritance remains hypothesis, not observed event"
+    },
+    "R01_comprehensive": {
+      "status": "not_automatically_closed_by_this_targeted_review",
+      "remaining": "Combined production Runtime.dispatch/backend running cancellation coverage remains separately tracked"
+    },
+    "A01": {
+      "status": "not_implemented"
+    },
+    "architecture_complete": false,
+    "M_acceptance": false
+  },
+  "source_files": [
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-mcp/src/gateway/cancellation.rs",
+      "sha256": "80e1645f235767a7909d2b6f051c3e19501d7437efee27f8c770b033ccb35884",
+      "lines": 94
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-mcp/src/gateway/cancellation_tests.rs",
+      "sha256": "2deb41edc721e9d7081ce3c67f7938881284827d6b7d44a8cedf840efcbb3b2f",
+      "lines": 210
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-mcp/src/gateway/invocation.rs",
+      "sha256": "94527906c20a55da969b4689129eeecf2ba926b9c1450a857a5af713532b61ad",
+      "lines": 369
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-agent/src/runtime/dispatch.rs",
+      "sha256": "a64e19be76b45580a2e446a79b525f2508f1619eaab80624491965ce114d65e4",
+      "lines": 254
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-agent/src/runtime/namespace.rs",
+      "sha256": "72c4f6ce1f0ff945803ba41bd96e9c6f5dca6969fd307e119576a98902a978d8",
+      "lines": 253
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-agent/src/runtime.rs",
+      "sha256": "b7bda32a5a5732ce6b0aec9246b94625632e6c4dd8af862d11e5eb2cb2441266",
+      "lines": 274
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-agent/src/main.rs",
+      "sha256": "8e2e4d01371eb337c4e3b9e2e95077b910db0cde9eff27fda306d65ee5317c2c",
+      "lines": 119
+    },
+    {
+      "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090",
+      "path": "crates/rcu-agent/tests/execution_refs.rs",
+      "sha256": "8cd9b2c563d34421bea189ca1aa7663ff7fa8d60fc6a929988c418883f31fb7a",
+      "lines": 427
+    },
+    {
+      "commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
+      "path": "crates/rcu-agent/src/runtime.rs",
+      "sha256": "f92019f5a9b1048a728834514c16ef9164dba34acea132eb03c909c5ec4e273f",
+      "lines": 287
+    },
+    {
+      "commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
+      "path": "crates/rcu-agent/src/runtime/namespace.rs",
+      "sha256": "aaa62010886e67c07ae1c5585025585a320d7b52f7dfa5a06fcd7f6122516bcc",
+      "lines": 287
+    }
+  ],
+  "source_read_records": 8,
+  "gates": {
+    "recorded_utc": "2026-09-11T19:05:48.543657+00:00",
+    "runs": [
+      {
+        "directory": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final",
+        "complete_end_present": false,
+        "records": [
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final/start-commit.txt",
+            "name": "start-commit.txt",
+            "bytes": 41,
+            "sha256": "03929ff289cd0e557f9899cb4130e036163cfacf9fcde37b9244f004d31f300f",
+            "commit": "2f0f7748d41d1f789aa987f41602bb04bc1ee090"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final/default-tests.raw.log",
+            "name": "default-tests.raw.log",
+            "bytes": 27056,
+            "sha256": "1dd67cd514d991381f3d42769bebce49f161682ec238e8f1182919ef625bc7e6",
+            "test_totals": {
+              "passed": 222,
+              "failed": 0,
+              "ignored": 1,
+              "blocks": 31,
+              "failed_blocks": 0
+            }
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final/all-features-tests.raw.log",
+            "name": "all-features-tests.raw.log",
+            "bytes": 2380,
+            "sha256": "2b94c9377058a8aa3a2acd0f6c7b799e851ce665711c9314eb543d732e3ded24",
+            "test_totals": {
+              "passed": 13,
+              "failed": 1,
+              "ignored": 0,
+              "blocks": 1,
+              "failed_blocks": 1
+            }
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final/windows-clippy.raw.log",
+            "name": "windows-clippy.raw.log",
+            "bytes": 184,
+            "sha256": "9aa23f3408c493ee5a1e88005bc32a71fe38df164a05c7459cdb801752d079f3"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final/fmt.log",
+            "name": "fmt.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/review-final/architecture.json",
+            "name": "architecture.json",
+            "bytes": 1923,
+            "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924"
+          }
+        ]
+      },
+      {
+        "directory": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final",
+        "complete_end_present": true,
+        "records": [
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/start-commit.txt",
+            "name": "start-commit.txt",
+            "bytes": 41,
+            "sha256": "0524f78373d40d20cc97f148d7b3a1ef4c79af878658a35373e2da7e0aa99085",
+            "commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/end-commit.txt",
+            "name": "end-commit.txt",
+            "bytes": 41,
+            "sha256": "0524f78373d40d20cc97f148d7b3a1ef4c79af878658a35373e2da7e0aa99085",
+            "commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/default-tests.raw.log",
+            "name": "default-tests.raw.log",
+            "bytes": 27164,
+            "sha256": "e3a13a969cc8ccf82826b6a58874cce5bbc6fb809b4154fbc7f1df76f3344b64",
+            "test_totals": {
+              "passed": 223,
+              "failed": 0,
+              "ignored": 1,
+              "blocks": 31,
+              "failed_blocks": 0
+            }
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/all-features-tests.raw.log",
+            "name": "all-features-tests.raw.log",
+            "bytes": 36165,
+            "sha256": "0f835502ebd3de0fe041bd4e3116d26daebd58f7ac1edea2d8add9766713681f",
+            "test_totals": {
+              "passed": 310,
+              "failed": 0,
+              "ignored": 2,
+              "blocks": 35,
+              "failed_blocks": 0
+            }
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/clippy.raw.log",
+            "name": "clippy.raw.log",
+            "bytes": 292,
+            "sha256": "a3b0fb800011146df9c92d76921fb305ccc49fc548325791864603b6de852789"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/windows-clippy.raw.log",
+            "name": "windows-clippy.raw.log",
+            "bytes": 184,
+            "sha256": "4357880d20dc0bb7cf34ef6be94becfd5071467d02b99198d908167a09db7dd7"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/fmt.log",
+            "name": "fmt.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/architecture.json",
+            "name": "architecture.json",
+            "bytes": 1923,
+            "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/cli-repair.stdout",
+            "name": "cli-repair.stdout",
+            "bytes": 392,
+            "sha256": "533e2c830a180288a02dec761180f61652d263ece99c91bec4a7cb80402c8b6c"
+          },
+          {
+            "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/cli-repair.stderr",
+            "name": "cli-repair.stderr",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ]
+      }
+    ],
+    "reviewer_executed_tests": false
+  },
+  "reference": {
+    "title": "Rust std::fs::File lock/unlock documentation",
+    "url": "https://doc.rust-lang.org/std/fs/struct.File.html#method.unlock",
+    "used_for": "API release/duplicated-descriptor semantics only, not proof of the failed test process timeline"
+  },
+  "reviewer_actions": {
+    "read_only_product_review": true,
+    "audit_files_written": true,
+    "product_source_or_project_config_edited": false,
+    "cargo_or_tests_executed": false,
+    "repair_cli_executed": false,
+    "host_native_or_vm_operations": false,
+    "new_capture": false,
+    "git_commit_or_push": false,
+    "codegraph_initialized": false
+  },
+  "integrity_policy": "Preserve both failed 2f0f774 run and successful e2f3598 run; never rewrite baseline status."
+}
