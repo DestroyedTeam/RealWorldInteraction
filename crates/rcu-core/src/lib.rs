@@ -1,4 +1,6 @@
 //! Rust-only intent engine. OS input lives behind a target-bound native Backend.
+mod checked_action;
+pub use checked_action::CheckedAction;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -13,6 +15,7 @@ use uuid::Uuid;
 #[cfg(any(test, feature = "fixture"))]
 pub mod fixture;
 pub mod lease;
+pub mod lifecycle;
 pub mod operation;
 #[cfg(test)]
 mod tests;
@@ -27,6 +30,9 @@ pub type Result<T> = std::result::Result<T, Fault>;
 pub struct Fault {
     pub code: String,
     pub next_step: String,
+    /// Optional structured evidence, never authorization or a retry instruction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagnostic: Option<Box<serde_json::Value>>,
 }
 impl std::fmt::Display for Fault {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,6 +44,7 @@ pub fn fault(code: &str, next: &str) -> Fault {
     Fault {
         code: code.into(),
         next_step: next.into(),
+        diagnostic: None,
     }
 }
 impl From<std::io::Error> for Fault {
@@ -83,6 +90,15 @@ pub struct Binding {
     pub layout: String,
     pub content: String,
     pub native_epoch: String,
+    /// Bounded optimistic document precondition, not a filesystem/tab identity proof.
+    #[serde(default)]
+    pub mutation_context: Option<MutationContext>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MutationContext {
+    pub window_title: String,
+    pub document_state: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Element {
@@ -158,6 +174,7 @@ pub fn grounding_matches(expected: &Binding, current: &Scene, target: &Resolved)
         || now.focus_window != expected.focus_window
         || now.layout != expected.layout
         || now.native_epoch != expected.native_epoch
+        || now.mutation_context != expected.mutation_context
     {
         return false;
     }
@@ -213,6 +230,31 @@ struct Journal {
 pub trait Backend: Send {
     fn identity(&self) -> Identity;
     fn capabilities(&self) -> serde_json::Value;
+    fn lifecycle_grant(&self) -> Result<lifecycle::LifecycleGrant> {
+        Err(fault(
+            "capability_unavailable",
+            "No explicit application/window lifecycle grant on this target.",
+        ))
+    }
+    fn lifecycle_deadline(&self) -> Result<Instant> {
+        Err(fault(
+            "capability_unavailable",
+            "No monotonic lifecycle authorization deadline.",
+        ))
+    }
+    /// Driver is thread-affine: create, use and drop inside one native worker.
+    fn lifecycle_driver(&mut self) -> Result<Box<dyn lifecycle::LifecycleDriver>> {
+        Err(fault(
+            "capability_unavailable",
+            "This backend has no native lifecycle driver.",
+        ))
+    }
+    fn validate_activation(&self, _window: &lifecycle::WindowIdentity) -> Result<()> {
+        Err(fault(
+            "capability_unavailable",
+            "This backend has no fresh native activation catalog.",
+        ))
+    }
     fn observe(&mut self) -> Result<Scene>;
     fn observe_region(&mut self, _region: [u32; 4]) -> Result<Scene> {
         Err(fault(
@@ -384,6 +426,117 @@ impl Engine {
         self.snapshots.retain(|(_, s)| s.target != target);
         self.refs.retain(|r| r.target != target);
         Ok(result)
+    }
+    fn lifecycle_execute<T>(
+        &mut self,
+        target: &str,
+        lease: &str,
+        f: impl FnOnce(
+            &std::path::Path,
+            &lifecycle::LifecycleGrant,
+            &mut dyn lifecycle::LifecycleDriver,
+        ) -> Result<T>,
+    ) -> Result<T> {
+        let identity = self.identity(target)?;
+        let grant = self.backend(target)?.lifecycle_grant()?;
+        grant.validate(&identity, lifecycle::now_ms())?;
+        let book = self.leases.shared();
+        let held = book
+            .lock()
+            .map_err(|_| fault("lease_error", "Restart observation session."))?;
+        let key = identity.key();
+        let deadline = held
+            .deadline(lease, target, &key)?
+            .min(self.backend(target)?.lifecycle_deadline()?);
+        let root = self.state.clone();
+        let result = operation::with_dispatch_deadline(deadline, || {
+            operation::checkpoint("lifecycle_worker")?;
+            let mut driver = self.backend(target)?.lifecycle_driver()?;
+            f(&root, &grant, driver.as_mut())
+        });
+        // Side effects and uncertain dispatch invalidate every alias on this desktop.
+        let aliases = self
+            .targets
+            .iter()
+            .filter(|(_, t)| t.identity.key() == key)
+            .map(|(n, _)| n.clone())
+            .collect::<Vec<_>>();
+        self.snapshots.retain(|(_, s)| !aliases.contains(&s.target));
+        self.refs.retain(|r| !aliases.contains(&r.target));
+        drop(held);
+        result
+    }
+    pub fn launch_application(
+        &mut self,
+        target: &str,
+        lease: &str,
+        req: lifecycle::LaunchRequest<'_>,
+    ) -> Result<lifecycle::LaunchReceipt> {
+        self.lifecycle_execute(target, lease, |root, g, d| {
+            lifecycle::launch(root, g, d, req)
+        })
+    }
+    pub fn activate_window(
+        &mut self,
+        target: &str,
+        lease: &str,
+        req: lifecycle::ActivateRequest<'_>,
+    ) -> Result<lifecycle::ActivationReceipt> {
+        let grant = self.backend(target)?.lifecycle_grant()?;
+        let permission = grant
+            .activations
+            .iter()
+            .find(|p| p.authorization_id == req.authorization_id)
+            .ok_or_else(|| {
+                fault(
+                    "unknown_lifecycle_permission",
+                    "Choose an exact preauthorized window.",
+                )
+            })?;
+        self.backend(target)?
+            .validate_activation(&permission.window)?;
+        self.lifecycle_execute(target, lease, |root, g, d| {
+            lifecycle::activate(root, g, d, req)
+        })
+    }
+    pub fn lifecycle_preflight(
+        &mut self,
+        target: &str,
+        authorization: &str,
+    ) -> Result<lifecycle::PreflightReceipt> {
+        let cleanup = operation::CleanupAudit::begin();
+        let identity = self.identity(target)?;
+        let grant = self.backend(target)?.lifecycle_grant()?;
+        grant.validate(&identity, lifecycle::now_ms())?;
+        let deadline = self.backend(target)?.lifecycle_deadline()?;
+        let mut result = operation::with_dispatch_deadline(deadline, || {
+            operation::checkpoint("lifecycle_preflight_worker")?;
+            let mut driver = self.backend(target)?.lifecycle_driver()?;
+            lifecycle::preflight(&grant, driver.as_mut(), authorization)
+        })?;
+        // Include driver construction/destruction signals, not only individual closers.
+        if cleanup.uncertain() {
+            result.ready_for_launch = false;
+            result.resources_released = false;
+            result.resource_release_uncertain = true;
+            if result.error.is_none() {
+                result.error = Some(fault(
+                    "native_resource_release_uncertain",
+                    "Lifecycle preflight cleanup is unproven; no action was dispatched.",
+                ));
+            }
+        }
+        Ok(result)
+    }
+    pub fn lifecycle_receipt(
+        &mut self,
+        target: &str,
+        kind: &str,
+        authorization: &str,
+        request: &str,
+    ) -> Result<serde_json::Value> {
+        let grant = self.backend(target)?.lifecycle_grant()?;
+        lifecycle::receipt(&self.state, &grant, kind, authorization, request)
     }
     fn backend(&mut self, target: &str) -> Result<&mut Box<dyn Backend>> {
         self.targets
@@ -640,6 +793,19 @@ impl Engine {
         intent: Intent,
         value: Option<String>,
     ) -> Result<Receipt> {
+        self.act_inner(target, reference, lease, request, intent, value, None)
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn act_inner(
+        &mut self,
+        target: &str,
+        reference: &str,
+        lease: &str,
+        request: &str,
+        intent: Intent,
+        value: Option<String>,
+        checked_fingerprint: Option<String>,
+    ) -> Result<Receipt> {
         if request.is_empty()
             || request.len() > 128
             || value.as_ref().is_some_and(|v| v.len() > 16384)
@@ -651,8 +817,9 @@ impl Engine {
         }
         let key = self.identity(target)?.key();
         let path = self.journal_path(&key, request);
-        let fingerprint =
-            digest(&serde_json::to_vec(&(target, reference, &intent, &value)).unwrap());
+        let fingerprint = checked_fingerprint.unwrap_or_else(|| {
+            digest(&serde_json::to_vec(&(target, reference, &intent, &value)).unwrap())
+        });
         if path.exists() {
             let mut text = String::new();
             File::open(&path)?.take(65536).read_to_string(&mut text)?;

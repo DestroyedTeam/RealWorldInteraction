@@ -4,11 +4,14 @@ use crate::{
     input, input_plan, uia,
 };
 use rcu_core::{
-    Backend, Binding, Identity, Intent, Oracle, Predicate, Resolved, Result, Scene, Scope,
-    WindowSelection, digest, fault, grounding_matches, operation::checkpoint,
+    Backend, Binding, Identity, Intent, MutationContext, Oracle, Predicate, Resolved, Result,
+    Scene, Scope, WindowSelection, digest, fault, grounding_matches, operation::checkpoint,
 };
 use serde_json::{Value, json};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 pub struct NativeWindows {
     identity: Identity,
@@ -23,6 +26,11 @@ pub struct NativeWindows {
     input_grant: Option<InputGrant>,
     grant_deadline: Option<Instant>,
     input_counters: input::Counters,
+    lifecycle_grant: Option<rcu_core::lifecycle::LifecycleGrant>,
+    lifecycle_deadline: Option<Instant>,
+    allocated_root: Option<WindowRecord>,
+    agent_input: Option<Arc<crate::agent_binding::AgentInputAuthority>>,
+    selected_catalog_id: String,
 }
 impl NativeWindows {
     /// Caller MUST allocate this execution desktop. No focus/input/capture here.
@@ -30,6 +38,12 @@ impl NativeWindows {
         Self::new_with_grant(None)
     }
     pub fn new_with_grant(input_grant: Option<InputGrant>) -> Result<Self> {
+        Self::new_with_grants(input_grant, None)
+    }
+    pub fn new_with_grants(
+        input_grant: Option<InputGrant>,
+        lifecycle_grant: Option<rcu_core::lifecycle::LifecycleGrant>,
+    ) -> Result<Self> {
         let identity = desktop::identity()?;
         let grant_deadline = input_grant.as_ref().map(|g| {
             Instant::now()
@@ -39,7 +53,7 @@ impl NativeWindows {
                         .min(3_600_000),
                 )
         });
-        if let Some(grant) = &input_grant {
+        let allocated_root = if let Some(grant) = &input_grant {
             grant.validate(&identity, input::now_ms())?;
             let root = desktop::record(hwnd(&grant.root.window)?, 0)?;
             if root.key().as_ref() != Some(&grant.root) {
@@ -48,7 +62,21 @@ impl NativeWindows {
                     "Allocated root HWND/PID/process creation no longer exists; do not select a replacement by title.",
                 ));
             }
+            Some(root)
+        } else {
+            None
+        };
+        if let Some(g) = &lifecycle_grant {
+            g.validate(&identity, input::now_ms())?;
         }
+        let lifecycle_deadline = lifecycle_grant.as_ref().map(|g| {
+            Instant::now()
+                + Duration::from_millis(
+                    g.expires_unix_ms
+                        .saturating_sub(input::now_ms())
+                        .min(3_600_000),
+                )
+        });
         Ok(Self {
             identity,
             selected: None,
@@ -62,7 +90,97 @@ impl NativeWindows {
             input_grant,
             grant_deadline,
             input_counters: input::Counters::default(),
+            lifecycle_grant,
+            lifecycle_deadline,
+            allocated_root,
+            agent_input: None,
+            selected_catalog_id: String::new(),
         })
+    }
+    /// Private native-agent route configuration; it cannot replace InputGrant.root.
+    /// Initial UIA root pinning waits for an explicit guarded initial root bind.
+    pub fn configure_agent_input_scope(
+        &mut self,
+        session: crate::agent_contract::SessionBinding,
+        root_native_epoch: Option<String>,
+        dispatch_check: Arc<dyn Fn() -> Result<()> + Send + Sync>,
+    ) -> Result<()> {
+        if self.agent_input.is_some() || session.native != self.identity {
+            return Err(fault(
+                "agent_input_configuration_mismatch",
+                "Agent native input authority is immutable and must match this backend's native session.",
+            ));
+        }
+        let root = self.allocated_root.clone().ok_or_else(|| {
+            fault(
+                "agent_input_root_missing",
+                "No original native input grant/root was constructed.",
+            )
+        })?;
+        if root_native_epoch
+            .as_ref()
+            .is_none_or(|epoch| root.native_epoch.as_ref() != Some(epoch))
+        {
+            return Err(fault(
+                "agent_input_root_epoch_changed",
+                "Allocated root native epoch differs from the committed activation proof.",
+            ));
+        }
+        self.agent_input = Some(Arc::new(crate::agent_binding::AgentInputAuthority::new(
+            session,
+            root,
+            dispatch_check,
+        )?));
+        Ok(())
+    }
+    /// Read-only native/UIA facts for the exact selected window. A title/document
+    /// precondition is not a filesystem path proof and is not returned as one.
+    pub fn fresh_agent_selected_proof(
+        &mut self,
+        expected: &Binding,
+        target: &Resolved,
+    ) -> Result<crate::agent_contract::SelectedInputProof> {
+        let authority = self.agent_input.clone().ok_or_else(|| {
+            fault(
+                "agent_input_scope_unconfigured",
+                "Native agent input requires its configured immutable scope.",
+            )
+        })?;
+        authority.verify_root_runtime()?;
+        let scene = self.revalidate(target)?;
+        if !grounding_matches(expected, &scene, target)
+            || !scene.mutation_ready
+            || scene.blocked != Some(false)
+        {
+            return Err(fault(
+                "agent_selected_input_stale",
+                "Fresh native/UIA scene no longer matches this exact grounded input target.",
+            ));
+        }
+        let selected = self.current()?;
+        let selection = authority.retain_selection(&selected)?;
+        let native = selection.proof(
+            self.root_runtime.clone().ok_or_else(|| {
+                fault(
+                    "agent_selected_uia_unknown",
+                    "No fresh selected UIA root identity.",
+                )
+            })?,
+            self.selected_catalog_id.clone(),
+        )?;
+        let proof = crate::agent_contract::SelectedInputProof {
+            native,
+            binding: scene.binding.ok_or_else(|| {
+                fault(
+                    "agent_selected_binding_unknown",
+                    "No fresh native scene binding.",
+                )
+            })?,
+            target: target.scope.clone(),
+            observed_unix_ms: input::now_ms(),
+        };
+        proof.require_target(expected, target)?;
+        Ok(proof)
     }
     fn check_identity(&self) -> Result<()> {
         if desktop::identity()? != self.identity {
@@ -81,6 +199,45 @@ impl NativeWindows {
             ));
         }
         Ok(())
+    }
+    fn lifecycle_active(&self) -> bool {
+        self.lifecycle_grant
+            .as_ref()
+            .is_some_and(|g| g.validate(&self.identity, input::now_ms()).is_ok())
+            && self.lifecycle_deadline.is_some_and(|d| Instant::now() < d)
+    }
+    fn check_discovery_identity(&self) -> Result<()> {
+        if desktop::identity()? != self.identity {
+            return Err(fault(
+                "session_mismatch",
+                "Native discovery crossed sessions.",
+            ));
+        }
+        if self.lifecycle_active() {
+            Ok(())
+        } else {
+            self.check_identity()
+        }
+    }
+    fn discovery_allows(&self, w: &WindowRecord) -> bool {
+        let matches = |key: &rcu_core::lifecycle::WindowIdentity| {
+            w.window == key.window
+                && w.pid == key.pid
+                && w.process_created == Some(key.process_created)
+                && w.native_epoch.as_ref() == Some(&key.native_epoch)
+        };
+        self.input_grant.as_ref().is_none_or(|g| {
+            (g.validate(&self.identity, input::now_ms()).is_ok()
+                && self.grant_deadline.is_some_and(|d| Instant::now() < d)
+                && g.allows(w))
+                || (self.lifecycle_active()
+                    && self.lifecycle_grant.as_ref().is_some_and(|l| {
+                        l.activations.iter().any(|p| matches(&p.window))
+                            || l.launches
+                                .iter()
+                                .any(|p| p.allowed_existing_windows.iter().any(matches))
+                    }))
+        })
     }
     fn selected(&self) -> Result<WindowRecord> {
         self.selected.clone().ok_or_else(||fault("window_selection_required","Discover windows, then bind one exact native_epoch/PID/HWND. No default foreground window is chosen."))
@@ -178,6 +335,8 @@ impl NativeWindows {
             || before.foreground != after.foreground
             || before.owner_chain != after.owner_chain
             || before.enabled != after.enabled
+            || before.title != after.title
+            || before.title_truncated != after.title_truncated
             || serde_json::to_value(&displays).ok() != serde_json::to_value(&after_displays).ok()
         {
             return Err(fault(
@@ -186,6 +345,16 @@ impl NativeWindows {
             ));
         }
         let binding = Binding {
+            mutation_context: if !before.title_truncated {
+                uia_details["walk"]["document_state"]
+                    .as_str()
+                    .map(|state| MutationContext {
+                        window_title: before.title.clone(),
+                        document_state: state.into(),
+                    })
+            } else {
+                None
+            },
             scope: Scope {
                 window: before.window.clone(),
                 pid: before.pid,
@@ -234,14 +403,63 @@ impl Backend for NativeWindows {
         self.identity.clone()
     }
     fn capabilities(&self) -> Value {
-        json!({"backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
+        let lifecycle_ready = self
+            .lifecycle_grant
+            .as_ref()
+            .is_some_and(|g| g.validate(&self.identity, input::now_ms()).is_ok())
+            && self.lifecycle_deadline.is_some_and(|d| Instant::now() < d);
+        json!({"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","notepad_force_new_window":"unsupported_unverified; do not invent a switch; authorized existing windows/tabs may be reused","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
+    }
+    fn lifecycle_grant(&self) -> Result<rcu_core::lifecycle::LifecycleGrant> {
+        if desktop::identity()? != self.identity {
+            return Err(fault(
+                "session_mismatch",
+                "Lifecycle receipt/operation belongs to another native session.",
+            ));
+        }
+        self.lifecycle_grant.clone().ok_or_else(||fault("capability_unavailable", "Provide --windows-lifecycle-grant for exact launch/activation scope; input grant is separate."))
+    }
+    fn lifecycle_deadline(&self) -> Result<Instant> {
+        let g = self.lifecycle_grant()?;
+        g.validate(&self.identity, input::now_ms())?;
+        self.lifecycle_deadline
+            .filter(|d| Instant::now() < *d)
+            .ok_or_else(|| {
+                fault(
+                    "lifecycle_grant_expired",
+                    "Monotonic owner deadline passed; obtain new authorization.",
+                )
+            })
+    }
+    fn lifecycle_driver(&mut self) -> Result<Box<dyn rcu_core::lifecycle::LifecycleDriver>> {
+        self.lifecycle_deadline()?;
+        Ok(Box::new(crate::WindowsLifecycleDriver::new()?))
+    }
+    fn validate_activation(&self, window: &rcu_core::lifecycle::WindowIdentity) -> Result<()> {
+        self.lifecycle_deadline()?;
+        if self
+            .catalog_at
+            .is_none_or(|t| t.elapsed() > Duration::from_secs(10))
+            || !self.catalog.iter().any(|w| {
+                w.window == window.window
+                    && w.pid == window.pid
+                    && w.process_created == Some(window.process_created)
+                    && w.native_epoch.as_ref() == Some(&window.native_epoch)
+            })
+        {
+            return Err(fault(
+                "stale_activation_window",
+                "Discover the exact native HWND/PID/birth/epoch within 10 seconds; read-only binding does not activate it.",
+            ));
+        }
+        Ok(())
     }
     fn discover(&mut self) -> Result<Value> {
         self.discover_with(&rcu_core::DiscoveryQuery::default())
     }
     fn discover_with(&mut self, query: &rcu_core::DiscoveryQuery) -> Result<Value> {
         query.validate()?;
-        self.check_identity()?;
+        self.check_discovery_identity()?;
         if let Some(cursor) = &query.cursor {
             let (id, offset) = cursor.split_once('/').ok_or_else(|| {
                 fault(
@@ -274,7 +492,7 @@ impl Backend for NativeWindows {
         let (windows, complete) = desktop::windows()?;
         let native_count = windows.len();
         let displays = desktop::displays()?;
-        self.check_identity()?;
+        self.check_discovery_identity()?;
         let title = query.title_contains.as_ref().map(|s| s.to_lowercase());
         self.catalog = windows
             .into_iter()
@@ -283,7 +501,7 @@ impl Backend for NativeWindows {
                     && title
                         .as_ref()
                         .is_none_or(|s| w.title.to_lowercase().contains(s))
-                    && self.input_grant.as_ref().is_none_or(|g| g.allows(w))
+                    && self.discovery_allows(w)
             })
             .collect();
         self.catalog_at = Some(Instant::now());
@@ -349,8 +567,27 @@ impl Backend for NativeWindows {
                 "Input-enabled connection may bind only its allocated root or native-owned dialogs.",
             ));
         }
+        if let Some(authority) = &self.agent_input {
+            if matches!(s.relation, rcu_core::WindowRelation::Initial) {
+                if current.window != authority.root().window
+                    || current.pid != authority.root().pid
+                    || current.process_created != Some(authority.root().process_created)
+                    || current.native_epoch.as_deref() != Some(&authority.root().native_epoch)
+                {
+                    return Err(fault(
+                        "agent_initial_root_bind_required",
+                        "The agent's first selected window must be its unchanged allocated root, never an arbitrary owned popup.",
+                    ));
+                }
+                authority.pin_root_runtime()?;
+            } else {
+                authority.verify_root_runtime()?;
+            }
+            authority.retain_selection(&current)?;
+        }
         self.root_runtime = None;
         self.selected = Some(current.clone());
+        self.selected_catalog_id = self.catalog_id.clone();
         self.diagnostics = Value::Null;
         Ok(
             json!({"bound":current,"relation":s.relation,"input":self.input_grant.is_some(),"next":"Observe this exact window; prior frames/references invalidated. Keyboard input requires the exact focused UIA element."}),
@@ -372,6 +609,9 @@ impl Backend for NativeWindows {
         intent: &Intent,
         value: Option<&str>,
     ) -> Result<Option<bool>> {
+        if self.agent_input.is_some() {
+            self.fresh_agent_selected_proof(expected, target)?;
+        }
         let grant = self.input_grant.clone().ok_or_else(|| fault("input_not_enabled", "Use a fresh allocated --windows-input-grant with --allow-input; default is read-only."))?;
         let plan = input_plan::plan(intent, value)?;
         let _dpi = DpiScope::enter()?;
@@ -398,8 +638,10 @@ impl Backend for NativeWindows {
             &self.identity,
             &window,
             target,
+            expected.mutation_context.as_ref(),
             &plan,
             &mut self.input_counters,
+            self.agent_input.as_deref(),
         )
     }
     fn inspect(&mut self, scope: &Scope, predicate: &Predicate, expected: &str) -> Result<Oracle> {

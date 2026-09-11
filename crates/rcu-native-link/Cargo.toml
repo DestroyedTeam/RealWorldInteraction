@@ -1,0 +1,30 @@
+[package]
+name = "rcu-native-link"
+version = "0.1.0-native-link.1"
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+fixture = []
+
+[dependencies]
+rcu-core = { path = "../rcu-core" }
+rcu-windows = { path = "../rcu-windows" }
+rcu-link-trust = { path = "../rcu-link-trust" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+base64 = "=0.22.1"
+zeroize = "=1.9.0"
+tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "net", "io-std", "io-util", "sync", "time", "process", "signal"] }
+rustls = { version = "=0.23.41", default-features = false, features = ["std", "ring"] }
+tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "=0.2.189"
+
+[dev-dependencies]
+tempfile.workspace = true
+rcu-imaging = { path = "../rcu-imaging" }

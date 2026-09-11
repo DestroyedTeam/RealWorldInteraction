@@ -155,6 +155,25 @@ fn chord(value: &str) -> Result<Vec<u16>> {
     Ok(keys)
 }
 
+/// The native sink uses this same portable order. A blocking document read must
+/// finish before exact UIA scope and final window/session/layout/user guards.
+/// This is optimistic revalidation, not an OS-atomic compare-and-write.
+pub(crate) trait GuardPhases {
+    fn document_precondition(&mut self) -> Result<()>;
+    fn exact_input_scope(&mut self) -> Result<()>;
+    fn final_native_state(&mut self) -> Result<()>;
+}
+pub(crate) fn guard_before_batch(guard: &mut impl GuardPhases) -> Result<()> {
+    checkpoint("windows_input_guard_begin")?;
+    guard.document_precondition()?;
+    checkpoint("windows_input_document_returned")?;
+    guard.exact_input_scope()?;
+    checkpoint("windows_input_exact_scope_returned")?;
+    guard.final_native_state()?;
+    // Includes the monotonic cooperative lease deadline after all native guards.
+    checkpoint("windows_input_guard_ready")
+}
+
 pub(crate) trait Sink {
     fn guard(&mut self) -> Result<()>;
     fn send(&mut self, batch: &Batch) -> Result<()>;
@@ -330,6 +349,197 @@ mod tests {
                 "lease_expired_during_dispatch"
             )
         });
+        assert_eq!(f.sent, 0);
+    }
+
+    #[derive(Clone, Copy)]
+    enum DuringDocument {
+        None,
+        Focus,
+        Geometry,
+        Epoch,
+        Layout,
+        Session,
+        Hit,
+        User,
+        GrantExpiry,
+    }
+    struct GuardFixture {
+        change: DuringDocument,
+        window: u32,
+        title: &'static str,
+        value: &'static str,
+        focus: &'static str,
+        rectangle: [i32; 4],
+        native_error: Option<&'static str>,
+        cancel_in_document: Option<Operation>,
+        wait_in_document_until: Option<std::time::Instant>,
+        trace: Vec<&'static str>,
+        sent: usize,
+    }
+    impl GuardFixture {
+        fn new(change: DuringDocument) -> Self {
+            Self {
+                change,
+                window: 7,
+                title: "same title",
+                value: "same value",
+                focus: "exact-A",
+                rectangle: [0, 0, 300, 200],
+                native_error: None,
+                cancel_in_document: None,
+                wait_in_document_until: None,
+                trace: vec![],
+                sent: 0,
+            }
+        }
+    }
+    impl GuardPhases for GuardFixture {
+        fn document_precondition(&mut self) -> Result<()> {
+            if self.sent != 0 {
+                self.trace.push("document_skipped");
+                return Ok(());
+            }
+            self.trace.push("document");
+            // Model a native provider call that returns the same document hash,
+            // but changes other native state before returning to the guard.
+            match self.change {
+                DuringDocument::None => (),
+                DuringDocument::Focus => self.focus = "exact-B",
+                DuringDocument::Geometry => self.rectangle[0] = 400,
+                DuringDocument::Epoch => self.native_error = Some("input_focus_or_window_changed"),
+                DuringDocument::Layout => self.native_error = Some("input_display_changed"),
+                DuringDocument::Session => self.native_error = Some("session_mismatch"),
+                DuringDocument::Hit => self.native_error = Some("input_target_occluded"),
+                DuringDocument::User => self.native_error = Some("user_input_active"),
+                DuringDocument::GrantExpiry => self.native_error = Some("input_grant_expired"),
+            }
+            if let Some(op) = &self.cancel_in_document {
+                op.cancel();
+            }
+            if let Some(deadline) = self.wait_in_document_until {
+                std::thread::sleep(
+                    deadline.saturating_duration_since(std::time::Instant::now())
+                        + std::time::Duration::from_millis(1),
+                );
+            }
+            assert_eq!(
+                (self.window, self.title, self.value),
+                (7, "same title", "same value")
+            );
+            Ok(())
+        }
+        fn exact_input_scope(&mut self) -> Result<()> {
+            self.trace.push("exact_scope");
+            if self.focus != "exact-A" {
+                return Err(fault("keyboard_focus_changed", "No input."));
+            }
+            Ok(())
+        }
+        fn final_native_state(&mut self) -> Result<()> {
+            self.trace.push("native_state");
+            if self.rectangle != [0, 0, 300, 200] {
+                return Err(fault("input_focus_or_window_changed", "No input."));
+            }
+            if let Some(code) = self.native_error {
+                return Err(fault(code, "No input."));
+            }
+            Ok(())
+        }
+    }
+    impl Sink for GuardFixture {
+        fn guard(&mut self) -> Result<()> {
+            // Exactly the helper used by NativeSink, not a copied test order.
+            guard_before_batch(self)
+        }
+        fn send(&mut self, _: &Batch) -> Result<()> {
+            self.trace.push("send");
+            self.sent += 1;
+            self.value = "changed by our input";
+            Ok(())
+        }
+    }
+    #[test]
+    fn document_return_is_followed_by_exact_scope_and_native_guards_before_each_batch() {
+        let p = plan(&Intent::Text, Some("ab")).unwrap();
+        let mut f = GuardFixture::new(DuringDocument::None);
+        execute(&p, &mut f).unwrap();
+        assert_eq!(f.sent, 2);
+        assert_eq!(
+            f.trace,
+            [
+                "document",
+                "exact_scope",
+                "native_state",
+                "send",
+                "document_skipped",
+                "exact_scope",
+                "native_state",
+                "send",
+            ]
+        );
+    }
+    #[test]
+    fn same_hwnd_title_and_value_do_not_hide_focus_or_geometry_change_during_document_read() {
+        let p = plan(&Intent::Text, Some("ab")).unwrap();
+        for (change, code, expected_trace) in [
+            (
+                DuringDocument::Focus,
+                "keyboard_focus_changed",
+                vec!["document", "exact_scope"],
+            ),
+            (
+                DuringDocument::Geometry,
+                "input_focus_or_window_changed",
+                vec!["document", "exact_scope", "native_state"],
+            ),
+        ] {
+            let mut f = GuardFixture::new(change);
+            assert_eq!(execute(&p, &mut f).unwrap_err().code, code);
+            assert_eq!(f.sent, 0);
+            assert_eq!(f.trace, expected_trace);
+        }
+    }
+    #[test]
+    fn final_guards_reject_epoch_layout_session_hit_user_and_grant_changes_during_document_read() {
+        let p = plan(&Intent::Click, None).unwrap();
+        for (change, code) in [
+            (DuringDocument::Epoch, "input_focus_or_window_changed"),
+            (DuringDocument::Layout, "input_display_changed"),
+            (DuringDocument::Session, "session_mismatch"),
+            (DuringDocument::Hit, "input_target_occluded"),
+            (DuringDocument::User, "user_input_active"),
+            (DuringDocument::GrantExpiry, "input_grant_expired"),
+        ] {
+            let mut f = GuardFixture::new(change);
+            assert_eq!(execute(&p, &mut f).unwrap_err().code, code);
+            assert_eq!(f.sent, 0);
+            assert_eq!(f.trace, ["document", "exact_scope", "native_state"]);
+        }
+    }
+    #[test]
+    fn cancellation_or_lease_expiry_during_document_read_blocks_all_following_guard_phases_and_send()
+     {
+        let p = plan(&Intent::Text, Some("x")).unwrap();
+        let op = Registry::default().begin(None).unwrap();
+        let mut f = GuardFixture::new(DuringDocument::None);
+        f.cancel_in_document = Some(op.clone());
+        operation::run(&op, || {
+            assert_eq!(execute(&p, &mut f).unwrap_err().code, "operation_cancelled");
+        });
+        assert_eq!(f.trace, ["document"]);
+        assert_eq!(f.sent, 0);
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(100);
+        let mut f = GuardFixture::new(DuringDocument::None);
+        f.wait_in_document_until = Some(deadline);
+        operation::with_dispatch_deadline(deadline, || {
+            assert_eq!(
+                execute(&p, &mut f).unwrap_err().code,
+                "lease_expired_during_dispatch"
+            );
+        });
+        assert_eq!(f.trace, ["document"]);
         assert_eq!(f.sent, 0);
     }
 }

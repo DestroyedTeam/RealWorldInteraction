@@ -1,0 +1,50 @@
+{
+  "schema": "rcu.architecture.ratchet.v1",
+  "source_status": "migration candidate, not root acceptance",
+  "new_file_line_limit": 600,
+  "allowed_production_dependencies": {
+    "rcu-core": [],
+    "rcu-mcp": [
+      "rcu-core",
+      "rcu-imaging",
+      "rcu-macos",
+      "rcu-native-link",
+      "rcu-windows"
+    ],
+    "rcu-imaging": [
+      "rcu-core"
+    ],
+    "rcu-macos": [
+      "rcu-core"
+    ],
+    "rcu-native-link": [
+      "rcu-core",
+      "rcu-link-trust",
+      "rcu-windows"
+    ],
+    "rcu-link-trust": [],
+    "rcu-windows": [
+      "rcu-core",
+      "rcu-imaging"
+    ]
+  },
+  "existing_hotspot_ceilings": {
+    "crates/rcu-core/src/lib.rs": 1026,
+    "crates/rcu-core/src/tests.rs": 658,
+    "crates/rcu-core/src/lifecycle_tests.rs": 961,
+    "crates/rcu-core/src/lifecycle_controller.rs": 838,
+    "crates/rcu-mcp/src/agent_worker.rs": 1190,
+    "crates/rcu-mcp/src/main.rs": 1635,
+    "crates/rcu-windows/src/native.rs": 700,
+    "crates/rcu-windows/src/package_policy.rs": 1004,
+    "crates/rcu-windows/src/uia.rs": 698,
+    "crates/rcu-windows/src/application_package.rs": 819,
+    "crates/rcu-windows/src/application.rs": 1627,
+    "crates/rcu-windows/src/agent_contract.rs": 801,
+    "crates/rcu-windows/src/agent_binding.rs": 1596,
+    "crates/rcu-native-link/src/net.rs": 721,
+    "crates/rcu-native-link/src/control.rs": 1257,
+    "crates/rcu-native-link/src/worker.rs": 1143,
+    "crates/rcu-macos/src/native.rs": 1020
+  }
+}

@@ -1,11 +1,11 @@
 //! Grounded SendInput only. No focus stealing, clipboard, PostMessage or UIA mutation.
 use crate::{
     InputGrant, WindowRecord, desktop,
-    input_plan::{self, Batch, Plan, Sink},
+    input_plan::{self, Batch, GuardPhases, Plan, Sink},
     uia::InputScope,
 };
 use rcu_core::{
-    Identity, Resolved, Result, fault,
+    Identity, MutationContext, Resolved, Result, fault,
     operation::{checkpoint, native_call},
 };
 use std::{
@@ -29,14 +29,17 @@ pub(crate) struct Counters {
     pub release_events_inserted: u64,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch(
     grant: &InputGrant,
     grant_deadline: Instant,
     identity: &Identity,
     window: &WindowRecord,
     target: &Resolved,
+    context: Option<&MutationContext>,
     plan: &Plan,
     counters: &mut Counters,
+    agent_authority: Option<&crate::agent_binding::AgentInputAuthority>,
 ) -> Result<Option<bool>> {
     grant.validate(identity, now_ms())?;
     if !grant.allows(window) {
@@ -62,6 +65,8 @@ pub(crate) fn dispatch(
         identity,
         window,
         target,
+        context,
+        first_batch: true,
         scope,
         last_clock: now_ms(),
         grant_deadline,
@@ -72,6 +77,9 @@ pub(crate) fn dispatch(
                 "Native display serialization failed.",
             )
         })?,
+        agent_selection: agent_authority
+            .map(|authority| authority.retain_selection(window))
+            .transpose()?,
     };
     input_plan::execute(plan, &mut sink)?;
     // Only an insertion count. The core always returns goal_verified=false.
@@ -83,14 +91,17 @@ struct NativeSink<'a> {
     identity: &'a Identity,
     window: &'a WindowRecord,
     target: &'a Resolved,
+    context: Option<&'a MutationContext>,
+    first_batch: bool,
     scope: InputScope,
     last_clock: u64,
     grant_deadline: Instant,
     counters: &'a mut Counters,
     display_layout: serde_json::Value,
+    agent_selection: Option<crate::agent_binding::AgentInputSelection<'a>>,
 }
-impl Sink for NativeSink<'_> {
-    fn guard(&mut self) -> Result<()> {
+impl NativeSink<'_> {
+    fn check_allocation_clock(&mut self) -> Result<()> {
         if Instant::now() >= self.grant_deadline {
             return Err(fault(
                 "input_grant_expired",
@@ -105,7 +116,42 @@ impl Sink for NativeSink<'_> {
             ));
         }
         self.last_clock = now;
-        self.grant.validate(self.identity, now)?;
+        self.grant.validate(self.identity, now)
+    }
+}
+impl GuardPhases for NativeSink<'_> {
+    fn document_precondition(&mut self) -> Result<()> {
+        self.check_allocation_clock()?;
+        if let Some(selection) = &self.agent_selection {
+            selection.verify_root_runtime()?;
+        }
+        if self.first_batch
+            && let Some(context) = self.context
+        {
+            let walk = crate::uia::walk(
+                desktop::hwnd(&self.window.window)?,
+                self.window.pid,
+                self.window
+                    .native_epoch
+                    .as_deref()
+                    .ok_or_else(|| fault("window_epoch_unknown", "Reobserve."))?,
+            )?;
+            if walk.document_state.as_deref() != Some(&context.document_state) {
+                return Err(fault(
+                    "input_document_changed",
+                    "Document state changed before the first native batch; no input.",
+                ));
+            }
+        }
+        Ok(())
+    }
+    fn exact_input_scope(&mut self) -> Result<()> {
+        // The document walk can block or pump provider work. Its return is not
+        // proof that the previously focused/hit-tested element is still current.
+        self.scope.check()
+    }
+    fn final_native_state(&mut self) -> Result<()> {
+        self.check_allocation_clock()?;
         if &desktop::identity()? != self.identity {
             return Err(fault(
                 "session_mismatch",
@@ -130,6 +176,9 @@ impl Sink for NativeSink<'_> {
             || current.dwm_visible_frame != self.window.dwm_visible_frame
             || current.window_dpi != self.window.window_dpi
             || current.owner_chain != self.window.owner_chain
+            || self
+                .context
+                .is_some_and(|c| current.title_truncated || current.title != c.window_title)
             || !self.grant.allows(&current)
         {
             return Err(fault(
@@ -143,17 +192,24 @@ impl Sink for NativeSink<'_> {
                 "Native hit-test is outside the allocated window; no input.",
             ));
         }
-        physical_input_clear()?;
-        self.scope.check()?;
-        // UIA can block: refresh the inexpensive foreground check after it.
+        if let Some(selection) = &self.agent_selection {
+            selection.verify_native()?;
+        }
+        // No further document walk follows the exact UIA/native checks. This
+        // closes the avoidable stale-guard interval, not the OS SendInput race.
         if desktop::window_id(unsafe { GetForegroundWindow() }) != self.window.window {
             return Err(fault(
                 "input_focus_changed",
                 "Foreground changed during the native guard; no input.",
             ));
         }
-        self.grant.validate(self.identity, now_ms())?;
+        self.check_allocation_clock()?;
         physical_input_clear()
+    }
+}
+impl Sink for NativeSink<'_> {
+    fn guard(&mut self) -> Result<()> {
+        input_plan::guard_before_batch(self)
     }
     fn send(&mut self, batch: &Batch) -> Result<()> {
         let (events, releases) = events(batch, self.target.point)?;
@@ -182,6 +238,7 @@ impl Sink for NativeSink<'_> {
                 ),
             ));
         }
+        self.first_batch = false;
         Ok(())
     }
     fn pause(&mut self) {

@@ -171,6 +171,100 @@ pub async fn client(id: &str, expected_sha: &str) -> Result<()> {
     tokio::select! { r=tokio::io::copy(&mut stdin,&mut writer)=>{r?;},r=tokio::io::copy(&mut reader,&mut stdout)=>{r?;} }
     Ok(())
 }
+
+/// Stronger native-agent route. The original `accept` / `client` are unchanged.
+/// No MCP byte is accepted until the actual connected client is bound to the
+/// local owner proof. The caller must retain and recheck the returned peer guard.
+pub async fn accept_owned(
+    id: &str,
+    owner: &crate::agent_contract::OwnerProof,
+    budget: Duration,
+) -> Result<(NamedPipeServer, crate::agent_binding::PeerProcess)> {
+    use crate::agent_binding::{PeerProcess, UserSecurity, current_session};
+    if budget.is_zero() || budget > Duration::from_secs(120) {
+        return Err(fault(
+            "owned_pipe_budget_invalid",
+            "Explicit pipe acceptance budget must be within 1 ns..120 s.",
+        ));
+    }
+    let deadline = tokio::time::Instant::now() + budget;
+    owner.validate()?;
+    owner.session.require_same(&current_session()?)?;
+    let server = {
+        let mut security = UserSecurity::new(&owner.session.user_sid, false)?;
+        unsafe {
+            ServerOptions::new()
+                .first_pipe_instance(true)
+                .reject_remote_clients(true)
+                .max_instances(1)
+                .in_buffer_size(65536)
+                .out_buffer_size(65536)
+                .create_with_security_attributes_raw(
+                    pipe_path(id)?,
+                    (&mut security.attributes as *mut SECURITY_ATTRIBUTES).cast::<c_void>(),
+                )
+        }?
+    };
+    // The lexical scope guarantees no descriptor pointer crosses this await.
+    tokio::time::timeout_at(deadline, server.connect()).await
+        .map_err(|_| fault("owned_pipe_accept_timeout", "No approved agent connected inside this stage budget; do not start another instance automatically."))??;
+    let peer = PeerProcess::from_pipe_client(&server, owner)?;
+    if tokio::time::Instant::now() >= deadline {
+        return Err(fault(
+            "owned_pipe_accept_timeout",
+            "Pipe peer binding exceeded the acceptance budget; no MCP bytes were accepted.",
+        ));
+    }
+    Ok((server, peer))
+}
+
+/// Wait only for the freshly owned worker to publish its one local pipe. This
+/// initial startup wait is bounded; after a connection exists there is no retry,
+/// reconnect, byte forwarding, or request replay in this helper.
+pub async fn connect_owned(
+    id: &str,
+    worker: &crate::agent_binding::OwnedProcess,
+    session: &crate::agent_contract::SessionBinding,
+    budget: Duration,
+) -> Result<tokio::net::windows::named_pipe::NamedPipeClient> {
+    if budget.is_zero() || budget > Duration::from_secs(120) {
+        return Err(fault(
+            "owned_pipe_budget_invalid",
+            "Explicit pipe connection budget must be within 1 ns..120 s.",
+        ));
+    }
+    let name = pipe_path(id)?;
+    let deadline = tokio::time::Instant::now() + budget;
+    loop {
+        worker.verify_current(session)?;
+        if tokio::time::Instant::now() >= deadline {
+            return Err(fault(
+                "owned_pipe_connect_timeout",
+                "The owned worker did not publish its approved pipe inside the stage budget.",
+            ));
+        }
+        match ClientOptions::new().open(&name) {
+            Ok(pipe) => {
+                worker.verify_pipe_server(&pipe)?;
+                worker.verify_current(session)?;
+                if tokio::time::Instant::now() >= deadline {
+                    return Err(fault(
+                        "owned_pipe_connect_timeout",
+                        "Pipe identity verification exceeded the stage budget; no MCP bytes were forwarded.",
+                    ));
+                }
+                return Ok(pipe);
+            }
+            Err(error) if matches!(error.raw_os_error(), Some(2 | 231)) => {
+                // ERROR_FILE_NOT_FOUND / ERROR_PIPE_BUSY: initial publication
+                // only, never an attempt to recover a disconnected session.
+                let wake = (tokio::time::Instant::now() + Duration::from_millis(20)).min(deadline);
+                tokio::time::sleep_until(wake).await;
+            }
+            Err(error) => return Err(error.into()),
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

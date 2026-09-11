@@ -1,6 +1,15 @@
 //! Windows-native observation and opt-in grounded input. No implicit target/focus.
+#[cfg(windows)]
+pub mod agent_binding;
+pub mod agent_contract;
 mod contract;
+#[cfg(any(windows, test))]
+mod document_context;
 pub use contract::*;
+#[cfg(any(windows, test))]
+mod application;
+#[cfg(windows)]
+pub use application::WindowsLifecycleDriver;
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]

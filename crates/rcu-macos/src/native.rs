@@ -201,6 +201,7 @@ impl NativeMac {
             .as_bytes(),
         );
         let binding = Binding {
+            mutation_context: None,
             scope: Scope {
                 window: self.window_name(),
                 pid: self.pid,

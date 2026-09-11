@@ -1,5 +1,10 @@
 //! Official MCP SDK + Rust engine. stdout is exclusively MCP transport.
 #![cfg_attr(windows, windows_subsystem = "windows")]
+#[cfg(feature = "native-agent-worker")]
+mod agent_worker;
+mod eof_diagnostics;
+#[cfg(feature = "link-fixture")]
+mod link_fixture;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rcu_core::Verification;
 use rcu_core::operation::{CancelOnDrop, Registry};
@@ -20,7 +25,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-const INSTRUCTIONS: &str = "Read computer.targets capabilities. Targets are opt-in. Windows input needs a timed native-window grant and lease. Discover/bind, observe, resolve; keyboard actions require the exact focused UIA element. Use image/resolve_view for preview pixels. Popup binding needs native owner evidence. Act once with stable request_id; independently verify and release. Never replay uncertainty. Cancel is cooperative; await terminal/resources_released before resuming.";
+const INSTRUCTIONS: &str = "Read computer.targets (opt-in). Prefer act_checked: observe, choose exact element ID, claim, dispatch once, verify, release. It rechecks document context on-server; no pixel/name selectors. Legacy act keeps its 10s TTL. Never loop reobserve to refresh failed actions. Launch/activate need grants+lease; bind never focuses. Partial preflight is not absence. Receipts are not goals/input grants. Never replay uncertainty; read lifecycle_receipt. Cancel cooperatively; await terminal/resources_released.";
 
 #[derive(Clone)]
 struct Server {
@@ -68,22 +73,34 @@ impl Server {
             Err(e) => return error(e),
         };
         let _cancel_on_drop = CancelOnDrop(op.clone());
+        // Retain the registered operation outside the worker. An early CoreResult
+        // error or JoinError must not lose an automatically assigned query ID.
+        let worker_op = op.clone();
         let engine = self.engine.clone();
-        match tokio::task::spawn_blocking(move || {
-            struct Finish {op:rcu_core::operation::Operation,permit:Option<tokio::sync::OwnedSemaphorePermit>}
-            impl Drop for Finish {fn drop(&mut self){drop(self.permit.take());self.op.finish();}}
-            let _finish=Finish{op:op.clone(),permit:Some(permit)};
-            rcu_core::operation::run(&op,|| {
-            rcu_core::operation::checkpoint("worker_started")?;
-            let mut engine = engine.lock().map_err(|_| {
-                fault(
-                    "engine_unavailable",
-                    "Restart, inspect durable receipts, and do not replay.",
-                )
-            })?;
-            let mut result=f(&mut engine)?;
-            result.content.push(Content::text(serde_json::json!({"operation_id":op.status().operation_id,"cancellation":"cooperative; native preemption unavailable"}).to_string()));
-            Ok(result)
+        let response = match tokio::task::spawn_blocking(move || {
+            struct Finish {
+                op: rcu_core::operation::Operation,
+                permit: Option<tokio::sync::OwnedSemaphorePermit>,
+            }
+            impl Drop for Finish {
+                fn drop(&mut self) {
+                    drop(self.permit.take());
+                    self.op.finish();
+                }
+            }
+            let _finish = Finish {
+                op: worker_op.clone(),
+                permit: Some(permit),
+            };
+            rcu_core::operation::run(&worker_op, || {
+                rcu_core::operation::checkpoint("worker_started")?;
+                let mut engine = engine.lock().map_err(|_| {
+                    fault(
+                        "engine_unavailable",
+                        "Restart, inspect durable receipts, and do not replay.",
+                    )
+                })?;
+                f(&mut engine)
             })
         })
         .await
@@ -94,11 +111,55 @@ impl Server {
                 "worker_failed",
                 "Operation may have executed. Do not replay; inspect the target.",
             )),
-        }
+        };
+        // A JoinError can leave a registered but nonterminal operation. Apply
+        // the request's cancellation guard before taking the returned snapshot.
+        drop(_cancel_on_drop);
+        // Observe, never synthesize, the post-join registry state. A cancelled
+        // queued worker or retained native guard may still be nonterminal;
+        // cleanup uncertainty must remain resources_released=false.
+        with_operation(response, op.status())
     }
 }
+fn with_operation(
+    mut response: CallToolResult,
+    status: rcu_core::operation::Status,
+) -> CallToolResult {
+    let metadata = json!({
+        "operation_id": status.operation_id,
+        "operation": status,
+        "cancellation": "cooperative; native preemption unavailable"
+    });
+    let mut structured = match response.structured_content.take() {
+        Some(Value::Object(fields))
+            if !metadata
+                .as_object()
+                .expect("operation metadata object")
+                .keys()
+                .any(|key| fields.contains_key(key)) =>
+        {
+            fields
+        }
+        // Existing object-shaped SDK fields stay at their original locations.
+        // Preserve non-object payloads too, rather than discarding their value.
+        Some(payload) => serde_json::Map::from_iter([("result".into(), payload)]),
+        None => serde_json::Map::new(),
+    };
+    for (key, value) in metadata.as_object().expect("operation metadata object") {
+        structured.insert(key.clone(), value.clone());
+    }
+    response.structured_content = Some(Value::Object(structured));
+    // Keep all original text/image blocks intact and support clients that only
+    // expose content rather than structuredContent.
+    response.content.push(Content::text(metadata.to_string()));
+    response
+}
 fn error(e: rcu_core::Fault) -> CallToolResult {
-    CallToolResult::structured_error(json!({"error":e.code,"next_step":e.next_step}))
+    let mut payload = json!({"error":e.code,"next_step":e.next_step});
+    if let Some(diagnostic) = e.diagnostic {
+        payload["diagnostic"] = *diagnostic;
+    }
+    CallToolResult::structured_error(payload)
 }
 fn value<T: serde::Serialize>(v: T) -> CoreResult<CallToolResult> {
     Ok(CallToolResult::structured(
@@ -151,6 +212,54 @@ struct ActArgs {
     intent: Intent,
     value: Option<String>,
     operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct CheckedActArgs {
+    target: String,
+    frame: String,
+    element: String,
+    lease: String,
+    request_id: String,
+    intent: Intent,
+    value: Option<String>,
+    operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct LaunchArgs {
+    target: String,
+    lease: String,
+    authorization_id: String,
+    request_id: String,
+    #[serde(default = "timeout")]
+    timeout_ms: u64,
+    operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct LifecyclePreflightArgs {
+    target: String,
+    authorization_id: String,
+    operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct ActivateArgs {
+    target: String,
+    lease: String,
+    authorization_id: String,
+    request_id: String,
+    expected_foreground: Option<rcu_core::lifecycle::WindowIdentity>,
+    operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct LifecycleReceiptArgs {
+    target: String,
+    kind: String,
+    authorization_id: String,
+    request_id: String,
 }
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -294,7 +403,7 @@ impl Server {
         annotations(read_only_hint = true)
     )]
     async fn targets(&self) -> CallToolResult {
-        self.execute(|e|value(json!({"targets":e.targets(),"implementation":"rust-native-candidate","client_exposed_tools":"unknown; inspect the host allowlist"}))).await
+        self.execute(|e|value(json!({"targets":e.targets(),"implementation":if cfg!(feature="synthetic-fixture"){"synthetic-only-test-build"}else{"rust-native-candidate"},"client_exposed_tools":"unknown; inspect the host allowlist"}))).await
     }
     #[tool(
         name = "computer.observe",
@@ -368,6 +477,91 @@ impl Server {
                 a.intent,
                 a.value,
             )?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.act_checked",
+        description = "Preferred model action: select one exact element ID from a <=120s observed frame, claim a lease, then dispatch once per request_id. The server checks the original window/document context and exact element against fresh native state immediately before single durable dispatch. No pixel/name locator, implicit focus, or replay; unknown/changed context fails closed. Does not relax legacy act's 10s TTL. Do not loop reobserve after an error. Verify independently and release; Text/KeyChord still require exact focused UIA.",
+        annotations(read_only_hint = false)
+    )]
+    async fn act_checked(&self, Parameters(a): Parameters<CheckedActArgs>) -> CallToolResult {
+        self.execute_operation(a.operation_id, move |e| {
+            value(e.act_checked(rcu_core::CheckedAction {
+                target: &a.target,
+                frame: &a.frame,
+                element: &a.element,
+                lease: &a.lease,
+                request: &a.request_id,
+                intent: a.intent,
+                value: a.value,
+            })?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.lifecycle_preflight",
+        description = "Read bounded native application/window inventory and coverage notes for one explicit lifecycle authorization. No lease or dispatch: never launches, activates, sends input, captures pixels or grants authority. Partial/incomplete coverage is not proof of absence; inspect notes and cleanup status before separately requesting launch.",
+        annotations(read_only_hint = true, destructive_hint = false)
+    )]
+    async fn lifecycle_preflight(
+        &self,
+        Parameters(a): Parameters<LifecyclePreflightArgs>,
+    ) -> CallToolResult {
+        self.execute_operation(a.operation_id.clone(), move |e| {
+            value(e.lifecycle_preflight(&a.target, &a.authorization_id)?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.launch_application",
+        description = "Launch one exact preauthorized application/argv/file set, once per authorization/run. Requires explicit lifecycle grant and lease. Returns bounded before/after native inventories and events: new_window_observed, reused_existing_window, launched_no_window, ambiguous or uncertain. Never equate PID or API acceptance with window/task success; no input grant. No invented Notepad clean-window switch. Observe 1..5000ms; no retry after reservation.",
+        annotations(read_only_hint = false, destructive_hint = true)
+    )]
+    async fn launch_application(&self, Parameters(a): Parameters<LaunchArgs>) -> CallToolResult {
+        self.execute_operation(a.operation_id.clone(), move |e| {
+            value(e.launch_application(
+                &a.target,
+                &a.lease,
+                rcu_core::lifecycle::LaunchRequest {
+                    authorization_id: &a.authorization_id,
+                    request_id: &a.request_id,
+                    timeout_ms: a.timeout_ms,
+                },
+            )?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.activate_window",
+        description = "Explicitly activate one exact authorized HWND/PID/birth/epoch from a <=10s native discovery. Requires separate lifecycle grant, lease, stable request_id and expected_foreground tuple. SetForegroundWindow once, verify native foreground, yield on user input/change; no retry, key injection or hidden activation in read-only bind. Focus observation is not an application goal or input authority.",
+        annotations(read_only_hint = false, destructive_hint = true)
+    )]
+    async fn activate_window(&self, Parameters(a): Parameters<ActivateArgs>) -> CallToolResult {
+        self.execute_operation(a.operation_id.clone(), move |e| {
+            value(e.activate_window(
+                &a.target,
+                &a.lease,
+                rcu_core::lifecycle::ActivateRequest {
+                    authorization_id: &a.authorization_id,
+                    request_id: &a.request_id,
+                    expected_foreground: &a.expected_foreground,
+                },
+            )?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.lifecycle_receipt",
+        description = "Read immutable lifecycle reservation/result for this connection native identity and grant run. kind=launch or activation. Works without an active action lease; does not dispatch, focus or grant input. Interrupted/reserved results remain uncertain and forbidden to replay.",
+        annotations(read_only_hint = true, destructive_hint = false)
+    )]
+    async fn lifecycle_receipt(
+        &self,
+        Parameters(a): Parameters<LifecycleReceiptArgs>,
+    ) -> CallToolResult {
+        self.execute(move |e| {
+            value(e.lifecycle_receipt(&a.target, &a.kind, &a.authorization_id, &a.request_id)?)
         })
         .await
     }
@@ -478,7 +672,7 @@ impl Server {
     }
     #[tool(
         name = "computer.cancel",
-        description = "Request cooperative cancellation by caller-supplied operation_id, even while the engine is busy. Acknowledgement does NOT mean native worker stopped; inspect terminal/resources_released. Never replay input.",
+        description = "Request cooperative cancellation by returned or caller-supplied operation_id, even while the engine is busy. Acknowledgement does NOT mean native worker stopped; inspect terminal/resources_released. Never replay input.",
         annotations(read_only_hint = false, destructive_hint = false)
     )]
     async fn cancel(&self, Parameters(a): Parameters<OperationArgs>) -> CallToolResult {
@@ -511,16 +705,71 @@ impl ServerHandler for Server {
     }
 }
 
+#[cfg(feature = "synthetic-fixture")]
+fn synthetic_engine(args: &[String]) -> CoreResult<(Engine, Option<String>)> {
+    // Deliberately no grant, native selector, pipe server, or default state path.
+    if args.len() != 3 || args[0] != "--synthetic-only" || args[1] != "--state-dir" {
+        return Err(fault(
+            "synthetic_only_cli",
+            "Use only --synthetic-only --state-dir ABS. This test build cannot register native targets.",
+        ));
+    }
+    let state = PathBuf::from(&args[2]);
+    if !state.is_absolute() {
+        return Err(fault(
+            "invalid_cli",
+            "Synthetic state directory must be absolute.",
+        ));
+    }
+    let mut engine = Engine::new(state.clone())?;
+    #[cfg(feature = "link-fixture")]
+    engine.register(
+        "synthetic-only".into(),
+        Box::new(link_fixture::Instrumented::open(state)?),
+    )?;
+    #[cfg(not(feature = "link-fixture"))]
+    engine.register(
+        "synthetic-only".into(),
+        Box::new(rcu_core::fixture::Fixture::default()),
+    )?;
+    Ok((engine, None))
+}
+
 fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
+    #[cfg(feature = "synthetic-fixture")]
+    {
+        let args: Vec<_> = std::env::args().skip(1).collect();
+        if args.iter().any(|arg| arg == "--synthetic-only") {
+            return synthetic_engine(&args);
+        }
+    }
     let mut args = std::env::args().skip(1);
     let mut state = None;
     let mut macos = None;
     let mut allow_input = false;
     let mut windows = false;
     let mut windows_grant = None;
+    let mut lifecycle_grant_path = None;
     let mut pipe_server = None;
+    #[cfg(feature = "native-agent-worker")]
+    let mut agent_guard_path = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            #[cfg(feature = "native-agent-worker")]
+            "--agent-guard" => {
+                if agent_guard_path.is_some() {
+                    return Err(fault(
+                        "invalid_cli",
+                        "--agent-guard must occur exactly once.",
+                    ));
+                }
+                agent_guard_path = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    fault(
+                        "invalid_cli",
+                        "--agent-guard requires an absolute private worker spec.",
+                    )
+                })?));
+            }
             "--state-dir" => {
                 state = Some(PathBuf::from(args.next().ok_or_else(|| {
                     fault("invalid_cli", "--state-dir needs an absolute path.")
@@ -542,6 +791,14 @@ fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
                     )
                 })?));
             }
+            "--windows-lifecycle-grant" => {
+                lifecycle_grant_path = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    fault(
+                        "invalid_cli",
+                        "--windows-lifecycle-grant needs an absolute JSON path.",
+                    )
+                })?));
+            }
             "--pipe-server" => {
                 pipe_server = Some(args.next().ok_or_else(|| {
                     fault("invalid_cli", "--pipe-server requires a local run ID.")
@@ -554,6 +811,15 @@ fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
                 ));
             }
         }
+    }
+    #[cfg(feature = "native-agent-worker")]
+    if let Some(path) = &agent_guard_path {
+        agent_worker::validate_guard_cli(path, windows, pipe_server.as_deref(), macos.is_some())?;
+        #[cfg(not(windows))]
+        return Err(fault(
+            "unsupported_platform",
+            "The native-agent-worker route must run in the explicitly allocated interactive Windows session.",
+        ));
     }
     let state = state
         .or_else(|| std::env::var_os("RCU_STATE_DIR").map(PathBuf::from))
@@ -582,6 +848,31 @@ fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
             "--windows-input-grant requires --windows-desktop and --allow-input.",
         ));
     }
+    if lifecycle_grant_path.is_some() && !windows {
+        return Err(fault(
+            "invalid_cli",
+            "Lifecycle grants require --windows-desktop; they do not implicitly enable input.",
+        ));
+    }
+    if windows && allow_input && windows_grant.is_none() {
+        return Err(fault(
+            "input_grant_required",
+            "Windows input requires an explicit root/window/native-identity/expiry allocation JSON.",
+        ));
+    }
+    // The feature is a separate synthetic-only build, not an extra production
+    // target selector. Reject before reading grants or constructing an OS adapter,
+    // even when the caller omitted --synthetic-only.
+    if cfg!(feature = "synthetic-fixture") && (windows || macos.is_some()) {
+        return Err(fault(
+            "synthetic_native_forbidden",
+            "This synthetic-only test build cannot register any native target.",
+        ));
+    }
+    #[cfg(all(windows, feature = "native-agent-worker"))]
+    if let Some(path) = &agent_guard_path {
+        agent_worker::install(agent_worker::WindowsGuard::load(path)?)?;
+    }
     let mut engine = Engine::new(state)?;
     if windows {
         if macos.is_some() {
@@ -590,16 +881,22 @@ fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
                 "Windows target cannot be combined with macOS.",
             ));
         }
-        if allow_input && windows_grant.is_none() {
-            return Err(fault(
-                "input_grant_required",
-                "Windows input requires an explicit root/window/native-identity/expiry allocation JSON.",
-            ));
-        }
         let grant = windows_grant
             .map(|p| {
                 if !p.is_absolute() {
                     return Err(fault("invalid_cli", "Input grant path must be absolute."));
+                }
+                #[cfg(all(windows, feature = "native-agent-worker"))]
+                if agent_worker::installed().is_some() {
+                    return serde_json::from_slice::<rcu_windows::InputGrant>(
+                        &agent_worker::private_grant(p, 16384)?,
+                    )
+                    .map_err(|_| {
+                        fault(
+                            "invalid_input_grant",
+                            "Use the exact private input grant schema.",
+                        )
+                    });
                 }
                 use std::io::Read;
                 let mut bytes = Vec::new();
@@ -617,16 +914,73 @@ fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
                 })
             })
             .transpose()?;
+        let lifecycle_grant = lifecycle_grant_path
+            .map(|p| {
+                if !p.is_absolute() {
+                    return Err(fault(
+                        "invalid_cli",
+                        "Lifecycle grant path must be absolute.",
+                    ));
+                }
+                #[cfg(all(windows, feature = "native-agent-worker"))]
+                if agent_worker::installed().is_some() {
+                    return serde_json::from_slice::<rcu_core::lifecycle::LifecycleGrant>(
+                        &agent_worker::private_grant(p, 65536)?,
+                    )
+                    .map_err(|_| {
+                        fault(
+                            "invalid_lifecycle_grant",
+                            "Use the exact private lifecycle grant schema.",
+                        )
+                    });
+                }
+                use std::io::Read;
+                let mut bytes = Vec::new();
+                std::fs::File::open(p)?
+                    .take(65537)
+                    .read_to_end(&mut bytes)?;
+                if bytes.len() > 65536 {
+                    return Err(fault(
+                        "invalid_lifecycle_grant",
+                        "Lifecycle grant exceeds 64 KiB.",
+                    ));
+                }
+                serde_json::from_slice::<rcu_core::lifecycle::LifecycleGrant>(&bytes).map_err(
+                    |_| {
+                        fault(
+                            "invalid_lifecycle_grant",
+                            "Use exact lifecycle schema; unknown fields are rejected.",
+                        )
+                    },
+                )
+            })
+            .transpose()?;
         #[cfg(windows)]
         {
-            engine.register(
-                "windows-local".into(),
-                Box::new(rcu_windows::NativeWindows::new_with_grant(grant)?),
-            )?;
+            #[cfg(feature = "native-agent-worker")]
+            let backend: Box<dyn rcu_core::Backend> = if let Some(guard) = agent_worker::installed()
+            {
+                let (mut grant, mut lifecycle_grant) = (grant, lifecycle_grant);
+                guard.constrain_grants(&mut grant, &mut lifecycle_grant)?;
+                Box::new(agent_worker::wrap(
+                    rcu_windows::NativeWindows::new_with_grants(grant, lifecycle_grant)?,
+                    guard.clone(),
+                )?)
+            } else {
+                Box::new(rcu_windows::NativeWindows::new_with_grants(
+                    grant,
+                    lifecycle_grant,
+                )?)
+            };
+            #[cfg(not(feature = "native-agent-worker"))]
+            let backend: Box<dyn rcu_core::Backend> = Box::new(
+                rcu_windows::NativeWindows::new_with_grants(grant, lifecycle_grant)?,
+            );
+            engine.register("windows-local".into(), backend)?;
         }
         #[cfg(not(windows))]
         {
-            let _ = grant;
+            let _ = (grant, lifecycle_grant);
             return Err(fault(
                 "unsupported_platform",
                 "--windows-desktop must run inside the explicitly allocated interactive Windows session.",
@@ -667,6 +1021,7 @@ fn engine_from_args() -> CoreResult<(Engine, Option<String>)> {
     Ok((engine, pipe_server))
 }
 fn main() {
+    eof_diagnostics::phase("main_enter");
     let result = (|| -> std::result::Result<(), Box<dyn std::error::Error>> {
         let (engine, pipe_server) = engine_from_args()?;
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -674,20 +1029,54 @@ fn main() {
             .max_blocking_threads(2)
             .enable_all()
             .build()?;
-        runtime.block_on(async {
+        eof_diagnostics::phase("runtime_block_on_begin");
+        let result = runtime.block_on(async {
             #[cfg(windows)]
             if let Some(id) = pipe_server {
+                #[cfg(feature = "native-agent-worker")]
+                if let Some(guard) = agent_worker::installed() {
+                    let (pipe, peer) = rcu_windows::pipe::accept_owned(
+                        &id,
+                        guard.owner(),
+                        guard.connection_budget(),
+                    )
+                    .await?;
+                    guard.bind_peer(peer)?;
+                    let service = Server::new(engine)
+                        .serve(eof_diagnostics::transport(pipe))
+                        .await?;
+                    eof_diagnostics::phase("service_wait_begin");
+                    let result = service.waiting().await;
+                    eof_diagnostics::phase("service_wait_returned");
+                    result?;
+                    return Ok::<_, Box<dyn std::error::Error>>(());
+                }
                 let pipe = rcu_windows::pipe::accept(&id).await?;
-                let service = Server::new(engine).serve(pipe).await?;
-                service.waiting().await?;
+                let service = Server::new(engine)
+                    .serve(eof_diagnostics::transport(pipe))
+                    .await?;
+                eof_diagnostics::phase("service_wait_begin");
+                let result = service.waiting().await;
+                eof_diagnostics::phase("service_wait_returned");
+                result?;
                 return Ok::<_, Box<dyn std::error::Error>>(());
             }
             #[cfg(not(windows))]
             let _ = pipe_server;
-            let service = Server::new(engine).serve(rmcp::transport::stdio()).await?;
-            service.waiting().await?;
+            let service = Server::new(engine)
+                .serve(eof_diagnostics::transport(rmcp::transport::stdio()))
+                .await?;
+            eof_diagnostics::phase("service_wait_begin");
+            let result = service.waiting().await;
+            eof_diagnostics::phase("service_wait_returned");
+            result?;
             Ok::<_, Box<dyn std::error::Error>>(())
-        })
+        });
+        eof_diagnostics::phase("runtime_block_on_returned");
+        eof_diagnostics::phase("runtime_drop_begin");
+        drop(runtime);
+        eof_diagnostics::phase("runtime_drop_returned");
+        result
     })();
     if let Err(e) = result {
         // GUI-subsystem Windows services may have no stderr handle. Preserve
@@ -715,6 +1104,7 @@ fn main() {
         let _ = writeln!(std::io::stderr(), "{e}");
         std::process::exit(1);
     }
+    eof_diagnostics::phase("main_return");
 }
 
 #[cfg(test)]
@@ -748,6 +1138,7 @@ mod tests {
                     layout: "physical-fixture".into(),
                     content: rcu_core::digest(&self.0),
                     native_epoch: "fixture".into(),
+                    mutation_context: None,
                 }),
                 mutation_ready: false,
                 blocked: Some(false),
@@ -849,6 +1240,111 @@ mod tests {
         assert!(serde_json::from_value::<ActArgs>(json!({"target":"a","reference":"b","lease":"c","request_id":"d","intent":"click","args":[]})).is_err());
     }
     #[test]
+    fn checked_schema_accepts_only_exact_element_and_no_locator_overrides() {
+        let valid = json!({"target":"a","frame":"b","element":"exact-id","lease":"c","request_id":"d","intent":"click"});
+        assert!(serde_json::from_value::<CheckedActArgs>(valid.clone()).is_ok());
+        for field in ["locator", "reference", "name", "x", "y", "args"] {
+            let mut args = valid.clone();
+            args[field] = json!({"kind":"pixel","x":1,"y":2});
+            assert!(serde_json::from_value::<CheckedActArgs>(args).is_err());
+        }
+        for element in [
+            json!({"kind":"semantic","name":"Input"}),
+            json!([1, 2]),
+            json!(true),
+            Value::Null,
+        ] {
+            let mut args = valid.clone();
+            args["element"] = element;
+            assert!(serde_json::from_value::<CheckedActArgs>(args).is_err());
+        }
+    }
+    #[tokio::test]
+    async fn checked_endpoint_dispatches_fixture_once_and_preserves_operation_receipt() {
+        let state = tempfile::tempdir().unwrap();
+        let fixture = rcu_core::fixture::Fixture::default();
+        let mut engine = Engine::new(state.path().into()).unwrap();
+        engine
+            .register("fixture".into(), Box::new(fixture.clone()))
+            .unwrap();
+        let frame = engine.observe("fixture").unwrap().frame;
+        let lease = engine.claim("fixture", 60_000).unwrap();
+        let server = Server::new(engine);
+        let args = || CheckedActArgs {
+            target: "fixture".into(),
+            frame: frame.clone(),
+            element: "Input".into(),
+            lease: lease.clone(),
+            request_id: "checked-once".into(),
+            intent: Intent::Text,
+            value: Some("checked fixture value".into()),
+            operation_id: None,
+        };
+        let result = server.act_checked(Parameters(args())).await;
+        assert_ne!(result.is_error, Some(true), "{result:?}");
+        let receipt = result.structured_content.as_ref().unwrap();
+        assert_eq!(receipt["request_id"], "checked-once");
+        assert_eq!(receipt["scope"]["element"], "Input");
+        assert_eq!(receipt["dispatch"], "returned");
+        assert_eq!(receipt["goal_verified"], false);
+        assert_eq!(receipt["replay"], "forbidden");
+        query_response_operation(&server, &result).await;
+        let replay = server.act_checked(Parameters(args())).await;
+        assert_ne!(replay.is_error, Some(true), "{replay:?}");
+        assert_eq!(
+            replay.structured_content.as_ref().unwrap()["deduplicated"],
+            true
+        );
+        query_response_operation(&server, &replay).await;
+        let app = fixture.0.lock().unwrap();
+        assert_eq!(app.calls, 1);
+        assert_eq!(app.value, "checked fixture value");
+    }
+    #[tokio::test]
+    async fn checked_endpoint_rejects_changed_document_without_dispatch() {
+        let state = tempfile::tempdir().unwrap();
+        let fixture = rcu_core::fixture::Fixture::default();
+        let mut engine = Engine::new(state.path().into()).unwrap();
+        engine
+            .register("fixture".into(), Box::new(fixture.clone()))
+            .unwrap();
+        let frame = engine.observe("fixture").unwrap().frame;
+        let lease = engine.claim("fixture", 60_000).unwrap();
+        fixture.0.lock().unwrap().value = "document changed after observation".into();
+        let server = Server::new(engine);
+        let response = server
+            .act_checked(Parameters(CheckedActArgs {
+                target: "fixture".into(),
+                frame,
+                element: "Toggle test option".into(),
+                lease,
+                request_id: "changed-document".into(),
+                intent: Intent::Click,
+                value: None,
+                operation_id: Some("checked-context-error".into()),
+            }))
+            .await;
+        assert_eq!(response.is_error, Some(true));
+        assert_eq!(
+            response.structured_content.as_ref().unwrap()["error"],
+            "checked_precondition_changed"
+        );
+        let op = query_response_operation(&server, &response).await;
+        assert_eq!(op["operation_id"], "checked-context-error");
+        assert_eq!(op["terminal"], true);
+        assert_eq!(op["resources_released"], true);
+        assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        assert!(
+            state
+                .path()
+                .join("receipts")
+                .read_dir()
+                .unwrap()
+                .next()
+                .is_none()
+        );
+    }
+    #[test]
     fn boolean_is_not_a_coordinate() {
         assert!(
             serde_json::from_value::<ResolveArgs>(
@@ -856,6 +1352,207 @@ mod tests {
             )
             .is_err()
         );
+    }
+    async fn query_response_operation(server: &Server, response: &CallToolResult) -> Value {
+        let data = response.structured_content.as_ref().unwrap();
+        let operation_id = data["operation_id"].as_str().unwrap();
+        assert!(!operation_id.is_empty());
+        assert_eq!(data["operation"]["operation_id"], operation_id);
+        let query = server
+            .operation(Parameters(OperationArgs {
+                operation_id: operation_id.into(),
+            }))
+            .await;
+        assert_ne!(query.is_error, Some(true));
+        let snapshot = query.structured_content.unwrap();
+        assert_eq!(data["operation"], snapshot);
+        let wire = serde_json::to_value(response).unwrap();
+        let last = wire["content"].as_array().unwrap().last().unwrap();
+        let metadata: Value = serde_json::from_str(last["text"].as_str().unwrap()).unwrap();
+        assert_eq!(metadata["operation_id"], operation_id);
+        assert_eq!(metadata["operation"], snapshot);
+        snapshot
+    }
+    #[tokio::test]
+    async fn early_native_pin_error_keeps_diagnostic_through_mcp_worker_and_text_blocks() {
+        let state = tempfile::tempdir().unwrap();
+        let server = Server::new(Engine::new(state.path().into()).unwrap());
+        let diagnostic = json!({"schema":"rcu.windows.pin.v1","api":"CreateFileW","stage":"open",
+            "request":{"authorized_file":"C:\\Protected\\app.exe","path":"C:\\Protected","desired_access":32,"share_mode":1,"flags":0x0220_0000},
+            "native_error":{"hresult":"0x80070005","win32_code":5},
+            "verification_context":{"phase":"launch_preflight","role":"selected_launcher"},
+            "effective_token":{"status":"unknown","reason":"offline fixture"}});
+        let mut failure = fault(
+            "application_directory_pin_failed",
+            "Original native failure; no dispatch.",
+        );
+        failure.diagnostic = Some(Box::new(diagnostic.clone()));
+        let response = server.execute(move |_| Err(failure)).await;
+        let payload = response.structured_content.as_ref().unwrap();
+        assert_eq!(response.is_error, Some(true));
+        assert_eq!(payload["error"], "application_directory_pin_failed");
+        assert_eq!(payload["diagnostic"], diagnostic);
+        let wire = serde_json::to_value(&response).unwrap();
+        let first_text: Value =
+            serde_json::from_str(wire["content"][0]["text"].as_str().unwrap()).unwrap();
+        assert_eq!(first_text["diagnostic"], diagnostic);
+        let status = query_response_operation(&server, &response).await;
+        assert_eq!(status["terminal"], true);
+        assert_eq!(status["resources_released"], true);
+        assert_eq!(status["native_call_depth"], 0);
+        let old = error(fault("legacy", "unchanged"));
+        assert_eq!(
+            old.structured_content.unwrap(),
+            json!({"error":"legacy","next_step":"unchanged"})
+        );
+    }
+    #[tokio::test]
+    async fn auto_operation_id_and_actual_snapshot_survive_success_and_core_error() {
+        let state = tempfile::tempdir().unwrap();
+        let server = Server::new(Engine::new(state.path().into()).unwrap());
+        let successful = server
+            .execute(|_| value(json!({"existing_field": 7})))
+            .await;
+        assert_eq!(
+            successful.structured_content.as_ref().unwrap()["existing_field"],
+            7
+        );
+        let snapshot = query_response_operation(&server, &successful).await;
+        assert_eq!(snapshot["terminal"], true);
+        assert_eq!(snapshot["resources_released"], true);
+        let failed = server
+            .execute(|_| {
+                Err(fault(
+                    "offline_failure",
+                    "The original next step is preserved.",
+                ))
+            })
+            .await;
+        assert_eq!(failed.is_error, Some(true));
+        assert_eq!(
+            failed.structured_content.as_ref().unwrap()["error"],
+            "offline_failure"
+        );
+        assert_eq!(
+            failed.structured_content.as_ref().unwrap()["next_step"],
+            "The original next step is preserved."
+        );
+        let snapshot = query_response_operation(&server, &failed).await;
+        assert_eq!(snapshot["terminal"], true);
+        assert_eq!(snapshot["resources_released"], true);
+        assert_ne!(
+            successful.structured_content.unwrap()["operation_id"],
+            failed.structured_content.unwrap()["operation_id"]
+        );
+    }
+    #[tokio::test]
+    async fn worker_panic_returns_queryable_auto_id_and_cleanup_uncertainty() {
+        let state = tempfile::tempdir().unwrap();
+        let server = Server::new(Engine::new(state.path().into()).unwrap());
+        let failed = server
+            .execute(|_| {
+                struct Cleanup;
+                impl Drop for Cleanup {
+                    fn drop(&mut self) {
+                        rcu_core::operation::resource_release_uncertain();
+                    }
+                }
+                let _cleanup = Cleanup;
+                panic!("offline worker-panic fixture");
+            })
+            .await;
+        assert_eq!(failed.is_error, Some(true));
+        assert_eq!(
+            failed.structured_content.as_ref().unwrap()["error"],
+            "worker_failed"
+        );
+        let snapshot = query_response_operation(&server, &failed).await;
+        assert_eq!(snapshot["terminal"], true);
+        assert_eq!(snapshot["resource_release_uncertain"], true);
+        assert_eq!(snapshot["resources_released"], false);
+        assert_eq!(snapshot["native_call_pending"], false);
+    }
+    #[tokio::test]
+    async fn core_error_does_not_hide_failed_resource_cleanup() {
+        let state = tempfile::tempdir().unwrap();
+        let server = Server::new(Engine::new(state.path().into()).unwrap());
+        let failed = server
+            .execute_operation(Some("cleanup-uncertain".into()), |_| {
+                rcu_core::operation::resource_release_uncertain();
+                Err(fault(
+                    "cleanup_fixture_failed",
+                    "Do not claim resources were released.",
+                ))
+            })
+            .await;
+        let snapshot = query_response_operation(&server, &failed).await;
+        assert_eq!(snapshot["operation_id"], "cleanup-uncertain");
+        assert_eq!(snapshot["terminal"], true);
+        assert_eq!(snapshot["resource_release_uncertain"], true);
+        assert_eq!(snapshot["resources_released"], false);
+    }
+    #[tokio::test]
+    async fn completed_join_cannot_fabricate_terminal_with_a_live_native_guard() {
+        let state = tempfile::tempdir().unwrap();
+        let server = Server::new(Engine::new(state.path().into()).unwrap());
+        let (tx, rx) = std::sync::mpsc::channel();
+        let response = server
+            .execute(move |_| {
+                // This only exercises Rust lifecycle counters; it invokes no OS API.
+                tx.send(rcu_core::operation::native_call("retained_offline_guard")?)
+                    .unwrap();
+                value(json!({"worker_returned": true}))
+            })
+            .await;
+        let snapshot = query_response_operation(&server, &response).await;
+        assert_eq!(snapshot["finish_requested"], true);
+        assert_eq!(snapshot["native_call_depth"], 1);
+        assert_eq!(snapshot["native_call_pending"], true);
+        assert_eq!(snapshot["terminal"], false);
+        assert_eq!(snapshot["resources_released"], false);
+        drop(rx.recv_timeout(std::time::Duration::from_secs(1)).unwrap());
+        let query = server
+            .operation(Parameters(OperationArgs {
+                operation_id: snapshot["operation_id"].as_str().unwrap().into(),
+            }))
+            .await;
+        let completed = query.structured_content.unwrap();
+        assert_eq!(completed["terminal"], true);
+        assert_eq!(completed["resources_released"], true);
+        assert_eq!(completed["native_call_depth"], 0);
+        // The earlier response remains a truthful earlier snapshot.
+        assert_eq!(
+            response.structured_content.unwrap()["operation"]["terminal"],
+            false
+        );
+    }
+    #[tokio::test]
+    async fn non_object_or_reserved_payload_is_preserved_without_spoofing_operation() {
+        let state = tempfile::tempdir().unwrap();
+        let server = Server::new(Engine::new(state.path().into()).unwrap());
+        for original in [
+            json!([1, 2]),
+            json!({"operation_id":"not-the-registered-id","payload":9}),
+        ] {
+            let payload = original.clone();
+            let response = server.execute(move |_| value(payload)).await;
+            assert_eq!(
+                response.structured_content.as_ref().unwrap()["result"],
+                original
+            );
+            let snapshot = query_response_operation(&server, &response).await;
+            assert_ne!(snapshot["operation_id"], "not-the-registered-id");
+        }
+    }
+    #[test]
+    fn lifecycle_preflight_schema_does_not_accept_dispatch_fields() {
+        let good = json!({"target":"explicit","authorization_id":"launch","operation_id":null});
+        assert!(serde_json::from_value::<LifecyclePreflightArgs>(good.clone()).is_ok());
+        for key in ["lease", "arguments", "activate", "allow_input"] {
+            let mut bad = good.clone();
+            bad[key] = true.into();
+            assert!(serde_json::from_value::<LifecyclePreflightArgs>(bad).is_err());
+        }
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn cancel_endpoint_remains_available_but_native_slot_is_held_until_cleanup() {

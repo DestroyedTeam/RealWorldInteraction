@@ -4,11 +4,19 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = []
+# Instrumented local model tests only. This build rejects every native target.
+synthetic-fixture = ["rcu-core/fixture"]
+link-fixture = ["synthetic-fixture"]
+native-agent-worker = ["dep:rcu-native-link"]
+
 [dependencies]
 rcu-core = { path = "../rcu-core" }
 rcu-macos = { path = "../rcu-macos" }
 rcu-windows = { path = "../rcu-windows" }
 rcu-imaging = { path = "../rcu-imaging" }
+rcu-native-link = { path = "../rcu-native-link", optional = true }
 rmcp = { version = "=1.7.0", default-features = false, features = ["server", "macros", "transport-io"] }
 tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
 serde.workspace = true
@@ -17,4 +25,5 @@ schemars.workspace = true
 base64 = "=0.22.1"
 
 [dev-dependencies]
+rcu-core = { path = "../rcu-core", features = ["fixture"] }
 tempfile.workspace = true

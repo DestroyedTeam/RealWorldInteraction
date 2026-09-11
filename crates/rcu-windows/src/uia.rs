@@ -253,6 +253,8 @@ pub struct Walk {
     pub complete: bool,
     pub truncation: Option<String>,
     pub elapsed_ms: f64,
+    pub document_state: Option<String>,
+    pub document_context_unavailable: Option<String>,
 }
 pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
     let start = Instant::now();
@@ -270,6 +272,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
     let mut elements = vec![];
     let mut details = vec![];
     let mut truncation = None;
+    let mut documents = crate::document_context::Documents::default();
     while let Some((e, depth)) = stack.pop() {
         checkpoint("uia_walk_node")?;
         if details.len() >= 128 || start.elapsed() > Duration::from_millis(1500) {
@@ -305,6 +308,22 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         let id = rid
             .as_ref()
             .map(|r| digest(format!("{}:{pid}:{epoch}:{r:?}", window_id(w)).as_bytes()));
+        if matches!(control, Some(50004 | 50030)) {
+            // Read only visible Edit/Document controls; no password or unknown
+            // classification is silently converted to an empty document proof.
+            if offscreen != Some(true) {
+                if pass != Some(false) || offscreen.is_none() || id.is_none() {
+                    documents.reject("document visibility/password/runtime identity unknown");
+                } else {
+                    match bounded_document_value(&e) {
+                        Ok(value) => documents.push(id.as_deref().unwrap(), &value),
+                        Err(error) => documents.reject(&error.code),
+                    }
+                }
+            }
+        } else if control.is_none() && offscreen != Some(true) {
+            documents.reject("visible control type unknown");
+        }
         if let (Some(id), Some(bounds)) = (&id, bounds) {
             let point = [
                 f64::from(bounds.x) + f64::from(bounds.width) / 2.,
@@ -379,6 +398,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         }
     }
     checkpoint("uia_walk_returned")?;
+    let document_state = documents.finish(truncation.is_none());
     Ok(Walk {
         root_runtime_id: root_id,
         elements,
@@ -387,6 +407,38 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         complete: truncation.is_none(),
         truncation,
         elapsed_ms: start.elapsed().as_secs_f64() * 1000.,
+        document_state,
+        document_context_unavailable: documents.unavailable,
+    })
+}
+fn bounded_document_value(e: &IUIAutomationElement) -> Result<String> {
+    let _call = native_call("uia_document_precondition")?;
+    // TextPattern has a request-time bound; ValuePattern has only a post-read
+    // bound. Never claim a hard allocator/native-provider preemption guarantee.
+    let actual = if let Some(text) = pattern::<IUIAutomationTextPattern>(e, UIA_TextPatternId)? {
+        let range = api("uia_document_range_unavailable", unsafe {
+            text.DocumentRange()
+        })?;
+        api("uia_document_read_failed", unsafe { range.GetText(16_385) })?
+    } else if let Some(value) = pattern::<IUIAutomationValuePattern>(e, UIA_ValuePatternId)? {
+        api("uia_document_read_failed", unsafe { value.CurrentValue() })?
+    } else {
+        return Err(fault(
+            "uia_document_pattern_unavailable",
+            "Document preconditions require a bounded native text/value read.",
+        ));
+    };
+    if actual.len() > 16_384 {
+        return Err(fault(
+            "uia_document_value_limit",
+            "Document value exceeds the checked-action budget.",
+        ));
+    }
+    String::from_utf16(&actual).map_err(|_| {
+        fault(
+            "uia_document_non_unicode",
+            "Document text is not valid UTF-16.",
+        )
     })
 }
 pub fn value_matches(w: HWND, pid: u32, epoch: &str, wanted: &str, expected: &str) -> Result<bool> {
