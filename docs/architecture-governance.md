@@ -43,8 +43,8 @@
 ### 第一批结构变更
 
 - 新的原生插件导出与模型回包投影放在 `rcu-native-link/src/integration/`，明确不拥有原生执行或授权。暂保留 `plugin` / `presentation` 公共重导出，避免把调用方全部改名混入行为修复。
-- 下一批拆分 `rcu-mcp`：`main.rs` 只负责启动；独立 `bootstrap`、`tools`、`response`、`worker`、协议测试。先移动职责，不修改工具 schema。
-- `rcu-native-link` 后续分为 `protocol`、`transport`、`orchestration`、`deployment`、`integration`；每个模块定义入口与依赖，避免 `mod.rs` 成为新的千行文件。
+- 已拆分 `rcu-mcp`：`main.rs` 从 1635 行减为 13 行，仅调用启动入口；`bootstrap` 负责进程与平台装配，`server` 负责 MCP 执行/路由/回包，`server/parameters` 独立持有工具参数，原单测移到 `server/tests`，工具 schema 不变。路由与回包还可进一步细分。
+- `rcu-native-link` 已按 `protocol`、`transport`、`orchestration`、`deployment`、`integration` 分组，顶层保留稳定公共重导出。大文件债务仍在，结构分组不代表内部依赖已全部解耦。
 - Windows 优先拆 `session/token`、`window/uia`、`capture`、`input`、`lifecycle`；FFI 与纯规则测试分离。Ordinary/Admin 共用身份和安装状态，不复制实现绕过 HOLD。
 
 ## 可执行约束

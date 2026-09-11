@@ -7,9 +7,9 @@ use std::{
 };
 
 pub const VERSION: &str = "0.4.0-m3a.7";
-pub const INSTRUCTIONS: &str = include_str!("../fixtures/instructions.txt");
+pub const INSTRUCTIONS: &str = include_str!("../../fixtures/instructions.txt");
 pub fn schema_sha() -> String {
-    serde_json::from_str::<Value>(include_str!("../fixtures/golden-schema.json")).unwrap()["tools_canonical_sha256"].as_str().unwrap().into()
+    serde_json::from_str::<Value>(include_str!("../../fixtures/golden-schema.json")).unwrap()["tools_canonical_sha256"].as_str().unwrap().into()
 }
 #[derive(Clone, Debug)]
 pub struct Pending {

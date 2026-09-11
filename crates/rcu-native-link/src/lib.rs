@@ -1,25 +1,17 @@
 //! Bounded real transport and Windows-user worker supervision. No public fixture trust.
 use sha2::{Digest, Sha256};
 pub const TRANSPORT_VERSION: u8 = 2;
-pub mod budget;
-pub mod client;
-pub mod control;
-pub mod entry;
-pub mod frame;
-pub mod install;
-pub mod installation;
+pub mod deployment;
 pub mod integration;
-pub mod mcp;
-pub mod model;
-pub mod net;
-pub mod plan;
+pub mod orchestration;
+pub mod protocol;
+pub mod transport;
 pub use integration::{codex_plugin as plugin, model_output as presentation};
-pub mod private;
-pub mod runtime;
-pub mod server;
-pub mod store;
-pub mod types;
-pub mod worker;
+// Stable public facade; modules now reflect ownership without changing wire APIs.
+pub use deployment::{entry, install, installation, plan, private};
+pub use orchestration::{budget, control, mcp, model, runtime, store, worker};
+pub use protocol::{frame, types};
+pub use transport::{client, net, server};
 pub fn sha(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }

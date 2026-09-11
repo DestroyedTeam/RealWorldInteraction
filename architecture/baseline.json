@@ -34,7 +34,6 @@
     "crates/rcu-core/src/lifecycle_tests.rs": 961,
     "crates/rcu-core/src/lifecycle_controller.rs": 838,
     "crates/rcu-mcp/src/agent_worker.rs": 1190,
-    "crates/rcu-mcp/src/main.rs": 1635,
     "crates/rcu-windows/src/native.rs": 700,
     "crates/rcu-windows/src/package_policy.rs": 1004,
     "crates/rcu-windows/src/uia.rs": 698,
@@ -42,9 +41,9 @@
     "crates/rcu-windows/src/application.rs": 1627,
     "crates/rcu-windows/src/agent_contract.rs": 801,
     "crates/rcu-windows/src/agent_binding.rs": 1596,
-    "crates/rcu-native-link/src/net.rs": 721,
-    "crates/rcu-native-link/src/control.rs": 1257,
-    "crates/rcu-native-link/src/worker.rs": 1143,
-    "crates/rcu-macos/src/native.rs": 1020
+    "crates/rcu-macos/src/native.rs": 1020,
+    "crates/rcu-native-link/src/transport/net.rs": 721,
+    "crates/rcu-native-link/src/orchestration/control.rs": 1257,
+    "crates/rcu-native-link/src/orchestration/worker.rs": 1143
   }
 }

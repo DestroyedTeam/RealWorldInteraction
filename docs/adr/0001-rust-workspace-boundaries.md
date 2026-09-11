@@ -22,7 +22,10 @@ crates/
   rcu-link-trust/                私有配对、证书与身份校验
   rcu-native-link/
     src/integration/             AI host 插件与模型输出投影
-    src/...                      后续按协议/传输/编排/部署迁移，不增空壳
+    src/protocol/                帧和跨进程契约
+    src/transport/               TLS 连接和 relay I/O
+    src/orchestration/           任务阶段、worker 和持久化核验
+    src/deployment/              显式部署和客户端入口
   rcu-mcp/                       进程装配 + MCP 适配；入口逐步变薄
 integrations/codex/              使用说明；Rust 生成插件，不提交本机绑定配置
 architecture/                   依赖规则、大文件债务上限
