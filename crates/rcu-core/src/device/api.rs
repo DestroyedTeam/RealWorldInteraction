@@ -165,6 +165,16 @@ pub struct OperationArgs {
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct OperationQueryArgs {
+    #[serde(default)]
+    pub device_id: Option<String>,
+    pub operation_id: String,
+    /// auto refuses cross-namespace ambiguity; request looks up a mutation request_id.
+    #[serde(default)]
+    pub id_kind: super::OperationIdKind,
+}
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ImageArgs {
     pub target: String,
     pub frame: String,

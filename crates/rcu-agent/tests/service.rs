@@ -344,6 +344,7 @@ async fn lease_is_shared_and_repeated_operation_does_not_dispatch() {
         None,
         Call::Operation {
             operation_id: "monitor-action".into(),
+            id_kind: Default::default(),
         },
     )
     .await;

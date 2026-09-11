@@ -24,6 +24,11 @@ business result. A window closing does not invalidate the installation.
   Obtain images/tiles through `computer.image`; view coordinates need
   `computer.resolve_view`, not original-image pixel interpretation.
 
+For `computer.operation`, `id_kind: "monitor"` selects a monitoring operation ID;
+`id_kind: "request"` selects the mutation's stable `request_id` (including after
+a lost response). Default `auto` refuses cross-namespace ambiguity. Do not resolve
+an ambiguous ID by retrying a mutation. Cancellation uses the monitoring ID only.
+
 ## Act and verify
 
 Select the next action before claiming a short cooperative desktop input lease.

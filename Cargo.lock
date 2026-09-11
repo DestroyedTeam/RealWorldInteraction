@@ -857,6 +857,7 @@ name = "rcu-mcp"
 version = "0.4.0-m3a.7"
 dependencies = [
  "base64",
+ "rcu-agent",
  "rcu-core",
  "rcu-imaging",
  "rcu-link-trust",

@@ -5,6 +5,23 @@ pub mod api;
 pub mod catalog;
 
 pub const PROTOCOL_VERSION: u16 = 1;
+/// Mutation replay keys and monitoring IDs are separate namespaces.
+/// Legacy unqualified queries are accepted only when their meaning is unique.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum OperationIdKind {
+    #[default]
+    Auto,
+    Monitor,
+    Request,
+}
+impl OperationIdKind {
+    pub fn is_auto(&self) -> bool {
+        *self == Self::Auto
+    }
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DeviceInfo {
@@ -37,13 +54,24 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Call {
-    RecoverInput { resource_domain: String },
+    RecoverInput {
+        resource_domain: String,
+    },
     Describe,
     OpenContext,
     CloseContext,
-    Invoke { tool: String, arguments: Value },
-    Operation { operation_id: String },
-    Cancel { operation_id: String },
+    Invoke {
+        tool: String,
+        arguments: Value,
+    },
+    Operation {
+        operation_id: String,
+        #[serde(default, skip_serializing_if = "OperationIdKind::is_auto")]
+        id_kind: OperationIdKind,
+    },
+    Cancel {
+        operation_id: String,
+    },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

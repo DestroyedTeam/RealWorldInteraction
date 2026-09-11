@@ -157,9 +157,12 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                             json!({"operation_id":op,"device":name,"synthetic":true}),
                         )
                     }
-                    Call::Operation { operation_id } => {
-                        DeviceResult::value(json!({"operation_id":operation_id,"device":name}))
-                    }
+                    Call::Operation {
+                        operation_id,
+                        id_kind,
+                    } => DeviceResult::value(
+                        json!({"operation_id":operation_id,"device":name,"id_kind":id_kind}),
+                    ),
                     Call::CloseContext => {
                         if slow_close {
                             std::future::pending::<()>().await;
@@ -286,4 +289,156 @@ async fn multi_device_collision_cancellation_and_bounded_eof() {
             assert!(calls.iter().filter(|r|matches!(&r.call,Call::Invoke{arguments,..} if arguments["operation_id"]==id)).count()<=1,"original operation replayed");
         }
     }
+}
+
+/// Actual production Runtime + mTLS, explicitly using the synthetic backend.
+async fn runtime_device(root: &std::path::Path) -> Device {
+    use rcu_agent::config::{Config, PlatformPolicy, Principal};
+    let path = root.join("real-runtime");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&path)
+        .unwrap();
+    let provisioned = rcu_link_trust::provision(&path.join("trust")).unwrap();
+    let identity_paths = IdentityPaths::in_profile(&path.join("trust/agent"));
+    let tls = identity_paths
+        .load()
+        .unwrap()
+        .server_config(std::slice::from_ref(&provisioned.model.certificate_sha256))
+        .unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = listener.local_addr().unwrap();
+    let runtime = rcu_agent::runtime::Runtime::new(Config {
+        version: 1,
+        device_id: "runtime-device".into(),
+        bind: endpoint,
+        identity: identity_paths,
+        state_root: path.join("state"),
+        platform: PlatformPolicy::Fixture,
+        principals: vec![Principal {
+            certificate: provisioned.model.certificate_sha256,
+            observe: true,
+            input: true,
+        }],
+    })
+    .unwrap();
+    let paired = PairedDevice {
+        device_id: "runtime-device".into(),
+        endpoint,
+        identity: IdentityPaths::in_profile(&path.join("trust/model")),
+        agent_pin: provisioned.agent.certificate_sha256,
+    };
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let seen = calls.clone();
+    let (stop, rx) = tokio::sync::watch::channel(false);
+    let server = tokio::spawn(rcu_native_link::device::serve(
+        listener,
+        tls,
+        move |peer, request: Request| {
+            seen.lock().unwrap().push(request.clone());
+            runtime.clone().handle(peer, request)
+        },
+        rx,
+    ));
+    Device {
+        paired,
+        calls,
+        cancelled: Default::default(),
+        _stop: stop,
+        server,
+    }
+}
+
+#[tokio::test]
+async fn crossing_request_and_monitor_ids_stay_correct_across_actual_mcp_hosts() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap().join("private");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .unwrap();
+    let device = runtime_device(&root).await;
+    let profile = profile(&root, &[&device]);
+    let mut first = Host::start(&profile).await;
+    let targets = first.tool(2, "computer.targets", json!({})).await;
+    let target = &targets["targets"][0]["target"];
+    assert!(target.is_string(), "{targets}");
+    let lease = first
+        .tool(3, "computer.claim", json!({"target":target,"ttl_ms":60000}))
+        .await;
+    for (id, request, monitor, value) in [
+        (4, "req-a", "op-b", "action A"),
+        (6, "op-b", "op-c", "action B"),
+    ] {
+        let observation = first
+            .tool(
+                id,
+                "computer.observe",
+                json!({"target":target,"inline_image":false}),
+            )
+            .await;
+        let result=first.tool(id+1,"computer.act_checked",json!({"target":target,"frame":observation["frame"],"lease":lease["lease"],"element":"Input","request_id":request,"operation_id":monitor,"intent":"text","value":value})).await;
+        assert_eq!(result["dispatch"], "returned", "{result}");
+    }
+    assert_eq!(
+        first
+            .tool(8, "computer.operation", json!({"operation_id":"op-b"}))
+            .await["code"],
+        "operation_id_ambiguous"
+    );
+    assert_eq!(
+        first
+            .tool(
+                9,
+                "computer.operation",
+                json!({"operation_id":"op-b","id_kind":"monitor"})
+            )
+            .await["operation_id"],
+        "op-b"
+    );
+    assert_eq!(
+        first
+            .tool(
+                10,
+                "computer.operation",
+                json!({"operation_id":"op-b","id_kind":"request"})
+            )
+            .await["reservation"]["monitor_id"],
+        "op-c"
+    );
+    assert_eq!(
+        first
+            .tool(11, "computer.release", json!({"lease":lease["lease"]}))
+            .await["released"],
+        true
+    );
+    first.stop().await;
+    let mut second = Host::start(&profile).await;
+    // Query before targets/open-context: only authenticated durable storage can answer.
+    let query =
+        |kind: &str| json!({"device_id":"runtime-device","operation_id":"op-b","id_kind":kind});
+    assert_eq!(
+        second.tool(2, "computer.operation", query("auto")).await["code"],
+        "operation_id_ambiguous"
+    );
+    let a = second.tool(3, "computer.operation", query("monitor")).await;
+    let b = second.tool(4, "computer.operation", query("request")).await;
+    assert_eq!(a["reservation"]["operation_id"], "req-a");
+    assert_eq!(b["reservation"]["monitor_id"], "op-c");
+    assert_eq!(a["result"]["data"]["request_id"], "req-a");
+    assert_eq!(b["result"]["data"]["request_id"], "op-b");
+    assert_eq!(a["replay_allowed"], false);
+    assert_eq!(b["replay_allowed"], false);
+    second.stop().await;
+    assert_eq!(
+        device
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|r| matches!(&r.call,Call::Invoke{tool,..} if tool=="computer.act_checked"))
+            .count(),
+        2,
+        "queries/reconnect must not replay either mutation"
+    );
 }

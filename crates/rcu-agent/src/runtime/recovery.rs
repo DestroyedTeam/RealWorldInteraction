@@ -110,3 +110,98 @@ impl Runtime {
         }
     }
 }
+
+#[cfg(all(test, feature = "fixture"))]
+mod tests {
+    use super::*;
+    use crate::config::PlatformPolicy;
+    #[tokio::test]
+    async fn corrupt_commit_requires_new_authorized_idle_resource_check_and_remains_evidence() {
+        let temp = tempfile::tempdir().unwrap();
+        let policy = Principal {
+            certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
+            observe: true,
+            input: true,
+        };
+        let config = Config {
+            version: 1,
+            device_id: "recovery-fixture".into(),
+            bind: "127.0.0.1:0".parse().unwrap(),
+            identity: rcu_link_trust::IdentityPaths::in_profile(temp.path()),
+            principals: vec![policy.clone()],
+            state_root: temp.path().join("state"),
+            platform: PlatformPolicy::Fixture,
+        };
+        let runtime = Runtime::new(config.clone()).unwrap();
+        let key = platform::backend(&config, &policy, &uuid::Uuid::new_v4().to_string())
+            .unwrap()
+            .identity()
+            .key();
+        {
+            let mut storage = runtime.ledger.lock().unwrap();
+            let ledger = storage.as_mut().unwrap();
+            ledger
+                .reserve(
+                    policy.certificate.as_str(),
+                    "uncertain",
+                    &json!({}),
+                    "monitor",
+                    &key,
+                )
+                .unwrap();
+            ledger
+                .reconcile(&key, json!({"source":"earlier_synthetic_check"}))
+                .unwrap();
+        }
+        let recovery_dir = config.state_root.join("operations/recoveries");
+        let corrupt = std::fs::read_dir(&recovery_dir)
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        std::fs::write(&corrupt, b"{truncated").unwrap();
+        drop(runtime);
+        let runtime = Runtime::new(config.clone()).unwrap();
+        assert!(runtime.is_fenced(&key));
+        let mut readonly = policy.clone();
+        readonly.input = false;
+        assert_eq!(
+            runtime.recover(&readonly, &key).await.data["code"],
+            "permission_denied"
+        );
+        let domain = runtime.domain(&key).unwrap();
+        let held = domain.gate.clone().try_acquire_owned().unwrap();
+        assert_eq!(
+            runtime.recover(&policy, &key).await.data["code"],
+            "native_writer_pending"
+        );
+        assert_eq!(std::fs::read_dir(&recovery_dir).unwrap().count(), 1);
+        drop(held);
+        let recovered = runtime.recover(&policy, &key).await;
+        assert!(!recovered.is_error, "{:?}", recovered.data);
+        assert_eq!(
+            recovered.data["proof"]["native"]["source"],
+            "explicit_synthetic_fixture"
+        );
+        assert_eq!(recovered.data["proof"]["native"]["input_sent"], false);
+        assert_eq!(std::fs::read(corrupt).unwrap(), b"{truncated");
+        assert!(!runtime.is_fenced(&key));
+        let prior = runtime
+            .ledger
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .status(
+                policy.certificate.as_str(),
+                "uncertain",
+                OperationIdKind::Request,
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(prior["replay_allowed"], false);
+        drop(runtime);
+        assert!(!Runtime::new(config).unwrap().is_fenced(&key));
+    }
+}

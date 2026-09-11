@@ -30,6 +30,7 @@ schemars.workspace = true
 base64 = "=0.22.1"
 
 [dev-dependencies]
+rcu-agent = { path = "../rcu-agent", features = ["fixture"] }
 rcu-macos = { path = "../rcu-macos" }
 rcu-windows = { path = "../rcu-windows" }
 rcu-core = { path = "../rcu-core", features = ["fixture"] }

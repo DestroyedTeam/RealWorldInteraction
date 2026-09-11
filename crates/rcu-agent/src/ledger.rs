@@ -1,6 +1,6 @@
 //! Persist one reservation before each side effect; never forget/re-dispatch IDs.
 mod recovery;
-use rcu_core::device::DeviceResult;
+use rcu_core::device::{DeviceResult, OperationIdKind};
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
@@ -94,7 +94,7 @@ impl Ledger {
                     )
                 } else {
                     DeviceResult::value(
-                        json!({"operation_id":operation,"state":if !self.finished(&key).is_null(){"completed"}else{"reserved_or_effect_unknown"}, "dispatched_again":false,
+                        json!({"operation_id":old["monitor_id"],"request_id":operation,"state":if !self.finished(&key).is_null(){"completed"}else{"reserved_or_effect_unknown"}, "dispatched_again":false,
                     "goal_verified":false,"record":old,"result":self.finished(&key),"automatic_replay":false}),
                     )
                 },
@@ -122,14 +122,32 @@ impl Ledger {
         self.entries.insert(key.clone(), value);
         Ok(Reservation::New(key))
     }
-    pub fn status(&self, principal: &str, operation: &str) -> Option<Value> {
-        let key = rcu_core::digest(&serde_json::to_vec(&(principal, operation)).ok()?);
-        let (key, value) = self.entries.get_key_value(&key).or_else(|| {
-            self.entries
-                .iter()
-                .find(|(_, v)| v["principal"] == principal && v["monitor_id"] == operation)
-        })?;
-        Some(json!({"reservation":value,"result":self.finished(key),"replay_allowed":false}))
+    pub fn status(
+        &self,
+        principal: &str,
+        id: &str,
+        kind: OperationIdKind,
+    ) -> Result<Option<Value>, DeviceResult> {
+        let mut matches = self.entries.iter().filter(|(_, v)| {
+            v["principal"] == principal
+                && match kind {
+                    OperationIdKind::Monitor => v["monitor_id"] == id,
+                    OperationIdKind::Request => v["operation_id"] == id,
+                    OperationIdKind::Auto => v["monitor_id"] == id || v["operation_id"] == id,
+                }
+        });
+        let Some((key, value)) = matches.next() else {
+            return Ok(None);
+        };
+        if matches.next().is_some() {
+            return Err(DeviceResult::error(
+                "operation_id_ambiguous",
+                "This value identifies different operations. Specify id_kind=monitor or id_kind=request; no operation was selected.",
+            ));
+        }
+        Ok(Some(
+            json!({"reservation":value,"result":self.finished(key),"replay_allowed":false,"query":{"id":id,"id_kind":kind}}),
+        ))
     }
 
     fn finished(&self, key: &str) -> Value {
@@ -197,6 +215,51 @@ fn bounded_json(path: &Path) -> io::Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cross_namespace_ids_never_resolve_by_search_order() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("operations");
+        let mut ledger = Ledger::open(path.clone()).unwrap();
+        ledger
+            .reserve("p", "req-a", &json!({"action":"a"}), "op-b", "desktop")
+            .unwrap();
+        ledger
+            .reserve("p", "op-b", &json!({"action":"b"}), "op-c", "desktop")
+            .unwrap();
+        ledger
+            .reserve(
+                "other",
+                "req-a",
+                &json!({"action":"other"}),
+                "op-b",
+                "desktop",
+            )
+            .unwrap();
+        for ledger in [ledger, Ledger::open(path).unwrap()] {
+            let error = ledger
+                .status("p", "op-b", OperationIdKind::Auto)
+                .unwrap_err();
+            assert_eq!(error.data["code"], "operation_id_ambiguous");
+            let a = ledger
+                .status("p", "op-b", OperationIdKind::Monitor)
+                .unwrap()
+                .unwrap();
+            let b = ledger
+                .status("p", "op-b", OperationIdKind::Request)
+                .unwrap()
+                .unwrap();
+            assert_eq!(a["reservation"]["operation_id"], "req-a");
+            assert_eq!(b["reservation"]["monitor_id"], "op-c");
+            assert_eq!(a["replay_allowed"], false);
+            assert_eq!(b["replay_allowed"], false);
+            assert!(
+                ledger
+                    .status("other", "op-b", OperationIdKind::Auto)
+                    .unwrap()
+                    .is_some()
+            );
+        }
+    }
     #[test]
     fn reconciliation_is_per_domain_durable_and_never_erases_old_reservations() {
         let temp = tempfile::tempdir().unwrap();

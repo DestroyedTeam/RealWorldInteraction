@@ -220,23 +220,36 @@ impl Runtime {
                 }
                 DeviceResult::value(json!({"closed":true,"business_goal_inferred":false}))
             }
-            Call::Cancel { operation_id } => self.operation(peer, token, &operation_id, true),
-            Call::Operation { operation_id } => {
+            Call::Cancel { operation_id } => {
+                self.operation(peer, token, &operation_id, true, OperationIdKind::Monitor)
+            }
+            Call::Operation {
+                operation_id,
+                id_kind,
+            } => {
                 // Operation/cancellation requests are served separately below by
                 // the common tool route; this path never acquires an Engine lock.
-                self.operation(peer, token, &operation_id, false)
+                self.operation(peer, token, &operation_id, false, id_kind)
             }
             Call::Invoke { tool, arguments } => {
+                if let Err(e) = catalog::validate(&tool, &arguments) {
+                    return DeviceResult::error("invalid_arguments", &e.to_string());
+                }
                 if tool == "computer.operation" || tool == "computer.cancel" {
+                    let kind = if tool == "computer.operation" {
+                        serde_json::from_value::<api::OperationQueryArgs>(arguments.clone())
+                            .expect("query validated against shared schema")
+                            .id_kind
+                    } else {
+                        OperationIdKind::Monitor
+                    };
                     return self.operation(
                         peer,
                         token,
                         arguments["operation_id"].as_str().unwrap_or_default(),
                         tool == "computer.cancel",
+                        kind,
                     );
-                }
-                if let Err(e) = catalog::validate(&tool, &arguments) {
-                    return DeviceResult::error("invalid_arguments", &e.to_string());
                 }
                 let Some(context) = self.context(peer, token) else {
                     return DeviceResult::error(
@@ -483,9 +496,51 @@ impl Runtime {
         token: Option<&str>,
         id: &str,
         cancel: bool,
+        kind: OperationIdKind,
     ) -> DeviceResult {
-        if let Some(context) = self.context(peer, token) {
+        // Disambiguate before consulting the live registry. Lookup order must
+        // not make the same auto query select a different action after reconnect.
+        if kind == OperationIdKind::Monitor
+            && !cancel
+            && let Some(context) = self.context(peer, token)
+            && let Ok(status) = context.registry.get(id, false)
+        {
+            return DeviceResult::value(status);
+        }
+        let durable = if !cancel {
+            let Ok(storage) = self.ledger.lock() else {
+                return DeviceResult::error(
+                    "operation_storage_unavailable",
+                    "Operation identity cannot be established.",
+                );
+            };
+            let Ok(ledger) = storage.as_ref() else {
+                return DeviceResult::error(
+                    "operation_storage_unavailable",
+                    "Preserve the operation history; never replay an unknown effect.",
+                );
+            };
+            match ledger.status(peer.as_str(), id, kind) {
+                Ok(value) => value,
+                Err(error) => return error,
+            }
+        } else {
+            None
+        };
+        if kind != OperationIdKind::Request
+            && let Some(context) = self.context(peer, token)
+        {
             if let Ok(status) = context.registry.get(id, cancel) {
+                if kind == OperationIdKind::Auto
+                    && durable
+                        .as_ref()
+                        .is_some_and(|d| d["reservation"]["monitor_id"] != id)
+                {
+                    return DeviceResult::error(
+                        "operation_id_ambiguous",
+                        "This value names a live monitor and a different durable request. Specify id_kind.",
+                    );
+                }
                 return DeviceResult::value(status);
             }
             if cancel
@@ -499,11 +554,7 @@ impl Runtime {
                 );
             }
         }
-        if !cancel
-            && let Ok(storage) = self.ledger.lock()
-            && let Ok(ledger) = storage.as_ref()
-            && let Some(status) = ledger.status(peer.as_str(), id)
-        {
+        if let Some(status) = durable {
             return DeviceResult::value(status);
         }
         DeviceResult::error(

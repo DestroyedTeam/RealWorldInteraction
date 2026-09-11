@@ -1,6 +1,7 @@
 //! Standard MCP adapter over the task-independent device API. No OS FFI.
 mod cancellation;
 mod routing;
+mod shutdown;
 use rcu_core::device::{self, Call, DeviceResult, Request};
 use rcu_native_link::device::{AdapterProfile, Client};
 use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt, model::*, service::RequestContext};
@@ -206,7 +207,10 @@ impl Gateway {
         let token = route.context.lock().await.as_ref().map(|c| c.token.clone());
         let mut cancellation = if cancellable {
             operation.clone().map(|op| {
-                self.remember(&id, &json!({"operation_id":op}));
+                self.remember(
+                    &id,
+                    &json!({"operation_id":op,"request_id":args.get("request_id")}),
+                );
                 cancellation::CancelDispatch::new(self.clone(), id.clone(), token.clone(), op)
             })
         } else {
@@ -217,8 +221,11 @@ impl Gateway {
                 resource_domain: args["resource_domain"].as_str().unwrap_or_default().into(),
             }
         } else if tool == "computer.operation" {
+            let query: device::api::OperationQueryArgs = serde_json::from_value(args.clone())
+                .expect("operation query already validated against its shared schema");
             Call::Operation {
-                operation_id: args["operation_id"].as_str().unwrap_or_default().into(),
+                operation_id: query.operation_id,
+                id_kind: query.id_kind,
             }
         } else if tool == "computer.cancel" {
             Call::Cancel {
@@ -239,13 +246,14 @@ impl Gateway {
             }
         };
         let response = tokio::select! {
-            result=request=>result,
+            biased;
+            _=shutdown.changed()=>{
+                return match cancellation.as_mut(){Some(cancel)=>cancel.request().await,None=>DeviceResult::error("host_disconnected","Native completion remains unconfirmed.")};
+            },
             _=host_cancelled=>{
                 return match cancellation.as_mut(){Some(cancel)=>cancel.request().await,None=>DeviceResult::error("operation_cancelled","No native cancellation/termination was inferred.")};
             },
-            _=shutdown.changed()=>{
-                return match cancellation.as_mut(){Some(cancel)=>cancel.request().await,None=>DeviceResult::error("host_disconnected","Native completion remains unconfirmed.")};
-            }
+            result=request=>result,
         };
         let reply = match response {
             Ok(reply) => reply,
@@ -445,13 +453,7 @@ pub fn run(path: Option<&Path>) -> io::Result<()> {
             tokio::io::duplex(rcu_native_link::device::REQUEST_CAP);
         let shutdown = gateway.shutdown.clone();
         let feed = tokio::spawn(async move {
-            struct Stop(tokio::sync::watch::Sender<bool>);
-            impl Drop for Stop {
-                fn drop(&mut self) {
-                    let _ = self.0.send(true);
-                }
-            }
-            let _stop = Stop(shutdown);
+            let _stop = shutdown::Stop(shutdown);
             let mut input = BufReader::new(tokio::io::stdin());
             while let Some(raw) =
                 rcu_native_link::wire::read_frame(&mut input, rcu_native_link::device::REQUEST_CAP)

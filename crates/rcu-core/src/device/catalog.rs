@@ -130,8 +130,8 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.operation",
-            description: "Read bounded operation lifecycle without waiting for a busy engine. native_call_pending and resources_released distinguish cancellation request from completed cleanup; hard native preemption is unavailable.",
-            input_schema: serde_json::to_value(schemars::schema_for!(OperationArgs)).unwrap(),
+            description: "Query an operation without waiting for a busy engine. id_kind=monitor selects an operation_id; id_kind=request selects a durable mutation request_id. Default auto refuses ambiguous IDs, never chooses one by lookup order. Supply device_id on a new Host or a device collision. native_call_pending/resources_released are distinct from cancellation acknowledgement; no hard native preemption.",
+            input_schema: serde_json::to_value(schemars::schema_for!(OperationQueryArgs)).unwrap(),
             writes: false,
         },
     ]
@@ -215,7 +215,7 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
             Ok(())
         }
         "computer.operation" => {
-            let _: OperationArgs = serde_json::from_value(args.clone())?;
+            let _: OperationQueryArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         _ => Err(serde::de::Error::custom("unknown capability")),
