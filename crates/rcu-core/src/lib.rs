@@ -12,6 +12,7 @@ use std::{
     time::{Duration, Instant},
 };
 use uuid::Uuid;
+pub mod device;
 #[cfg(any(test, feature = "fixture"))]
 pub mod fixture;
 pub mod lease;
@@ -98,7 +99,7 @@ pub struct Binding {
 #[serde(deny_unknown_fields)]
 pub struct MutationContext {
     pub window_title: String,
-    pub document_state: String,
+    pub document_state: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Element {
@@ -307,6 +308,11 @@ pub struct Engine {
 }
 impl Engine {
     pub fn new(state: PathBuf) -> Result<Self> {
+        Self::with_lease_root(state.clone(), state)
+    }
+    /// Receipt namespaces may differ by principal; physical desktop leases must
+    /// still share one root across every cooperating principal and context.
+    pub fn with_lease_root(state: PathBuf, lease_root: PathBuf) -> Result<Self> {
         fs::create_dir_all(state.join("receipts"))?;
         Ok(Self {
             targets: BTreeMap::new(),
@@ -314,7 +320,7 @@ impl Engine {
             snapshots: VecDeque::new(),
             refs: VecDeque::new(),
             artifacts: VecDeque::new(),
-            leases: lease::LeaseBook::new(state),
+            leases: lease::LeaseBook::new(lease_root),
         })
     }
     pub fn register(&mut self, target: String, backend: Box<dyn Backend>) -> Result<()> {

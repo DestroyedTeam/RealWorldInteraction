@@ -87,6 +87,7 @@ fn parse(bytes: &[u8]) -> io::Result<Prepared> {
         .map_err(crate::private::core_error)?;
     let trust = rcu_link_trust::IdentityPaths::in_profile(&root.join("trust/agent"));
     if config.version != 1
+        || config.privilege_mode.is_none()
         || !config.backend.is_windows()
         || !same_dos(&config.state_root, &root.join("state"))
         || !same_dos(&config.approval, &root.join("approved-task.json"))
@@ -108,6 +109,7 @@ fn parse(bytes: &[u8]) -> io::Result<Prepared> {
         return Err(invalid("bundle_fixed_native_configuration_boundary"));
     }
     rcu_link_trust::server_name(&config.server_name)?;
+    crate::deployment::plan_validation::bootstrap(&approval, &root.to_string_lossy())?;
     // The DOS configuration was checked above. Offline Mac validation uses
     // memory-backed DER blobs, not an attempt to open DOS paths on this host.
     #[cfg(unix)]
@@ -193,6 +195,10 @@ pub fn import(bytes: &[u8]) -> io::Result<Value> {
             private::{Directory, core_error},
         };
         let prepared = parse(bytes)?;
+        rcu_windows::agent_binding::require_current_privilege(
+            prepared.config.native_privilege_mode()?,
+        )
+        .map_err(core_error)?;
         let root =
             rcu_windows::agent_binding::fixed_agent_installation_root().map_err(core_error)?;
         if prepared.config.install_root != root || root.exists() {

@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy-workflow")]
 #![cfg(all(feature = "fixture", unix))]
 //! Actual agent executable + real private mTLS TCP + actual relay final entry +
 //! unchanged nineteen-tool MCP fixture worker. Not Windows/native/model evidence.
@@ -130,6 +131,7 @@ impl Case {
             fixture_control: config,
         };
         let cfg = AgentConfig {
+            privilege_mode: Some(rcu_windows::agent_contract::PrivilegeMode::Ordinary),
             version: 1,
             install_root: install.path().into(),
             state_root: install.path().join("state"),

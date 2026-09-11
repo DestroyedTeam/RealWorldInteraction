@@ -1,4 +1,5 @@
 mod selection;
+mod service_policy;
 use crate::{
     InputGrant, WindowRecord, capture, check_relation,
     desktop::{self, DpiScope, hwnd},
@@ -15,6 +16,7 @@ use std::{
 };
 
 pub struct NativeWindows {
+    desktop_policy: Option<service_policy::DesktopPolicy>,
     identity: Identity,
     selected: Option<WindowRecord>,
     catalog: Vec<WindowRecord>,
@@ -79,6 +81,7 @@ impl NativeWindows {
                 )
         });
         Ok(Self {
+            desktop_policy: None,
             identity,
             selected: None,
             catalog: vec![],
@@ -346,12 +349,17 @@ impl NativeWindows {
             ));
         }
         let binding = Binding {
-            mutation_context: if !before.title_truncated {
+            mutation_context: if self.desktop_policy.is_some() && !before.title_truncated {
+                Some(MutationContext {
+                    window_title: before.title.clone(),
+                    document_state: None,
+                })
+            } else if !before.title_truncated {
                 uia_details["walk"]["document_state"]
                     .as_str()
                     .map(|state| MutationContext {
                         window_title: before.title.clone(),
-                        document_state: state.into(),
+                        document_state: Some(state.into()),
                     })
             } else {
                 None
@@ -400,6 +408,9 @@ impl NativeWindows {
     }
 }
 impl Backend for NativeWindows {
+    fn input_dispatch_count(&self) -> Option<u64> {
+        Some(self.input_counters.sendinput_calls)
+    }
     fn identity(&self) -> Identity {
         self.identity.clone()
     }
@@ -409,7 +420,7 @@ impl Backend for NativeWindows {
             .as_ref()
             .is_some_and(|g| g.validate(&self.identity, input::now_ms()).is_ok())
             && self.lifecycle_deadline.is_some_and(|d| Instant::now() < d);
-        json!({"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","notepad_force_new_window":"unsupported_unverified; do not invent a switch; authorized existing windows/tabs may be reused","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
+        json!({"checked_context_policy":if self.desktop_policy.is_some(){"native_element"}else{"whole_document"},"activation_authorization":if self.desktop_policy.is_some(){Some("selected-window")}else{None},"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
     }
     fn lifecycle_grant(&self) -> Result<rcu_core::lifecycle::LifecycleGrant> {
         if desktop::identity()? != self.identity {
@@ -525,7 +536,9 @@ impl Backend for NativeWindows {
             complete,
         )
     }
-    fn bind_window(&mut self, selection: &WindowSelection) -> Result<Value> { self.bind_selected(selection) }
+    fn bind_window(&mut self, selection: &WindowSelection) -> Result<Value> {
+        self.bind_selected(selection)
+    }
     fn observe(&mut self) -> Result<Scene> {
         self.scene(true, None)
     }
@@ -556,6 +569,22 @@ impl Backend for NativeWindows {
             return Err(fault(
                 "stale_reference",
                 "Immediate native input binding/visibility recheck failed; no input.",
+            ));
+        }
+        if self.desktop_policy.is_some()
+            && matches!(intent, Intent::Text)
+            && !self.diagnostics["uia"]["walk"]["details"]
+                .as_array()
+                .is_some_and(|rows| {
+                    rows.iter().any(|r| {
+                        r["element_id"].as_str() == target.scope.element.as_deref()
+                            && r["value_revision"].is_string()
+                    })
+                })
+        {
+            return Err(fault(
+                "text_value_precondition_unavailable",
+                "The exact editable element needs a bounded native value revision; unrelated document trees are not required.",
             ));
         }
         let window = self.current()?;

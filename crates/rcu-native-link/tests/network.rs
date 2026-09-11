@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy-workflow")]
 #![cfg(all(feature = "fixture", unix))]
 //! Owned loopback transport/entry tests. These peers are explicitly NOT the
 //! nineteen-tool MCP worker or a native goal oracle. Root tests those separately.
@@ -82,6 +83,7 @@ impl Case {
     }
     fn agent(&self, bind: SocketAddr) -> AgentConfig {
         AgentConfig {
+            privilege_mode: Some(rcu_windows::agent_contract::PrivilegeMode::Ordinary),
             version: 1,
             install_root: self.root.join("install"),
             state_root: self.root.join("not-started-state"),

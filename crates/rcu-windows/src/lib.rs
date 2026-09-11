@@ -5,6 +5,8 @@ pub mod agent_contract;
 mod contract;
 #[cfg(any(windows, test))]
 mod document_context;
+#[cfg(windows)]
+pub mod recovery;
 pub use contract::*;
 #[cfg(any(windows, test))]
 mod application;

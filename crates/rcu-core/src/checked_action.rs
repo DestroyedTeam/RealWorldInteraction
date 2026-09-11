@@ -72,6 +72,8 @@ impl Engine {
             .lock()
             .map_err(|_| fault("lease_error", "Restart observation session."))?
             .check(lease, target, &key)?;
+        let element_policy =
+            self.backend(target)?.capabilities()["checked_context_policy"] == "native_element";
         let snapshot = self.snapshot(target, frame)?;
         // Only this explicitly checked semantic API gets a bounded proposal
         // horizon. The legacy act/pixel 10-second rule is unchanged.
@@ -86,7 +88,11 @@ impl Engine {
             .binding
             .as_ref()
             .ok_or_else(|| fault("target_binding_unknown", "Exact native binding required."))?;
-        if expected.mutation_context.is_none()
+        if (!element_policy
+            && expected
+                .mutation_context
+                .as_ref()
+                .is_none_or(|c| c.document_state.is_none()))
             || !before.mutation_ready
             || before.blocked != Some(false)
         {
@@ -105,10 +111,12 @@ impl Engine {
         }
         if !current.mutation_ready
             || current.blocked != Some(false)
-            || current
-                .binding
-                .as_ref()
-                .is_none_or(|b| b.mutation_context.is_none())
+            || current.binding.as_ref().is_none_or(|b| {
+                !element_policy
+                    && b.mutation_context
+                        .as_ref()
+                        .is_none_or(|c| c.document_state.is_none())
+            })
             || !grounding_matches(expected, &current, &old)
         {
             return Err(fault(

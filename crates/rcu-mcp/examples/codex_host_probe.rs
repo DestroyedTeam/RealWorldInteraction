@@ -1,13 +1,42 @@
 //! Opt-in operator-driven live Codex Host test. No fixture, shell input backend,
 //! model inference, global install, permission grant or automatic input replay.
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use rcu_native_link::{frame, invalid, private::Directory};
+use rcu_native_link::wire as frame;
 use serde_json::{Value, json};
 use std::{io, path::PathBuf, process::Stdio, time::Duration};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, ChildStdin, ChildStdout, Command},
 };
+
+fn invalid(message: &str) -> io::Error {
+    io::Error::other(message.to_owned())
+}
+struct Directory {
+    reader: rcu_link_trust::PrivateDirectory,
+    path: PathBuf,
+}
+impl Directory {
+    fn create(path: &std::path::Path) -> io::Result<Self> {
+        Ok(Self {
+            reader: rcu_link_trust::PrivateDirectory::create(path)?,
+            path: path.into(),
+        })
+    }
+    fn child(&self, name: &str) -> io::Result<PathBuf> {
+        if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." {
+            return Err(invalid("invalid evidence basename"));
+        }
+        Ok(self.path.join(name))
+    }
+    fn create_new(&self, name: &str, raw: &[u8], cap: usize) -> io::Result<()> {
+        self.child(name)?;
+        if raw.len() > cap {
+            return Err(invalid("evidence byte limit"));
+        }
+        self.reader.write_new(name, raw)
+    }
+}
 
 struct Host {
     child: Child,

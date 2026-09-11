@@ -1,7 +1,7 @@
 //! Exact native selection and owner-chain checks.
 use super::*;
 impl NativeWindows {
-pub(super) fn bind_selected(&mut self, s: &WindowSelection) -> Result<Value> {
+    pub(super) fn bind_selected(&mut self, s: &WindowSelection) -> Result<Value> {
         self.check_identity()?;
         let _dpi = DpiScope::enter()?;
         if self
@@ -33,7 +33,12 @@ pub(super) fn bind_selected(&mut self, s: &WindowSelection) -> Result<Value> {
                 "Window or owner relation changed since discovery.",
             ));
         }
-        check_relation(self.selected.as_ref(), &current, &s.relation)?;
+        if !(self.desktop_policy.is_some()
+            && matches!(s.relation, rcu_core::WindowRelation::Initial))
+        {
+            check_relation(self.selected.as_ref(), &current, &s.relation)?;
+        }
+        self.narrow_service_selection(&current, &s.relation)?;
         if self
             .input_grant
             .as_ref()

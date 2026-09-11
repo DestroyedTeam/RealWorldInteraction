@@ -1,0 +1,26 @@
+[package]
+name = "rcu-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+fixture = ["rcu-core/fixture"]
+
+[dependencies]
+rcu-core = { path = "../rcu-core" }
+rcu-native-link = { path = "../rcu-native-link" }
+rcu-link-trust = { path = "../rcu-link-trust" }
+rcu-imaging = { path = "../rcu-imaging" }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+base64 = "=0.22.1"
+zeroize = "=1.9.0"
+tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+
+[target.'cfg(windows)'.dependencies]
+rcu-windows = { path = "../rcu-windows" }
+
+[dev-dependencies]
+tempfile.workspace = true

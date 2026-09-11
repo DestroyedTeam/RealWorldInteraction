@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy-workflow")]
 #![cfg(all(feature = "fixture", unix))]
 //! Controller/template policy + exact private file tests, plus separately named
 //! actual MCP process cases. Simulated native metadata is never native execution.
@@ -100,6 +101,7 @@ impl Case {
             )
             .unwrap();
         let config = AgentConfig {
+            privilege_mode: Some(rcu_windows::agent_contract::PrivilegeMode::Ordinary),
             version: 1,
             install_root: install.path().into(),
             state_root: install.path().join("state"),
@@ -369,7 +371,7 @@ fn inventory(runtime: &Runtime) -> Value {
         runtime.approval.budget.expires_unix_ms,
     )
     .unwrap();
-    json!({"identity":identity,"windows":[{"key":window(),"application":{"executable":"C:\\approved-not-executed.exe","sha256":"c".repeat(64)},"title":"simulated metadata only","foreground":true}],"complete":true,"native_windows_enumerated":1,"captured_unix_ms":now_ms(),"notes":[]})
+    json!({"identity":identity,"windows":[{"key":window(),"application":{"executable":"C:\\approved-not-executed.exe","sha256":"c".repeat(64)},"title":"simulated metadata only","foreground":true,"candidate_facts":{"visible":true,"cloaked":false,"owned":false,"owner_chain_complete":true}}],"complete":true,"native_windows_enumerated":1,"captured_unix_ms":now_ms(),"notes":[]})
 }
 fn launch_value(runtime: &Runtime) -> Value {
     json!({"request_id":"policy-launch","authorization_id":"policy-only","state":"new_window_observed","before":inventory(runtime),"after":inventory(runtime),"native_events":{"events":[],"complete":true,"hooks_released":true},"native_launch":{"api":"SIMULATED_POLICY_NOT_NATIVE","accepted":true,"process_id":7,"process_created":42,"process_handles_released":true,"error":null},"candidates":[window()],"correlation":"policy only","error":null,"replay":"forbidden","resources_released":true,"resource_release_uncertain":false,"goal_verified":false,"input_authority_granted":false})

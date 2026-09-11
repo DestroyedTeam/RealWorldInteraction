@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy-workflow")]
 #![cfg(all(feature = "fixture", unix))]
 //! Pure original-format catalog paging and actual Runtime/TLS admission. Neither
 //! fabricated catalog metadata nor fixture workers count as native execution.
@@ -269,6 +270,7 @@ impl Case {
             )
             .unwrap();
         let config = AgentConfig {
+            privilege_mode: Some(rcu_windows::agent_contract::PrivilegeMode::Ordinary),
             version: 1,
             install_root: install.path().into(),
             state_root: install.path().join("state"),

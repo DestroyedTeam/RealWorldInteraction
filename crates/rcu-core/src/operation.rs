@@ -33,6 +33,17 @@ pub struct Registry {
     entries: Mutex<VecDeque<Operation>>,
 }
 impl Registry {
+    pub fn statuses(&self) -> Result<Vec<Status>> {
+        self.entries
+            .lock()
+            .map(|e| e.iter().map(Operation::status).collect())
+            .map_err(|_| {
+                fault(
+                    "operation_registry_unavailable",
+                    "Resource quiescence is unknown.",
+                )
+            })
+    }
     pub fn begin(&self, id: Option<String>) -> Result<Operation> {
         let id = id.unwrap_or_else(crate::id);
         if id.is_empty() || id.len() > 128 {

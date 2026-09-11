@@ -127,6 +127,7 @@ impl GuardPhases for NativeSink<'_> {
         }
         if self.first_batch
             && let Some(context) = self.context
+            && let Some(expected_document) = &context.document_state
         {
             let walk = crate::uia::walk(
                 desktop::hwnd(&self.window.window)?,
@@ -136,7 +137,7 @@ impl GuardPhases for NativeSink<'_> {
                     .as_deref()
                     .ok_or_else(|| fault("window_epoch_unknown", "Reobserve."))?,
             )?;
-            if walk.document_state.as_deref() != Some(&context.document_state) {
+            if walk.document_state.as_deref() != Some(expected_document) {
                 return Err(fault(
                     "input_document_changed",
                     "Document state changed before the first native batch; no input.",
@@ -165,6 +166,15 @@ impl GuardPhases for NativeSink<'_> {
             ));
         }
         let current = desktop::record(desktop::hwnd(&self.window.window)?, 0)?;
+        if self
+            .context
+            .is_some_and(|c| current.title_truncated || current.title != c.window_title)
+        {
+            return Err(fault(
+                "input_window_title_changed",
+                "Window context changed before input; no implicit retry.",
+            ));
+        }
         if !current.foreground
             || !current.enabled
             || !current.visible

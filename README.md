@@ -4,6 +4,11 @@ Rust-native, identity-bound computer control through MCP. **Development candidat
 not a cross-platform release.** The root workspace is the single editable product
 source; historical `work/*/source` copies are no longer development roots.
 
+The entire product follows [ADR 0002](docs/adr/0002-headless-control-infrastructure-review.md):
+**AI Host → MCP adapter → authenticated device RPC → independent headless agent → native capabilities**.
+Delivery can be incremental; startup, discovery and communication never require
+a business task, test application, window, business stage or prior goal result.
+
 ## Components
 
 | Crate | Responsibility |
@@ -12,8 +17,9 @@ source; historical `work/*/source` copies are no longer development roots.
 | `rcu-imaging` | Image/view mapping and bounded conversion |
 | `rcu-windows`, `rcu-macos` | Native platform capture/input and identity evidence |
 | `rcu-link-trust` | Private pairing and TLS identity |
-| `rcu-native-link` | Relay/agent lifecycle, guarded task transport, AI-host integration |
-| `rcu-mcp` | Official MCP SDK surface and worker process |
+| `rcu-native-link` | Platform-neutral authenticated device RPC; old workflows are explicitly legacy-gated |
+| `rcu-agent` | Independent device service, principal policy, native contexts, shared leases and durable operations |
+| `rcu-mcp` | Official MCP SDK adapter, stable catalog, device routing, Host cancellation and presentation |
 
 ## Develop from this root
 
@@ -26,20 +32,24 @@ rtk proxy python3 tools/check_architecture.py --workspace . --rules architecture
 
 Rust 1.95 or newer is required by the current workspace; use the locked dependency
 graph. Remove `--offline` only when an explicit dependency fetch is needed.
-Default tests do not control a desktop. A normal MCP launch without a native
-selector has zero targets. Native input requires explicit target/grant/lease
+Default tests do not control a desktop. `rcu-mcp` without `--profile` has zero
+paired devices but a complete catalog. Native input requires explicit target/grant/lease
 binding; a dispatch acknowledgement never proves the requested goal.
 
 ## Status and boundaries
 
-- Windows CrossMacro cleanup was separately verified through Rust native MCP,
-  using a temporary SDK client. That does not certify the final TLS deployment.
-- The native Codex plugin/Skill entry has a real, isolated Codex-host integration
-  test over Rust TLS and an explicit fixture worker. It is **not** a Windows or
-  model-comprehension benchmark.
-- Compact output preserves full raw evidence and original execution guards.
-- Full Windows TLS business acceptance, Ordinary/Admin deployment integration,
-  remaining module decomposition and registered App integration are still open.
+- The 2026-09-12 production entry was tested in an actual Codex Host: 20 compiled
+  tools and project Skill discovery, not a diagnostic-only schema fallback.
+- An independent Windows ARM64 GUI-subsystem agent was installed and connected
+  over authenticated RPC. Two non-document UI clicks were independently observed;
+  a new Host queried the old receipt without replaying input. This is a limited
+  native acceptance scope, not complete feature/platform or model acceptance.
+- Production compact presentation/evidence retrieval is still incomplete; old
+  legacy compact-output evidence does not prove the new adapter is efficient.
+- Generic application launch policy, full native failure/recovery and privilege
+  matrix, other platform integration, remaining legacy-harness migration, actual
+  global plugin installation and registered App integration remain open.
+- [Current evidence and remaining work](docs/validation/2026-09-12-service-migration-progress.md)
 
 ## Engineering and integration
 

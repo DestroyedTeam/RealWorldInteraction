@@ -100,6 +100,27 @@ pub struct WindowEvidence {
     pub application: ApplicationIdentity,
     pub title: String,
     pub foreground: bool,
+    /// Missing facts in historical receipts never imply an interactive target.
+    #[serde(default)]
+    pub candidate_facts: Option<WindowCandidateFacts>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct WindowCandidateFacts {
+    pub visible: bool,
+    pub cloaked: Option<bool>,
+    pub owned: bool,
+    pub owner_chain_complete: bool,
+}
+impl WindowEvidence {
+    pub fn interactive_root(&self) -> bool {
+        self.candidate_facts.as_ref().is_some_and(|facts| {
+            facts.visible
+                && facts.cloaked == Some(false)
+                && !facts.owned
+                && facts.owner_chain_complete
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

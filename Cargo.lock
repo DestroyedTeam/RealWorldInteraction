@@ -778,6 +778,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcu-agent"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "base64",
+ "rcu-core",
+ "rcu-imaging",
+ "rcu-link-trust",
+ "rcu-native-link",
+ "rcu-windows",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "rcu-core"
 version = "0.4.0-m3a.7"
 dependencies = [
@@ -841,6 +859,7 @@ dependencies = [
  "base64",
  "rcu-core",
  "rcu-imaging",
+ "rcu-link-trust",
  "rcu-macos",
  "rcu-native-link",
  "rcu-windows",
@@ -850,6 +869,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

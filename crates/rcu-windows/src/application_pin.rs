@@ -182,6 +182,40 @@ pub(super) struct PinStamp {
     pub attributes: u32,
 }
 
+#[cfg(windows)]
+pub(super) fn window_key(
+    record: &crate::WindowRecord,
+) -> Result<rcu_core::lifecycle::WindowIdentity> {
+    Ok(rcu_core::lifecycle::WindowIdentity {
+        window: record.window.clone(),
+        pid: record.pid,
+        process_created: record.process_created.ok_or_else(|| {
+            fault(
+                "window_identity_incomplete",
+                "Process creation time is unavailable.",
+            )
+        })?,
+        native_epoch: record.native_epoch.clone().ok_or_else(|| {
+            fault(
+                "window_identity_incomplete",
+                "Native window epoch is unavailable.",
+            )
+        })?,
+    })
+}
+
+#[cfg(windows)]
+pub(super) fn candidate_facts(
+    record: &crate::WindowRecord,
+) -> rcu_core::lifecycle::WindowCandidateFacts {
+    rcu_core::lifecycle::WindowCandidateFacts {
+        visible: record.visible,
+        cloaked: record.cloaked,
+        owned: !record.owner_chain.is_empty(),
+        owner_chain_complete: record.owner_chain_complete,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::ReleaseGuard;

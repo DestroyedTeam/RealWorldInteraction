@@ -81,6 +81,9 @@ pub struct Image {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AgentConfig {
+    /// Required for native Windows, absent only in explicit offline fixtures.
+    #[serde(default)]
+    pub privilege_mode: Option<rcu_windows::agent_contract::PrivilegeMode>,
     pub version: u8,
     pub install_root: PathBuf,
     pub state_root: PathBuf,
@@ -93,6 +96,12 @@ pub struct AgentConfig {
     pub agent_image: Image,
     pub worker_image: Image,
     pub backend: BackendMode,
+}
+impl AgentConfig {
+    pub fn native_privilege_mode(&self) -> io::Result<rcu_windows::agent_contract::PrivilegeMode> {
+        self.privilege_mode
+            .ok_or_else(|| invalid("native_privilege_mode_required"))
+    }
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -314,6 +323,7 @@ pub struct ModelEnd {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WorkerGuardSpec {
+    pub privilege_mode: rcu_windows::agent_contract::PrivilegeMode,
     pub version: u8,
     pub task: String,
     pub stage: Stage,

@@ -44,6 +44,12 @@ impl LifecycleDriver for Fake {
                 application: application(),
                 title: "fixture".into(),
                 foreground: false,
+                candidate_facts: Some(WindowCandidateFacts {
+                    visible: true,
+                    cloaked: Some(false),
+                    owned: false,
+                    owner_chain_complete: true,
+                }),
             }]
         } else {
             vec![]

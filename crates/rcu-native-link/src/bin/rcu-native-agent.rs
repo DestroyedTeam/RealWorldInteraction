@@ -1,3 +1,7 @@
+// The resident agent is not an interactive console application. Setup/control
+// remain console tools; redirected stdout/stderr are still available to launchers.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 use rcu_native_link::{invalid, runtime::Runtime, server};
 #[cfg(not(windows))]
 use rcu_native_link::{private::read_private, sha};
@@ -38,6 +42,47 @@ fn self_image(runtime: &Runtime) -> io::Result<()> {
 }
 async fn run() -> io::Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
+    #[cfg(windows)]
+    if args.len() == 2 && args[0] == "--inspect-process" {
+        let pid = args[1]
+            .to_str()
+            .ok_or_else(|| invalid("native_pid"))?
+            .parse::<u32>()
+            .map_err(|_| invalid("native_pid"))?;
+        let identity = rcu_windows::process_inventory::identity(pid)
+            .map_err(rcu_native_link::private::core_error)?;
+        println!("{}", serde_json::to_string(&identity)?);
+        return Ok(());
+    }
+    if args.len() == 2 && args[0] == "--inspect-window" {
+        #[cfg(windows)]
+        {
+            use rcu_core::Backend;
+            let pid = args[1]
+                .to_str()
+                .ok_or_else(|| invalid("native_pid"))?
+                .parse::<u32>()
+                .map_err(|_| invalid("native_pid"))?;
+            if pid == 0 {
+                return Err(invalid("native_pid"));
+            }
+            let mut windows = rcu_windows::NativeWindows::new_with_grants(None, None)
+                .map_err(rcu_native_link::private::core_error)?;
+            let result = windows
+                .discover_with(&rcu_core::DiscoveryQuery {
+                    pid: Some(pid),
+                    ..Default::default()
+                })
+                .map_err(rcu_native_link::private::core_error)?;
+            println!(
+                "{}",
+                serde_json::json!({"inspection":result,"window_capture_or_input_performed":false})
+            );
+            return Ok(());
+        }
+        #[cfg(not(windows))]
+        return Err(invalid("inspection_is_native_windows_only"));
+    }
     if args.len() == 1 && args[0] == "--binding" {
         #[cfg(windows)]
         {
@@ -47,7 +92,7 @@ async fn run() -> io::Result<()> {
                 .map_err(rcu_native_link::private::core_error)?;
             println!(
                 "{}",
-                serde_json::json!({"owner":proof,"fixed_installation_root":root,"window_capture_or_input_performed":false})
+                serde_json::json!({"owner":proof,"privilege":rcu_windows::agent_binding::current_token_privilege().map_err(rcu_native_link::private::core_error)?,"fixed_installation_root":root,"window_capture_or_input_performed":false})
             );
             return Ok(());
         }

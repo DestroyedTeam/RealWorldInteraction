@@ -25,3 +25,5 @@
 /outputs/m2-task-loop/package/
 /outputs/m2-task-loop/source.tar.gz
 **/*.exe
+
+/.rcu/

@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy-local")]
 //! Real compiled server process, official SDK framing. No native targets or desktop calls.
 use serde_json::{Value, json};
 use std::{

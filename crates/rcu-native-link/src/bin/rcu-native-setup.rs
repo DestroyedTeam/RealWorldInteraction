@@ -10,6 +10,8 @@ async fn run() -> io::Result<()> {
             args[0].as_str(),
             "--validate-bundle"
                 | "--import"
+                | "--import-file"
+                | "--validate-bundle-file"
                 | "--approve-next"
                 | "--make-notepad-approval"
                 | "--make-bundle"
@@ -18,22 +20,35 @@ async fn run() -> io::Result<()> {
         )
     {
         return Err(invalid(
-            "usage: rcu-native-setup --validate-bundle | --import | --approve-next | --make-notepad-approval | --make-bundle ABS_PRIVATE_NEW_FILE; private JSON on stdin",
+            "usage: rcu-native-setup --validate-bundle | --import | --approve-next | --make-notepad-approval | --make-client-entry | --make-plugin | --make-bundle ABS_PRIVATE_NEW_FILE (private JSON on stdin), or --import-file/--validate-bundle-file ABS_PRIVATE_BUNDLE (64 MiB max)",
         ));
     }
-    if (args[0] == "--make-bundle") != (args.len() == 2) {
+    let path_operation = matches!(
+        args[0].as_str(),
+        "--make-bundle" | "--import-file" | "--validate-bundle-file"
+    );
+    if path_operation != (args.len() == 2) {
         return Err(invalid(
-            "only_make_bundle_requires_exact_private_output_path",
+            "bundle_output_or_file_input_requires_exactly_one_absolute_path",
         ));
     }
     let mut bytes = Zeroizing::new(Vec::new());
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        tokio::io::stdin()
-            .take(install::BUNDLE_CAP as u64 + 1)
-            .read_to_end(&mut bytes),
-    )
-    .await??;
+    if matches!(args[0].as_str(), "--import-file" | "--validate-bundle-file") {
+        // A deployment transport may not provide interactive-user stdin. Read
+        // one explicit private no-reparse file; never invoke a shell bridge.
+        bytes = Zeroizing::new(rcu_native_link::private::read_private(
+            std::path::Path::new(&args[1]),
+            64 * 1024 * 1024,
+        )?);
+    } else {
+        tokio::time::timeout(
+            Duration::from_secs(30),
+            tokio::io::stdin()
+                .take(install::BUNDLE_CAP as u64 + 1)
+                .read_to_end(&mut bytes),
+        )
+        .await??;
+    }
     if bytes.len() > install::BUNDLE_CAP {
         return Err(invalid("private_stdin_cap"));
     }
@@ -62,8 +77,8 @@ async fn run() -> io::Result<()> {
         "--make-client-entry" => {
             rcu_native_link::plan::write_client_entry(serde_json::from_slice(&bytes)?)
         }
-        "--validate-bundle" => install::validate_bundle(&bytes),
-        "--import" => install::import(&bytes),
+        "--validate-bundle" | "--validate-bundle-file" => install::validate_bundle(&bytes),
+        "--import" | "--import-file" => install::import(&bytes),
         _ => install::approve_next(&bytes),
     }?;
     println!("{}", serde_json::to_string(&result)?);

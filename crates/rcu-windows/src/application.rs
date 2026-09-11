@@ -174,7 +174,7 @@ impl<T> BoundedEvents<T> {
 #[cfg(windows)]
 mod win {
     use super::*;
-    use crate::{WindowRecord, desktop};
+    use crate::desktop;
     use pin::{PinKind, PinPlan, PinRequest, PinStamp};
     use rcu_core::{
         Identity,
@@ -867,24 +867,7 @@ mod win {
         }
     }
 
-    fn window_key(record: &WindowRecord) -> Result<WindowIdentity> {
-        Ok(WindowIdentity {
-            window: record.window.clone(),
-            pid: record.pid,
-            process_created: record.process_created.ok_or_else(|| {
-                fault(
-                    "window_identity_incomplete",
-                    "Process creation time is unavailable.",
-                )
-            })?,
-            native_epoch: record.native_epoch.clone().ok_or_else(|| {
-                fault(
-                    "window_identity_incomplete",
-                    "Native window epoch is unavailable.",
-                )
-            })?,
-        })
-    }
+    use pin::window_key;
     fn process_birth(process: HANDLE) -> Result<u64> {
         let (mut created, mut exit, mut kernel, mut user) = (
             FILETIME::default(),
@@ -1214,6 +1197,7 @@ mod win {
                     Ok(Some(WindowEvidence {
                         key,
                         application: apps[index].clone(),
+                        candidate_facts: Some(pin::candidate_facts(&after)),
                         title: after.title,
                         foreground: after.foreground,
                     }))

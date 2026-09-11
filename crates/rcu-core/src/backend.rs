@@ -1,8 +1,15 @@
 //! Platform adapter contract; no transport or workflow dependency.
-use crate::{Identity, Scene, WindowSelection, DiscoveryQuery, Resolved, Binding, Intent, Scope, Predicate, Oracle, Result, fault, lifecycle};
+use crate::{
+    Binding, DiscoveryQuery, Identity, Intent, Oracle, Predicate, Resolved, Result, Scene, Scope,
+    WindowSelection, fault, lifecycle,
+};
 use std::time::Instant;
 
 pub trait Backend: Send {
+    /// Optional native side-effect counter, for proving pre-dispatch rejection.
+    fn input_dispatch_count(&self) -> Option<u64> {
+        None
+    }
     fn identity(&self) -> Identity;
     fn capabilities(&self) -> serde_json::Value;
     fn lifecycle_grant(&self) -> Result<lifecycle::LifecycleGrant> {

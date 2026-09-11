@@ -6,11 +6,13 @@ license.workspace = true
 
 [features]
 default = []
-fixture = []
+fixture = ["legacy-workflow"]
+# Evaluation/old evidence only; excluded from production agent/adapter builds.
+legacy-workflow = ["dep:rcu-windows", "dep:rmcp"]
 
 [dependencies]
 rcu-core = { path = "../rcu-core" }
-rcu-windows = { path = "../rcu-windows" }
+rcu-windows = { path = "../rcu-windows", optional = true }
 rcu-link-trust = { path = "../rcu-link-trust" }
 serde.workspace = true
 serde_json.workspace = true
@@ -18,7 +20,7 @@ sha2.workspace = true
 uuid.workspace = true
 base64 = "=0.22.1"
 zeroize = "=1.9.0"
-rmcp = { version = "=1.7.0", default-features = false, features = ["server", "transport-io"] }
+rmcp = { optional = true, version = "=1.7.0", default-features = false, features = ["server", "transport-io"] }
 tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "net", "io-std", "io-util", "sync", "time", "process", "signal"] }
 rustls = { version = "=0.23.41", default-features = false, features = ["std", "ring"] }
 tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring"] }
@@ -29,3 +31,27 @@ libc = "=0.2.189"
 [dev-dependencies]
 tempfile.workspace = true
 rcu-imaging = { path = "../rcu-imaging" }
+
+[[bin]]
+name = "rcu-native-agent"
+path = "src/bin/rcu-native-agent.rs"
+required-features = ["legacy-workflow"]
+
+[[bin]]
+name = "rcu-native-relay"
+path = "src/bin/rcu-native-relay.rs"
+required-features = ["legacy-workflow"]
+
+[[bin]]
+name = "rcu-native-setup"
+path = "src/bin/rcu-native-setup.rs"
+required-features = ["legacy-workflow"]
+
+[[bin]]
+name = "rcu-native-control"
+path = "src/bin/rcu-native-control.rs"
+required-features = ["legacy-workflow"]
+
+[[example]]
+name = "measure_output"
+required-features = ["legacy-workflow"]

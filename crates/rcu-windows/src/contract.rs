@@ -143,14 +143,15 @@ impl InputGrant {
                 .run_id
                 .bytes()
                 .all(|c| c.is_ascii_alphanumeric() || c == b'-')
-            || self.route_vm_id.len() != 36
-            || !self.route_vm_id.bytes().enumerate().all(|(i, c)| {
-                if [8, 13, 18, 23].contains(&i) {
-                    c == b'-'
-                } else {
-                    c.is_ascii_hexdigit()
-                }
-            })
+            || (!self.route_vm_id.is_empty()
+                && (self.route_vm_id.len() != 36
+                    || !self.route_vm_id.bytes().enumerate().all(|(i, c)| {
+                        if [8, 13, 18, 23].contains(&i) {
+                            c == b'-'
+                        } else {
+                            c.is_ascii_hexdigit()
+                        }
+                    })))
             || self.root.pid == 0
             || self.root.process_created == 0
             || !self.root.window.starts_with("hwnd:")

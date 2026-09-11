@@ -9,7 +9,8 @@
       "rcu-imaging",
       "rcu-macos",
       "rcu-native-link",
-      "rcu-windows"
+      "rcu-windows",
+      "rcu-link-trust"
     ],
     "rcu-imaging": [
       "rcu-core"
@@ -26,6 +27,13 @@
     "rcu-windows": [
       "rcu-core",
       "rcu-imaging"
+    ],
+    "rcu-agent": [
+      "rcu-core",
+      "rcu-imaging",
+      "rcu-link-trust",
+      "rcu-native-link",
+      "rcu-windows"
     ]
   },
   "existing_hotspot_ceilings": {
@@ -33,7 +41,6 @@
     "crates/rcu-core/src/tests.rs": 658,
     "crates/rcu-core/src/lifecycle_tests.rs": 961,
     "crates/rcu-core/src/lifecycle_controller.rs": 838,
-    "crates/rcu-mcp/src/agent_worker.rs": 1190,
     "crates/rcu-windows/src/native.rs": 700,
     "crates/rcu-windows/src/package_policy.rs": 1004,
     "crates/rcu-windows/src/uia.rs": 698,

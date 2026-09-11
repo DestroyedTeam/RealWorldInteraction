@@ -1,7 +1,37 @@
 # Codex native MCP / plugin / Skill
 
-The production path is `Codex → Rust stdio relay → private authenticated TLS → Rust worker`.
-No Python or shell process implements native input/capture.
+The production path is `AI Host → rcu-mcp → authenticated device RPC → rcu-agent → native OS driver`.
+No Python or shell process implements native input/capture. ADR 0002 governs the
+entire implementation, not a temporary first-phase topology.
+
+## Stable adapter entry
+
+Build `rcu-mcp` with default features (no `legacy-local` or `native-agent-worker`).
+Run it with `--profile ABS_PRIVATE_PROFILE`, or without arguments for a healthy
+zero-device catalog. The profile contains paired device endpoints and private
+identity **paths**, not business tasks, windows, stages or expected output.
+
+The independent device service runs `rcu-agent --config ABS_PRIVATE_CONFIG`.
+An agent can be offline or lack native permissions without hiding adapter tools.
+Reconnect creates/refreshes only the authenticated context; it never retries an
+uncertain mutation. Device-specific status remains distinct from MCP startup.
+
+The maintained Skill is [real-computer-use-native](skills/real-computer-use-native/SKILL.md).
+Local generated plugin and project config must point at the same stable adapter
+binary/profile, not at `work/` or a validation manifest. Use either project MCP
+registration or plugin registration, not duplicate competing entries. Plugin
+packaging, project Skill discovery and a registered ChatGPT App are distinct:
+no App ID is invented and local packaging is not a global installation.
+
+Tests `gateway_stdio` and `gateway_transport` exercise a real production MCP
+process, zero-device startup, multi-device collisions, authenticated cancellation,
+Host EOF and a bounded parallel cleanup budget. Synthetic peers are not native
+Windows acceptance. `rcu-agent/tests/service.rs` tests service state separately.
+
+## Historical evaluation entry (not production)
+
+The commands below require `legacy-workflow` and document old evidence only.
+They must not be used as a startup prerequisite for the production adapter.
 
 `rcu-native-setup --make-client-entry` takes the explicit private `ClientConfig`
 on stdin. Select `"model_output":"compact_v1"` for the native plugin. The legacy

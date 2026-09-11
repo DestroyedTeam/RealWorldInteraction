@@ -9,7 +9,17 @@ mod private_files;
 mod provision;
 mod verifier;
 
+pub use private_files::Reader as PrivateDirectory;
 pub use provision::{ProvisionManifest, ProvisionedPeer, provision};
+
+/// Host-side bounded private configuration read, sharing the audited fd layer.
+/// Windows callers supply their native ACL/HANDLE reader instead.
+pub fn read_private(path: &std::path::Path, cap: usize) -> std::io::Result<Vec<u8>> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| invalid("private_parent_missing"))?;
+    private_files::Reader::open(parent)?.read(path, cap)
+}
 
 use rustls::{
     ClientConfig, RootCertStore, ServerConfig,

@@ -113,9 +113,9 @@ mod tests {
     #[tokio::test]
     async fn configured_attach_inbound_outbound_caps_include_delimiters() {
         for cap in [
-            crate::frame::ATTACH_CAP,
-            crate::frame::INBOUND,
-            crate::frame::OUTBOUND,
+            crate::wire::ATTACH_CAP,
+            crate::wire::INBOUND,
+            crate::wire::OUTBOUND,
         ] {
             let mut raw = b"{\"pad\":\"".to_vec();
             raw.resize(cap - 3, b'x');

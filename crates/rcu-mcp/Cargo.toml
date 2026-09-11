@@ -5,18 +5,23 @@ edition.workspace = true
 license.workspace = true
 
 [features]
+# Production binaries must understand the authenticated agent guard. Native
+# targets/input remain explicit CLI grants; enabling this does not allocate one.
 default = []
 # Instrumented local model tests only. This build rejects every native target.
-synthetic-fixture = ["rcu-core/fixture"]
+legacy-local = ["dep:rcu-macos", "dep:rcu-windows"]
+synthetic-fixture = ["legacy-local", "rcu-core/fixture"]
 link-fixture = ["synthetic-fixture"]
-native-agent-worker = ["dep:rcu-native-link"]
+native-agent-worker = ["legacy-local", "rcu-native-link/legacy-workflow"]
 
 [dependencies]
+rcu-link-trust = { path = "../rcu-link-trust" }
+uuid.workspace = true
 rcu-core = { path = "../rcu-core" }
-rcu-macos = { path = "../rcu-macos" }
-rcu-windows = { path = "../rcu-windows" }
+rcu-macos = { path = "../rcu-macos", optional = true }
+rcu-windows = { path = "../rcu-windows", optional = true }
 rcu-imaging = { path = "../rcu-imaging" }
-rcu-native-link = { path = "../rcu-native-link", optional = true }
+rcu-native-link = { path = "../rcu-native-link" }
 rmcp = { version = "=1.7.0", default-features = false, features = ["server", "macros", "transport-io"] }
 tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
 serde.workspace = true
@@ -25,5 +30,7 @@ schemars.workspace = true
 base64 = "=0.22.1"
 
 [dev-dependencies]
+rcu-macos = { path = "../rcu-macos" }
+rcu-windows = { path = "../rcu-windows" }
 rcu-core = { path = "../rcu-core", features = ["fixture"] }
 tempfile.workspace = true

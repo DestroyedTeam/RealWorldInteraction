@@ -1,4 +1,7 @@
 //! Only freshly spawned fixed Rust workers are owned/terminated. User apps are not children here.
+#[cfg(windows)]
+#[path = "worker/windows.rs"]
+mod windows;
 #[cfg(any(windows, feature = "fixture"))]
 use crate::sha;
 use crate::{
@@ -493,6 +496,7 @@ impl Worker {
                     None
                 };
                 let spec = WorkerGuardSpec {
+                    privilege_mode: cfg.native_privilege_mode()?,
                     version: 1,
                     task: approval.task.clone(),
                     stage,
@@ -580,21 +584,7 @@ impl Worker {
             #[cfg(windows)]
             {
                 let child = tokio::time::timeout_at(setup_deadline,owned.child.lock()).await.map_err(|_|crate::invalid("worker_setup_child_lock_timeout"))?;
-                let raw = child
-                    .raw_handle()
-                    .ok_or_else(|| crate::invalid("owned_worker_handle_missing"))?;
-                    let retained = Arc::new(
-                    unsafe {
-                        rcu_windows::agent_binding::retain_owned_process(
-                            raw,
-                            &cfg.worker_image.path,
-                        )
-                    }
-                        .map_err(core_error)?,
-                    );
-                    if retained.record().image_sha256 != cfg.worker_image.sha256 {
-                        return Err(crate::invalid("spawned_worker_image_digest_mismatch"));
-                    }
+                let retained = windows::retain_worker(&child, cfg)?;
                 drop(child);
                 *owned
                     .record

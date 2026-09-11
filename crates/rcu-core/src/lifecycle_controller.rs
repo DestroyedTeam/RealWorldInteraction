@@ -11,6 +11,14 @@ use std::{
 mod readonly_preflight;
 pub use readonly_preflight::preflight;
 
+#[path = "lifecycle_classification.rs"]
+mod classification;
+use classification::classify;
+
+#[cfg(test)]
+#[path = "lifecycle_test_support.rs"]
+mod test_support;
+
 fn verify_permission_files(
     driver: &mut dyn LifecycleDriver,
     permission: &LaunchPermission,
@@ -111,9 +119,10 @@ impl LifecycleGrant {
             ));
         }
         if !identifier(&self.run_id)
-            || uuid::Uuid::parse_str(&self.route_vm_id)
-                .ok()
-                .is_none_or(|u| u.to_string() != self.route_vm_id)
+            || (!self.route_vm_id.is_empty()
+                && uuid::Uuid::parse_str(&self.route_vm_id)
+                    .ok()
+                    .is_none_or(|u| u.to_string() != self.route_vm_id))
             || self.launches.len() > 8
             || self.activations.len() > 32
             || (self.launches.is_empty() && self.activations.is_empty())
@@ -647,51 +656,6 @@ pub fn launch(
     }
     reservation.finish(&r)?;
     Ok(r)
-}
-fn classify(r: &mut LaunchReceipt, baseline: usize) {
-    let before = &r.before.as_ref().expect("before inventory").windows;
-    let after = &r.after.as_ref().expect("after inventory").windows;
-    if before.iter().any(|w| {
-        r.native_events
-            .events
-            .iter()
-            .skip(baseline)
-            .any(|e| e.window == w.key.window && e.event == "destroy")
-            && after.iter().any(|a| a.key == w.key)
-    }) {
-        r.state = LaunchState::Ambiguous;
-        r.candidates = after.iter().map(|w| w.key.clone()).collect();
-        r.correlation="Destroyed HWND reappears with the same process/class-derived epoch; there is no persistent native HWND generation counter. Never treat this as authorized existing-window reuse.".into();
-        return;
-    }
-    let new = after
-        .iter()
-        .filter(|w| !before.iter().any(|b| b.key == w.key))
-        .map(|w| w.key.clone())
-        .collect::<Vec<_>>();
-    let reused = after
-        .iter()
-        .filter(|w| {
-            before
-                .iter()
-                .any(|b| b.key == w.key && (b.title != w.title || b.foreground != w.foreground))
-                || r.native_events
-                    .events
-                    .iter()
-                    .skip(baseline)
-                    .any(|e| e.window == w.key.window && e.event != "destroy")
-        })
-        .map(|w| w.key.clone())
-        .collect::<Vec<_>>();
-    (r.state,r.candidates,r.correlation) = match new.len() {
-        1 => (LaunchState::NewWindowObserved,new,"Exactly one new HWND/PID/birth/epoch for an allowed image in the bounded interval; temporal native inventory/event evidence, not proof of launch causality. Broker PID may differ; no input authority.".into()),
-        2.. => (LaunchState::Ambiguous,new,"Multiple new allowed-image windows. Do not choose by title, returned PID or foreground alone.".into()),
-        _ => match reused.len() {
-            1 => (LaunchState::ReusedExistingWindow,reused,"One explicitly authorized existing window changed or emitted native events. A new tab in the same HWND is reuse, not a new window; tab/content semantics remain unverified.".into()),
-            2.. => (LaunchState::Ambiguous,reused,"Multiple existing windows show reuse evidence; no unique attribution.".into()),
-            _ => (LaunchState::LaunchedNoWindow,vec![],"CreateProcessW accepted; no new window or observable reuse during the bounded interval. Not proof the application will never create a window.".into()),
-        }
-    };
 }
 
 pub struct ActivateRequest<'a> {

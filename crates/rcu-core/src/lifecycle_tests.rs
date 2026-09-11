@@ -16,19 +16,7 @@ mod tests {
             sha256: "a".repeat(64),
         }
     }
-    fn window(n: u32) -> WindowEvidence {
-        WindowEvidence {
-            key: WindowIdentity {
-                window: format!("hwnd:{n:x}"),
-                pid: 10,
-                process_created: 100,
-                native_epoch: format!("epoch-{n}"),
-            },
-            application: app(),
-            title: "existing".into(),
-            foreground: false,
-        }
-    }
+    use super::super::test_support::window;
     fn grant() -> LifecycleGrant {
         LifecycleGrant {
             run_id: "offline-run".into(),

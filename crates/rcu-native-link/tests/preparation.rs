@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy-workflow")]
 #![cfg(unix)]
 //! Offline plan/import validation only. No Windows installation or OS operation.
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -63,6 +64,7 @@ fn private_windows_bundle_can_be_validated_offline_on_mac_without_install_or_key
     let agent = b"offline fixture image, never executed";
     let worker = b"offline fixture worker, never executed";
     let config = AgentConfig {
+        privilege_mode: Some(rcu_windows::agent_contract::PrivilegeMode::Ordinary),
         version: 1,
         install_root: root.clone(),
         state_root: join("state"),

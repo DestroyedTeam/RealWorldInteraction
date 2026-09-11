@@ -58,6 +58,11 @@ impl Runtime {
         {
             return Err(invalid("fixed_installation_config_boundary"));
         }
+        #[cfg(windows)]
+        if config.backend.is_windows() {
+            rcu_windows::agent_binding::require_current_privilege(config.native_privilege_mode()?)
+                .map_err(core_error)?;
+        }
         let install = Directory::open(&config.install_root)?;
         let installation_lease = crate::installation::Lease::acquire(&install)?;
         if config.backend.is_windows() {
@@ -82,6 +87,12 @@ impl Runtime {
         let approval: Approval =
             serde_json::from_slice(&read_private(&config.approval, 256 * 1024)?)?;
         approval.validate(config.backend)?;
+        if config.backend.is_windows() {
+            crate::deployment::plan_validation::bootstrap(
+                &approval,
+                &config.install_root.to_string_lossy(),
+            )?;
+        }
         let state = open_or_create(&config.state_root)?;
         let grants = open_or_create(&state.path().join("grants"))?;
         let responses = open_or_create(&state.path().join("responses"))?;
@@ -124,6 +135,10 @@ impl Runtime {
         if self.config.backend.is_windows() {
             #[cfg(windows)]
             {
+                rcu_windows::agent_binding::require_current_privilege(
+                    self.config.native_privilege_mode()?,
+                )
+                .map_err(core_error)?;
                 let current = rcu_windows::agent_binding::current_session().map_err(core_error)?;
                 self.approval
                     .native_binding

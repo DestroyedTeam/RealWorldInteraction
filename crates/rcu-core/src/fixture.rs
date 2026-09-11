@@ -64,7 +64,7 @@ impl App {
             native_epoch: format!("fixture-epoch-{}", self.epoch),
             mutation_context: Some(MutationContext {
                 window_title: "Fixture App".into(),
-                document_state: digest(self.value.as_bytes()),
+                document_state: Some(digest(self.value.as_bytes())),
             }),
         }
     }

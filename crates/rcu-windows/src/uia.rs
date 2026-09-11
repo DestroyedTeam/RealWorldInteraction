@@ -1,4 +1,5 @@
 //! Per-call MTA and bounded cached UIA walk. COM objects never cross threads.
+mod value;
 use crate::desktop::{api, hit_window, rect, window_id};
 use rcu_core::{
     Element, Result, digest, fault,
@@ -9,6 +10,7 @@ use std::{
     mem::size_of,
     time::{Duration, Instant},
 };
+use value::bounded_document_value;
 use windows::{
     Win32::{
         Foundation::*,
@@ -308,6 +310,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         let id = rid
             .as_ref()
             .map(|r| digest(format!("{}:{pid}:{epoch}:{r:?}", window_id(w)).as_bytes()));
+        let mut value_revision = None;
         if matches!(control, Some(50004 | 50030)) {
             // Read only visible Edit/Document controls; no password or unknown
             // classification is silently converted to an empty document proof.
@@ -316,7 +319,10 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
                     documents.reject("document visibility/password/runtime identity unknown");
                 } else {
                     match bounded_document_value(&e) {
-                        Ok(value) => documents.push(id.as_deref().unwrap(), &value),
+                        Ok(value) => {
+                            value_revision = Some(digest(value.as_bytes()));
+                            documents.push(id.as_deref().unwrap(), &value);
+                        }
                         Err(error) => documents.reject(&error.code),
                     }
                 }
@@ -354,6 +360,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
                     pass,
                     focus,
                     control,
+                    &value_revision,
                 ))
                 .unwrap_or_default()
                 .as_bytes(),
@@ -367,7 +374,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
                 state_revision: Some(revision),
             });
         }
-        details.push(serde_json::json!({"element_id":id,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded native control-view descendants of HWND root; provider PID need not equal HWND owner PID; re-prove root ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"depth":depth,"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));
+        details.push(serde_json::json!({"element_id":id,"value_revision":value_revision,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded native control-view descendants of HWND root; provider PID need not equal HWND owner PID; re-prove root ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"depth":depth,"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));
         if depth != 0 {
             let call = native_call("uia_next_sibling")?;
             let sibling = client.related(&e, 1);
@@ -409,36 +416,6 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         elapsed_ms: start.elapsed().as_secs_f64() * 1000.,
         document_state,
         document_context_unavailable: documents.unavailable,
-    })
-}
-fn bounded_document_value(e: &IUIAutomationElement) -> Result<String> {
-    let _call = native_call("uia_document_precondition")?;
-    // TextPattern has a request-time bound; ValuePattern has only a post-read
-    // bound. Never claim a hard allocator/native-provider preemption guarantee.
-    let actual = if let Some(text) = pattern::<IUIAutomationTextPattern>(e, UIA_TextPatternId)? {
-        let range = api("uia_document_range_unavailable", unsafe {
-            text.DocumentRange()
-        })?;
-        api("uia_document_read_failed", unsafe { range.GetText(16_385) })?
-    } else if let Some(value) = pattern::<IUIAutomationValuePattern>(e, UIA_ValuePatternId)? {
-        api("uia_document_read_failed", unsafe { value.CurrentValue() })?
-    } else {
-        return Err(fault(
-            "uia_document_pattern_unavailable",
-            "Document preconditions require a bounded native text/value read.",
-        ));
-    };
-    if actual.len() > 16_384 {
-        return Err(fault(
-            "uia_document_value_limit",
-            "Document value exceeds the checked-action budget.",
-        ));
-    }
-    String::from_utf16(&actual).map_err(|_| {
-        fault(
-            "uia_document_non_unicode",
-            "Document text is not valid UTF-16.",
-        )
     })
 }
 pub fn value_matches(w: HWND, pid: u32, epoch: &str, wanted: &str, expected: &str) -> Result<bool> {

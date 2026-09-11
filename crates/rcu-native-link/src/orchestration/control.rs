@@ -1,5 +1,6 @@
 //! Typed operations over the immutable local Approval. No shell, arbitrary file
 //! argument, automatic replay, marker reset, or model-side control surface.
+use super::oracle::oracle;
 use crate::{
     budget::now_ms,
     invalid,
@@ -116,7 +117,7 @@ fn status(runtime: &Runtime, reconcile: bool) -> io::Result<Value> {
 
 /// Called before ownership begins: a rejected concurrent/out-of-order request
 /// must never HOLD or clean up another active connection's worker.
-async fn no_active_or_live(runtime: &Runtime) -> io::Result<()> {
+pub(super) async fn no_active_or_live(runtime: &Runtime) -> io::Result<()> {
     if runtime
         .journal()?
         .state
@@ -149,7 +150,7 @@ async fn bounded_cleanup(runtime: &Runtime) -> Value {
         }
     }
 }
-async fn owned_failure(runtime: &Runtime, reason: &str) {
+pub(super) async fn owned_failure(runtime: &Runtime, reason: &str) {
     let held = runtime.hold(reason);
     let cleanup = bounded_cleanup(runtime).await;
     let _ = runtime.journal().and_then(|mut journal| {
@@ -367,33 +368,6 @@ fn lifecycle_template(runtime: &Runtime, stage: Stage) -> io::Result<&Value> {
         .ok_or_else(|| invalid("lifecycle_template_current_stage_missing"))
 }
 
-async fn oracle(runtime: &Runtime, previous: &str) -> io::Result<Value> {
-    no_active_or_live(runtime).await?;
-    runtime.begin(Stage::Oracle, previous)?; // Uses the reserved cleanup budget.
-    let result = async {
-        let directory = runtime.files()?;
-        let mut rows = Vec::new();
-        let mut all_match = true;
-        for file in &runtime.approval.files {
-            runtime.completion_budget_check(Stage::Oracle)?;
-            let bytes = directory.read(&file.name, FILE_CAP)?;
-            let hash = sha(&bytes); let matched = hash == file.expected_sha256;
-            all_match &= matched;
-            rows.push(json!({"name":file.name,"bytes":bytes.len(),"sha256":hash,"expected_sha256":file.expected_sha256,"matches":matched,"bytes_base64":STANDARD.encode(&bytes)}));
-        }
-        let data = json!({"files":rows,"all_match":all_match,"independent_of_uia":true,"source":"exact_private_manifest_file_handles"});
-        let name = runtime.save_response(&data)?;
-        let mut refs = BTreeMap::new(); refs.insert("files".into(), name);
-        let mut proof = runtime.base_proof(); proof.file_oracle_verified = all_match; proof.detail = data;
-        let receipt = runtime.finish(Stage::Oracle, proof, refs)?;
-        Ok(json!({"stage":"oracle","stage_receipt":receipt,"complete":true,"file_oracle_verified":true,"native_goal_verified":false}))
-    }.await;
-    if let Err(error) = &result {
-        owned_failure(runtime, &format!("oracle_owned_failure:{error}")).await;
-    }
-    result
-}
-
 fn cleanup_confirmed(value: &Value) -> bool {
     value["cleanup_unknown"] != true
         && value["owned_workers"].as_array().is_some_and(|rows| {
@@ -519,9 +493,7 @@ fn inventory(runtime: &Runtime, value: &Value) -> io::Result<Inventory> {
 }
 fn preflight(runtime: &Runtime, stage: Stage, value: &Value) -> io::Result<PreflightReceipt> {
     let receipt: PreflightReceipt = serde_json::from_value(value.clone())?;
-    let inventory_value = value
-        .get("inventory")
-        .ok_or_else(|| invalid("preflight_inventory_missing"))?;
+    let inventory_value = super::receipt::preflight_inventory(&receipt, value)?;
     inventory(runtime, inventory_value)?;
     if !receipt.resources_released
         || receipt.resource_release_uncertain
@@ -581,7 +553,7 @@ fn launch(runtime: &Runtime, value: &Value) -> io::Result<LaunchReceipt> {
     if after
         .windows
         .iter()
-        .filter(|item| item.key == receipt.candidates[0])
+        .filter(|item| item.key == receipt.candidates[0] && item.interactive_root())
         .count()
         != 1
     {
