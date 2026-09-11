@@ -1,3 +1,5 @@
+> Historical v0 architecture. For the current root workspace and module boundaries, see [ADR 0001](adr/0001-rust-workspace-boundaries.md) and [governance status](architecture-governance.md). Platform support claims below are dated history, not current status.
+
 # Architecture and boundaries
 
 ## Intent protocol

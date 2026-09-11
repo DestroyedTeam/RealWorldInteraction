@@ -31,8 +31,18 @@ class ArchitectureTests(unittest.TestCase):
         self.source.write_text("// line\n" * 3)
         self.assertFalse(audit(self.root, self.rules)["passed"])
         self.source.write_text("// small\n")
+        self.assertTrue(audit(self.root, self.rules)["passed"])
         self.rules["allowed_production_dependencies"]["missing-native-link"] = []
         self.assertFalse(audit(self.root, self.rules)["passed"])
+
+    def test_alias_and_workspace_dependencies_cannot_hide_reverse_edge(self):
+        with self.manifest.open("a") as stream:
+            stream.write('[dependencies]\ninnocent={package="platform",path="../platform"}\n')
+        self.assertIn("platform", str(audit(self.root, self.rules)["violations"]))
+        self.manifest.write_text('[package]\nname="core"\n[dependencies]\ninnocent={workspace=true}\n')
+        with (self.root / "Cargo.toml").open("a") as stream:
+            stream.write('[workspace.dependencies]\ninnocent={package="platform",path="platform"}\n')
+        self.assertIn("platform", str(audit(self.root, self.rules)["violations"]))
 
 
 if __name__ == "__main__":

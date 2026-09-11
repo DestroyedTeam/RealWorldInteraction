@@ -18,16 +18,24 @@ def audit(workspace: Path, rules: dict) -> dict:
         package = tomllib.loads((folder / "Cargo.toml").read_text())
         name = package["package"]["name"]
         crates[name] = package
-        dependencies = dict(package.get("dependencies", {}))
+        dependencies = list(package.get("dependencies", {}).items())
+        dependencies.extend(package.get("build-dependencies", {}).items())
         for target in package.get("target", {}).values():
-            dependencies.update(target.get("dependencies", {}))
-        local = {key for key, value in dependencies.items()
-                 if isinstance(value, dict) and "path" in value}
+            dependencies.extend(target.get("dependencies", {}).items())
+            dependencies.extend(target.get("build-dependencies", {}).items())
+        local = set()
+        for key, value in dependencies:
+            if not isinstance(value, dict):
+                continue
+            if value.get("workspace"):
+                value = manifest["workspace"].get("dependencies", {}).get(key, {})
+            if isinstance(value, dict) and "path" in value:
+                local.add(value.get("package", key))
         forbidden = local - set(rules["allowed_production_dependencies"].get(name, []))
         if forbidden:
             errors.append(f"{name}: forbidden production dependencies {sorted(forbidden)}")
         for source in sorted((folder / "src").rglob("*.rs")):
-            relative = str(source.relative_to(workspace))
+            relative = source.relative_to(workspace).as_posix()
             lines = len(source.read_text().splitlines())
             limit = rules["existing_hotspot_ceilings"].get(relative, rules["new_file_line_limit"])
             if lines > limit:
