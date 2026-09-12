@@ -138,7 +138,7 @@ impl Backend for Fixture {
                     }
                 }
                 Intent::Text => a.value = value.unwrap_or("").into(),
-                Intent::Scroll | Intent::KeyChord => {}
+                Intent::Scroll | Intent::KeyChord | Intent::Drag(_) => {}
             }
             a.epoch += 1;
         }

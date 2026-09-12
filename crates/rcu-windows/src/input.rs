@@ -1,4 +1,5 @@
 //! Grounded SendInput only. No focus stealing, clipboard, PostMessage or UIA mutation.
+mod trajectory;
 use crate::{
     InputGrant, WindowRecord, desktop,
     input_plan::{self, Batch, GuardPhases, Plan, Sink},
@@ -27,6 +28,7 @@ pub(crate) struct Counters {
     pub events_inserted: u64,
     pub release_cleanup_calls: u64,
     pub release_events_inserted: u64,
+    pub last_drag: Option<crate::input_trajectory::DragStats>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -41,6 +43,9 @@ pub(crate) fn dispatch(
     counters: &mut Counters,
     agent_authority: Option<&crate::agent_binding::AgentInputAuthority>,
 ) -> Result<Option<bool>> {
+    if plan.drag.is_some() {
+        counters.last_drag = None;
+    }
     grant.validate(identity, now_ms())?;
     if !grant.allows(window) {
         return Err(fault(
@@ -67,6 +72,9 @@ pub(crate) fn dispatch(
         target,
         context,
         first_batch: true,
+        current_point: target.point,
+        owned_left: false,
+        trajectory_clock: Instant::now(),
         scope,
         last_clock: now_ms(),
         grant_deadline,
@@ -81,7 +89,12 @@ pub(crate) fn dispatch(
             .map(|authority| authority.retain_selection(window))
             .transpose()?,
     };
-    input_plan::execute(plan, &mut sink)?;
+    if let Some(path) = &plan.drag {
+        let stats = crate::input_trajectory::execute(path, target.point, &mut sink)?;
+        sink.counters.last_drag = Some(stats);
+    } else {
+        input_plan::execute(plan, &mut sink)?;
+    }
     // Only an insertion count. The core always returns goal_verified=false.
     Ok(Some(true))
 }
@@ -93,6 +106,9 @@ struct NativeSink<'a> {
     target: &'a Resolved,
     context: Option<&'a MutationContext>,
     first_batch: bool,
+    current_point: [f64; 2],
+    owned_left: bool,
+    trajectory_clock: Instant,
     scope: InputScope,
     last_clock: u64,
     grant_deadline: Instant,
@@ -196,7 +212,7 @@ impl GuardPhases for NativeSink<'_> {
                 "Allocated foreground window/epoch/geometry changed; no further input; never refocus automatically.",
             ));
         }
-        if desktop::hit_window(self.target.point).as_deref() != Some(&self.window.window) {
+        if desktop::hit_window(self.current_point).as_deref() != Some(&self.window.window) {
             return Err(fault(
                 "input_target_occluded",
                 "Native hit-test is outside the allocated window; no input.",
@@ -214,7 +230,7 @@ impl GuardPhases for NativeSink<'_> {
             ));
         }
         self.check_allocation_clock()?;
-        physical_input_clear()
+        physical_input_clear(self.owned_left)
     }
 }
 impl Sink for NativeSink<'_> {
@@ -256,16 +272,25 @@ impl Sink for NativeSink<'_> {
     }
 }
 
-fn physical_input_clear() -> Result<()> {
+fn physical_input_clear(owned_left: bool) -> Result<()> {
     // Do not cancel, release or otherwise alter keys held by the user. Escape
     // additionally provides a local stop signal without registering a hotkey.
     for key in 1..=254 {
+        if key == 1 && owned_left {
+            continue;
+        }
         if unsafe { GetAsyncKeyState(key) } < 0 {
             return Err(fault(
                 "user_input_active",
                 "A key or mouse button is currently held; stop without changing user input state.",
             ));
         }
+    }
+    if owned_left && unsafe { GetAsyncKeyState(1) } >= 0 {
+        return Err(fault(
+            "drag_button_state_changed",
+            "The injected left button is no longer held; stop the path and release only.",
+        ));
     }
     Ok(())
 }

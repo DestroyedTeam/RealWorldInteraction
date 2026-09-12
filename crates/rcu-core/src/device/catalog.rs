@@ -44,13 +44,13 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.act",
-            description: "Dispatch one intent against a fresh native binding, lease and stable request_id. Windows needs an allocated input grant; Text/KeyChord need exact focused UIA element. Text: 1..1024 UTF-16 units, no control chars; Enter/Tab separate. Chords: Ctrl/Alt/Shift+key. Read capabilities for scroll units. No automatic focus or replay; independently verify.",
+            description: "Dispatch one intent against a fresh native binding, lease and stable request_id. Windows needs an allocated input grant; Text/KeyChord need exact focused UIA element. Text: 1..1024 UTF-16 units, no control chars; Enter/Tab separate. Chords: Ctrl/Alt/Shift+key. Read capabilities for scroll units. Typed intent {drag:{waypoints:[{at_ms,offset:[dx,dy]}]}} performs one bounded device-paced left drag when pointer_drag.implemented is advertised; offsets use device physical pixels from the reference, not preview pixels. No automatic focus or replay; independently verify.",
             input_schema: serde_json::to_value(schemars::schema_for!(ActArgs)).unwrap(),
             writes: true,
         },
         ToolDefinition {
             name: "computer.act_checked",
-            description: "Preferred model action: select one exact element ID from a <=120s observed frame, claim a lease, then dispatch once per request_id. The server checks the original window/document context and exact element against fresh native state immediately before single durable dispatch. No pixel/name locator, implicit focus, or replay; unknown/changed context fails closed. Does not relax legacy act's 10s TTL. Verify independently and release; Text/KeyChord still require exact focused UIA.",
+            description: "Preferred model action: select one exact element ID from a <=120s observed frame, claim a lease, then dispatch once per request_id. The server checks the original window/document context and exact element against fresh native state immediately before single durable dispatch. No pixel/name locator, implicit focus, or replay; unknown/changed context fails closed. Does not relax legacy act's 10s TTL. Typed drag paths use the selected element as origin; inspect pointer_drag capability, keep the exact frame, and verify independently. Release; Text/KeyChord still require exact focused UIA.",
             input_schema: serde_json::to_value(schemars::schema_for!(CheckedActArgs)).unwrap(),
             writes: true,
         },

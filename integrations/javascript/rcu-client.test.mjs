@@ -53,6 +53,12 @@ test('transport failure is surfaced with no automatic retry', async () => {
   const client = new RcuClient(async () => { count++; throw new Error('disconnected'); });
   await assert.rejects(client.targets(), /disconnected/); assert.equal(count, 1);
 });
+test('typed drag remains one checked frame-bound intent, not per-point MCP calls', async () => {
+  const {window,calls}=setup();const snapshot=await window.snapshot();
+  const intent={drag:{waypoints:[{at_ms:0,offset:[0,0]},{at_ms:500,offset:[100,50]}]}};
+  const result=await window.withInput(input=>input.act({ref:'e0',frame:snapshot.data.frame,intent,requestId:'drag-once'}));
+  const actions=calls.filter(c=>c.name==='computer.act_checked');assert.equal(actions.length,1);assert.deepEqual(actions[0].args.intent,intent);assert.equal(actions[0].args.element,'button');assert.equal(result.value.data.goal_verified,false);
+});
 test('text-only MCP results remain supported without duplicate output', async () => {
   const client = new RcuClient(async () => ({ content: [{ type: 'text', text: '{"targets":[]}' }] }));
   assert.deepEqual(await client.targets(), { targets: [] });

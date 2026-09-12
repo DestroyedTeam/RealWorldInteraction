@@ -35,6 +35,7 @@ impl Engine {
                 "Bound the exact element, request ID and value.",
             ));
         }
+        intent.validate(value.as_deref())?;
         let key = self.identity(target)?.key();
         let fingerprint = digest(
             &serde_json::to_vec(&("act_checked_v1", target, frame, element, &intent, &value))
@@ -175,6 +176,49 @@ mod tests {
         let mut e = Engine::new(dir.path().into()).unwrap();
         e.register("fixture".into(), Box::new(f.clone())).unwrap();
         (dir, e, f)
+    }
+    #[test]
+    fn typed_drag_is_one_durable_intent_and_changed_path_never_replays() {
+        use crate::trajectory::{DragPath, Waypoint};
+        let (_dir, mut e, f) = setup();
+        let frame = e.observe("fixture").unwrap().frame;
+        let lease = e.claim("fixture", 60000).unwrap();
+        let mut path = DragPath {
+            waypoints: vec![
+                Waypoint {
+                    at_ms: 0,
+                    offset: [0., 0.],
+                },
+                Waypoint {
+                    at_ms: 200,
+                    offset: [20., 0.],
+                },
+            ],
+        };
+        let invoke = |e: &mut Engine, path: DragPath| {
+            e.act_checked(CheckedAction {
+                target: "fixture",
+                frame: &frame,
+                element: "Input",
+                lease: &lease,
+                request: "drag-once",
+                intent: Intent::Drag(path),
+                value: None,
+            })
+        };
+        assert_eq!(
+            invoke(&mut e, path.clone()).unwrap().system_accepted,
+            Some(true)
+        );
+        assert!(invoke(&mut e, path.clone()).unwrap().deduplicated);
+        assert_eq!(f.0.lock().unwrap().calls, 1);
+        path.waypoints[1].offset = [21., 0.];
+        assert_eq!(
+            invoke(&mut e, path).unwrap_err().code,
+            "idempotency_conflict"
+        );
+        assert_eq!(f.0.lock().unwrap().calls, 1);
+        e.release(&lease).unwrap();
     }
     fn age(e: &mut Engine, frame: &str, seconds: u64) {
         e.snapshots

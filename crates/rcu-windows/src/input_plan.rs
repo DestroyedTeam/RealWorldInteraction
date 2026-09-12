@@ -14,13 +14,23 @@ pub(crate) struct Plan {
     pub batches: Vec<Batch>,
     pub keyboard: bool,
     pub text: bool,
+    pub drag: Option<rcu_core::trajectory::DragPath>,
 }
 
 pub(crate) fn plan(intent: &Intent, value: Option<&str>) -> Result<Plan> {
+    intent.validate(value)?;
     let need_value = || value.ok_or_else(|| fault("value_required", "Supply the action value."));
     let mut keyboard = false;
     let mut text = false;
     let batches = match intent {
+        Intent::Drag(path) => {
+            return Ok(Plan {
+                batches: vec![],
+                keyboard: false,
+                text: false,
+                drag: Some(path.clone()),
+            });
+        }
         Intent::Click | Intent::DoubleClick | Intent::ContextMenu => {
             if value.is_some() {
                 return Err(fault(
@@ -81,6 +91,7 @@ pub(crate) fn plan(intent: &Intent, value: Option<&str>) -> Result<Plan> {
         batches,
         keyboard,
         text,
+        drag: None,
     })
 }
 
@@ -184,6 +195,12 @@ pub(crate) trait Sink {
     fn pause(&mut self) {}
 }
 pub(crate) fn execute(plan: &Plan, sink: &mut impl Sink) -> Result<()> {
+    if plan.drag.is_some() {
+        return Err(fault(
+            "wrong_input_executor",
+            "A drag requires the release-owning trajectory executor.",
+        ));
+    }
     for (index, batch) in plan.batches.iter().enumerate() {
         if index != 0 {
             sink.pause();

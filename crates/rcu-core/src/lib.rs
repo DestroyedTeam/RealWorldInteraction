@@ -20,6 +20,7 @@ pub mod lifecycle;
 pub mod operation;
 #[cfg(test)]
 mod tests;
+pub mod trajectory;
 
 pub const INLINE_BYTES: usize = 8 * 1024 * 1024;
 pub const ARTIFACT_BUDGET: usize = 64 * 1024 * 1024;
@@ -140,6 +141,21 @@ pub enum Intent {
     Text,
     KeyChord,
     Scroll,
+    Drag(trajectory::DragPath),
+}
+impl Intent {
+    pub fn validate(&self, value: Option<&str>) -> Result<()> {
+        if let Self::Drag(path) = self {
+            if value.is_some() {
+                return Err(fault(
+                    "invalid_input_value",
+                    "Drag carries a typed path, not a text value.",
+                ));
+            }
+            path.validate()?;
+        }
+        Ok(())
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -754,6 +770,7 @@ impl Engine {
                 "Bound request_id and value lengths.",
             ));
         }
+        intent.validate(value.as_deref())?;
         let key = self.identity(target)?.key();
         let path = self.journal_path(&key, request);
         let fingerprint = checked_fingerprint.unwrap_or_else(|| {

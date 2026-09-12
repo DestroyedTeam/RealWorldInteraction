@@ -20,6 +20,8 @@ mod desktop;
 mod input;
 #[cfg(any(windows, test))]
 mod input_plan;
+#[cfg(any(windows, test))]
+mod input_trajectory;
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]

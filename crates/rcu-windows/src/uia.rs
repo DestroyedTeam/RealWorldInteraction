@@ -553,6 +553,9 @@ pub(crate) struct InputScope {
     client: Client,
 }
 impl InputScope {
+    pub(crate) fn set_point(&mut self, point: [f64; 2]) {
+        self.point = point;
+    }
     pub fn new(
         w: HWND,
         pid: u32,

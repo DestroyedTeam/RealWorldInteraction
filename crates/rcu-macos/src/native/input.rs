@@ -37,6 +37,12 @@ impl NativeMac {
             matches!(intent, Intent::Text | Intent::KeyChord),
         )?;
         match intent {
+            Intent::Drag(_) => {
+                return Err(fault(
+                    "capability_unavailable",
+                    "Native drag is not implemented on this macOS backend; no input dispatched.",
+                ));
+            }
             Intent::Click | Intent::DoubleClick | Intent::ContextMenu => {
                 let right = matches!(intent, Intent::ContextMenu);
                 let button = if right {
