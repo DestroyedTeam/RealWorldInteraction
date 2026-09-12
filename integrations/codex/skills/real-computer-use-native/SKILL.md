@@ -10,6 +10,21 @@ tool catalog; each paired device runs its own headless agent. Neither service
 requires a business task, a controller stage, a test application, or a prior
 business result. A window closing does not invalidate the installation.
 
+## Choose the appropriate channel
+
+- For ordinary authorized tasks, combine native GUI and existing terminal/API
+  tools when useful: GUI for visual state and interaction; terminal for precise
+  process, file, log or build operations. Use local terminal tools on the local
+  machine; use an already authorized SSH/remote connector for another device.
+  A local command is not a guest command. Confirm the remote host identity and
+  effective user; GUI and SSH may belong to different OS sessions.
+- RCU does not currently provide an SSH tool. Do not invent one, install a remote
+  shell service, or expand network access just because this skill is loaded.
+- Respect explicitly requested GUI-only tasks and native MCP acceptance tests.
+  Terminal work is not evidence that native input/capture works. A rejected GUI
+  authorization is not permission to perform the same denied action via SSH.
+  After terminal changes affect a GUI resource, refresh its native binding/state.
+
 ## Select the intended resource
 
 - Read `computer.targets` for paired device availability, actual native identity,
@@ -54,6 +69,9 @@ be worked around by enabling the obsolete task-bound entry.
 ## Act and verify
 
 Select the next action before claiming a short cooperative desktop input lease.
+Do not hold a short lease across a model deliberation turn: prepare the action,
+then claim and dispatch in the same bounded tool execution, leaving time for
+native checks. Release before further planning; never renew by replaying input.
 Prefer `computer.act_checked` with an exact observed element. Native-element
 policy checks the selected window and element; document text is not a universal
 precondition for every button. Text/key input still requires the correct focused
@@ -67,6 +85,13 @@ a matched single predicate is not proof of the entire business task.
 
 One desktop has one input/focus stream. Multiple windows do not create independent
 mouse/keyboards. Independent devices and read-only reasoning can be concurrent.
+
+For concise execution, inspect only needed tool metadata rather than printing
+the complete tool directory. Emit one result representation (`structuredContent`
+when present, otherwise text content), not the whole duplicated MCP wrapper;
+emit image blocks separately. Keep errors, execution references and uncertainty
+visible. Group already-determined calls and their resulting observation when
+possible, but stop on changed state or failure before choosing further actions.
 
 ## Errors, reconnection and cancellation
 
