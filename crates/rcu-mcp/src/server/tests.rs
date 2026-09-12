@@ -1,4 +1,11 @@
 use super::*;
+#[test]
+fn legacy_api_does_not_advertise_or_accept_device_gateway_drag() {
+    let args = json!({"target":"a","frame":"b","element":"c","lease":"d","request_id":"e","intent":{"drag":{"waypoints":[{"at_ms":0,"offset":[0,0]},{"at_ms":100,"offset":[1,1]}]}}});
+    assert!(serde_json::from_value::<CheckedActArgs>(args).is_err());
+    let schema = serde_json::to_string(&schemars::schema_for!(CheckedActArgs)).unwrap();
+    assert!(!schema.contains("waypoints"));
+}
 struct RasterBackend(Vec<u8>);
 impl rcu_core::Backend for RasterBackend {
     fn identity(&self) -> rcu_core::Identity {

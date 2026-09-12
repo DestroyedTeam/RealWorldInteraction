@@ -1,5 +1,29 @@
 //! The existing nineteen-tool wire schemas, unchanged by module extraction.
 use rcu_core::{Intent, Locator, Predicate};
+// New device-gateway intents must not alter this legacy fixture handshake.
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "Intent")]
+#[serde(rename_all = "snake_case")]
+enum LegacyIntent {
+    Click,
+    DoubleClick,
+    ContextMenu,
+    Text,
+    KeyChord,
+    Scroll,
+}
+fn legacy_intent<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Intent, D::Error> {
+    Ok(
+        match <LegacyIntent as serde::Deserialize>::deserialize(d)? {
+            LegacyIntent::Click => Intent::Click,
+            LegacyIntent::DoubleClick => Intent::DoubleClick,
+            LegacyIntent::ContextMenu => Intent::ContextMenu,
+            LegacyIntent::Text => Intent::Text,
+            LegacyIntent::KeyChord => Intent::KeyChord,
+            LegacyIntent::Scroll => Intent::Scroll,
+        },
+    )
+}
 use schemars::JsonSchema;
 use serde::Deserialize;
 #[derive(Deserialize, JsonSchema)]
@@ -43,6 +67,8 @@ pub(super) struct ActArgs {
     pub(super) reference: String,
     pub(super) lease: String,
     pub(super) request_id: String,
+    #[schemars(with = "LegacyIntent")]
+    #[serde(deserialize_with = "legacy_intent")]
     pub(super) intent: Intent,
     pub(super) value: Option<String>,
     pub(super) operation_id: Option<String>,
@@ -55,6 +81,8 @@ pub(super) struct CheckedActArgs {
     pub(super) element: String,
     pub(super) lease: String,
     pub(super) request_id: String,
+    #[schemars(with = "LegacyIntent")]
+    #[serde(deserialize_with = "legacy_intent")]
     pub(super) intent: Intent,
     pub(super) value: Option<String>,
     pub(super) operation_id: Option<String>,
