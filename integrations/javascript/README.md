@@ -30,6 +30,34 @@ no display resolution or original artifact is changed. `crop` uses original
 pixels and `maxEdge` can request detail explicitly. Preview mappings remain
 authoritative; this does not establish lower whole-task model latency.
 
+### Device-paced drag (advertised Windows capability)
+
+When the target advertises `pointer_drag.implemented`, one checked intent may
+carry a bounded path. No per-point MCP loop is needed:
+
+```js
+const s = await state.window.snapshot();
+// ref is selected from this exact snapshot, not a remembered alias.
+await state.window.withInput(input => input.act({
+  ref: selectedRef, frame: s.data.frame, requestId: uniqueIntendedDrag,
+  intent: { drag: { waypoints: [
+    { at_ms: 0, offset: [0, 0] },
+    { at_ms: 500, offset: [100, 50] }
+  ] } }
+}));
+```
+
+Offsets are **device physical desktop pixels from the native reference**, not
+preview/controller pixels. Use 2..128 vertices with strictly increasing times,
+ending at 16..5000ms. The Windows executor retains every vertex and samples each
+line at nominal 16ms intervals, holding/releasing the left button in one native
+operation. It is not a guaranteed 60fps renderer. The entire path must remain in
+the same fixed-geometry foreground window and selected element ancestry.
+Cancellation/focus loss/late schedule stops further movement; release-only
+cleanup does not replay the path. Failed release remains uncertain/fenced.
+Mac drag, cross-window drag, free-standing button-down and an SSH API are not
+implemented by this interface. See [the contract](../../docs/architecture/bounded-pointer-trajectories.md).
+
 ## Optional integration into another JS Host
 
 `rcu-client.mjs` is an optional JavaScript client layer over an injected,

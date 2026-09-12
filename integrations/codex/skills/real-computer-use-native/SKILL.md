@@ -74,6 +74,16 @@ to a mapped 1024px long-edge preview. Emit `s.media` as images separately. Reque
 an original-coordinate crop or higher maxEdge only for detail that needs it.
 Never change the user's display resolution or treat preview pixels as originals.
 
+If the target advertises `pointer_drag.implemented`, `act` may take a typed
+`intent: {drag:{waypoints:[{at_ms:0,offset:[0,0]}, ...]}}` instead of a string.
+This is one device-paced left-button drag, not one MCP call per point. Select
+the original ref/frame normally. Offsets are device physical desktop pixels
+from the grounded reference, never preview/controller pixels. Times increase
+strictly, 2..128 points, total 16..5000ms; stay in the same fixed-geometry native
+window and selected element ancestry. Observe the effect afterward. Cancellation
+or failure may leave a partial stroke; query the original operation, never replay
+the whole drag. Nominal 16ms sampling is not proof of rendering FPS or latency.
+
 The cell has a 30s default / 60s maximum execution deadline and a 64-call limit;
 it is not a background task. Emit only the needed data, since calls are not
 automatically echoed. Parent-owned `calls` retain operation references and detail
