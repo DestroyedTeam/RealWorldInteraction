@@ -1,0 +1,32 @@
+{
+  "schema_version": "uios.project/v0.2",
+  "product": {
+    "id": "real-computer-use",
+    "name": "Real Computer Use \u2014 Windows Pointer",
+    "primary_users": [
+      "agent-operator"
+    ],
+    "critical_jobs": [
+      "identify-agent-position-and-action-state-without-intercepting-real-applications"
+    ]
+  },
+  "targets": [
+    "windows"
+  ],
+  "status": {
+    "agent_proposed_status": "draft",
+    "verifier_status": "pending"
+  },
+  "gates": {
+    "required_lanes": [
+      "machine",
+      "independent_ai",
+      "human"
+    ],
+    "human_task_evidence": "required_for_material_flow_change"
+  },
+  "design": {
+    "requirement": "standard",
+    "active": null
+  }
+}
