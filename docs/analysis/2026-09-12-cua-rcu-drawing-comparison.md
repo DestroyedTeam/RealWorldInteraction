@@ -10,6 +10,9 @@
 Windows ARM64 版 `OpenAI.Codex` 已安装并核验签名与包注册；登录、能力发现和
 原生绘图尚待执行，不能假设两版实现相同。详见
 `../validation/2026-09-12-windows-codex-baseline-install.md`。
+后续用户完成设置后，已确认 Windows 桌面进程与两项 Computer Use 插件启用；
+原生 GUI 入口与 Mac 不同，详见
+`2026-09-12-windows-macos-cua-native-entry.md`。该核对不是 Windows 绘图通过。
 
 ## 结论先行
 
