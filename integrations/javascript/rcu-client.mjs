@@ -1,4 +1,5 @@
 /** Host-side helpers over an injected real MCP client. No OS or shell bridge. */
+const asError = reason => reason instanceof Error ? reason : new Error(String(reason), { cause: reason });
 export class RcuToolError extends Error {
   constructor(tool, reply) {
     let data = reply.structuredContent;
@@ -115,14 +116,14 @@ class RcuWindow {
           return Promise.reject(state.failure);
         }
         state.inFlight = true;
-        const pending = perform(args).catch(error => { state.failure ??= error; throw error; }).finally(() => { state.inFlight = false; });
+        const pending = perform(args).catch(reason => { const error = asError(reason); state.failure ??= error; throw error; }).finally(() => { state.inFlight = false; });
         state.pending.add(pending);
         pending.then(() => state.pending.delete(pending), () => state.pending.delete(pending));
         return pending;
       };
       value = await callback({ act, observe: options => this.observe(options) });
     } catch (error) {
-      failure = error instanceof Error ? error : new Error(String(error));
+      failure = asError(error);
     } finally {
       state.closed = true;
       // Even an accidentally unawaited action must settle before cleanup; its
@@ -131,7 +132,8 @@ class RcuWindow {
       failure ??= state.failure;
       if (state.lease) {
         try { release = await this.#client.call('computer.release', { lease: state.lease }); }
-        catch (error) {
+        catch (reason) {
+          const error = asError(reason);
           if (failure) failure.releaseError = error;
           else failure = error;
         }

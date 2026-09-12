@@ -98,3 +98,13 @@ test('text-only failures retain their native execution reference', async () => {
   const client=new RcuClient(async()=>({isError:true,content:[{type:'text',text:'{"code":"effect_unknown","operation_ref":{"execution_nonce":"exact"}}'}]}));
   await assert.rejects(client.targets(),e=>e instanceof RcuToolError&&e.data.operation_ref.execution_nonce==='exact');
 });
+test('non-Error transport rejections cannot hide the request identity during cleanup', async () => {
+  const client=new RcuClient(async name=>{
+    if(name==='computer.observe')return {structuredContent:{frame:'frame',scene:{elements:[{id:'button'}]}}};
+    if(name==='computer.claim')return {structuredContent:{lease:'lease'}};
+    if(name==='computer.act_checked')throw 'transport_unknown';
+    return {structuredContent:{released:true}};
+  });
+  const window=client.window('target');await window.observe();
+  await assert.rejects(window.withInput(async i=>{try{await i.act({element:'button',intent:'click',requestId:'original'});}catch{}}),e=>e.message==='transport_unknown'&&e.actionResults[0].requestId==='original');
+});
