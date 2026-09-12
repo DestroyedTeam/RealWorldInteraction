@@ -1,0 +1,87 @@
+{
+  "schema": "rcu.validation.persistent-js-entry.v1",
+  "date": "2026-09-12",
+  "implementation_commit": "d4ba61685d1060569abf3913e0629481e75ebe0b",
+  "tests": {
+    "default-final.log": {
+      "suites": 34,
+      "passed": 239,
+      "failed": 0,
+      "ignored": 2
+    },
+    "all-features-final.log": {
+      "suites": 38,
+      "passed": 326,
+      "failed": 0,
+      "ignored": 3
+    }
+  },
+  "fmt_check": "passed",
+  "all_targets_all_features_clippy": "passed",
+  "sdk_node_tests": 10,
+  "architecture_ratchet": "passed; not full architecture acceptance",
+  "architecture_checker_tests": 4,
+  "skill_validation": "passed",
+  "live": {
+    "scope": "actual Rust MCP + owned JS worker + authenticated Windows status/durable read; not model GUI workflow acceptance",
+    "tools": 23,
+    "device": {
+      "available": "available",
+      "device": "win11-vm",
+      "is_error": false,
+      "protocol": 2,
+      "service": "healthy"
+    },
+    "persistent_state": {
+      "counter": 42,
+      "replay_allowed": false,
+      "retained_target_count": 1
+    },
+    "first_cell_ms": 32.3645,
+    "second_cell_ms": 2.731333,
+    "nested_calls": [
+      {
+        "tool": "computer.targets",
+        "elapsed_ms": 28.729125,
+        "is_error": false
+      },
+      {
+        "tool": "computer.operation",
+        "elapsed_ms": 2.085875,
+        "is_error": false
+      },
+      {
+        "tool": "computer.result",
+        "elapsed_ms": 0.079792,
+        "is_error": false
+      }
+    ],
+    "reset": true,
+    "expired_generation_rejected": true,
+    "gui_actions": 0,
+    "screenshots": 0
+  },
+  "deployment": {
+    "source_commit": "d4ba61685d1060569abf3913e0629481e75ebe0b",
+    "installed_sha256": "da29cc8a511e3a18eddc61b71aecdd3822b906af49168700d690ef09635b3886",
+    "previous_sha256": "102cd7086c22125ceb8904d4801b4fd07365beed5ffd90b6ac8df8c93b5ab2f2",
+    "unchanged_private_config_and_identity": true,
+    "global_codex_config_changed": false,
+    "rollback_binary": "/Users/vincentadamnemessis/Library/Application Support/RealComputerUse/client-v1/rollback/rcu-mcp-before-js-v1",
+    "adapter_tools": 23,
+    "device_capabilities": 20
+  },
+  "not_validated": [
+    "fresh Codex model task using computer.js",
+    "full GUI business workflow latency including model gaps",
+    "new Windows mouse/keyboard effect in this increment",
+    "SSH or terminal provider",
+    "global Plugin installation",
+    "cross-platform JS worker compilation matrix",
+    "A01 native provider process isolation"
+  ],
+  "initial_failures": [
+    "Clippy rejected two unnecessary test Vec allocations; corrected to arrays.",
+    "Concurrency test incorrectly assumed request submission order determines JS admission; corrected to assert exactly one of two overlapping cells wins, the other returns js_busy. Full workspace tests rerun."
+  ]
+}
