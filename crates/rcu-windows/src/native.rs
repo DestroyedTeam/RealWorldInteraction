@@ -217,13 +217,18 @@ impl NativeWindows {
                 "Native discovery crossed sessions.",
             ));
         }
-        if self.lifecycle_active() {
+        // A service principal's desktop observation authority is independent
+        // of the last selected window's narrower/expiring input grant.
+        if self.desktop_policy.is_some() || self.lifecycle_active() {
             Ok(())
         } else {
             self.check_identity()
         }
     }
     fn discovery_allows(&self, w: &WindowRecord) -> bool {
+        if self.desktop_policy.is_some() {
+            return true;
+        }
         let matches = |key: &rcu_core::lifecycle::WindowIdentity| {
             w.window == key.window
                 && w.pid == key.pid
@@ -527,7 +532,7 @@ impl Backend for NativeWindows {
             )
             .as_bytes(),
         );
-        self.catalog_header = json!({"identity":self.identity,"enumeration_complete":complete,"native_windows_enumerated":native_count,"catalog_ttl_ms":10000,"displays":displays,"selected":self.selected,"filter":query,"input_grant_scoped":self.input_grant.is_some(),"native_api":"EnumWindows, GetWindow(GW_OWNER), process creation FILETIME, DWM, PMv2","coverage_note":"complete is true only if this response includes every matching native window and enumeration completed; pagination/partial is not absence. Prefer pid/title filtering."});
+        self.catalog_header = json!({"identity":self.identity,"enumeration_complete":complete,"native_windows_enumerated":native_count,"catalog_ttl_ms":10000,"displays":displays,"selected":self.selected,"filter":query,"input_grant_scoped":self.desktop_policy.is_none() && self.input_grant.is_some(),"native_api":"EnumWindows, GetWindow(GW_OWNER), process creation FILETIME, DWM, PMv2","coverage_note":"complete is true only if this response includes every matching native window and enumeration completed; pagination/partial is not absence. Prefer pid/title filtering."});
         crate::catalog_page(
             self.catalog_header.clone(),
             &self.catalog,

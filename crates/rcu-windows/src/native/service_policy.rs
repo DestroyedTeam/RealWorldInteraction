@@ -28,7 +28,11 @@ impl NativeWindows {
         let Some(policy) = &self.desktop_policy else {
             return Ok(());
         };
-        self.check_identity()?;
+        if matches!(relation, rcu_core::WindowRelation::Initial) {
+            self.check_discovery_identity()?;
+        } else {
+            self.check_identity()?;
+        }
         if !policy.input {
             return Ok(());
         };

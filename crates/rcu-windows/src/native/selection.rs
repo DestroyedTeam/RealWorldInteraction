@@ -2,7 +2,14 @@
 use super::*;
 impl NativeWindows {
     pub(super) fn bind_selected(&mut self, s: &WindowSelection) -> Result<Value> {
-        self.check_identity()?;
+        if self.desktop_policy.is_some() && matches!(s.relation, rcu_core::WindowRelation::Initial)
+        {
+            // Explicitly selecting a fresh resource under the same authorized
+            // desktop does not renew or replay input on the old resource.
+            self.check_discovery_identity()?;
+        } else {
+            self.check_identity()?;
+        }
         let _dpi = DpiScope::enter()?;
         if self
             .catalog_at
