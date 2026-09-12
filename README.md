@@ -40,6 +40,10 @@ binding; a dispatch acknowledgement never proves the requested goal.
 
 - The 2026-09-12 production entry was tested in an actual Codex Host: 20 compiled
   tools and project Skill discovery, not a diagnostic-only schema fallback.
+- Production Codex integration is user-scoped, not activated by a project. The
+  adapter and paired client profile are installed outside the source checkout;
+  new worktrees must not need copied project configuration or credentials. See
+  the [installation and acceptance contract](integrations/codex/README.md#user-level-installation-not-project-activation).
 - An independent Windows ARM64 GUI-subsystem agent was installed and connected
   over authenticated RPC. Two non-document UI clicks were independently observed;
   a new Host queried the old receipt without replaying input. This is a limited

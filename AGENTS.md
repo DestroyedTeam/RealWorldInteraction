@@ -13,6 +13,11 @@
 
 ## Approved multi-endpoint architecture
 
+- User clarification 2026-09-12: production RCU MCP registration is user/Host-wide,
+  not project-specific. Keep the installed adapter, paired client identity and
+  profile outside source checkouts/worktrees. Isolated test configurations are
+  not production installation. Change only RCU settings when authorized; retain
+  unrelated Host configuration and verify a real fresh task without local config.
 - ADR 0002 (`docs/adr/0002-headless-control-infrastructure-review.md`) is the user-approved architecture baseline, not a trial topology. P0–P6 are delivery stages only.
 - Production deployment, service startup, tool discovery and transport must not depend on a business task, application window, expected document text, business Stage or oracle.
 - Business scenarios and oracles belong to test/caller layers. Keep native identity, authorization, resource leases, operation deduplication and uncertainty handling, scoped to the affected resource. Reconnection must not replay input.
