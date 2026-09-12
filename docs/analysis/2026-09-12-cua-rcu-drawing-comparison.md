@@ -7,7 +7,9 @@
 用户后续明确：正式验收必须操作安装的真实应用，并独立比较 Windows 版 Codex
 在 Windows VM 内的 Computer Use 与 Mac 版 Codex 在宿主机的 Computer Use；
 鼠标实时跟随单独验证。因此 **JS Paint 降为探索性记录，不计正式原生应用基线**。
-Windows 版 Codex 的安装、登录、能力发现和原生绘图尚待执行，不能假设两版实现相同。
+Windows ARM64 版 `OpenAI.Codex` 已安装并核验签名与包注册；登录、能力发现和
+原生绘图尚待执行，不能假设两版实现相同。详见
+`../validation/2026-09-12-windows-codex-baseline-install.md`。
 
 ## 结论先行
 
