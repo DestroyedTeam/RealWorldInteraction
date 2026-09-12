@@ -112,8 +112,14 @@ impl Gateway {
                     if let Some(rows) = result.data["targets"].as_array() {
                         targets.extend(rows.clone());
                     }
+                    let transport = self.routes[&id]
+                        .client
+                        .as_ref()
+                        .ok()
+                        .map(Client::transport_stats);
                     devices.push(
-                        json!({"device_id":id,"is_error":result.is_error,"state":result.data}),
+                        json!({"device_id":id,"is_error":result.is_error,"state":result.data,
+                        "adapter_transport":transport}),
                     );
                 }
                 Err(e) => devices.push(json!({"is_error":true,"error":e.to_string()})),

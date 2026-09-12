@@ -2,7 +2,7 @@
 mod client;
 mod server;
 use crate::invalid;
-pub use client::Client;
+pub use client::{Client, TransportStats};
 use rcu_core::device::{PROTOCOL_VERSION, Reply, Request, valid_id};
 use rcu_link_trust::{Identity, IdentityPaths, PeerPin};
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,10 @@ pub const REQUEST_CAP: usize = 1024 * 1024;
 pub const RESPONSE_CAP: usize = 32 * 1024 * 1024;
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const CALL_TIMEOUT: Duration = Duration::from_secs(90);
+/// Only peers that negotiate this token may reuse the framed connection.
+const KEEPALIVE_ALPN: &[u8] = b"rcu-device-v2-keepalive-v1";
+const SERVER_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+const CLIENT_IDLE_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
