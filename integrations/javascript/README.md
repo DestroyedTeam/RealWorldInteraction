@@ -1,5 +1,27 @@
 # RCU Host-side client helpers
 
+## Built-in persistent MCP entry
+
+The Rust adapter now exposes `computer.js` and `computer.js_reset`. No external
+Node import/transport is needed there: `rcu`, `state`, `emit` and `emitImage` are
+preloaded in an owned QuickJS worker. Use `state.*` for persistent objects;
+cell-local declarations are intentionally not retained. See
+[the runtime contract](../../docs/architecture/persistent-js-entry.md).
+
+```js
+// computer.js arguments: {code: "...", timeout_ms: 30000}
+state.inventory = await rcu.targets();
+emit(state.inventory.targets);
+```
+
+Later cells can reuse selected `state.window` objects and the same authenticated
+adapter contexts. Every cell remains bounded; native services and direct tools
+do not depend on the JS worker. This is a public RCU MCP entry, not registration
+inside Codex's private CUA REPL. Existing MCP processes need a fresh process to
+discover new tools; the adapter cannot change a Host's cached catalog itself.
+
+## Optional integration into another JS Host
+
 `rcu-client.mjs` is an optional JavaScript client layer over an injected,
 authenticated MCP transport. It does not implement OS input, spawn a shell,
 install a REPL/plugin or provide an SSH service. Rust remains the product backend.
@@ -14,7 +36,8 @@ const rcu = new RcuClient((name, args) => mcpClient.callTool({ name, arguments: 
 `mcpClient` above must be the real initialized Host transport, not a fabricated
 global. This repository does not register an RCU trusted service in Codex's
 private REPL. Importing these helpers does not make `functions.exec` persistent.
-The SDK has offline behavioral tests; production REPL/plugin wiring is still open.
+The SDK alone does not install a Plugin. The built-in Rust entry above is the
+implemented REPL wiring; global Plugin packaging remains separate work.
 
 - `targets()` returns current device status. Use an exact returned target with
   `window(target)`, then `bind(selection)` from native discovery.

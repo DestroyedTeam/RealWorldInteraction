@@ -52,6 +52,31 @@ fn error(code: &str, message: &str) -> DeviceResult {
 }
 
 impl Presentation {
+    /// Retain nested-call metadata without projecting or treating it as native
+    /// execution history. Same explicit adapter-local lifetime as observations.
+    pub fn retain(&mut self, tool: &str, data: Value) -> Option<String> {
+        let size = bytes(&data);
+        if size > CACHE_BYTES {
+            return None;
+        }
+        self.prune();
+        while self.entries.len() >= CACHE_ENTRIES
+            || self.entries.iter().map(|e| e.bytes).sum::<usize>() + size > CACHE_BYTES
+        {
+            self.entries.pop_front();
+        }
+        let id = uuid::Uuid::new_v4().to_string();
+        let sha = rcu_core::digest(&serde_json::to_vec(&data).expect("JSON value"));
+        self.entries.push_back(Entry {
+            id: id.clone(),
+            at: Instant::now(),
+            tool: tool.into(),
+            data,
+            bytes: size,
+            sha,
+        });
+        Some(id)
+    }
     fn prune(&mut self) {
         self.entries.retain(|e| e.at.elapsed() < TTL);
     }

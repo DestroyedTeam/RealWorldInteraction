@@ -1,0 +1,11 @@
+[package]
+name = "rcu-js"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+# No filesystem/module loader, network, Node, async executor or custom allocator.
+rquickjs = { version = "=0.13.0", default-features = false, features = ["std"] }

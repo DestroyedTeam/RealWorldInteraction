@@ -53,6 +53,8 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         .map(|d| d.name)
         .collect();
     expected.insert("computer.result");
+    expected.insert("computer.js");
+    expected.insert("computer.js_reset");
     assert_eq!(names, expected);
     assert!(names.contains("computer.act_checked"));
     assert!(names.contains("computer.recover_input"));

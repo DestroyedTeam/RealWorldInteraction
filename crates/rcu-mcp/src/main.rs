@@ -16,6 +16,13 @@ mod server;
 
 fn main() {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if args.len() == 1 && args[0] == "--js-worker" {
+        if let Err(e) = rcu_js::run() {
+            eprintln!("rcu-js worker: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if args.is_empty() || (args.len() == 2 && args[0] == "--profile") {
         if let Err(e) = gateway::run(args.get(1).map(std::path::Path::new)) {
             eprintln!("rcu-mcp: {e}");

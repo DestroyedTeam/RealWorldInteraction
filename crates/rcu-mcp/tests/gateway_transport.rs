@@ -170,6 +170,46 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                     Call::Execute { operation_ref } => {
                         let arguments =
                             records.lock().unwrap()[&operation_ref.execution_nonce].clone();
+                        if name == "repl-device" {
+                            if arguments.get("ttl_ms").is_some() {
+                                return Reply {
+                                    version: PROTOCOL_VERSION,
+                                    id: r.id,
+                                    device: r.device,
+                                    instance: "test-instance".into(),
+                                    result: DeviceResult::value(
+                                        json!({"lease":"repl-fixture-lease","operation_ref":operation_ref}),
+                                    ),
+                                };
+                            }
+                            if arguments
+                                .as_object()
+                                .is_some_and(|o| o.len() == 1 && o.contains_key("lease"))
+                            {
+                                return Reply {
+                                    version: PROTOCOL_VERSION,
+                                    id: r.id,
+                                    device: r.device,
+                                    instance: "test-instance".into(),
+                                    result: DeviceResult::value(
+                                        json!({"released":true,"operation_ref":operation_ref}),
+                                    ),
+                                };
+                            }
+                            if arguments["operation_id"] == "sdk-observe"
+                                || arguments["request_id"] == "sdk-action"
+                            {
+                                return Reply {
+                                    version: PROTOCOL_VERSION,
+                                    id: r.id,
+                                    device: r.device,
+                                    instance: "test-instance".into(),
+                                    result: DeviceResult::value(
+                                        json!({"frame":"fixture-frame","scene":{"elements":[{"id":"fixture-element"}]},"system_accepted":arguments["request_id"] == "sdk-action","goal_verified":false,"operation_ref":operation_ref}),
+                                    ),
+                                };
+                            }
+                        }
                         let label = arguments["operation_id"].as_str().unwrap_or("none");
                         if label.starts_with("slow") {
                             loop {
@@ -243,6 +283,78 @@ async fn wait_until(mut f: impl FnMut() -> bool) {
     })
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn js_native_call_stop_preserves_exact_reference_without_next_dispatch() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap().join("private");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .unwrap();
+    let d = device(&root, "repl-device", false).await;
+    let mut host = Host::start(&profile(&root, &[&d])).await;
+    host.tool(2, "computer.targets", json!({})).await;
+    host.send(tool(3,"computer.js",json!({"code":"await rcu.call('computer.observe', {target:'target-repl-device', operation_id:'slow-js', inline_image:false}); await rcu.call('computer.observe', {target:'target-repl-device', operation_id:'must-not-dispatch', inline_image:false});"}))).await;
+    wait_until(|| executed_label(&d, "slow-js")).await;
+    let exact = nonce(&d, "slow-js");
+    host.send(json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":3,"reason":"Host Stop nested native operation"}})).await;
+    let result = host.read().await;
+    let receipt = &result["result"]["structuredContent"];
+    assert_eq!(receipt["state_retained"], false, "{result}");
+    assert_eq!(receipt["calls"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        receipt["calls"][0]["operation_ref"]["execution_nonce"],
+        exact
+    );
+    assert_eq!(receipt["calls"][0]["cancellation_delivery_confirmed"], true);
+    assert!(d.cancelled.lock().unwrap().contains(&exact));
+    assert!(!executed_label(&d, "must-not-dispatch"));
+    assert_eq!(d.calls.lock().unwrap().iter().filter(|r| matches!(&r.call, Call::Execute{operation_ref} if operation_ref.execution_nonce == exact)).count(),1);
+    let status = host.tool(4,"computer.operation",json!({"selector":{"kind":"execution","operation_ref":receipt["calls"][0]["operation_ref"]}})).await;
+    assert_eq!(status["device"], "repl-device");
+    host.stop().await;
+}
+
+#[tokio::test]
+async fn js_sdk_batch_and_parent_lease_cleanup_use_real_authenticated_fixture_rpc() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap().join("private");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .unwrap();
+    let d = device(&root, "repl-device", false).await;
+    let mut host = Host::start(&profile(&root, &[&d])).await;
+    host.tool(2, "computer.targets", json!({})).await;
+    let result = host.tool(3,"computer.js",json!({"code":"state.win = rcu.window('target-repl-device'); await state.win.observe({operation_id:'sdk-observe'}); await state.win.withInput(async b => { await b.act({element:'fixture-element',intent:'click',requestId:'sdk-action'}); const observation = await b.observe({operation_id:'sdk-observe'}); emit(observation.data.frame); });"})).await;
+    assert!(result["error"].is_null(), "{result}");
+    assert_eq!(result["state_retained"], true, "{result}");
+    assert_eq!(result["outputs"], json!(["fixture-frame"]));
+    assert_eq!(
+        result["calls"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["tool"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec![
+            "computer.observe",
+            "computer.claim",
+            "computer.act_checked",
+            "computer.observe",
+            "computer.release"
+        ]
+    );
+    assert_eq!(result["calls"][2]["request_id"], "sdk-action");
+    assert_eq!(result["calls"][2]["goal_verified"], false);
+    assert_eq!(result["cleanup"], json!([]));
+    let failed = host.tool(4,"computer.js",json!({"code":"await rcu.call('computer.claim', {target:'target-repl-device',ttl_ms:30000}); throw new Error('after-claim');"})).await;
+    assert_eq!(failed["state_retained"], false);
+    assert_eq!(failed["cleanup"][0]["lease"], "repl-fixture-lease");
+    assert_eq!(failed["cleanup"][0]["result"]["released"], true, "{failed}");
+    host.stop().await;
 }
 #[tokio::test]
 async fn multi_device_collision_cancellation_and_bounded_eof() {

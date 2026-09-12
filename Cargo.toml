@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rcu-agent", "crates/rcu-core", "crates/rcu-mcp", "crates/rcu-macos", "crates/rcu-windows", "crates/rcu-imaging", "crates/rcu-link-trust", "crates/rcu-native-link"]
+members = ["crates/rcu-agent", "crates/rcu-core", "crates/rcu-mcp", "crates/rcu-macos", "crates/rcu-windows", "crates/rcu-imaging", "crates/rcu-link-trust", "crates/rcu-native-link", "crates/rcu-js"]
 resolver = "2"
 
 [workspace.package]

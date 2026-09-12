@@ -10,7 +10,8 @@
       "rcu-macos",
       "rcu-native-link",
       "rcu-windows",
-      "rcu-link-trust"
+      "rcu-link-trust",
+      "rcu-js"
     ],
     "rcu-imaging": [
       "rcu-core"
@@ -24,6 +25,7 @@
       "rcu-windows"
     ],
     "rcu-link-trust": [],
+    "rcu-js": [],
     "rcu-windows": [
       "rcu-core",
       "rcu-imaging"

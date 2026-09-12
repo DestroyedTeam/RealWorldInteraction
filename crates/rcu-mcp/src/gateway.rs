@@ -4,6 +4,7 @@ mod cancellation;
 mod cancellation_tests;
 mod invocation;
 mod presentation;
+mod repl;
 mod routing;
 mod shutdown;
 use rcu_core::device::{self, Call, DeviceResult, Request};
@@ -35,6 +36,7 @@ struct Gateway {
     inflight: Arc<tokio::sync::Semaphore>,
     shutdown: tokio::sync::watch::Sender<bool>,
     presentation: Arc<Mutex<presentation::Presentation>>,
+    repl: Arc<repl::Repl>,
 }
 impl Gateway {
     fn new(profile: io::Result<AdapterProfile>) -> Self {
@@ -71,6 +73,7 @@ impl Gateway {
             inflight: Arc::new(tokio::sync::Semaphore::new(64)),
             shutdown: tokio::sync::watch::channel(false).0,
             presentation: Arc::new(Mutex::new(presentation::Presentation::default())),
+            repl: Arc::new(repl::Repl::default()),
         }
     }
     async fn request(
@@ -169,6 +172,7 @@ impl Gateway {
         result
     }
     async fn close(&self) {
+        self.repl.reset().await;
         let mut jobs = tokio::task::JoinSet::new();
         if let Ok(mut pending) = self.cancels.lock() {
             for job in pending.drain(..) {
@@ -301,6 +305,7 @@ impl ServerHandler for Gateway {
             })
             .collect();
         tools.push(Tool::new("computer.result", "Read retained original metadata from this adapter's result_ref. No device RPC, capture or input. Use a JSON pointer and array pages; byte_offset=0 exports any large value as bounded UTF-8 JSON chunks. References expire independently of native execution; never replay input to recreate them.", Arc::new(serde_json::to_value(schemars::schema_for!(presentation::ResultArgs)).unwrap().as_object().unwrap().clone())));
+        tools.extend(repl::tools());
         Ok(ListToolsResult {
             tools,
             ..Default::default()
@@ -311,6 +316,21 @@ impl ServerHandler for Gateway {
         p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        if p.name == "computer.js" {
+            return Ok(self
+                .repl
+                .evaluate(self, p.arguments.unwrap_or_default(), context)
+                .await);
+        }
+        if p.name == "computer.js_reset" {
+            if !p.arguments.unwrap_or_default().is_empty() {
+                return Ok(mcp_result(DeviceResult::error(
+                    "invalid_arguments",
+                    "Reset takes no arguments.",
+                )));
+            }
+            return Ok(mcp_result(self.repl.reset().await));
+        }
         self.call_native(p, context).await
     }
 }

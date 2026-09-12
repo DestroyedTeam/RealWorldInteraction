@@ -45,6 +45,34 @@ business result. A window closing does not invalidate the installation.
   Other JSON pointers retrieve retained diagnostics. This adapter-local metadata
   reference can expire; it is never an execution identity or permission to replay.
 
+## Persistent JS entry when advertised
+
+Prefer `computer.js` for already-determined related calls. It provides `rcu`,
+`state`, `emit(data)` and `emitImage(reply.media[i])` in an async cell body.
+For example: `state.inventory = await rcu.targets(); emit(state.inventory.targets)`.
+Persist selected windows with `state.win = rcu.window(exactReturnedTarget)`;
+cell-local `let`/`const` do not persist. Use `rcu.call(tool, args)` for other
+advertised tools; no import or hand-written transport is needed.
+
+`state.win` supports `bind(selection)`, `observe(options)`, `elementsPage(offset)`
+and `withInput(async ({act, observe}) => { ... })`. Await every operation.
+`act({element, intent, value, requestId})` requires an observed exact element and
+stable mutation ID; it invalidates old observations. Observe again before another
+action. The helper releases its lease; the Rust supervisor also cleans up leases
+created by the cell. No lease survives intentionally across model turns.
+
+The cell has a 30s default / 60s maximum execution deadline and a 64-call limit;
+it is not a background task. Emit only the needed data, since calls are not
+automatically echoed. Parent-owned `calls` retain operation references and detail
+`result_ref`s. Cancellation/error/reset discard JS state, not native history;
+query uncertain operations instead of repeating the cell. A returned `generation`
+can guard subsequent calls against a reset, but is not a native identity.
+
+`computer.js_reset` stops only this adapter's JS worker. Direct native MCP tools
+remain independent. If JS is absent, use the existing native tools—not a fake JS
+bridge. The worker has no Node/shell/network API; existing terminal tools remain
+a separate complementary channel in the same task flow.
+
 ## Execution identity (device wire v2)
 
 Native work returns a service-issued `operation_ref`. Pass it unchanged:
