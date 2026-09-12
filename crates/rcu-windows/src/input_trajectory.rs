@@ -3,7 +3,14 @@
 use rcu_core::{Result, fault, operation::checkpoint, trajectory::DragPath};
 
 pub(crate) const MAX_LATENESS_MS: u64 = 250;
+// Measured synchronous UIA guards cannot sustain a 16ms interpolation grid in
+// real applications. Coarsen optional interpolation, never caller waypoints or
+// safety checks. This is a development cadence, not an FPS/latency guarantee.
+pub(crate) const NATIVE_SAMPLE_INTERVAL_MS: u64 = 64;
 pub(crate) trait TrajectorySink {
+    fn sample_interval_ms(&self) -> u64 {
+        rcu_core::trajectory::SAMPLE_INTERVAL_MS
+    }
     fn now_ms(&self) -> u64;
     fn sleep_ms(&mut self, ms: u64);
     fn validate_point(&mut self, point: [f64; 2]) -> Result<()>;
@@ -16,6 +23,7 @@ pub(crate) trait TrajectorySink {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub(crate) struct DragStats {
+    pub interpolation_interval_ms: u64,
     pub samples_planned: usize,
     pub moves_inserted: usize,
     pub elapsed_ms: u64,
@@ -49,7 +57,8 @@ pub(crate) fn execute(
     origin: [f64; 2],
     sink: &mut impl TrajectorySink,
 ) -> Result<DragStats> {
-    let samples = path.samples()?;
+    let interpolation_interval_ms = sink.sample_interval_ms();
+    let samples = path.samples_with_interval(interpolation_interval_ms)?;
     let absolute = |offset: [f64; 2]| [origin[0] + offset[0], origin[1] + offset[1]];
     // Reject out-of-desktop waypoints/samples before any pointer movement/down.
     for sample in &samples {
@@ -61,6 +70,7 @@ pub(crate) fn execute(
     let mut held = Held { sink, active: true };
     let start = held.sink.now_ms();
     let mut stats = DragStats {
+        interpolation_interval_ms,
         samples_planned: samples.len(),
         moves_inserted: 0,
         elapsed_ms: 0,
@@ -114,6 +124,7 @@ mod tests {
     };
     #[derive(Default)]
     struct Fake {
+        interval_ms: Option<u64>,
         now: u64,
         log: Vec<&'static str>,
         guard_fail: bool,
@@ -124,6 +135,10 @@ mod tests {
         cancel: Option<Operation>,
     }
     impl TrajectorySink for Fake {
+        fn sample_interval_ms(&self) -> u64 {
+            self.interval_ms
+                .unwrap_or(rcu_core::trajectory::SAMPLE_INTERVAL_MS)
+        }
         fn now_ms(&self) -> u64 {
             self.now
         }
@@ -209,6 +224,39 @@ mod tests {
         );
         assert_eq!(s.moves_inserted, 2);
         assert_eq!(s.elapsed_ms, 32);
+        assert!(s.release_inserted);
+    }
+    #[test]
+    fn native_cadence_keeps_dense_required_vertices_and_release_contract() {
+        let p = DragPath {
+            waypoints: vec![
+                Waypoint {
+                    at_ms: 0,
+                    offset: [0., 0.],
+                },
+                Waypoint {
+                    at_ms: 16,
+                    offset: [16., 0.],
+                },
+                Waypoint {
+                    at_ms: 32,
+                    offset: [16., 16.],
+                },
+                Waypoint {
+                    at_ms: 160,
+                    offset: [0., 0.],
+                },
+            ],
+        };
+        let mut f = Fake {
+            interval_ms: Some(NATIVE_SAMPLE_INTERVAL_MS),
+            ..Fake::default()
+        };
+        let s = execute(&p, [0., 0.], &mut f).unwrap();
+        assert_eq!(s.interpolation_interval_ms, 64);
+        assert_eq!(s.samples_planned, 5); // 0,16,32,96,160 -- no caller vertex skipped
+        assert_eq!(s.moves_inserted, 4);
+        assert_eq!(s.elapsed_ms, 160);
         assert!(s.release_inserted);
     }
     #[test]

@@ -28,8 +28,12 @@ Shell/PowerShell/Python. Device agents remain independently deployed Rust servic
 
 ## Windows execution
 
-The portable planner retains every vertex and linearly samples intervals at
-16ms, with at most 440 samples. Before any movement/down, all sample coordinates
+The portable planner retains every vertex and time, and supports a bounded
+16..64ms optional interpolation grid (default 16ms), with at most 440 samples.
+As of 2026-09-13 the Windows native sink advertises and uses 64ms, because live
+synchronous UIA guards could not sustain 16ms. Caller vertices closer than the
+grid remain mandatory; they are never skipped or retimed to hide lateness.
+Before any movement/down, all sample coordinates
 must lie in the native desktop and selected window bounds. Before each dispatched
 sample, native checks revalidate the allocated identity/session, foreground,
 geometry, layout, native UIA hit/ancestry, input state, authorization and lease.
@@ -50,6 +54,15 @@ waiting between calls**. Native providers may still block. If the schedule is
 more than 250ms late after guards, it aborts rather than skipping vertices,
 bursting delayed samples or replaying down. Nominal sampling is not an FPS,
 zero-latency or strong-cancellation guarantee.
+
+The pointer UIA guard uses a fresh per-sample combined ancestry proof rather
+than walking the same chain twice. Intermediate parents use full live element
+references without fetching observation-only names/rectangles/properties.
+The existing root bound (32 levels / 1500ms) and selected-element bound (8 levels)
+remain; leaf password/enabled properties are still current reads after ancestry.
+No cross-sample cached authorization, background UIA bypass or relaxed native
+focus/layout/identity guard was introduced. Per-operation phase timings expose
+the remaining synchronous-provider cost, including failed guards.
 
 ## Button lifetime, failures and evidence
 

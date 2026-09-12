@@ -30,6 +30,8 @@ pub mod pipe;
 mod pointer_feedback;
 #[cfg(windows)]
 mod uia;
+#[cfg(any(windows, test))]
+mod uia_ancestry;
 #[cfg(windows)]
 pub use native::*;
 

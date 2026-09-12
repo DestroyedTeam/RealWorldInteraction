@@ -77,3 +77,7 @@ Rust 将纯动效状态、材质、原生偏好/GDI 字形及 HWND 生命周期�
 接下来回到功能主线：先让新 Host 入口明确支持 typed drag，再做真实 Paint
 连续笔画、取消/焦点变化检查；并分离只读可视观察与带 UIA 的输入 grounding。
 不再重复 UI 方案选择，不因开发版运行成功宣布整体可替代 Computer Use。
+
+后续：用户重启 Host 后的入口恢复、真实迟到中止、开发节拍调整、完整 Paint
+笔画及人工跟随确认见 `2026-09-13-host-refresh-and-paint-trajectory.md`。
+本文件保留升级前记录，不将此前失败改写为成功。

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub const MAX_WAYPOINTS: usize = 128;
 pub const MAX_DURATION_MS: u64 = 5_000;
 pub const SAMPLE_INTERVAL_MS: u64 = 16;
+pub const MAX_SAMPLE_INTERVAL_MS: u64 = 64;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -49,11 +50,23 @@ impl DragPath {
     /// Piecewise linear samples, retaining every supplied vertex and endpoint.
     /// At most 440 samples, independent of wall-clock scheduling or OS latency.
     pub fn samples(&self) -> Result<Vec<Waypoint>> {
+        self.samples_with_interval(SAMPLE_INTERVAL_MS)
+    }
+
+    /// Device-selected interpolation density. Required vertices and their times
+    /// are never removed or shifted, including vertices closer than the cadence.
+    pub fn samples_with_interval(&self, interval_ms: u64) -> Result<Vec<Waypoint>> {
         self.validate()?;
+        if !(SAMPLE_INTERVAL_MS..=MAX_SAMPLE_INTERVAL_MS).contains(&interval_ms) {
+            return Err(fault(
+                "invalid_drag_cadence",
+                "Interpolation cadence must be within 16..64 ms; no input.",
+            ));
+        }
         let mut samples = vec![self.waypoints[0].clone()];
         for pair in self.waypoints.windows(2) {
             let (a, b) = (&pair[0], &pair[1]);
-            let mut at = a.at_ms + SAMPLE_INTERVAL_MS;
+            let mut at = a.at_ms + interval_ms;
             while at < b.at_ms {
                 let ratio = (at - a.at_ms) as f64 / (b.at_ms - a.at_ms) as f64;
                 samples.push(Waypoint {
@@ -62,7 +75,7 @@ impl DragPath {
                         a.offset[i] + (b.offset[i] - a.offset[i]) * ratio
                     }),
                 });
-                at += SAMPLE_INTERVAL_MS;
+                at += interval_ms;
             }
             samples.push(b.clone());
         }
@@ -73,6 +86,19 @@ impl DragPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn device_cadence_never_drops_or_retimes_requested_vertices() {
+        let p = path();
+        for interval in 16..=64 {
+            let samples = p.samples_with_interval(interval).unwrap();
+            assert!(p.waypoints.iter().all(|v| samples.contains(v)));
+            assert!(samples.windows(2).all(|p| p[0].at_ms < p[1].at_ms));
+            assert_eq!(samples.last(), p.waypoints.last());
+        }
+        for interval in [0, 15, 65, u64::MAX] {
+            assert!(p.samples_with_interval(interval).is_err());
+        }
+    }
     fn path() -> DragPath {
         DragPath {
             waypoints: vec![

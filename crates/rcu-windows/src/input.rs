@@ -29,6 +29,7 @@ pub(crate) struct Counters {
     pub release_cleanup_calls: u64,
     pub release_events_inserted: u64,
     pub last_drag: Option<crate::input_trajectory::DragStats>,
+    pub drag_guard_phases: trajectory::GuardTiming,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -45,6 +46,7 @@ pub(crate) fn dispatch(
 ) -> Result<Option<bool>> {
     if plan.drag.is_some() {
         counters.last_drag = None;
+        counters.drag_guard_phases = trajectory::GuardTiming::default();
     }
     grant.validate(identity, now_ms())?;
     if !grant.allows(window) {
@@ -91,7 +93,21 @@ pub(crate) fn dispatch(
         feedback: crate::pointer_feedback::Gesture::new(),
     };
     if let Some(path) = &plan.drag {
-        let stats = crate::input_trajectory::execute(path, target.point, &mut sink)?;
+        let stats =
+            crate::input_trajectory::execute(path, target.point, &mut sink).map_err(|mut e| {
+                let mut diagnostic = e
+                    .diagnostic
+                    .take()
+                    .map(|v| *v)
+                    .unwrap_or_else(|| serde_json::json!({}));
+                if !diagnostic.is_object() {
+                    diagnostic = serde_json::json!({"original_diagnostic":diagnostic});
+                }
+                diagnostic["native_guard_phases"] =
+                    serde_json::json!(sink.counters.drag_guard_phases);
+                e.diagnostic = Some(Box::new(diagnostic));
+                e
+            })?;
         sink.counters.last_drag = Some(stats);
     } else {
         input_plan::execute(plan, &mut sink)?;

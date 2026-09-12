@@ -96,6 +96,19 @@ struct Client {
     _apartment: Apartment,
 }
 impl Client {
+    fn input() -> Result<Self> {
+        let mut client = Self::new()?;
+        // Ancestry needs live element identities, not names, rectangles or text
+        // for every intermediate parent. Keep Full element mode: final leaf
+        // enabled/password properties are still read fresh after ancestry.
+        client.cache = api("uia_cache_unavailable", unsafe {
+            client.automation.CreateCacheRequest()
+        })?;
+        api("uia_cache_unavailable", unsafe {
+            client.cache.SetTreeScope(TreeScope_Element)
+        })?;
+        Ok(client)
+    }
     fn new() -> Result<Self> {
         let _call = native_call("uia_initialize")?;
         let apartment = Apartment::new()?;
@@ -571,7 +584,11 @@ impl InputScope {
                 "Keyboard input requires the exact observed focused UIA element, not a pixel reference.",
             ));
         }
-        let client = Client::new()?;
+        let client = if keyboard {
+            Client::new()?
+        } else {
+            Client::input()?
+        };
         let root = client.root(w)?;
         let mut scope = Self {
             client,
@@ -627,7 +644,7 @@ impl InputScope {
             }
             self.provider_pid = Some(provider);
         } else {
-            let mut e = {
+            let leaf = {
                 let _call = native_call("uia_pointer_element")?;
                 api("uia_pointer_unavailable", unsafe {
                     self.client.automation.ElementFromPoint(POINT {
@@ -636,42 +653,65 @@ impl InputScope {
                     })
                 })?
             };
-            self.client.under_root(&self.root, &e)?;
-            if api("uia_password_unknown", unsafe { e.CurrentIsPassword() })?.as_bool()
-                || !api("uia_enabled_unknown", unsafe { e.CurrentIsEnabled() })?.as_bool()
+            let mut e = leaf.clone();
+            let start = Instant::now();
+            let mut proof = crate::uia_ancestry::PointerAncestry::new(self.wanted.is_some());
+            let mut root_proven = false;
+            for _ in 0..32 {
+                checkpoint("uia_pointer_ancestry")?;
+                if start.elapsed() > Duration::from_millis(1500) {
+                    break;
+                }
+                let _call = native_call("uia_pointer_ancestry_native")?;
+                let root = api("uia_ancestry_compare", unsafe {
+                    self.client.automation.CompareElements(&self.root, &e)
+                })?
+                .as_bool();
+                let matches = if proof.needs_target() {
+                    let rid = runtime_id(&e)?;
+                    let id = digest(
+                        format!(
+                            "{}:{}:{}:{rid:?}",
+                            window_id(self.window),
+                            self.pid,
+                            self.epoch
+                        )
+                        .as_bytes(),
+                    );
+                    self.wanted.as_deref() == Some(&id)
+                } else {
+                    false
+                };
+                if proof.visit(root, matches)? {
+                    root_proven = true;
+                    break;
+                }
+                match self.client.related(&e, 2)? {
+                    Some(parent) => e = parent,
+                    None => {
+                        return Err(fault(
+                            "uia_wrong_root",
+                            "Pointer element is not under the allocated root; no input.",
+                        ));
+                    }
+                }
+            }
+            if !root_proven {
+                return Err(fault(
+                    "uia_ancestry_incomplete",
+                    "Could not attest pointer root within 32 levels / 1500 ms; no input.",
+                ));
+            }
+            // These remain current reads AFTER potentially blocking ancestry,
+            // not stale classifications cached before walking the tree.
+            if api("uia_password_unknown", unsafe { leaf.CurrentIsPassword() })?.as_bool()
+                || !api("uia_enabled_unknown", unsafe { leaf.CurrentIsEnabled() })?.as_bool()
             {
                 return Err(fault(
                     "pointer_sensitive_or_disabled",
                     "Pointer input cannot bypass password/enabled classification through a pixel locator.",
                 ));
             }
-            let Some(wanted) = &self.wanted else {
-                return Ok(());
-            };
-            for _ in 0..8 {
-                let _call = native_call("uia_pointer_ancestry")?;
-                let rid = runtime_id(&e)?;
-                let id = digest(
-                    format!(
-                        "{}:{}:{}:{rid:?}",
-                        window_id(self.window),
-                        self.pid,
-                        self.epoch
-                    )
-                    .as_bytes(),
-                );
-                if &id == wanted {
-                    return Ok(());
-                }
-                match self.client.related(&e, 2)? {
-                    Some(p) => e = p,
-                    None => break,
-                }
-            }
-            return Err(fault(
-                "pointer_target_changed",
-                "Hit-test no longer identifies the grounded UIA element; no further input.",
-            ));
         }
         Ok(())
     }

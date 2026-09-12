@@ -2,7 +2,53 @@
 use super::*;
 use crate::input_trajectory::TrajectorySink;
 
+/// Cumulative operation-local timings, including failed guards. No provider data.
+#[derive(Default, serde::Serialize)]
+pub(crate) struct GuardTiming {
+    document: Timing,
+    exact_scope: Timing,
+    native_state: Timing,
+}
+#[derive(Default, serde::Serialize)]
+struct Timing {
+    calls: u64,
+    total_us: u64,
+    max_us: u64,
+}
+impl Timing {
+    fn record(&mut self, start: Instant) {
+        let elapsed = start.elapsed().as_micros().min(u64::MAX as u128) as u64;
+        self.calls += 1;
+        self.total_us = self.total_us.saturating_add(elapsed);
+        self.max_us = self.max_us.max(elapsed);
+    }
+}
+struct TimedGuard<'s, 'a>(&'s mut NativeSink<'a>);
+impl GuardPhases for TimedGuard<'_, '_> {
+    fn document_precondition(&mut self) -> Result<()> {
+        let start = Instant::now();
+        let result = self.0.document_precondition();
+        self.0.counters.drag_guard_phases.document.record(start);
+        result
+    }
+    fn exact_input_scope(&mut self) -> Result<()> {
+        let start = Instant::now();
+        let result = self.0.exact_input_scope();
+        self.0.counters.drag_guard_phases.exact_scope.record(start);
+        result
+    }
+    fn final_native_state(&mut self) -> Result<()> {
+        let start = Instant::now();
+        let result = self.0.final_native_state();
+        self.0.counters.drag_guard_phases.native_state.record(start);
+        result
+    }
+}
+
 impl TrajectorySink for NativeSink<'_> {
+    fn sample_interval_ms(&self) -> u64 {
+        crate::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS
+    }
     fn now_ms(&self) -> u64 {
         self.trajectory_clock.elapsed().as_millis() as u64
     }
@@ -37,7 +83,7 @@ impl TrajectorySink for NativeSink<'_> {
         self.current_point = point;
         self.owned_left = owned_left;
         self.scope.set_point(point);
-        input_plan::guard_before_batch(self)
+        input_plan::guard_before_batch(&mut TimedGuard(self))
     }
     fn press_left(&mut self, point: [f64; 2]) -> Result<()> {
         self.send_drag_events(&[move_to(point)?, mouse(MOUSEEVENTF_LEFTDOWN, 0, 0, 0)])?;
