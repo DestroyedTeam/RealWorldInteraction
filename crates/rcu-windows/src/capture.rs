@@ -35,6 +35,7 @@ impl Drop for Surface {
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct Timing {
+    pub feedback_suspend_ms: f64,
     pub capture_ms: f64,
     pub conversion_ms: f64,
     pub encoding_ms: f64,
@@ -44,6 +45,8 @@ pub struct Timing {
 pub fn capture(r: Rect) -> Result<(Vec<u8>, Timing)> {
     let r = r.checked()?;
     let start = Instant::now();
+    let feedback_capture = crate::pointer_feedback::suspend_capture()?;
+    let feedback_suspend_ms = start.elapsed().as_secs_f64() * 1000.;
     let _call = native_call("GDI_capture")?;
     let mut surface = Surface {
         desktop: unsafe { GetDC(None) },
@@ -120,6 +123,9 @@ pub fn capture(r: Rect) -> Result<(Vec<u8>, Timing)> {
             "GDI raster synchronization failed.",
         ));
     }
+    // The DIB has its own copy now. The real screen may resume the bounded hint,
+    // but feedback pixels can never enter this grounding image/content hash.
+    drop(feedback_capture);
     let capture_ms = start.elapsed().as_secs_f64() * 1000.;
     drop(_call);
     checkpoint("capture_returned")?;
@@ -132,6 +138,7 @@ pub fn capture(r: Rect) -> Result<(Vec<u8>, Timing)> {
     let encode = Instant::now();
     let png = encode_rgb([r.width, r.height], &rgb)?;
     let timing = Timing {
+        feedback_suspend_ms,
         capture_ms,
         conversion_ms,
         encoding_ms: encode.elapsed().as_secs_f64() * 1000.,

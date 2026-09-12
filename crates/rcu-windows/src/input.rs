@@ -88,6 +88,7 @@ pub(crate) fn dispatch(
         agent_selection: agent_authority
             .map(|authority| authority.retain_selection(window))
             .transpose()?,
+        feedback: crate::pointer_feedback::Gesture::new(),
     };
     if let Some(path) = &plan.drag {
         let stats = crate::input_trajectory::execute(path, target.point, &mut sink)?;
@@ -95,6 +96,7 @@ pub(crate) fn dispatch(
     } else {
         input_plan::execute(plan, &mut sink)?;
     }
+    sink.feedback.finish();
     // Only an insertion count. The core always returns goal_verified=false.
     Ok(Some(true))
 }
@@ -115,6 +117,7 @@ struct NativeSink<'a> {
     counters: &'a mut Counters,
     display_layout: serde_json::Value,
     agent_selection: Option<crate::agent_binding::AgentInputSelection<'a>>,
+    feedback: crate::pointer_feedback::Gesture,
 }
 impl NativeSink<'_> {
     fn check_allocation_clock(&mut self) -> Result<()> {
@@ -263,6 +266,9 @@ impl Sink for NativeSink<'_> {
                     releases.len()
                 ),
             ));
+        }
+        if matches!(batch, Batch::Click { .. } | Batch::Wheel(_)) {
+            self.feedback.show(self.window, self.target.point, false);
         }
         self.first_batch = false;
         Ok(())

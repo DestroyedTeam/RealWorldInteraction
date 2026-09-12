@@ -40,14 +40,18 @@ impl TrajectorySink for NativeSink<'_> {
         input_plan::guard_before_batch(self)
     }
     fn press_left(&mut self, point: [f64; 2]) -> Result<()> {
-        self.send_drag_events(&[move_to(point)?, mouse(MOUSEEVENTF_LEFTDOWN, 0, 0, 0)])
+        self.send_drag_events(&[move_to(point)?, mouse(MOUSEEVENTF_LEFTDOWN, 0, 0, 0)])?;
+        self.feedback.show(self.window, point, true);
+        Ok(())
     }
     fn move_held(&mut self, point: [f64; 2]) -> Result<()> {
         let mut event = move_to(point)?;
         unsafe {
             event.Anonymous.mi.dwFlags |= MOUSEEVENTF_MOVE_NOCOALESCE;
         }
-        self.send_drag_events(&[event])
+        self.send_drag_events(&[event])?;
+        self.feedback.show(self.window, point, true);
+        Ok(())
     }
     fn release_left(&mut self) -> Result<()> {
         // Deliberately no cancellation/focus guard and no down/move retry here.
@@ -62,6 +66,7 @@ impl TrajectorySink for NativeSink<'_> {
         self.counters.release_events_inserted += u64::from(inserted);
         self.owned_left = false;
         if inserted == 1 {
+            self.feedback.show(self.window, self.current_point, false);
             Ok(())
         } else {
             Err(fault(

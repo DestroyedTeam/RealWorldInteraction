@@ -26,6 +26,8 @@ mod input_trajectory;
 mod native;
 #[cfg(windows)]
 pub mod pipe;
+#[cfg(any(windows, test))]
+mod pointer_feedback;
 #[cfg(windows)]
 mod uia;
 #[cfg(windows)]
