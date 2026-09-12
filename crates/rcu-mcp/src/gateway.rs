@@ -311,6 +311,16 @@ impl ServerHandler for Gateway {
         p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        self.call_native(p, context).await
+    }
+}
+impl Gateway {
+    /// Shared admission and presentation for direct MCP and adapter callers.
+    async fn call_native(
+        &self,
+        p: CallToolRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, ErrorData> {
         if p.name == "computer.result" {
             let args = serde_json::from_value::<presentation::ResultArgs>(Value::Object(
                 p.arguments.unwrap_or_default(),
