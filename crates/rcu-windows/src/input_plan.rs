@@ -129,15 +129,19 @@ fn chord(value: &str) -> Result<Vec<u16>> {
         "end" => 0x23,
         "pageup" => 0x21,
         "pagedown" => 0x22,
-        "f4" => 0x73,
-        "f10" => 0x79,
+        s if s.strip_prefix('f').is_some_and(|n| {
+            !n.starts_with('0') && n.parse::<u16>().is_ok_and(|n| (1..=24).contains(&n))
+        }) =>
+        {
+            0x70 + s[1..].parse::<u16>().expect("validated function key") - 1
+        }
         s if s.len() == 1 && s.as_bytes()[0].is_ascii_alphanumeric() => {
             u16::from(s.as_bytes()[0].to_ascii_uppercase())
         }
         _ => {
             return Err(fault(
                 "unsupported_chord",
-                "Supported: letters/digits, Enter/Tab/Escape/Space, editing/navigation keys, F4/F10.",
+                "Supported: letters/digits, Enter/Tab/Escape/Space, editing/navigation keys, F1..F24.",
             ));
         }
     };
@@ -255,6 +259,25 @@ mod tests {
             assert!(plan(&Intent::Scroll, Some(s)).is_err());
         }
         assert!(plan(&Intent::Scroll, Some("-120")).is_ok());
+    }
+    #[test]
+    fn all_function_keys_are_planned_without_enabling_system_chords() {
+        for n in 1..=24 {
+            assert_eq!(chord(&format!("F{n}")).unwrap(), vec![0x70 + n - 1]);
+        }
+        assert_eq!(chord("Ctrl+F5").unwrap(), vec![0x11, 0x74]);
+        for key in [
+            "F0",
+            "F25",
+            "F05",
+            "F-1",
+            "F999999",
+            "Alt+Tab",
+            "Win+F5",
+            "Ctrl+Alt+Delete",
+        ] {
+            assert!(chord(key).is_err(), "{key}");
+        }
     }
     #[test]
     fn physical_virtual_desktop_mapping_preserves_negative_origins() {
