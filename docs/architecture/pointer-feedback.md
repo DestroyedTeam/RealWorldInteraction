@@ -10,7 +10,7 @@ not establish application effect or task completion.
 - One device-local presenter thread, explicitly started by the serving agent,
   not by a business task, discovery or observation. One coalescing input-progress
   slot; no replay queue. The service owns the idle marker as well as active feedback.
-- A premultiplied BGRA halo, pointer and fixed `RCU` badge. No typed text,
+- A premultiplied BGRA atmospheric lens, fixed A1 diamond hotspot and `RCU` label. No typed text,
   document contents, app names, credentials or task labels are rendered.
 - A layered, disabled, transparent, non-activating tool window. The presenter
   has its own window/message processing thread and per-monitor-v2 DPI context.
@@ -23,9 +23,10 @@ not establish application effect or task completion.
   marker along, and the marker never warps the person's cursor back. Retention is
   currently in agent memory; a process restart seeds the current OS cursor rather
   than claiming disk-persistent recovery. Display changes clamp to an existing monitor.
-- An 800 ms active highlight expires to a persistent gray idle marker, not to
-  invisibility. Pressed state has a ring; the fixed badge now has a contrasting
-  background. Unchanged idle frames are not re-submitted on each polling tick.
+- The 800 ms activity watchdog expires to a persistent idle lens, not to
+  invisibility. Local light/stretch settles within 180 ms; pressure retargeting
+  takes 90 ms. Only the material changes: the hotspot position is never smoothed,
+  predicted or delayed. Unchanged idle frames are not re-submitted each tick.
 - An error/unwind clears only the matching gesture's active highlight and leaves
   idle presence intact. Newer gestures cannot be cleared by an old guard. Existing
   release-only input cleanup remains authoritative; visual cleanup never replays input.
@@ -76,6 +77,30 @@ are context snapshots and must not be read as current visibility/activity.
 submission is not a physical screen presentation.
 Keyboard feedback, feedback-inclusive visual capture, dynamic latency and
 cross-platform feedback are not attested by this implementation.
+
+## A1 development migration (2026-09-13)
+
+The user selected the diamond design and explicitly approved reversible ordinary
+engineering development without claiming formal UI Quality OS acceptance. UIOS
+is design evidence for this migration, not a passed release/signature gate.
+
+`motion` is a pure bounded expression model; `material` owns cached, premultiplied
+textures and rasterization. The native presenter owns HWND/DIB lifetime and
+capture synchronization; `native/preferences` reads animation, contrast and theme
+preferences, and `native/label` owns an offscreen GDI Segoe UI coverage raster.
+No product subprocess bridge or application-specific behavior was added.
+
+Fractional DPI is supported at the retained physical anchor (96–288 DPI cap).
+Idle HWND DPI changes invalidate raster resources, not the hotspot. Label edge
+avoidance only moves the label. Reduced Motion disables speed/stretch expression;
+a balanced click still has a bounded static contact cue, not a fake held state.
+High contrast uses OS foreground/background contours without the diffuse halo.
+
+Material blur is a bounded three-box approximation to the selected browser
+prototype, not pixel-identical CSS rendering. `last_raster_ms` / `max_raster_ms`
+measure raster generation only: they exclude cache construction, GDI submission,
+compositor scheduling, transport and model turns. A nominal 16 ms animation wake
+interval is not an attestation of 60 FPS or input-to-photon latency.
 
 Portable tests cover bounded DPI/raster allocation, premultiplied pixels, distinct
 idle/pressed visuals, idle-without-task/after-action behavior, and suspension acknowledgement/nesting. Windows cross-build and

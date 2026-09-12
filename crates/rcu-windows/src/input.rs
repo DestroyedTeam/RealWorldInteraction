@@ -267,8 +267,10 @@ impl Sink for NativeSink<'_> {
                 ),
             ));
         }
-        if matches!(batch, Batch::Click { .. } | Batch::Wheel(_)) {
-            self.feedback.show(self.window, self.target.point, false);
+        match batch {
+            Batch::Click { .. } => self.feedback.click(self.window, self.target.point),
+            Batch::Wheel(_) => self.feedback.show(self.window, self.target.point, false),
+            _ => {}
         }
         self.first_batch = false;
         Ok(())

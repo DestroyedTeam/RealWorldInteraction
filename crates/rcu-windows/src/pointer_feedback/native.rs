@@ -1,6 +1,14 @@
 //! One device-local presenter. It never sends input, activates an app or reads UIA.
-use super::{Anchor, CaptureGate, HIGHLIGHT_MS, Phase, SIZE, marker, raster, scale_for_dpi};
+use super::{
+    Anchor, CaptureGate, HIGHLIGHT_MS, Phase, SIZE,
+    material::{Label, Material, Style},
+    motion::{Frame, Motion},
+    normalize_dpi, raster_size, scale_for_dpi,
+};
+mod label;
+mod preferences;
 use crate::{WindowRecord, desktop};
+use preferences::Preferences;
 use rcu_core::{Result, fault};
 use std::{
     ffi::c_void,
@@ -30,7 +38,7 @@ struct Event {
     hwnd: usize,
     pid: u32,
     point: [f64; 2],
-    scale: u32,
+    dpi: u32,
     phase: Phase,
     expires: Instant,
 }
@@ -38,6 +46,12 @@ struct Event {
 #[derive(Default)]
 struct Model {
     event: Option<Event>,
+    motion: Motion,
+    preferences: Option<Preferences>,
+    frame: Option<Frame>,
+    raster_ms: f64,
+    max_raster_ms: f64,
+    native_label: bool,
     anchor: Option<Anchor>,
     phase: Option<Phase>,
     shutdown: bool,
@@ -50,10 +64,19 @@ struct Model {
     capture_suspensions: u64,
     error: Option<String>,
 }
-#[derive(Default)]
 struct Shared {
     model: Mutex<Model>,
     changed: Condvar,
+    origin: Instant,
+}
+impl Default for Shared {
+    fn default() -> Self {
+        Self {
+            model: Mutex::new(Model::default()),
+            changed: Condvar::new(),
+            origin: Instant::now(),
+        }
+    }
 }
 impl Shared {
     fn lock(&self) -> std::sync::MutexGuard<'_, Model> {
@@ -111,13 +134,20 @@ impl Gesture {
         if model.stopped || model.shutdown || !point.iter().all(|v| v.is_finite()) {
             return;
         }
+        let dpi = normalize_dpi(window.window_dpi.unwrap_or(96));
+        model.motion.sample(
+            point,
+            dpi,
+            pressed,
+            shared.origin.elapsed().as_secs_f64() * 1000.,
+        );
         // A single coalescing slot, not an unbounded replay queue.
         model.event = Some(Event {
             gesture: self.id,
             hwnd: hwnd.0 as usize,
             pid: window.pid,
             point,
-            scale: scale_for_dpi(window.window_dpi.unwrap_or(96)),
+            dpi,
             phase: if pressed {
                 Phase::Pressed
             } else {
@@ -128,6 +158,18 @@ impl Gesture {
         model.gate.changed();
         model.updates += 1;
         shared.changed.notify_all();
+    }
+    pub(crate) fn click(&self, window: &WindowRecord, point: [f64; 2]) {
+        self.show(window, point, false);
+        if let Some(Ok(shared)) = PRESENTER.get() {
+            let mut m = shared.lock();
+            if m.event.as_ref().is_some_and(|e| e.gesture == self.id) {
+                m.motion
+                    .click(shared.origin.elapsed().as_secs_f64() * 1000.);
+                m.gate.changed();
+                shared.changed.notify_all();
+            }
+        }
     }
     pub(crate) fn finish(&mut self) {
         self.finished = true;
@@ -142,6 +184,7 @@ impl Drop for Gesture {
             let mut model = shared.lock();
             if model.event.as_ref().is_some_and(|e| e.gesture == self.id) {
                 model.event = None;
+                model.motion.cancel();
                 model.gate.changed();
                 shared.changed.notify_all();
             }
@@ -196,7 +239,8 @@ impl Drop for CaptureGuard {
 
 pub(crate) fn status() -> serde_json::Value {
     let mut result = serde_json::json!({
-        "implemented":true,"mode":"device_native_layered_pointer_with_rcu_badge",
+        "implemented":true,"mode":"device_native_a1_diamond","design_scope":"user-approved development build; not formal UIOS acceptance",
+        "raster_logical_size":SIZE,"dpi_cap":super::MAX_DPI,"position_filter":false,"continuous_expression":true,"settle_ms":super::motion::SETTLE_MS,
         "started":false,"visible":false,"input_injection":false,
         "lifetime":"agent_service","idle_marker":true,"active_highlight_ms":HIGHLIGHT_MS,"keyboard_feedback":false,
         "position_retention":"agent_lifetime; restart seeds the current OS cursor without moving it",
@@ -209,6 +253,16 @@ pub(crate) fn status() -> serde_json::Value {
             result["started"] = m.started.into();
             result["initialized_from_service"] = m.service_started.into();
             result["phase"] = serde_json::json!(m.phase);
+            result["expression"] = serde_json::json!(m.frame);
+            result["preferences"] = serde_json::json!(m.preferences);
+            result["last_raster_ms"] = serde_json::json!(m.raster_ms);
+            result["max_raster_ms"] = serde_json::json!(m.max_raster_ms);
+            result["label_font"] = if m.native_label {
+                "Segoe UI native GDI"
+            } else {
+                "portable fallback or not yet initialized"
+            }
+            .into();
             result["anchor"] = serde_json::json!(m.anchor);
             result["visible"] = m.gate.visible.into();
             result["stopped"] = m.stopped.into();
@@ -242,6 +296,7 @@ pub(crate) fn stop() {
         let mut model = shared.lock();
         model.shutdown = true;
         model.event = None;
+        model.motion.cancel();
         model.gate.changed();
         shared.changed.notify_all();
     }
@@ -253,7 +308,7 @@ fn cursor_anchor() -> Option<Anchor> {
     let dpi = unsafe { GetDpiForWindow(GetForegroundWindow()) };
     clamp_anchor(Anchor {
         point: [cursor.x, cursor.y],
-        scale: scale_for_dpi(dpi),
+        dpi: normalize_dpi(dpi),
     })
 }
 
@@ -289,8 +344,7 @@ fn event_anchor(event: Event) -> Option<(Anchor, Phase)> {
     }
     let mut cursor = POINT::default();
     if unsafe { GetCursorPos(&mut cursor) }.is_err()
-        || (f64::from(cursor.x) - event.point[0]).hypot(f64::from(cursor.y) - event.point[1])
-            > f64::from(event.scale * 12)
+        || (f64::from(cursor.x) - event.point[0]).hypot(f64::from(cursor.y) - event.point[1]) > 1.5
     {
         return None;
     }
@@ -306,7 +360,7 @@ fn event_anchor(event: Event) -> Option<(Anchor, Phase)> {
     };
     clamp_anchor(Anchor {
         point: [cursor.x, cursor.y],
-        scale: event.scale,
+        dpi: event.dpi,
     })
     .map(|a| (a, phase))
 }
@@ -314,19 +368,31 @@ fn event_anchor(event: Event) -> Option<(Anchor, Phase)> {
 fn run(shared: &Shared) -> std::result::Result<(), String> {
     let _dpi = desktop::DpiScope::enter().map_err(|e| format!("{}: {}", e.code, e.next_step))?;
     let mut window = Window::new().map_err(|e| e.to_string())?;
+    let mut prefs = Preferences::read();
+    let mut preferences_at = Instant::now();
+    let mut last_input = 0;
     shared.lock().started = true;
     loop {
         let mut message = MSG::default();
+        let mut prefs_dirty = false;
         while unsafe { PeekMessageW(&mut message, None, 0, 0, PM_REMOVE) }.as_bool() {
             if message.message == WM_QUIT {
                 return Ok(());
             }
+            prefs_dirty |= matches!(
+                message.message,
+                WM_SETTINGCHANGE | WM_SYSCOLORCHANGE | WM_THEMECHANGED
+            );
             unsafe {
                 let _ = TranslateMessage(&message);
                 DispatchMessageW(&message);
             }
         }
-        let (revision, event, anchor, suspended) = {
+        if prefs_dirty || preferences_at.elapsed() >= Duration::from_secs(1) {
+            prefs = Preferences::read();
+            preferences_at = Instant::now();
+        }
+        let (revision, event, anchor, suspended, motion, input) = {
             let m = shared.lock();
             if m.shutdown {
                 return Ok(());
@@ -336,28 +402,51 @@ fn run(shared: &Shared) -> std::result::Result<(), String> {
                 m.event.clone(),
                 m.anchor,
                 m.gate.suspended != 0,
+                m.motion.clone(),
+                m.updates,
             )
         };
+        let now = shared.origin.elapsed().as_secs_f64() * 1000.;
         let active = event.and_then(event_anchor);
-        // Idle uses the retained agent location, never follows a person's mouse.
-        let anchor = active
-            .map(|p| p.0)
+        // Only a new acknowledged sample may update the retained agent location.
+        // Idle/physical user movement cannot continually drag that anchor around.
+        let received = if input != last_input {
+            active.map(|p| p.0)
+        } else {
+            None
+        };
+        let anchor = received
             .or(anchor)
             .or_else(cursor_anchor)
-            .and_then(clamp_anchor);
-        let display = marker(anchor, active, suspended);
-        let (visible, submitted) = if let Some((anchor, phase)) = display {
-            let submitted = window.present(anchor, phase).map_err(|e| e.to_string())?;
+            .and_then(clamp_anchor)
+            .map(|a| window.refresh_dpi(a));
+        if received.is_some() {
+            last_input = input;
+        }
+        let mut frame = motion.frame(now, prefs.animate);
+        if active.is_none_or(|(_, p)| p == Phase::Idle) && frame.phase != Phase::Idle {
+            frame = Frame::idle();
+        }
+        let display = if suspended { None } else { anchor };
+        let (visible, submitted) = if let Some(anchor) = display {
+            let submitted = window
+                .present(anchor, frame, prefs.style())
+                .map_err(|e| e.to_string())?;
             (unsafe { IsWindowVisible(window.hwnd) }.as_bool(), submitted)
         } else {
             window.hide().map_err(|e| e.to_string())?;
             (false, false)
         };
         let mut model = shared.lock();
-        if anchor.is_some() {
+        if anchor.is_some() && model.updates == input {
             model.anchor = anchor;
         }
-        model.phase = display.map(|(_, p)| p);
+        model.phase = display.map(|_| frame.phase);
+        model.frame = Some(frame);
+        model.preferences = Some(prefs);
+        model.raster_ms = window.raster_ms;
+        model.max_raster_ms = model.max_raster_ms.max(window.raster_ms);
+        model.native_label = window.native_label;
         model.gate.acknowledge(revision, visible);
         if submitted {
             model.render_submissions += 1;
@@ -366,7 +455,7 @@ fn run(shared: &Shared) -> std::result::Result<(), String> {
         if model.gate.revision != revision {
             continue;
         }
-        let delay = if active.is_some() && !suspended {
+        let delay = if frame.animating && !suspended {
             16
         } else {
             100
@@ -380,12 +469,68 @@ fn run(shared: &Shared) -> std::result::Result<(), String> {
     }
 }
 
+fn label_offset(anchor: Anchor) -> [i32; 2] {
+    let monitor = unsafe {
+        MonitorFromPoint(
+            POINT {
+                x: anchor.point[0],
+                y: anchor.point[1],
+            },
+            MONITOR_DEFAULTTONEAREST,
+        )
+    };
+    let mut info = MONITORINFO {
+        cbSize: size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    if !unsafe { GetMonitorInfoW(monitor, &mut info) }.as_bool() {
+        return [14, 14];
+    }
+    let scale = scale_for_dpi(anchor.dpi);
+    let r = info.rcWork;
+    let x = if f64::from(r.right) - f64::from(anchor.point[0]) < 50. * scale {
+        -40
+    } else if f64::from(anchor.point[0]) - f64::from(r.left) < 8. * scale {
+        18
+    } else {
+        14
+    };
+    let y = if f64::from(r.bottom) - f64::from(anchor.point[1]) < 45. * scale {
+        -33
+    } else {
+        14
+    };
+    [x, y]
+}
+
 struct Window {
     hwnd: HWND,
     surface: Option<Surface>,
-    last: Option<(Anchor, Phase)>,
+    last: Option<(Anchor, Frame, Style, [i32; 2])>,
+    material: Option<(u32, Style, Material)>,
+    raster_ms: f64,
+    native_label: bool,
 }
 impl Window {
+    fn refresh_dpi(&self, anchor: Anchor) -> Anchor {
+        if self.last.is_some() {
+            let point_monitor = unsafe {
+                MonitorFromPoint(
+                    POINT {
+                        x: anchor.point[0],
+                        y: anchor.point[1],
+                    },
+                    MONITOR_DEFAULTTONEAREST,
+                )
+            };
+            let window_monitor = unsafe { MonitorFromWindow(self.hwnd, MONITOR_DEFAULTTONEAREST) };
+            let dpi = unsafe { GetDpiForWindow(self.hwnd) };
+            if point_monitor == window_monitor && dpi != 0 {
+                return anchor.with_dpi(dpi);
+            }
+        }
+        anchor
+    }
     fn new() -> windows::core::Result<Self> {
         let instance = HINSTANCE(unsafe { GetModuleHandleW(None) }?.0);
         let class = WNDCLASSW {
@@ -421,6 +566,9 @@ impl Window {
             hwnd,
             surface: None,
             last: None,
+            material: None,
+            raster_ms: 0.,
+            native_label: false,
         })
     }
     fn hide(&self) -> windows::core::Result<()> {
@@ -432,33 +580,65 @@ impl Window {
         }
         Ok(())
     }
-    fn present(&mut self, anchor: Anchor, phase: Phase) -> windows::core::Result<bool> {
-        if self.last == Some((anchor, phase)) && unsafe { IsWindowVisible(self.hwnd) }.as_bool() {
+    fn present(
+        &mut self,
+        anchor: Anchor,
+        frame: Frame,
+        style: Style,
+    ) -> windows::core::Result<bool> {
+        let offset = label_offset(anchor);
+        let key = (anchor, frame, style, offset);
+        if self.last == Some(key) && unsafe { IsWindowVisible(self.hwnd) }.as_bool() {
             return Ok(false);
         }
         let point = POINT {
             x: anchor.point[0],
             y: anchor.point[1],
         };
-        let scale = anchor.scale;
-        if self.surface.as_ref().is_none_or(|s| s.scale != scale) {
-            self.surface = Some(Surface::new(scale)?);
+        let dpi = anchor.dpi;
+        if self.surface.as_ref().is_none_or(|s| s.dpi != dpi) {
+            self.surface = Some(Surface::new(dpi)?);
+        }
+        if self
+            .material
+            .as_ref()
+            .is_none_or(|(d, s, _)| *d != dpi || *s != style)
+        {
+            let label = match label::coverage(dpi) {
+                Ok(l) => {
+                    self.native_label = true;
+                    l
+                }
+                Err(_) => {
+                    self.native_label = false;
+                    Label::fallback(dpi)
+                }
+            };
+            self.material = Some((dpi, style, Material::new(dpi, style, label)));
         }
         let surface = self.surface.as_mut().expect("surface initialized");
-        if surface.phase != Some(phase) {
-            let pixels = raster(scale, phase);
+        if surface.frame != Some((frame, style, offset)) {
+            let began = Instant::now();
+            let pixels = self
+                .material
+                .as_ref()
+                .unwrap()
+                .2
+                .raster(frame, offset.map(f64::from));
+            self.raster_ms = began.elapsed().as_secs_f64() * 1000.;
             unsafe {
                 std::ptr::copy_nonoverlapping(pixels.as_ptr(), surface.bits, pixels.len());
             }
-            surface.phase = Some(phase);
+            surface.frame = Some((frame, style, offset));
         }
+        let half = (raster_size(dpi) / 2) as i32;
         let destination = POINT {
-            x: point.x.saturating_sub(36 * scale as i32),
-            y: point.y.saturating_sub(36 * scale as i32),
+            x: point.x.saturating_sub(half),
+            y: point.y.saturating_sub(half),
         };
         let size = windows::Win32::Foundation::SIZE {
-            cx: (SIZE as u32 * scale) as i32,
-            cy: (SIZE as u32 * scale) as i32,
+            cx: raster_size(dpi) as i32,
+            cy: raster_size(dpi) as i32,
         };
         let source = POINT::default();
         let blend = BLENDFUNCTION {
@@ -489,7 +669,7 @@ impl Window {
                 SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
             )?;
         }
-        self.last = Some((anchor, phase));
+        self.last = Some(key);
         Ok(true)
     }
 }
@@ -503,6 +683,9 @@ impl Drop for Window {
 }
 unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     match msg {
+        // Keep the true hotspot; do not adopt the OS's suggested shifted RECT.
+        // The service loop re-reads HWND DPI and rebuilds only raster resources.
+        WM_DPICHANGED => LRESULT(0),
         WM_NCHITTEST => LRESULT(HTTRANSPARENT as isize),
         WM_MOUSEACTIVATE => LRESULT(MA_NOACTIVATE as isize),
         _ => unsafe { DefWindowProcW(hwnd, msg, w, l) },
@@ -514,23 +697,23 @@ struct Surface {
     bitmap: HBITMAP,
     previous: HGDIOBJ,
     bits: *mut u8,
-    scale: u32,
-    phase: Option<Phase>,
+    dpi: u32,
+    frame: Option<(Frame, Style, [i32; 2])>,
 }
 impl Surface {
-    fn new(scale: u32) -> windows::core::Result<Self> {
+    fn new(dpi: u32) -> windows::core::Result<Self> {
         let mut s = Self {
             dc: unsafe { CreateCompatibleDC(None) },
             bitmap: HBITMAP::default(),
             previous: HGDIOBJ::default(),
             bits: std::ptr::null_mut(),
-            scale,
-            phase: None,
+            dpi,
+            frame: None,
         };
         if s.dc.0.is_null() {
             return Err(windows::core::Error::from_thread());
         }
-        let size = (SIZE as u32 * scale) as i32;
+        let size = raster_size(dpi) as i32;
         let info = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
                 biSize: size_of::<BITMAPINFOHEADER>() as u32,
