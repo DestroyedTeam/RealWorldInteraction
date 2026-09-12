@@ -31,8 +31,11 @@ impl Trace {
     }
     pub fn begin(&mut self, tool: &str, args: &serde_json::Map<String, Value>) -> usize {
         self.call_started = std::time::Instant::now();
-        self.calls
-            .push(json!({"tool":tool,"request_id":args.get("request_id"),"outcome":"unconfirmed"}));
+        let mut record = json!({"tool":tool,"outcome":"unconfirmed"});
+        if let Some(id) = args.get("request_id") {
+            record["request_id"] = id.clone();
+        }
+        self.calls.push(record);
         self.calls.len() - 1
     }
     pub fn finish(
@@ -68,6 +71,9 @@ impl Trace {
             "cancellation_delivery_confirmed",
             "cancellation_accepted",
             "original_action_replayed",
+            "dispatch_error",
+            "dispatch",
+            "native_dispatch_entered",
         ] {
             if let Some(v) = data.get(key) {
                 call[key] = v.clone();

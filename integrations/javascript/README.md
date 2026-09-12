@@ -20,6 +20,16 @@ do not depend on the JS worker. This is a public RCU MCP entry, not registration
 inside Codex's private CUA REPL. Existing MCP processes need a fresh process to
 discover new tools; the adapter cannot change a Host's cached catalog itself.
 
+For concise GUI state, use `const s = await state.window.snapshot(); emit(s.data)`.
+Controls use short refs, roles and meaningful flags. Dispatch with
+`act({ref, frame:s.data.frame, intent, requestId})` inside `withInput`; a ref without
+its exact original frame is rejected. `summary({offset,limit})` is a local page,
+while `elementsPage` retrieves missing original elements from retained metadata.
+`snapshot({preview:true})` returns a mapped 1024px-long-edge PNG preview in `media`;
+no display resolution or original artifact is changed. `crop` uses original
+pixels and `maxEdge` can request detail explicitly. Preview mappings remain
+authoritative; this does not establish lower whole-task model latency.
+
 ## Optional integration into another JS Host
 
 `rcu-client.mjs` is an optional JavaScript client layer over an injected,

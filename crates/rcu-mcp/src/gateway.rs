@@ -273,6 +273,20 @@ fn schema_numbers(v: &mut Value) {
     }
 }
 fn mcp_result(mut result: DeviceResult) -> CallToolResult {
+    // Older native agents can report a failed dispatch in a successful envelope.
+    // Surface the error without rewriting native uncertainty/effect evidence.
+    if let Some(failure) = result.data.get("dispatch_error").cloned()
+        && failure.is_object()
+    {
+        result.is_error = true;
+        for (key, source) in [("code", "code"), ("message", "next_step")] {
+            if result.data.get(key).is_none()
+                && let Some(value) = failure.get(source)
+            {
+                result.data[key] = value.clone();
+            }
+        }
+    }
     portable_numbers(&mut result.data);
     let mut reply = if result.is_error {
         CallToolResult::structured_error(result.data)
@@ -434,4 +448,31 @@ pub fn run(path: Option<&Path>) -> io::Result<()> {
     });
     runtime.shutdown_timeout(std::time::Duration::from_secs(2));
     result
+}
+
+#[cfg(test)]
+mod result_tests {
+    use super::*;
+    #[test]
+    fn legacy_nested_dispatch_failure_is_explicit_without_rewriting_evidence() {
+        let raw = json!({"dispatch":"uncertain","system_accepted":null,"native_dispatch_entered":false,"dispatch_error":{"code":"unsupported_chord","next_step":"Inspect supported keys"},"operation_ref":{"execution_nonce":"original"}});
+        let result = mcp_result(DeviceResult::value(raw.clone()));
+        assert_eq!(result.is_error, Some(true));
+        let data = result.structured_content.unwrap();
+        assert_eq!(data["code"], "unsupported_chord");
+        assert_eq!(data["message"], "Inspect supported keys");
+        for key in [
+            "dispatch",
+            "dispatch_error",
+            "system_accepted",
+            "native_dispatch_entered",
+            "operation_ref",
+        ] {
+            assert_eq!(data[key], raw[key]);
+        }
+        assert_eq!(
+            mcp_result(DeviceResult::value(json!({"system_accepted":true}))).is_error,
+            Some(false)
+        );
+    }
 }

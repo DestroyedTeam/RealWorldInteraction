@@ -61,6 +61,19 @@ stable mutation ID; it invalidates old observations. Observe again before anothe
 action. The helper releases its lease; the Rust supervisor also cleans up leases
 created by the cell. No lease survives intentionally across model turns.
 
+For model-facing observations prefer `const s = await state.win.snapshot()` and
+`emit(s.data)`. This returns concise controls with frame-scoped refs such as `e3`,
+roles and meaningful flags, not repeated native IDs and diagnostic trees.
+Use `act({ref: 'e3', frame: s.data.frame, intent, requestId})`; both ref and exact
+frame are required, and stale aliases are rejected. Native bindings remain intact.
+`summary({offset,limit})` pages already-loaded controls without native calls;
+`elementsPage` retrieves omitted original elements before summarizing them.
+Coverage, blocked state and detail references remain visible; incomplete is not
+evidence of absence. For pixels, use `snapshot({preview:true})`, which defaults
+to a mapped 1024px long-edge preview. Emit `s.media` as images separately. Request
+an original-coordinate crop or higher maxEdge only for detail that needs it.
+Never change the user's display resolution or treat preview pixels as originals.
+
 The cell has a 30s default / 60s maximum execution deadline and a 64-call limit;
 it is not a background task. Emit only the needed data, since calls are not
 automatically echoed. Parent-owned `calls` retain operation references and detail

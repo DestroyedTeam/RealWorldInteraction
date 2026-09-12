@@ -110,3 +110,51 @@ test('non-Error transport rejections cannot hide the request identity during cle
   await assert.rejects(window.withInput(async i=>{try{await i.act({element:'button',intent:'click',requestId:'original'});}catch{}}),e=>e.message===String(reason)&&e.actionResults[0].requestId==='original');
   }
 });
+
+test('nested native rejection is a readable error without losing uncertainty or reference', async () => {
+  const data = {dispatch:'uncertain', native_dispatch_entered:false, system_accepted:null, dispatch_error:{code:'unsupported_chord',next_step:'Inspect supported keys'},operation_ref:{execution_nonce:'exact'}};
+  const client = new RcuClient(async()=>({isError:false,structuredContent:data}));
+  await assert.rejects(client.call('computer.act_checked'),e=>e instanceof RcuToolError && e.message.includes('unsupported_chord') && e.message.includes('not dispatched') && e.data === data && e.data.dispatch === 'uncertain');
+});
+
+test('snapshot aliases are readable and resolve only with their original frame', async () => {
+  const {window,calls} = setup();
+  const first = await window.snapshot();
+  assert.deepEqual(first.data.elements,[{ref:'e0',name:''}]);
+  assert.equal(first.data.coverage.native_complete,null);
+  assert(!JSON.stringify(first.data).includes('button'));
+  await window.withInput(i=>i.act({ref:'e0',frame:first.data.frame,intent:'click',requestId:'one'}));
+  assert.equal(calls.find(c=>c.name==='computer.act_checked').args.element,'button');
+  await window.snapshot();
+  await assert.rejects(window.withInput(i=>i.act({ref:'e0',frame:first.data.frame,intent:'click',requestId:'two'})),/exact observed frame/);
+  assert.equal(calls.filter(c=>c.name==='computer.act_checked').length,1);
+});
+
+test('preview defaults to 1024 and retains authoritative view mapping without inline full capture', async () => {
+  const seen=[];
+  const mapping={view_size:[1024,768],original_size:[2048,1536],view_to_original:[2,0,0,2,.5,.5]};
+  const media={type:'image',mimeType:'image/png',data:'fixture'};
+  const client=new RcuClient(async(name,args)=>{
+    seen.push({name,args});
+    if(name==='computer.observe')return {structuredContent:{frame:'f',artifact_id:'a',scene:{blocked:false,mutation_ready:true,elements:[{id:'long-native-id',control_type:50000,name:'Confirm',keyboard_focus:true}]},presentation:{result_ref:'detail',elements:{total:2,native_complete:false,next_offset:1}}}};
+    return {structuredContent:{view_id:'v',mapping,original_sha256:'original'},content:[media]};
+  });
+  const w=client.window('t'),s=await w.snapshot({preview:true});
+  assert.equal(seen[0].args.inline_image,false);
+  assert.equal(seen[1].args.max_edge,1024);
+  assert.equal(seen[1].args.artifact_id,'a');
+  assert.deepEqual(s.data.preview.mapping,mapping);
+  assert.deepEqual(s.media,[media]);
+  assert.deepEqual(s.data.elements,[{ref:'e0',name:'Confirm',role:'button',focused:true}]);
+  assert.equal(s.data.coverage.native_complete,false);
+  assert.equal(s.data.coverage.adapter_next_offset,1);
+  assert.equal(s.data.details_ref,'detail');
+});
+
+test('paged summary refs do not accept element overrides or missing frame', async () => {
+  const {window,calls}=setup();await window.snapshot();
+  assert.equal(window.summary({limit:1}).elements[0].ref,'e0');
+  assert.throws(()=>window.summary({offset:2}),/bounded summary/);
+  await assert.rejects(window.withInput(i=>i.act({ref:'e0',intent:'click',requestId:'one'})),/exact observed frame/);
+  assert(!calls.some(c=>c.name==='computer.act_checked'));
+});
