@@ -10,11 +10,12 @@ tool catalog; each paired device runs its own headless agent. Neither service
 requires a business task, a controller stage, a test application, or a prior
 business result. A window closing does not invalidate the installation.
 
-## Choose the appropriate channel
+## Coordinate complementary channels
 
-- For ordinary authorized tasks, combine native GUI and existing terminal/API
-  tools when useful: GUI for visual state and interaction; terminal for precise
-  process, file, log or build operations. Use local terminal tools on the local
+- GUI and terminal are parallel, complementary peers, not replacements or a
+  preferred/fallback hierarchy. Within one authorized flow, either may execute,
+  verify the other's effect, supply evidence or inform the next iteration.
+  Combine native GUI and existing terminal/API tools when useful. Use local terminal tools on the local
   machine; use an already authorized SSH/remote connector for another device.
   A local command is not a guest command. Confirm the remote host identity and
   effective user; GUI and SSH may belong to different OS sessions.
@@ -38,6 +39,11 @@ business result. A window closing does not invalidate the installation.
   it does not guarantee that the current backend avoids capture internally.
   Obtain images/tiles through `computer.image`; view coordinates need
   `computer.resolve_view`, not original-image pixel interpretation.
+- In compact-v1 responses, inspect `presentation.elements.next_offset` and
+  native coverage separately. Use `computer.result` with the returned result_ref
+  and `/scene/elements` array offset to read omitted elements without recapture.
+  Other JSON pointers retrieve retained diagnostics. This adapter-local metadata
+  reference can expire; it is never an execution identity or permission to replay.
 
 ## Execution identity (device wire v2)
 

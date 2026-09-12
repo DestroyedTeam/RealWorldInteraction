@@ -44,6 +44,11 @@ binding; a dispatch acknowledgement never proves the requested goal.
   adapter and paired client profile are installed outside the source checkout;
   new worktrees must not need copied project configuration or credentials. See
   the [installation and acceptance contract](integrations/codex/README.md#user-level-installation-not-project-activation).
+- The adapter's compact-v1 projection adds a local `computer.result` metadata
+  reader (21 adapter tools, 20 device capabilities). Native execution is unchanged;
+  see the [output migration contract](docs/migrations/2026-09-12-compact-output-v1.md).
+  Optional [Host-side JavaScript helpers](integrations/javascript/README.md) are
+  source/tested client helpers, not a deployed RCU REPL or SSH provider.
 - An independent Windows ARM64 GUI-subsystem agent was installed and connected
   over authenticated RPC. Two non-document UI clicks were independently observed;
   a new Host queried the old receipt without replaying input. This is a limited

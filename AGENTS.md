@@ -13,6 +13,10 @@
 
 ## Approved multi-endpoint architecture
 
+- User clarification 2026-09-12: GUI and terminal are parallel complementary
+  channels within one flow, including cross-execution, verification, feedback
+  and iteration. Neither is a replacement/fallback for the other. Preserve
+  each channel's device/user/session identity, authorization and evidence.
 - User clarification 2026-09-12: production RCU MCP registration is user/Host-wide,
   not project-specific. Keep the installed adapter, paired client identity and
   profile outside source checkouts/worktrees. Isolated test configurations are
