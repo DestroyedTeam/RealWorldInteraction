@@ -2,6 +2,11 @@
 
 日期：2026-09-12。记录用户新增的一期验收标准；不把测试窗口当最终产品验收。
 
+更新：下文保留当时的待办状态。其后的实际结果及纠偏见
+`2026-09-12-cua-rcu-drawing-comparison.md` 和
+`../validation/2026-09-12-paint-prebaseline.md`：连接复用已落地；Notes 路线改为
+Paintbrush / JS Paint 独立对照，但完整入口、下载和 Pointer 验收仍未全过。
+
 ## 1. 参考图标和目标
 
 本机正式版 `/Applications/Nemessix.app`，bundle ID

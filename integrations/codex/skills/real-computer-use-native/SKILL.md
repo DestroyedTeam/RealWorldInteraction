@@ -10,6 +10,18 @@ tool catalog; each paired device runs its own headless agent. Neither service
 requires a business task, a controller stage, a test application, or a prior
 business result. A window closing does not invalidate the installation.
 
+## Preserve the requested Host entry
+
+For native MCP/plugin/skill acceptance, GUI actions must originate from the
+Host's currently loaded RCU tools. Do not substitute a shell-launched Python,
+Node, stdio or HTTP test client, even when it talks to the real Rust MCP server.
+Such clients can test transport/integration when requested, but cannot prove the
+Host's native entry works. If the loaded entry cannot carry an advertised action,
+report that adapter/catalog mismatch and fix the entry rather than silently
+changing the GUI execution path. Complementary terminal work does not waive this
+boundary. Keep GUI drawing, screenshot capture, application storage, downloaded
+file export and file reopening as separate acceptance nodes.
+
 ## Coordinate complementary channels
 
 - GUI and terminal are parallel, complementary peers, not replacements or a
@@ -73,6 +85,11 @@ evidence of absence. For pixels, use `snapshot({preview:true})`, which defaults
 to a mapped 1024px long-edge preview. Emit `s.media` as images separately. Request
 an original-coordinate crop or higher maxEdge only for detail that needs it.
 Never change the user's display resolution or treat preview pixels as originals.
+
+Native drag support does not attest visual Pointer feedback. A static cursor or
+halo in one screenshot is not proof of continuous following or its latency.
+Report missing feedback capabilities and unmeasured motion honestly; do not add
+a marker to a screenshot and present it as device-side live feedback.
 
 If the target advertises `pointer_drag.implemented`, `act` may take a typed
 `intent: {drag:{waypoints:[{at_ms:0,offset:[0,0]}, ...]}}` instead of a string.
