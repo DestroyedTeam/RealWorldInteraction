@@ -1,8 +1,12 @@
 //! Task-independent authenticated device RPC. Callers own platform setup.
+mod client;
+mod server;
 use crate::invalid;
+pub use client::Client;
 use rcu_core::device::{PROTOCOL_VERSION, Reply, Request, valid_id};
 use rcu_link_trust::{Identity, IdentityPaths, PeerPin};
 use serde::{Deserialize, Serialize};
+pub use server::serve;
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{
     io::{AsyncWriteExt, BufReader},
@@ -47,68 +51,6 @@ impl AdapterProfile {
         Ok(())
     }
 }
-#[derive(Clone)]
-pub struct Client {
-    device: PairedDevice,
-    tls: Arc<rustls::ClientConfig>,
-}
-impl Client {
-    pub fn new(device: PairedDevice, identity: Identity) -> io::Result<Self> {
-        AdapterProfile {
-            devices: vec![device.clone()],
-        }
-        .validate()?;
-        let tls = identity.client_config(&device.agent_pin)?;
-        Ok(Self { device, tls })
-    }
-    /// One send only. A new connection is permitted, but this method never retries
-    /// a call after an uncertain transport result, including a lost response.
-    pub async fn call(&self, request: &Request) -> io::Result<Reply> {
-        if request.version != PROTOCOL_VERSION
-            || request.device != self.device.device_id
-            || !valid_id(&request.id)
-        {
-            return Err(invalid("request_binding"));
-        }
-        let stream = tokio::time::timeout(CONNECT_TIMEOUT, async {
-            let tcp = TcpStream::connect(self.device.endpoint).await?;
-            tcp.set_nodelay(true)?;
-            let stream = TlsConnector::from(self.tls.clone())
-                .connect(
-                    rcu_link_trust::server_name(rcu_link_trust::SERVER_DNS_NAME)?,
-                    tcp,
-                )
-                .await?;
-            rcu_link_trust::verify_peer(
-                stream.get_ref().1.peer_certificates(),
-                &self.device.agent_pin,
-            )?;
-            Ok::<_, io::Error>(stream)
-        })
-        .await
-        .map_err(|_| invalid("device_connect_timeout"))??;
-        tokio::time::timeout(CALL_TIMEOUT, async {
-            let mut stream = BufReader::new(stream);
-            write(&mut stream, request, REQUEST_CAP).await?;
-            let raw = super::wire::read_frame(&mut stream, RESPONSE_CAP)
-                .await?
-                .ok_or_else(|| invalid("device_response_lost"))?;
-            let reply: Reply = serde_json::from_slice(&raw)?;
-            if reply.version != PROTOCOL_VERSION {
-                return Err(invalid("device_protocol_version_unsupported; update adapter and agent together; no downgrade or retry"));
-            }
-            if reply.id != request.id
-                || reply.device != request.device
-                || !valid_id(&reply.instance)
-            {
-                return Err(invalid("device_reply_binding"));
-            }
-            Ok(reply)
-        })
-        .await
-        .map_err(|_| invalid("device_call_timeout_effect_unknown"))?
-    }
-}
 pub async fn write<W: tokio::io::AsyncWrite + Unpin>(
     output: &mut W,
     value: &impl Serialize,
@@ -121,53 +63,6 @@ pub async fn write<W: tokio::io::AsyncWrite + Unpin>(
     }
     output.write_all(&bytes).await?;
     output.flush().await
-}
-
-pub async fn serve<H, F>(
-    listener: TcpListener,
-    tls: Arc<rustls::ServerConfig>,
-    handler: H,
-    shutdown: tokio::sync::watch::Receiver<bool>,
-) -> io::Result<()>
-where
-    H: Fn(PeerPin, Request) -> F + Send + Sync + 'static,
-    F: std::future::Future<Output = Reply> + Send + 'static,
-{
-    let handler = Arc::new(handler);
-    let limit = Arc::new(tokio::sync::Semaphore::new(32));
-    let mut tasks = tokio::task::JoinSet::new();
-    let mut shutdown = shutdown;
-    loop {
-        tokio::select! {
-            _ = shutdown.changed() => { break; },
-            Some(_) = tasks.join_next(), if !tasks.is_empty() => {},
-            incoming = listener.accept() => {
-                let (tcp, _) = incoming?;
-                let Ok(permit) = limit.clone().try_acquire_owned() else { drop(tcp); continue; };
-                let tls = tls.clone(); let handler = handler.clone();
-                tasks.spawn(async move {
-                    let _permit = permit;
-                    let (peer, request, mut stream) = tokio::time::timeout(CONNECT_TIMEOUT, async {
-                        let stream = TlsAcceptor::from(tls).accept(tcp).await?;
-                        let peer = rcu_link_trust::peer_sha(stream.get_ref().1.peer_certificates())?;
-                        let mut stream = BufReader::new(stream);
-                        let raw = super::wire::read_frame(&mut stream, REQUEST_CAP).await?.ok_or_else(|| invalid("empty_request"))?;
-                        Ok::<_, io::Error>((peer, raw, stream))
-                    }).await.map_err(|_| invalid("handshake_deadline"))??;
-                    let reply = match decode_request(&request)? {
-                        Ok(request) => handler(peer, request).await,
-                        Err(rejection) => rejection,
-                    };
-                    tokio::time::timeout(Duration::from_secs(10), write(&mut stream, &reply, RESPONSE_CAP)).await.map_err(|_| invalid("reply_timeout"))??;
-                    let _ = stream.shutdown().await;
-                    Ok::<_, io::Error>(())
-                });
-            }
-        }
-    }
-    tasks.abort_all();
-    while tasks.join_next().await.is_some() {}
-    Ok(())
 }
 
 /// Reject obsolete/invalid calls before invoking any device handler or native metadata.
