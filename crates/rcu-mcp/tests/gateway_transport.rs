@@ -437,6 +437,62 @@ async fn runtime_device(root: &std::path::Path) -> Device {
 }
 
 #[tokio::test]
+async fn retained_metadata_reads_do_not_repeat_native_work_or_cross_adapter_instances() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap().join("private");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .unwrap();
+    let device = runtime_device(&root).await;
+    let profile = profile(&root, &[&device]);
+    let mut first = Host::start(&profile).await;
+    let targets = first.tool(2, "computer.targets", json!({})).await;
+    let observation = first
+        .tool(
+            3,
+            "computer.observe",
+            json!({"target":targets["targets"][0]["target"],"inline_image":false}),
+        )
+        .await;
+    let reference = observation["presentation"]["result_ref"].clone();
+    assert!(reference.is_string());
+    let native_count = device.calls.lock().unwrap().len();
+    let retained = first
+        .tool(
+            4,
+            "computer.result",
+            json!({"result_ref":reference,"pointer":"/operation_ref"}),
+        )
+        .await;
+    assert_eq!(retained["value"], observation["operation_ref"]);
+    assert_eq!(retained["native_dispatched"], false);
+    assert_eq!(device.calls.lock().unwrap().len(), native_count);
+    let mut second = Host::start(&profile).await;
+    assert_eq!(
+        second
+            .tool(2, "computer.result", json!({"result_ref":reference}))
+            .await["code"],
+        "result_ref_expired"
+    );
+    assert_eq!(device.calls.lock().unwrap().len(), native_count);
+    first
+        .send(tool(
+            5,
+            "computer.result",
+            json!({"result_ref":reference,"pointer":"/frame"}),
+        ))
+        .await;
+    let reply = first.read().await;
+    let text: Value =
+        serde_json::from_str(reply["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(text, reply["result"]["structuredContent"]);
+    assert_eq!(text["value"], observation["frame"]);
+    first.stop().await;
+    second.stop().await;
+}
+
+#[tokio::test]
 async fn crossing_request_and_monitor_ids_stay_correct_across_actual_mcp_hosts() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().canonicalize().unwrap().join("private");

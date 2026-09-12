@@ -48,13 +48,12 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        names,
-        rcu_core::device::catalog::definitions()
-            .iter()
-            .map(|d| d.name)
-            .collect()
-    );
+    let mut expected: std::collections::BTreeSet<_> = rcu_core::device::catalog::definitions()
+        .iter()
+        .map(|d| d.name)
+        .collect();
+    expected.insert("computer.result");
+    assert_eq!(names, expected);
     assert!(names.contains("computer.act_checked"));
     assert!(names.contains("computer.recover_input"));
     let targets = rpc(
@@ -65,6 +64,16 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
     assert_eq!(targets["result"]["structuredContent"]["targets"], json!([]));
     assert_eq!(
         targets["result"]["structuredContent"]["workflow_required"],
+        false
+    );
+    let reference = targets["result"]["structuredContent"]["presentation"]["result_ref"].clone();
+    let retained = rpc(
+        json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"computer.result","arguments":{"result_ref":reference,"pointer":"/targets"}}}),
+        true,
+    );
+    assert_eq!(retained["result"]["structuredContent"]["value"], json!([]));
+    assert_eq!(
+        retained["result"]["structuredContent"]["native_dispatched"],
         false
     );
     drop(input);

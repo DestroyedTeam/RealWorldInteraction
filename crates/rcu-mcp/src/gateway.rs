@@ -3,6 +3,7 @@ mod cancellation;
 #[cfg(all(test, unix))]
 mod cancellation_tests;
 mod invocation;
+mod presentation;
 mod routing;
 mod shutdown;
 use rcu_core::device::{self, Call, DeviceResult, Request};
@@ -33,6 +34,7 @@ struct Gateway {
     cancels: Arc<Mutex<Vec<tokio::task::JoinHandle<()>>>>,
     inflight: Arc<tokio::sync::Semaphore>,
     shutdown: tokio::sync::watch::Sender<bool>,
+    presentation: Arc<Mutex<presentation::Presentation>>,
 }
 impl Gateway {
     fn new(profile: io::Result<AdapterProfile>) -> Self {
@@ -68,6 +70,7 @@ impl Gateway {
             cancels: Arc::new(Mutex::new(Vec::new())),
             inflight: Arc::new(tokio::sync::Semaphore::new(64)),
             shutdown: tokio::sync::watch::channel(false).0,
+            presentation: Arc::new(Mutex::new(presentation::Presentation::default())),
         }
     }
     async fn request(
@@ -279,14 +282,14 @@ fn mcp_result(mut result: DeviceResult) -> CallToolResult {
 }
 impl ServerHandler for Gateway {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_server_info(Implementation::new("real-computer-use",env!("CARGO_PKG_VERSION"))).with_instructions("Generic multi-device RCU. Read computer.targets, choose the exact returned target, discover/bind a fresh window, observe, claim, act once, verify, release. Services do not depend on tasks/windows. Reconnect and reobserve are allowed; never automatically replay an uncertain action. Unavailable devices/capabilities do not disable the tool catalog.")
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_server_info(Implementation::new("real-computer-use",env!("CARGO_PKG_VERSION"))).with_instructions("Generic multi-device RCU. Select computer.targets. Never replay uncertain input. GUI and terminal are complementary; report each channel's evidence separately.")
     }
     async fn list_tools(
         &self,
         _: Option<PaginatedRequestParams>,
         _: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
-        let tools = device::catalog::definitions()
+        let mut tools: Vec<_> = device::catalog::definitions()
             .into_iter()
             .map(|mut d| {
                 schema_numbers(&mut d.input_schema);
@@ -297,6 +300,7 @@ impl ServerHandler for Gateway {
                 )
             })
             .collect();
+        tools.push(Tool::new("computer.result", "Read retained original metadata from this adapter's result_ref. No device RPC, capture or input. Use a JSON pointer and array pages; byte_offset=0 exports any large value as bounded UTF-8 JSON chunks. References expire independently of native execution; never replay input to recreate them.", Arc::new(serde_json::to_value(schemars::schema_for!(presentation::ResultArgs)).unwrap().as_object().unwrap().clone())));
         Ok(ListToolsResult {
             tools,
             ..Default::default()
@@ -307,6 +311,22 @@ impl ServerHandler for Gateway {
         p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        if p.name == "computer.result" {
+            let args = serde_json::from_value::<presentation::ResultArgs>(Value::Object(
+                p.arguments.unwrap_or_default(),
+            ));
+            let result = match args {
+                Ok(args) => match self.presentation.lock() {
+                    Ok(mut cache) => cache.read(args),
+                    Err(_) => DeviceResult::error(
+                        "presentation_unavailable",
+                        "Metadata cache unavailable; native execution state is unchanged.",
+                    ),
+                },
+                Err(e) => DeviceResult::error("invalid_arguments", &e.to_string()),
+            };
+            return Ok(mcp_result(result));
+        }
         let _permit = if matches!(
             p.name.as_ref(),
             "computer.operation" | "computer.cancel" | "computer.targets"
@@ -323,14 +343,20 @@ impl ServerHandler for Gateway {
                 }
             }
         };
-        Ok(mcp_result(
-            self.invoke(
+        let mut result = self
+            .invoke(
                 &p.name,
                 Value::Object(p.arguments.unwrap_or_default()),
                 Some(context),
             )
-            .await,
-        ))
+            .await;
+        portable_numbers(&mut result.data);
+        if matches!(p.name.as_ref(), "computer.observe" | "computer.targets")
+            && let Ok(mut cache) = self.presentation.lock()
+        {
+            result = cache.project(&p.name, result);
+        }
+        Ok(mcp_result(result))
     }
 }
 pub fn run(path: Option<&Path>) -> io::Result<()> {
