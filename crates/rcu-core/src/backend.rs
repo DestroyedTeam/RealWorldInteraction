@@ -12,6 +12,11 @@ pub trait Backend: Send {
     }
     fn identity(&self) -> Identity;
     fn capabilities(&self) -> serde_json::Value;
+    /// Fresh device-scoped status, without taking an input slot or capturing UI.
+    /// Target capability descriptors may be cached by a remote adapter.
+    fn runtime_status(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
     fn lifecycle_grant(&self) -> Result<lifecycle::LifecycleGrant> {
         Err(fault(
             "capability_unavailable",

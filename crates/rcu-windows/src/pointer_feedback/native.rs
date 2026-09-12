@@ -1,5 +1,5 @@
 //! One device-local presenter. It never sends input, activates an app or reads UIA.
-use super::{CaptureGate, PULSE_MS, Phase, SIZE, raster, scale_for_dpi};
+use super::{Anchor, CaptureGate, HIGHLIGHT_MS, Phase, SIZE, marker, raster, scale_for_dpi};
 use crate::{WindowRecord, desktop};
 use rcu_core::{Result, fault};
 use std::{
@@ -16,7 +16,7 @@ use windows::{
         Foundation::*,
         Graphics::{Dwm::DwmFlush, Gdi::*},
         System::LibraryLoader::GetModuleHandleW,
-        UI::WindowsAndMessaging::*,
+        UI::{HiDpi::GetDpiForWindow, WindowsAndMessaging::*},
     },
     core::w,
 };
@@ -38,6 +38,10 @@ struct Event {
 #[derive(Default)]
 struct Model {
     event: Option<Event>,
+    anchor: Option<Anchor>,
+    phase: Option<Phase>,
+    shutdown: bool,
+    service_started: bool,
     gate: CaptureGate,
     started: bool,
     stopped: bool,
@@ -86,7 +90,7 @@ fn presenter() -> Option<&'static Arc<Shared>> {
         .ok()
 }
 
-/// One original input dispatch. An error/unwind hides only this gesture's hint.
+/// One original dispatch. Errors clear its active highlight, not the idle marker.
 pub(crate) struct Gesture {
     id: u64,
     finished: bool,
@@ -104,7 +108,7 @@ impl Gesture {
         };
         let Some(shared) = presenter() else { return };
         let mut model = shared.lock();
-        if model.stopped || !point.iter().all(|v| v.is_finite()) {
+        if model.stopped || model.shutdown || !point.iter().all(|v| v.is_finite()) {
             return;
         }
         // A single coalescing slot, not an unbounded replay queue.
@@ -119,7 +123,7 @@ impl Gesture {
             } else {
                 Phase::Pointer
             },
-            expires: Instant::now() + Duration::from_millis(PULSE_MS),
+            expires: Instant::now() + Duration::from_millis(HIGHLIGHT_MS),
         });
         model.gate.changed();
         model.updates += 1;
@@ -194,7 +198,8 @@ pub(crate) fn status() -> serde_json::Value {
     let mut result = serde_json::json!({
         "implemented":true,"mode":"device_native_layered_pointer_with_rcu_badge",
         "started":false,"visible":false,"input_injection":false,
-        "pulse_expiry_ms":PULSE_MS,"keyboard_feedback":false,
+        "lifetime":"agent_service","idle_marker":true,"active_highlight_ms":HIGHLIGHT_MS,"keyboard_feedback":false,
+        "position_retention":"agent_lifetime; restart seeds the current OS cursor without moving it",
         "grounding_capture":"presenter hidden with acknowledgement during GDI copy; feedback is not included in grounding PNG",
         "visual_latency_attested":false
     });
@@ -202,6 +207,9 @@ pub(crate) fn status() -> serde_json::Value {
         Some(Ok(shared)) => {
             let m = shared.lock();
             result["started"] = m.started.into();
+            result["initialized_from_service"] = m.service_started.into();
+            result["phase"] = serde_json::json!(m.phase);
+            result["anchor"] = serde_json::json!(m.anchor);
             result["visible"] = m.gate.visible.into();
             result["stopped"] = m.stopped.into();
             result["updates_requested"] = m.updates.into();
@@ -213,6 +221,94 @@ pub(crate) fn status() -> serde_json::Value {
         None => {}
     }
     result
+}
+
+pub(crate) fn start() -> Result<()> {
+    let shared = presenter().ok_or_else(|| {
+        fault(
+            "pointer_feedback_start_failed",
+            "The device presenter thread could not be started.",
+        )
+    })?;
+    let mut model = shared.lock();
+    model.service_started = true;
+    model.gate.changed();
+    shared.changed.notify_all();
+    Ok(())
+}
+
+pub(crate) fn stop() {
+    if let Some(Ok(shared)) = PRESENTER.get() {
+        let mut model = shared.lock();
+        model.shutdown = true;
+        model.event = None;
+        model.gate.changed();
+        shared.changed.notify_all();
+    }
+}
+
+fn cursor_anchor() -> Option<Anchor> {
+    let mut cursor = POINT::default();
+    unsafe { GetCursorPos(&mut cursor) }.ok()?;
+    let dpi = unsafe { GetDpiForWindow(GetForegroundWindow()) };
+    clamp_anchor(Anchor {
+        point: [cursor.x, cursor.y],
+        scale: scale_for_dpi(dpi),
+    })
+}
+
+fn clamp_anchor(anchor: Anchor) -> Option<Anchor> {
+    let point = POINT {
+        x: anchor.point[0],
+        y: anchor.point[1],
+    };
+    let monitor = unsafe { MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST) };
+    let mut info = MONITORINFO {
+        cbSize: size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    if monitor.0.is_null()
+        || !unsafe { GetMonitorInfoW(monitor, &mut info) }.as_bool()
+        || info.rcMonitor.right <= info.rcMonitor.left
+        || info.rcMonitor.bottom <= info.rcMonitor.top
+    {
+        return None;
+    }
+    Some(Anchor {
+        point: [
+            anchor.point[0].clamp(info.rcMonitor.left, info.rcMonitor.right - 1),
+            anchor.point[1].clamp(info.rcMonitor.top, info.rcMonitor.bottom - 1),
+        ],
+        ..anchor
+    })
+}
+
+fn event_anchor(event: Event) -> Option<(Anchor, Phase)> {
+    if Instant::now() >= event.expires {
+        return None;
+    }
+    let mut cursor = POINT::default();
+    if unsafe { GetCursorPos(&mut cursor) }.is_err()
+        || (f64::from(cursor.x) - event.point[0]).hypot(f64::from(cursor.y) - event.point[1])
+            > f64::from(event.scale * 12)
+    {
+        return None;
+    }
+    let hwnd = HWND(event.hwnd as *mut c_void);
+    let mut pid = 0;
+    unsafe {
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+    }
+    let phase = if pid == event.pid && unsafe { GetForegroundWindow() } == hwnd {
+        event.phase
+    } else {
+        Phase::Idle
+    };
+    clamp_anchor(Anchor {
+        point: [cursor.x, cursor.y],
+        scale: event.scale,
+    })
+    .map(|a| (a, phase))
 }
 
 fn run(shared: &Shared) -> std::result::Result<(), String> {
@@ -230,53 +326,51 @@ fn run(shared: &Shared) -> std::result::Result<(), String> {
                 DispatchMessageW(&message);
             }
         }
-        let (revision, event) = {
+        let (revision, event, anchor, suspended) = {
             let m = shared.lock();
+            if m.shutdown {
+                return Ok(());
+            }
             (
                 m.gate.revision,
-                (m.gate.suspended == 0)
-                    .then(|| m.event.clone())
-                    .flatten()
-                    .filter(|e| Instant::now() < e.expires),
+                m.event.clone(),
+                m.anchor,
+                m.gate.suspended != 0,
             )
         };
-        let display = event.and_then(|event| {
-            let hwnd = HWND(event.hwnd as *mut c_void);
-            let mut pid = 0;
-            let mut cursor = POINT::default();
-            unsafe {
-                GetWindowThreadProcessId(hwnd, Some(&mut pid));
-            }
-            if pid != event.pid
-                || unsafe { GetForegroundWindow() } != hwnd
-                || unsafe { GetCursorPos(&mut cursor) }.is_err()
-                || (f64::from(cursor.x) - event.point[0])
-                    .hypot(f64::from(cursor.y) - event.point[1])
-                    > f64::from(event.scale * 12)
-            {
-                return None;
-            }
-            Some((event, cursor))
-        });
-        let visible = if let Some((event, cursor)) = display {
-            window
-                .present(cursor, event.scale, event.phase)
-                .map_err(|e| e.to_string())?;
-            unsafe { IsWindowVisible(window.hwnd) }.as_bool()
+        let active = event.and_then(event_anchor);
+        // Idle uses the retained agent location, never follows a person's mouse.
+        let anchor = active
+            .map(|p| p.0)
+            .or(anchor)
+            .or_else(cursor_anchor)
+            .and_then(clamp_anchor);
+        let display = marker(anchor, active, suspended);
+        let (visible, submitted) = if let Some((anchor, phase)) = display {
+            let submitted = window.present(anchor, phase).map_err(|e| e.to_string())?;
+            (unsafe { IsWindowVisible(window.hwnd) }.as_bool(), submitted)
         } else {
             window.hide().map_err(|e| e.to_string())?;
-            false
+            (false, false)
         };
         let mut model = shared.lock();
+        if anchor.is_some() {
+            model.anchor = anchor;
+        }
+        model.phase = display.map(|(_, p)| p);
         model.gate.acknowledge(revision, visible);
-        if visible {
+        if submitted {
             model.render_submissions += 1;
         }
         shared.changed.notify_all();
         if model.gate.revision != revision {
             continue;
         }
-        let delay = if visible { 16 } else { 100 };
+        let delay = if active.is_some() && !suspended {
+            16
+        } else {
+            100
+        };
         drop(
             shared
                 .changed
@@ -289,6 +383,7 @@ fn run(shared: &Shared) -> std::result::Result<(), String> {
 struct Window {
     hwnd: HWND,
     surface: Option<Surface>,
+    last: Option<(Anchor, Phase)>,
 }
 impl Window {
     fn new() -> windows::core::Result<Self> {
@@ -325,6 +420,7 @@ impl Window {
         Ok(Self {
             hwnd,
             surface: None,
+            last: None,
         })
     }
     fn hide(&self) -> windows::core::Result<()> {
@@ -336,7 +432,15 @@ impl Window {
         }
         Ok(())
     }
-    fn present(&mut self, point: POINT, scale: u32, phase: Phase) -> windows::core::Result<()> {
+    fn present(&mut self, anchor: Anchor, phase: Phase) -> windows::core::Result<bool> {
+        if self.last == Some((anchor, phase)) && unsafe { IsWindowVisible(self.hwnd) }.as_bool() {
+            return Ok(false);
+        }
+        let point = POINT {
+            x: anchor.point[0],
+            y: anchor.point[1],
+        };
+        let scale = anchor.scale;
         if self.surface.as_ref().is_none_or(|s| s.scale != scale) {
             self.surface = Some(Surface::new(scale)?);
         }
@@ -385,7 +489,8 @@ impl Window {
                 SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
             )?;
         }
-        Ok(())
+        self.last = Some((anchor, phase));
+        Ok(true)
     }
 }
 impl Drop for Window {

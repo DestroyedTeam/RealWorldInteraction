@@ -13,6 +13,7 @@ impl Runtime {
             ))
         };
         let identity = native.as_ref().ok().map(|b| b.identity());
+        let runtime_status = native.as_ref().ok().map(|b| b.runtime_status());
         let domain = identity.as_ref().map(rcu_core::Identity::key);
         let native_ready = native.is_ok();
         let reason = native.err().map(|e| e.code);
@@ -102,6 +103,7 @@ impl Runtime {
         result.data["input_domain_fenced"] =
             json!(domain.as_deref().is_some_and(|key| self.is_fenced(key)));
         result.data["resource_domain"] = json!(domain);
+        result.data["runtime_status"] = json!(runtime_status);
         result
     }
 }

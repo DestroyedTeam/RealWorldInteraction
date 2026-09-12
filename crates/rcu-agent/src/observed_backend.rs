@@ -18,6 +18,9 @@ impl Backend for Observed {
     fn capabilities(&self) -> serde_json::Value {
         self.inner.capabilities()
     }
+    fn runtime_status(&self) -> serde_json::Value {
+        self.inner.runtime_status()
+    }
     fn observe(&mut self) -> Result<Scene> {
         self.inner.observe()
     }

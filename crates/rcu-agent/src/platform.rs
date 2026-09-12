@@ -52,3 +52,35 @@ pub fn input_resources(config: &Config) -> Result<serde_json::Value> {
         )),
     }
 }
+
+/// Called once by the serving executable, never by Runtime::new or a test query.
+pub fn start_device_feedback(config: &Config) -> Result<()> {
+    #[cfg(windows)]
+    if let PlatformPolicy::Windows {
+        user_sid,
+        privilege,
+    } = &config.platform
+    {
+        let current = rcu_windows::agent_binding::current_session()?;
+        if &current.user_sid != user_sid {
+            return Err(fault(
+                "native_user_mismatch",
+                "Feedback requires the configured native user.",
+            ));
+        }
+        let mode = if privilege == "admin" {
+            rcu_windows::agent_contract::PrivilegeMode::Admin
+        } else {
+            rcu_windows::agent_contract::PrivilegeMode::Ordinary
+        };
+        rcu_windows::agent_binding::require_current_privilege(mode)?;
+        return rcu_windows::start_pointer_feedback();
+    }
+    let _ = config;
+    Ok(())
+}
+
+pub fn stop_device_feedback() {
+    #[cfg(windows)]
+    rcu_windows::stop_pointer_feedback();
+}

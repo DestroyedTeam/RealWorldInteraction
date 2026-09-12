@@ -85,6 +85,12 @@ async fn run() -> io::Result<()> {
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
     let address = listener.local_addr()?;
     let runtime = rcu_agent::runtime::Runtime::new(config)?;
+    if let Err(e) = rcu_agent::start_device_feedback(&runtime.config) {
+        eprintln!(
+            "rcu-agent feedback unavailable: {}: {}",
+            e.code, e.next_step
+        );
+    }
     println!(
         "{}",
         serde_json::json!({"service":"healthy","listening":address,"device_id":runtime.config.device_id,"instance":runtime.instance,"workflow_required":false})
@@ -102,6 +108,7 @@ async fn run() -> io::Result<()> {
     )
     .await;
     signal.abort();
+    rcu_agent::stop_device_feedback();
     result
 }
 fn main() {

@@ -32,3 +32,13 @@ mod pointer_feedback;
 mod uia;
 #[cfg(windows)]
 pub use native::*;
+
+/// Explicit service lifecycle, not a side effect of discovery/observation.
+#[cfg(windows)]
+pub fn start_pointer_feedback() -> rcu_core::Result<()> {
+    pointer_feedback::start()
+}
+#[cfg(windows)]
+pub fn stop_pointer_feedback() {
+    pointer_feedback::stop();
+}

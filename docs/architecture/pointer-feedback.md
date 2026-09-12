@@ -7,22 +7,31 @@ not establish application effect or task completion.
 
 ## Presentation and scope
 
-- One lazy device-local presenter thread, started by pointer input, never by
-  discovery or observation. One coalescing event slot; no replay queue.
+- One device-local presenter thread, explicitly started by the serving agent,
+  not by a business task, discovery or observation. One coalescing input-progress
+  slot; no replay queue. The service owns the idle marker as well as active feedback.
 - A premultiplied BGRA halo, pointer and fixed `RCU` badge. No typed text,
   document contents, app names, credentials or task labels are rendered.
 - A layered, disabled, transparent, non-activating tool window. The presenter
   has its own window/message processing thread and per-monitor-v2 DPI context.
-- Positions come from native GetCursorPos. Presentation additionally requires
-  the selected HWND/PID to remain foreground and the cursor to remain close to
-  the most recent inserted pointer position. It is not an input ownership or
-  comprehensive physical takeover detector.
-- An 800 ms expiry is refreshed by actual progress, with a pressed ring during
-  a drag. Expiry is a scheduling policy, not a hard compositor latency promise.
-  The presenter polls while active; it cannot attest monitor FPS or display delay.
-- An error/unwind clears only the matching gesture's feedback. Newer gestures
-  cannot be cleared by an old guard. Existing release-only input cleanup remains
-  authoritative; visual cleanup never replays an input.
+- Startup seeds the marker from GetCursorPos without moving the system cursor.
+  Actual input progress updates the retained native position; an active highlight
+  additionally requires the selected HWND/PID to remain foreground and the cursor
+  to remain close to the inserted position. Otherwise it returns to idle.
+- The idle marker stays at the last agent position even with no task or after an
+  app focus change. A person's subsequent mouse motion does not drag the idle
+  marker along, and the marker never warps the person's cursor back. Retention is
+  currently in agent memory; a process restart seeds the current OS cursor rather
+  than claiming disk-persistent recovery. Display changes clamp to an existing monitor.
+- An 800 ms active highlight expires to a persistent gray idle marker, not to
+  invisibility. Pressed state has a ring; the fixed badge now has a contrasting
+  background. Unchanged idle frames are not re-submitted on each polling tick.
+- An error/unwind clears only the matching gesture's active highlight and leaves
+  idle presence intact. Newer gestures cannot be cleared by an old guard. Existing
+  release-only input cleanup remains authoritative; visual cleanup never replays input.
+- Service shutdown destroys the marker. Locked/inactive desktops and unavailable
+  native display access are not bypassed. This is neither input ownership nor a
+  comprehensive physical takeover detector, and it cannot attest monitor FPS/latency.
 
 Layered-window mouse pass-through with WS_EX_TRANSPARENT is documented by
 [Microsoft](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features).
@@ -41,13 +50,13 @@ feedback from existing `computer.observe` grounding PNGs:
 2. The presentation thread hides the overlay, flushes pending compositor work,
    and acknowledges that revision. An older in-flight render cannot satisfy it.
 3. GDI copies the actual target/occlusion pixels into a separate DIB.
-4. The capture guard releases before conversion/encoding. The screen can resume
-   an unexpired hint, but the stored grounding raster remains unchanged.
+4. The capture guard releases before conversion/encoding. The screen resumes its
+   idle marker or active hint, but the stored grounding raster remains unchanged.
 
 Nested captures cannot resume each other's suspension. A 250 ms hide-ack timeout
 returns `pointer_feedback_capture_busy` rather than returning a possibly
 contaminated grounding frame. It does not disable the MCP service or replay
-input. Observations before any pointer use do not initialize the presenter.
+input. Query paths do not initialize the presenter; the serving executable does.
 
 **Current limitation:** this phase supplies device-screen feedback, not feedback
 inside RCU grounding screenshots. A later explicitly visual/read-only capture
@@ -58,13 +67,17 @@ Do not simply remove content-hash or target checks to avoid this boundary.
 
 ## Capability and evidence
 
-`pointer_feedback` under Windows target status reports initialization, native
-visibility state, requested updates, successful render submissions, capture
-suspensions and errors. A submission is not a physical screen presentation.
+`devices[].state.runtime_status.pointer_feedback` in `computer.targets` provides
+fresh device state, including initialization, phase, anchor, native visibility,
+requested updates, render submissions, capture suspensions and errors. Its native
+timestamp is explicit. In contrast, remote `targets[].capabilities` descriptors
+are context snapshots and must not be read as current visibility/activity.
+`observe.adapter_status` reports another point-in-time native sample. A render
+submission is not a physical screen presentation.
 Keyboard feedback, feedback-inclusive visual capture, dynamic latency and
 cross-platform feedback are not attested by this implementation.
 
 Portable tests cover bounded DPI/raster allocation, premultiplied pixels, distinct
-pressed visuals, and suspension acknowledgement/nesting. Windows cross-build and
+idle/pressed visuals, idle-without-task/after-action behavior, and suspension acknowledgement/nesting. Windows cross-build and
 native smoke tests remain separate gates. The integration must preserve native
 identity, focused-window checks, UIA point guards, leases and the operation ledger.

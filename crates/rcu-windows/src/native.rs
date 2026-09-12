@@ -413,6 +413,9 @@ impl NativeWindows {
     }
 }
 impl Backend for NativeWindows {
+    fn runtime_status(&self) -> Value {
+        json!({"source":"device_native_runtime","sampled_unix_ms":input::now_ms(),"pointer_feedback":crate::pointer_feedback::status()})
+    }
     fn input_dispatch_count(&self) -> Option<u64> {
         Some(self.input_counters.sendinput_calls)
     }

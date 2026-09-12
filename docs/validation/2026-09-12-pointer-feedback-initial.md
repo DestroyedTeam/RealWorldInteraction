@@ -1,5 +1,9 @@
 # RCU Pointer 初版：代码/部署通过，视觉验收待完成
 
+后续记录见 `2026-09-12-pointer-feedback-persistent.md`：用户纠正了短时消失的
+生命周期要求，常驻版已另行部署并完成原生 MCP 检查及人工可见确认。
+以下保留初版当时结果，不作为当前运行版本描述。
+
 用户要求见 `../product/requirements-and-acceptance.md`；机制与明确限制见
 `../architecture/pointer-feedback.md`。本版本没有改应用业务流程，也没有改 MCP
 输入 schema。**仍未宣称与 Computer Use 打平。**

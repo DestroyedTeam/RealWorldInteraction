@@ -3,11 +3,11 @@
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]
-pub(crate) use native::{Gesture, status, suspend_capture};
+pub(crate) use native::{Gesture, start, status, stop, suspend_capture};
 
 pub(super) const SIZE: usize = 72;
 pub(super) const MAX_SCALE: u32 = 3;
-pub(super) const PULSE_MS: u64 = 800;
+pub(super) const HIGHLIGHT_MS: u64 = 800;
 
 /// A hide acknowledgement must follow the suspension request, not an older
 /// renderer snapshot. Nested capture guards cannot resume each other's display.
@@ -40,10 +40,30 @@ impl CaptureGate {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(super) enum Phase {
+    Idle,
     Pointer,
     Pressed,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+pub(super) struct Anchor {
+    pub point: [i32; 2],
+    pub scale: u32,
+}
+
+pub(super) fn marker(
+    anchor: Option<Anchor>,
+    active: Option<(Anchor, Phase)>,
+    suspended: bool,
+) -> Option<(Anchor, Phase)> {
+    if suspended {
+        None
+    } else {
+        active.or_else(|| anchor.map(|a| (a, Phase::Idle)))
+    }
 }
 
 pub(super) fn scale_for_dpi(dpi: u32) -> u32 {
@@ -61,15 +81,21 @@ pub(super) fn raster(scale: u32, phase: Phase) -> Vec<u8> {
             let px = (x as f64 + 0.5) / scale as f64;
             let py = (y as f64 + 0.5) / scale as f64;
             let radius = (px - 36.).hypot(py - 36.);
-            let mut alpha = ((1. - radius / 28.).max(0.).powi(2) * 145.) as u8;
+            let strength = if phase == Phase::Idle { 95. } else { 145. };
+            let mut alpha = ((1. - radius / 28.).max(0.).powi(2) * strength) as u8;
             if phase == Phase::Pressed && (radius - 12.).abs() < 1.25 {
                 alpha = 220;
             }
             let i = (y * size + x) * 4;
+            let [blue, green, red] = if phase == Phase::Idle {
+                [170, 170, 170]
+            } else {
+                [244, 160, 40]
+            };
             pixels[i..i + 4].copy_from_slice(&[
-                (u16::from(alpha) * 244 / 255) as u8,
-                (u16::from(alpha) * 160 / 255) as u8,
-                (u16::from(alpha) * 40 / 255) as u8,
+                (u16::from(alpha) * blue / 255) as u8,
+                (u16::from(alpha) * green / 255) as u8,
+                (u16::from(alpha) * red / 255) as u8,
                 alpha,
             ]);
             let ax = px - 36.;
@@ -82,6 +108,9 @@ pub(super) fn raster(scale: u32, phase: Phase) -> Vec<u8> {
             if inside || border {
                 let value = if inside { 24 } else { 250 };
                 pixels[i..i + 4].copy_from_slice(&[value, value, value, 255]);
+            }
+            if (44. ..65.).contains(&px) && (61. ..72.).contains(&py) {
+                pixels[i..i + 4].copy_from_slice(&[24, 24, 24, 225]);
             }
             if badge(px, py) {
                 pixels[i..i + 4].copy_from_slice(&[255; 4]);
@@ -138,12 +167,12 @@ mod tests {
     fn dpi_and_allocation_are_bounded() {
         assert_eq!([0, 96, 144, 192, 768].map(scale_for_dpi), [1, 1, 2, 2, 3]);
         assert_eq!(raster(u32::MAX, Phase::Pointer).len(), SIZE * SIZE * 9 * 4);
-        const { assert!(PULSE_MS <= 1000) };
+        const { assert!(HIGHLIGHT_MS <= 1000) };
     }
 
     #[test]
     fn pixels_are_premultiplied_with_transparent_edges() {
-        for phase in [Phase::Pointer, Phase::Pressed] {
+        for phase in [Phase::Idle, Phase::Pointer, Phase::Pressed] {
             let pixels = raster(2, phase);
             assert!(
                 pixels
@@ -158,11 +187,33 @@ mod tests {
 
     #[test]
     fn press_feedback_and_badge_are_distinct_and_deterministic() {
+        assert_ne!(raster(1, Phase::Idle), raster(1, Phase::Pointer));
         assert_ne!(raster(1, Phase::Pointer), raster(1, Phase::Pressed));
         assert_eq!(raster(1, Phase::Pointer), raster(1, Phase::Pointer));
         assert!(badge(46., 63.));
         assert!(!badge(63., 63.));
         assert!(!badge(0., 0.));
+    }
+
+    #[test]
+    fn idle_marker_exists_without_an_action_and_survives_action_end() {
+        let seed = Anchor {
+            point: [-20, 100],
+            scale: 2,
+        };
+        assert_eq!(marker(Some(seed), None, false), Some((seed, Phase::Idle)));
+        let last = Anchor {
+            point: [200, 300],
+            scale: 1,
+        };
+        assert_eq!(
+            marker(Some(last), Some((last, Phase::Pressed)), false),
+            Some((last, Phase::Pressed))
+        );
+        assert_eq!(marker(Some(last), None, false), Some((last, Phase::Idle)));
+        assert_eq!(marker(Some(last), None, true), None);
+        assert_eq!(marker(Some(last), None, false), Some((last, Phase::Idle)));
+        assert_eq!(marker(None, None, false), None);
     }
 
     #[test]

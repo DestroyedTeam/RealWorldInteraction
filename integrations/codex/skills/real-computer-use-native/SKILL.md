@@ -90,8 +90,11 @@ Native drag support does not attest visual Pointer feedback. A static cursor or
 halo in one screenshot is not proof of continuous following or its latency.
 Report missing feedback capabilities and unmeasured motion honestly; do not add
 a marker to a screenshot and present it as device-side live feedback.
-When a Windows target reports `pointer_feedback`, distinguish device-screen
-feedback from grounding images: the initial presenter is temporarily hidden
+When Windows reports `pointer_feedback`, read current state from
+`devices[].state.runtime_status`, not cached target capability descriptors.
+The service-owned idle marker persists without a task; activity expiry returns
+to idle rather than hiding. It never moves the system cursor while idle.
+Distinguish device-screen feedback from grounding images: the presenter is temporarily hidden
 during grounding capture so its expiry cannot invalidate application pixels.
 `visible` and `render_submissions` are native status/counters, not proof of display
 latency or a complete drawing. Keyboard feedback and feedback-inclusive visual

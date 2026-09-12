@@ -5,4 +5,5 @@ pub mod install;
 mod ledger;
 mod observed_backend;
 mod platform;
+pub use platform::{start_device_feedback, stop_device_feedback};
 pub mod runtime;
