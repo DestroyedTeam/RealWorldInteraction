@@ -104,7 +104,7 @@ class RcuWindow {
         state.actionResults.push(record);
         let result;
         try { result = await this.#client.call('computer.act_checked', { target: this.#target, frame, element, intent, value, lease: state.lease, request_id: requestId }); }
-        catch (error) { record.reply = error.reply ?? null; throw error; }
+        catch (error) { record.reply = error?.reply ?? null; throw error; }
         record.reply = result;
         if (result.data.system_accepted !== true) throw new RcuToolError('computer.act_checked', { structuredContent: result.data, isError: true });
         return result;
