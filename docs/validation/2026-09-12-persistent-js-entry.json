@@ -83,5 +83,13 @@
   "initial_failures": [
     "Clippy rejected two unnecessary test Vec allocations; corrected to arrays.",
     "Concurrency test incorrectly assumed request submission order determines JS admission; corrected to assert exactly one of two overlapping cells wins, the other returns js_busy. Full workspace tests rerun."
-  ]
+  ],
+  "remote_ci": {
+    "run": 34676085658,
+    "head_sha": "03043017c9714545259023ecaf344aa89bdaac55",
+    "macos_steps": 0,
+    "windows_steps": 0,
+    "reason": "GitHub account payments/spending limit; jobs not started",
+    "billing_modified": false
+  }
 }

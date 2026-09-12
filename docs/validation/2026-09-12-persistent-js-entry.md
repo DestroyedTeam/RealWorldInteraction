@@ -19,6 +19,8 @@ See [runtime architecture and contract](../architecture/persistent-js-entry.md).
 
 ## Regression evidence
 
+The following gates were run locally on the Mac; they are not GitHub CI results.
+
 | Gate | Result |
 |---|---|
 | `cargo fmt --all -- --check` | passed |
@@ -90,5 +92,14 @@ Remaining: fresh model-side whole-flow timing, actual GUI acceptance through
 `computer.js`, complementary terminal-provider implementation, cross-platform
 JS-worker compile validation and the separate A01 native-worker isolation work.
 Full ADR 0002 delivery is not claimed complete.
+
+## Remote CI startup failure
+
+After push, [GitHub Actions run 34676085658](https://github.com/DestroyedTeam/RealComputerUse/actions/runs/34676085658)
+for commit `03043017c9714545259023ecaf344aa89bdaac55` could not start either
+macOS or Windows jobs (`steps: []`). The check annotation reports account payment
+failure or spending-limit restrictions. No remote compile/test ran; this is not
+a source-test failure and does not count as cross-platform validation. No billing
+settings were changed or runner workaround installed.
 
 Machine-readable evidence: [validation summary](2026-09-12-persistent-js-entry.json).
