@@ -1,0 +1,590 @@
+{
+  "date": "2026-09-12",
+  "product_source_commit": "bbbbe77efaf26abb361707864e354e6f6025a086",
+  "scope": "output/preview remediation + deployed binaries + GUI and SSH independent cross-verification; not an overall performance acceptance",
+  "snapshot_candidate": {
+    "scope": "actual standalone Rust MCP/JS + authenticated Windows Task Manager read-only observations, not model GUI task timing",
+    "raw_compact_metadata_bytes": 16184,
+    "summary_bytes": 3771,
+    "same_frame": true,
+    "summary_elements": 53,
+    "summary_complete": false,
+    "preview": {
+      "dimensions": [
+        1024,
+        778
+      ],
+      "png_bytes": 70948,
+      "original_dimensions": [
+        1538,
+        1169
+      ],
+      "original_sha256": "ed9278605b8d3b674610b3deb9091d0b527a673e74c6e54f5a7a5cbc5e9bab21",
+      "mapping": {
+        "crop": {
+          "height": 1169,
+          "width": 1538,
+          "x": 0,
+          "y": 0
+        },
+        "kind": "nearest_neighbor_preview",
+        "normalization": "view only: 8-bit RGB, RGBA composited on white; pixel-center affine; original PNG untouched",
+        "original_size": [
+          1538,
+          1169
+        ],
+        "original_to_desktop": [
+          1,
+          0,
+          0,
+          1,
+          261,
+          281
+        ],
+        "view_size": [
+          1024,
+          778
+        ],
+        "view_to_original": [
+          1.501953125,
+          0,
+          0,
+          1.5025706940874035,
+          0.2509765625,
+          0.25128534704370176
+        ]
+      }
+    },
+    "gui_inputs": 0
+  },
+  "snapshot_installed": {
+    "installed_catalog_count": 23,
+    "absent_request_ids_omitted": true,
+    "scope": "fresh installed standalone Rust MCP/JS + authenticated Windows Task Manager read-only observations, not model GUI task timing",
+    "raw_compact_metadata_bytes": 16087,
+    "summary_bytes": 4136,
+    "same_frame": true,
+    "summary_elements": 58,
+    "summary_complete": false,
+    "preview": {
+      "dimensions": [
+        1024,
+        778
+      ],
+      "png_bytes": 98021,
+      "original_dimensions": [
+        1538,
+        1169
+      ],
+      "original_sha256": "08cad2dcae8346f719b0b36049e1a4b3d6b65ef0697d777a003b4e6ac2ba74ef",
+      "mapping": {
+        "crop": {
+          "height": 1169,
+          "width": 1538,
+          "x": 0,
+          "y": 0
+        },
+        "kind": "nearest_neighbor_preview",
+        "normalization": "view only: 8-bit RGB, RGBA composited on white; pixel-center affine; original PNG untouched",
+        "original_size": [
+          1538,
+          1169
+        ],
+        "original_to_desktop": [
+          1,
+          0,
+          0,
+          1,
+          261,
+          281
+        ],
+        "view_size": [
+          1024,
+          778
+        ],
+        "view_to_original": [
+          1.501953125,
+          0,
+          0,
+          1.5025706940874035,
+          0.2509765625,
+          0.25128534704370176
+        ]
+      }
+    },
+    "gui_inputs": 0
+  },
+  "mac_install": {
+    "source_commit": "bbbbe77efaf26abb361707864e354e6f6025a086",
+    "adapter_sha256": "6d33069f8a797f00fd05d6ef7be9093531f213bdc71c2508aac315169389eef4",
+    "previous_adapter_sha256": "da29cc8a511e3a18eddc61b71aecdd3822b906af49168700d690ef09635b3886",
+    "backup_created": true,
+    "protected_config_identity_ssh_files_unchanged": true,
+    "protected_file_count": 9,
+    "scope": "user-wide installed RCU executable only; existing adapter processes not forcibly restarted",
+    "updated_at": "2026-09-12T07:36:02.871550+00:00"
+  },
+  "ssh_readback": {
+    "computer": "VINCENTADAM68B5",
+    "user": "VINCENTADAM68B5\\vincentadamnemessis",
+    "ssh_session": 0,
+    "administrator": true,
+    "ssh_service": {
+      "State": "Running",
+      "StartMode": "Auto",
+      "PathName": "\"C:\\Program Files\\OpenSSH-ARM64\\sshd.exe\""
+    },
+    "ssh_rule": {
+      "Name": "RealComputerUse-SSH-Mac-22",
+      "Enabled": 1,
+      "Action": 2
+    },
+    "ssh_address": {
+      "LocalAddress": "10.211.55.3",
+      "RemoteAddress": "10.211.55.2"
+    },
+    "ssh_port": {
+      "Protocol": "TCP",
+      "LocalPort": "22"
+    },
+    "gui_rule": {
+      "Name": "RealComputerUse-Agent-TCP-Mac-45128",
+      "Enabled": 1,
+      "Action": 2
+    },
+    "gui_address": {
+      "LocalAddress": "10.211.55.3",
+      "RemoteAddress": "10.211.55.2"
+    },
+    "gui_port": {
+      "Protocol": "TCP",
+      "LocalPort": "45128"
+    }
+  },
+  "windows_agent": {
+    "source_commit": "bbbbe77efaf26abb361707864e354e6f6025a086",
+    "sha256": "43a2f0180f151106432c309aac2e8d911b07e439335620ed4cfad2467e327f02",
+    "pid": 8576,
+    "session": 1,
+    "agent_instance": "a4048a2c-7182-42b9-91bd-4590ce712b49",
+    "machine": "ARM64",
+    "pe_subsystem": 2,
+    "scheduled_task": "RealComputerUse-Interactive-Agent",
+    "scheduled_triggers": 0,
+    "config_unchanged": true
+  },
+  "f5_live": {
+    "scope": "One live F5 attempt through new standalone adapter + Windows agent; rejected before native input; no retry.",
+    "caller_preflight_attempt": {
+      "rejected_before_claim": true,
+      "reason": "Caller erroneously excluded the only focused pane; native KeyChord requires focused non-sensitive enabled element, not necessarily editable."
+    },
+    "request_id": "rcu-f5-native-20260912-1",
+    "original_operation_ref": {
+      "agent_instance": "a4048a2c-7182-42b9-91bd-4590ce712b49",
+      "context_generation": "58c86695-91df-4991-8916-e6822170942e",
+      "device_id": "win11-vm",
+      "execution_nonce": "5:3d7953d8-f5d8-46d9-bfdc-67555dee6f39",
+      "ref_version": 1
+    },
+    "result": {
+      "data": {
+        "code": "checked_context_unavailable",
+        "correlation_id": null,
+        "goal_verified": false,
+        "input_domain_fenced": false,
+        "message": "A complete bounded document context and ready native binding are required; no legacy/pixel fallback.",
+        "native_dispatch_entered": false,
+        "operation": {
+          "cancel_requested": false,
+          "finish_requested": true,
+          "native_call_depth": 0,
+          "native_call_pending": false,
+          "phase": "finished",
+          "resource_release_uncertain": false,
+          "resources_released": true,
+          "stage": "finished",
+          "strong_native_preemption": false,
+          "terminal": true
+        },
+        "operation_ref": {
+          "agent_instance": "a4048a2c-7182-42b9-91bd-4590ce712b49",
+          "context_generation": "58c86695-91df-4991-8916-e6822170942e",
+          "device_id": "win11-vm",
+          "execution_nonce": "5:3d7953d8-f5d8-46d9-bfdc-67555dee6f39",
+          "ref_version": 1
+        },
+        "receipt_ref": {
+          "device_id": "win11-vm",
+          "request_id": "rcu-f5-native-20260912-1"
+        }
+      },
+      "is_error": true
+    },
+    "replay_allowed": false,
+    "subsequent_readback": {
+      "source": "current-task native computer.js + compact snapshot and computer.result",
+      "window": {
+        "class": "TaskManagerWindow",
+        "cloaked": false,
+        "dwm_visible_frame": {
+          "height": 1169,
+          "width": 1538,
+          "x": 261,
+          "y": 281
+        },
+        "enabled": true,
+        "foreground": false,
+        "minimized": false,
+        "native_epoch": "efb6ddea6fc8a3ad3f4bba1ba6af134ba312f84daeadb39d8419fce81da3c27e",
+        "owner_chain": [],
+        "owner_chain_complete": true,
+        "parent": "hwnd:1000c",
+        "pid": 7440,
+        "process_created": "134335907023278448",
+        "rectangle": {
+          "height": 1180,
+          "width": 1560,
+          "x": 250,
+          "y": 281
+        },
+        "title": "Task Manager",
+        "title_truncated": false,
+        "visible": true,
+        "window": "hwnd:902f4",
+        "window_dpi": 192,
+        "window_dpi_awareness": 1,
+        "z_index": 0
+      },
+      "blocked": true,
+      "mutation_ready": false,
+      "meaning": "Task Manager enabled but not Windows foreground. Native-element checked policy does not require document text. UIA incompleteness is separate evidence, not a proved cause of this rejection."
+    }
+  },
+  "codex_drag_client_fixture": {
+    "scope": "installed MacComputerUseClient + isolated synthetic Unix socket; not native service or OS acceptance",
+    "connections": 2,
+    "persistent_connection": true,
+    "serialized_requests": true,
+    "drag_ipc_requests": 1,
+    "drag_native_interpolation": "not measured; fixture peer",
+    "disconnected_request_not_replayed": true,
+    "reconnected_next_request": true,
+    "trace": [
+      {
+        "ms": 2.658,
+        "direction": "client_to_fixture",
+        "connection": 1,
+        "method": "ping",
+        "id": 1,
+        "requestType": null
+      },
+      {
+        "ms": 2.676,
+        "direction": "fixture_to_client",
+        "connection": 1,
+        "id": 1,
+        "requestType": null
+      },
+      {
+        "ms": 2.977,
+        "direction": "client_to_fixture",
+        "connection": 1,
+        "method": "request",
+        "id": 2,
+        "requestType": "FixtureSlow",
+        "request": {}
+      },
+      {
+        "ms": 64.368,
+        "direction": "fixture_to_client",
+        "connection": 1,
+        "id": 2,
+        "requestType": "FixtureSlow"
+      },
+      {
+        "ms": 64.801,
+        "direction": "client_to_fixture",
+        "connection": 1,
+        "method": "request",
+        "id": 3,
+        "requestType": "FixtureFast",
+        "request": {}
+      },
+      {
+        "ms": 64.805,
+        "direction": "fixture_to_client",
+        "connection": 1,
+        "id": 3,
+        "requestType": "FixtureFast"
+      },
+      {
+        "ms": 65.203,
+        "direction": "client_to_fixture",
+        "connection": 1,
+        "method": "request",
+        "id": 4,
+        "requestType": "ComputerUseIPCAppPerformActionRequest",
+        "request": {
+          "app": "org.rcu.fixture",
+          "action": {
+            "drag": {
+              "from": [
+                10,
+                20
+              ],
+              "to": [
+                80,
+                90
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ms": 65.208,
+        "direction": "fixture_to_client",
+        "connection": 1,
+        "id": 4,
+        "requestType": "ComputerUseIPCAppPerformActionRequest"
+      },
+      {
+        "ms": 66.019,
+        "direction": "client_to_fixture",
+        "connection": 1,
+        "method": "request",
+        "id": 5,
+        "requestType": "FixtureDisconnect",
+        "request": {}
+      },
+      {
+        "ms": 67.186,
+        "direction": "client_to_fixture",
+        "connection": 2,
+        "method": "ping",
+        "id": 1,
+        "requestType": null
+      },
+      {
+        "ms": 67.192,
+        "direction": "fixture_to_client",
+        "connection": 2,
+        "id": 1,
+        "requestType": null
+      },
+      {
+        "ms": 67.31,
+        "direction": "client_to_fixture",
+        "connection": 2,
+        "method": "request",
+        "id": 2,
+        "requestType": "FixtureAfterDisconnect",
+        "request": {}
+      },
+      {
+        "ms": 67.314,
+        "direction": "fixture_to_client",
+        "connection": 2,
+        "id": 2,
+        "requestType": "FixtureAfterDisconnect"
+      }
+    ]
+  },
+  "phases": {
+    "gui": {
+      "thread_id": "01a0943f-80eb-7f01-85a8-10e44f73bc64",
+      "title": "验证 GUI 与 SSH 通道及 CrossMacro 重启现象",
+      "turn_id": "01a0943f-833a-7c21-aaf1-4d160f3d16ea",
+      "start_local": "2026-09-12T14:13:05.495+08:00",
+      "complete_local": "2026-09-12T14:19:52.961+08:00",
+      "host_turn_ms": 407469,
+      "logged_elapsed_ms": 407466,
+      "host_tool_batches": 16,
+      "mcp_duration_sum_ms": 17102.925545,
+      "mcp_interval_union_ms": 17107,
+      "batch_interval_union_ms": 21311,
+      "result_to_next_step_sum_ms": 369159,
+      "result_to_next_step_p50_ms": 21209,
+      "result_to_next_step_p95_ms": 43076,
+      "initial_dispatch_ms": 16882,
+      "last_message_to_turn_end_ms": 114,
+      "output_text_utf8_bytes": 113880,
+      "output_images": 5,
+      "groups": {
+        "computer.js": {
+          "count": 12,
+          "duration_sum_ms": 16960.069628,
+          "failures": 1,
+          "p50_ms": 967.020959,
+          "p95_ms": 4640.5689999999995
+        },
+        "computer.result": {
+          "count": 1,
+          "duration_sum_ms": 1.803209,
+          "failures": 0,
+          "p50_ms": 1.803209,
+          "p95_ms": 1.803209
+        },
+        "computer.image": {
+          "count": 2,
+          "duration_sum_ms": 141.052708,
+          "failures": 0,
+          "p50_ms": 70.435292,
+          "p95_ms": 70.617416
+        }
+      },
+      "routed_calls": 36,
+      "routed_duration_sum_ms": 16918.079709999998,
+      "routed_groups": {
+        "computer.targets": {
+          "count": 2,
+          "elapsed_ms": 19.142167,
+          "errors": 0
+        },
+        "computer.discover": {
+          "count": 11,
+          "elapsed_ms": 205.537374,
+          "errors": 0
+        },
+        "computer.bind_window": {
+          "count": 1,
+          "elapsed_ms": 8.666125000000001,
+          "errors": 0
+        },
+        "computer.observe": {
+          "count": 7,
+          "elapsed_ms": 6617.922875,
+          "errors": 0
+        },
+        "computer.claim": {
+          "count": 3,
+          "elapsed_ms": 21.234376,
+          "errors": 0
+        },
+        "computer.act_checked": {
+          "count": 3,
+          "elapsed_ms": 7860.291875000001,
+          "errors": 0
+        },
+        "computer.release": {
+          "count": 3,
+          "elapsed_ms": 12.09096,
+          "errors": 0
+        },
+        "computer.verify": {
+          "count": 2,
+          "elapsed_ms": 2040.4067909999999,
+          "errors": 0
+        },
+        "computer.image": {
+          "count": 4,
+          "elapsed_ms": 132.78716699999998,
+          "errors": 1
+        }
+      },
+      "rcu_mcp_calls": 15,
+      "note": "RCU-only MCP timing; all Host tool batches retained including shell/tools. Hand-off gaps are not isolated pure model reasoning."
+    },
+    "ssh": {
+      "thread_id": "01a0943f-80eb-7f01-85a8-10e44f73bc64",
+      "title": "验证 GUI 与 SSH 通道及 CrossMacro 重启现象",
+      "turn_id": "01a09465-180e-7300-b23e-cd669afc25e8",
+      "start_local": "2026-09-12T14:54:08.431+08:00",
+      "complete_local": "2026-09-12T15:02:12.135+08:00",
+      "host_turn_ms": 483753,
+      "logged_elapsed_ms": 483704,
+      "host_tool_batches": 10,
+      "mcp_duration_sum_ms": 2980.974167,
+      "mcp_interval_union_ms": 2978,
+      "batch_interval_union_ms": 12750,
+      "result_to_next_step_sum_ms": 462714,
+      "result_to_next_step_p50_ms": 38965,
+      "result_to_next_step_p95_ms": 71791,
+      "initial_dispatch_ms": 8054,
+      "last_message_to_turn_end_ms": 186,
+      "output_text_utf8_bytes": 39890,
+      "output_images": 3,
+      "groups": {
+        "computer.js": {
+          "count": 4,
+          "duration_sum_ms": 2980.974167,
+          "failures": 0,
+          "p50_ms": 935.686417,
+          "p95_ms": 1019.28225
+        }
+      },
+      "routed_calls": 12,
+      "routed_duration_sum_ms": 2965.039249,
+      "routed_groups": {
+        "computer.targets": {
+          "count": 1,
+          "elapsed_ms": 14.995958,
+          "errors": 0
+        },
+        "computer.discover": {
+          "count": 3,
+          "elapsed_ms": 34.593458,
+          "errors": 0
+        },
+        "computer.bind_window": {
+          "count": 2,
+          "elapsed_ms": 9.237209,
+          "errors": 0
+        },
+        "computer.observe": {
+          "count": 3,
+          "elapsed_ms": 2811.744458,
+          "errors": 0
+        },
+        "computer.image": {
+          "count": 3,
+          "elapsed_ms": 94.468166,
+          "errors": 0
+        }
+      },
+      "rcu_mcp_calls": 4,
+      "note": "RCU-only MCP timing; all Host tool batches retained including shell/tools. Hand-off gaps are not isolated pure model reasoning."
+    }
+  },
+  "tests": {
+    "default": {
+      "passed": 241,
+      "failed": 0,
+      "ignored": 2,
+      "suites": 34,
+      "log_sha256": "eb0eba529edd4164c225e643a157291edd2d9429b7a768e794bf8edc8d23aa3b"
+    },
+    "all_features": {
+      "passed": 328,
+      "failed": 0,
+      "ignored": 3,
+      "suites": 38,
+      "log_sha256": "594b18f83e7b060195c673aaacdb251324de2c4da9676982ce7b6c78c0222589"
+    },
+    "fmt": "passed",
+    "clippy_all_targets_all_features": "passed",
+    "javascript_sdk_tests": 14,
+    "architecture_ratchet": "passed; architecture_complete false"
+  },
+  "not_completed": [
+    "native F5 dispatch live acceptance",
+    "end-to-end model performance after snapshot changes",
+    "native drag/trajectory and fluid drawing",
+    "native terminal MCP API",
+    "cross-application discovery/switching and modal UIA coverage",
+    "A01 native-provider process isolation"
+  ],
+  "no_restart_observed_interval_local": [
+    "2026-09-12T14:57:37+08:00",
+    "2026-09-12T15:00:26+08:00"
+  ],
+  "process_outcomes": {
+    "gui_terminated_pid": 10524,
+    "ssh_terminated_pid": 4728,
+    "parent_powershell_pid": 5820,
+    "remaining_at_phase2_final": 7,
+    "periodic_restart_proved": false,
+    "connection_triggered_spawn_source_observed": true,
+    "external_reconnection_cause_proved": false
+  }
+}

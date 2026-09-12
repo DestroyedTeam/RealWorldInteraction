@@ -121,8 +121,9 @@ then claim and dispatch in the same bounded tool execution, leaving time for
 native checks. Release before further planning; never renew by replaying input.
 Prefer `computer.act_checked` with an exact observed element. Native-element
 policy checks the selected window and element; document text is not a universal
-precondition for every button. Text/key input still requires the correct focused
-editable element and fresh state. Do not downgrade a rejected checked action to
+precondition for every button. Keyboard input requires the exact focused,
+enabled, non-sensitive native element and fresh state; text entry additionally
+requires a writable element. Do not downgrade a rejected checked action to
 unchecked/pixel input to bypass its failed preconditions.
 
 Use a stable `request_id` per intended mutation. Keep its returned `operation_ref`
