@@ -149,6 +149,7 @@ impl Engine {
                 at: Instant::now(),
                 scene: current,
                 artifact_id: None,
+                source_region: old.source_region,
             },
         ));
         while self.snapshots.len() > SNAPSHOT_LIMIT {

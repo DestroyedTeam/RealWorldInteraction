@@ -182,6 +182,10 @@ pub struct Resolved {
     pub point: [f64; 2],
     pub scope: Scope,
     pub element_revision: Option<String>,
+    /// Exact observed window-relative ROI, issued from the retained snapshot.
+    /// Callers cannot supply this through an action's reference argument.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_region: Option<[u32; 4]>,
 }
 /// Semantic references bind native geometry/focus and the selected element, not
 /// unrelated image pixels. Pixel-only references remain deliberately conservative.
@@ -248,6 +252,8 @@ struct Journal {
 }
 pub use backend::Backend;
 mod backend;
+#[cfg(test)]
+mod region_tests;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -297,6 +303,7 @@ struct Snapshot {
     at: Instant,
     scene: Scene,
     artifact_id: Option<String>,
+    source_region: Option<[u32; 4]>,
 }
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Observation {
@@ -585,6 +592,7 @@ impl Engine {
                 at: Instant::now(),
                 scene: scene.clone(),
                 artifact_id: artifact.clone(),
+                source_region: region,
             },
         ));
         while self.snapshots.len() > SNAPSHOT_LIMIT {
@@ -649,7 +657,8 @@ impl Engine {
             .ok_or_else(|| fault("unknown_frame", "Observe this exact target again."))
     }
     pub fn resolve(&mut self, target: &str, frame: &str, locator: Locator) -> Result<Resolved> {
-        let scene = &self.snapshot(target, frame)?.scene;
+        let snapshot = self.snapshot(target, frame)?;
+        let scene = &snapshot.scene;
         let binding = scene.binding.as_ref().ok_or_else(|| {
             fault(
                 "target_binding_unknown",
@@ -722,6 +731,7 @@ impl Engine {
             point,
             scope,
             element_revision,
+            source_region: snapshot.source_region,
         };
         self.refs.push_back(r.clone());
         while self.refs.len() > 256 {

@@ -1,6 +1,28 @@
 //! Purpose-specific native revalidation. Never changes observation authority.
 use std::time::Duration;
 
+/// A cropped frame still binds the entire window geometry, not just its ROI.
+pub(crate) fn layout_fingerprint<D: serde::Serialize>(
+    displays: &D,
+    capture: rcu_imaging::Rect,
+    selected: &crate::WindowRecord,
+) -> rcu_core::Result<String> {
+    serde_json::to_vec(&(
+        displays,
+        capture,
+        selected.rectangle,
+        selected.dwm_visible_frame,
+        selected.window_dpi,
+    ))
+    .map(|bytes| rcu_core::digest(&bytes))
+    .map_err(|_| {
+        rcu_core::fault(
+            "native_layout_unavailable",
+            "Native capture/window geometry could not be serialized.",
+        )
+    })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Scope {
@@ -52,6 +74,63 @@ impl Timings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn same_roi_pixels_do_not_hide_outer_window_resize_dpi_or_display_change() {
+        use rcu_imaging::Rect;
+        let bounds = Rect {
+            x: 100,
+            y: 100,
+            width: 1000,
+            height: 700,
+        };
+        let roi = Rect {
+            x: 150,
+            y: 150,
+            width: 100,
+            height: 100,
+        };
+        let selected = crate::WindowRecord {
+            window: "window".into(),
+            pid: 42,
+            process_created: Some(1),
+            native_epoch: Some("epoch".into()),
+            title: "fixture".into(),
+            title_truncated: false,
+            class: "fixture".into(),
+            rectangle: Some(bounds),
+            dwm_visible_frame: Some(bounds),
+            visible: true,
+            enabled: true,
+            minimized: false,
+            cloaked: Some(false),
+            foreground: true,
+            window_dpi: Some(96),
+            window_dpi_awareness: 2,
+            owner_chain: vec![],
+            owner_chain_complete: true,
+            parent: None,
+            z_index: 0,
+        };
+        let displays = serde_json::json!([{"device":"synthetic","width":1920}]);
+        let old = layout_fingerprint(&displays, roi, &selected).unwrap();
+        for change in 0..5 {
+            let mut window = selected.clone();
+            let mut display = displays.clone();
+            match change {
+                0 => window.rectangle.as_mut().unwrap().width += 1,
+                1 => window.dwm_visible_frame.as_mut().unwrap().height += 1,
+                2 => window.window_dpi = Some(192),
+                3 => window.dwm_visible_frame = None,
+                _ => display[0]["width"] = 2560.into(),
+            }
+            assert_ne!(
+                old,
+                layout_fingerprint(&display, roi, &window).unwrap(),
+                "{change}"
+            );
+        }
+        assert_eq!(old, layout_fingerprint(&displays, roi, &selected).unwrap());
+    }
     #[test]
     fn only_native_element_policy_pixel_revalidation_can_omit_tree() {
         for native in [false, true] {
@@ -129,6 +208,7 @@ mod tests {
             point: [10., 10.],
             scope,
             element_revision: None,
+            source_region: None,
         };
         assert!(grounding_matches(&binding, &scene, &target));
         for field in ["content", "layout", "native_epoch", "focus_window"] {
@@ -189,6 +269,7 @@ mod tests {
                 ..scope
             },
             element_revision: Some(element.revision()),
+            source_region: None,
         };
         let scene = Scene {
             identity: Identity {

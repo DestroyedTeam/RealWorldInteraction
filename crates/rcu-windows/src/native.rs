@@ -436,7 +436,7 @@ impl Backend for NativeWindows {
             r.scope.element.is_some(),
         );
         let started = Instant::now();
-        let result = self.scene(r.scope.element.is_none(), None, scope, Some(r));
+        let result = self.scene(r.scope.element.is_none(), r.source_region, scope, Some(r));
         self.revalidation_timings
             .record(scope, started.elapsed(), result.is_ok());
         result

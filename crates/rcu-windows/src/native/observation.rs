@@ -139,11 +139,7 @@ impl NativeWindows {
                 element: None,
             },
             focus_window: foreground.window.clone(),
-            layout: digest(
-                serde_json::to_string(&(&displays, rectangle, before.window_dpi))
-                    .unwrap()
-                    .as_bytes(),
-            ),
+            layout: crate::revalidation::layout_fingerprint(&displays, rectangle, &before)?,
             content: digest(&png),
             native_epoch: digest(
                 serde_json::to_string(&(
