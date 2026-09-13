@@ -28,6 +28,8 @@ mod native;
 pub mod pipe;
 #[cfg(any(windows, test))]
 mod pointer_feedback;
+#[cfg(any(windows, test))]
+mod revalidation;
 #[cfg(windows)]
 mod uia;
 #[cfg(any(windows, test))]

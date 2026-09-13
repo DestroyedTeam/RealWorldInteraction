@@ -271,6 +271,36 @@ pub struct Walk {
     pub document_state: Option<String>,
     pub document_context_unavailable: Option<String>,
 }
+
+/// Pixel preflight still attests the native UIA root identity. No descendant
+/// enumeration or document values are needed by its full-image hash binding.
+/// This is NOT exposed as a full observation or a semantic authority snapshot.
+pub(crate) fn root_identity(w: HWND) -> Result<Walk> {
+    let start = Instant::now();
+    let client = Client::input()?;
+    let root = client.root(w)?;
+    let _call = native_call("uia_pixel_preflight_root_identity")?;
+    let root_runtime_id = runtime_id(&root)?;
+    let modal =
+        unsafe { root.GetCurrentPatternAs::<IUIAutomationWindowPattern>(UIA_WindowPatternId) }
+            .ok()
+            .and_then(|p| unsafe { p.CurrentIsModal() }.ok())
+            .map(|b| b.as_bool());
+    checkpoint("uia_pixel_preflight_root_returned")?;
+    Ok(Walk {
+        root_runtime_id,
+        elements: vec![],
+        details: vec![],
+        modal,
+        complete: false,
+        truncation: Some("root identity only; descendant tree not requested".into()),
+        elapsed_ms: start.elapsed().as_secs_f64() * 1000.,
+        document_state: None,
+        document_context_unavailable: Some(
+            "not read for native-policy pixel hash revalidation".into(),
+        ),
+    })
+}
 pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
     let start = Instant::now();
     let client = Client::new()?;

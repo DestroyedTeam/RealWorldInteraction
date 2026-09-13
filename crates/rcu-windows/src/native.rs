@@ -34,6 +34,7 @@ pub struct NativeWindows {
     allocated_root: Option<WindowRecord>,
     agent_input: Option<Arc<crate::agent_binding::AgentInputAuthority>>,
     selected_catalog_id: String,
+    revalidation_timings: crate::revalidation::Timings,
 }
 impl NativeWindows {
     /// Caller MUST allocate this execution desktop. No focus/input/capture here.
@@ -99,6 +100,7 @@ impl NativeWindows {
             allocated_root,
             agent_input: None,
             selected_catalog_id: String::new(),
+            revalidation_timings: crate::revalidation::Timings::default(),
         })
     }
     /// Private native-agent route configuration; it cannot replace InputGrant.root.
@@ -263,7 +265,12 @@ impl NativeWindows {
         }
         Ok(now)
     }
-    fn scene(&mut self, with_capture: bool, region: Option<[u32; 4]>) -> Result<Scene> {
+    fn scene(
+        &mut self,
+        with_capture: bool,
+        region: Option<[u32; 4]>,
+        semantic_scope: crate::revalidation::Scope,
+    ) -> Result<Scene> {
         self.check_identity()?;
         let _dpi = DpiScope::enter()?;
         let before = self.current()?;
@@ -294,31 +301,36 @@ impl NativeWindows {
             None => rectangle,
         };
         let epoch = before.native_epoch.as_deref().unwrap();
-        let (mut elements, modal, uia_details) =
-            match uia::walk(hwnd(&before.window)?, before.pid, epoch) {
-                Ok(walk) => {
-                    if self
-                        .root_runtime
-                        .as_ref()
-                        .is_some_and(|r| r != &walk.root_runtime_id)
-                    {
-                        return Err(fault(
-                            "uia_root_epoch_changed",
-                            "Native UIA root changed; old references are invalid.",
-                        ));
-                    }
-                    self.root_runtime = Some(walk.root_runtime_id.clone());
-                    (
-                        walk.elements.clone(),
-                        walk.modal,
-                        json!({"status":"available","walk":walk}),
-                    )
+        let semantic_read = match semantic_scope {
+            crate::revalidation::Scope::FullTree => {
+                uia::walk(hwnd(&before.window)?, before.pid, epoch)
+            }
+            crate::revalidation::Scope::RootIdentity => uia::root_identity(hwnd(&before.window)?),
+        };
+        let (mut elements, modal, uia_details) = match semantic_read {
+            Ok(walk) => {
+                if self
+                    .root_runtime
+                    .as_ref()
+                    .is_some_and(|r| r != &walk.root_runtime_id)
+                {
+                    return Err(fault(
+                        "uia_root_epoch_changed",
+                        "Native UIA root changed; old references are invalid.",
+                    ));
                 }
-                Err(e) if e.code == "operation_cancelled" || e.code == "operation_deadline" => {
-                    return Err(e);
-                }
-                Err(e) => (vec![], None, json!({"status":"unavailable","error":e})),
-            };
+                self.root_runtime = Some(walk.root_runtime_id.clone());
+                (
+                    walk.elements.clone(),
+                    walk.modal,
+                    json!({"status":"available","read_scope":semantic_scope,"walk":walk}),
+                )
+            }
+            Err(e) if e.code == "operation_cancelled" || e.code == "operation_deadline" => {
+                return Err(e);
+            }
+            Err(e) => (vec![], None, json!({"status":"unavailable","error":e})),
+        };
         elements.retain(|e| {
             e.point[0] >= f64::from(rectangle.x)
                 && e.point[1] >= f64::from(rectangle.y)
@@ -428,7 +440,7 @@ impl Backend for NativeWindows {
             .as_ref()
             .is_some_and(|g| g.validate(&self.identity, input::now_ms()).is_ok())
             && self.lifecycle_deadline.is_some_and(|d| Instant::now() < d);
-        json!({"checked_context_policy":if self.desktop_policy.is_some(){"native_element"}else{"whole_document"},"activation_authorization":if self.desktop_policy.is_some(){Some("selected-window")}else{None},"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","pointer_feedback":crate::pointer_feedback::status(),"pointer_drag":{"implemented":true,"button":"left","coordinate_space":"offset_from_grounded_reference_in_device_physical_pixels","max_waypoints":rcu_core::trajectory::MAX_WAYPOINTS,"max_duration_ms":rcu_core::trajectory::MAX_DURATION_MS,"sample_interval_ms":crate::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS,"sampling_policy":"bounded optional interpolation; all requested vertices and times retained","max_lateness_ms":crate::input_trajectory::MAX_LATENESS_MS,"scope":"same native element ancestry and fixed-geometry foreground window; not cross-window drag","physical_motion_takeover_detection":false},"text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
+        json!({"checked_context_policy":if self.desktop_policy.is_some(){"native_element"}else{"whole_document"},"activation_authorization":if self.desktop_policy.is_some(){Some("selected-window")}else{None},"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"revalidation_timings":self.revalidation_timings,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","pointer_feedback":crate::pointer_feedback::status(),"pointer_drag":{"implemented":true,"button":"left","coordinate_space":"offset_from_grounded_reference_in_device_physical_pixels","max_waypoints":rcu_core::trajectory::MAX_WAYPOINTS,"max_duration_ms":rcu_core::trajectory::MAX_DURATION_MS,"sample_interval_ms":crate::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS,"sampling_policy":"bounded optional interpolation; all requested vertices and times retained","max_lateness_ms":crate::input_trajectory::MAX_LATENESS_MS,"scope":"same native element ancestry and fixed-geometry foreground window; not cross-window drag","physical_motion_takeover_detection":false},"text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
     }
     fn lifecycle_grant(&self) -> Result<rcu_core::lifecycle::LifecycleGrant> {
         if desktop::identity()? != self.identity {
@@ -548,13 +560,21 @@ impl Backend for NativeWindows {
         self.bind_selected(selection)
     }
     fn observe(&mut self) -> Result<Scene> {
-        self.scene(true, None)
+        self.scene(true, None, crate::revalidation::Scope::FullTree)
     }
     fn observe_region(&mut self, region: [u32; 4]) -> Result<Scene> {
-        self.scene(true, Some(region))
+        self.scene(true, Some(region), crate::revalidation::Scope::FullTree)
     }
     fn revalidate(&mut self, r: &Resolved) -> Result<Scene> {
-        self.scene(r.scope.element.is_none(), None)
+        let scope = crate::revalidation::Scope::for_reference(
+            self.desktop_policy.is_some(),
+            r.scope.element.is_some(),
+        );
+        let started = Instant::now();
+        let result = self.scene(r.scope.element.is_none(), None, scope);
+        self.revalidation_timings
+            .record(scope, started.elapsed(), result.is_ok());
+        result
     }
     fn act(
         &mut self,
