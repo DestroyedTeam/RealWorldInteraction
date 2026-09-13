@@ -25,6 +25,7 @@ pub struct NativeWindows {
     catalog_header: Value,
     catalog_complete: bool,
     root_runtime: Option<Vec<i32>>,
+    foreground_anchor: Option<crate::foreground::Anchor>,
     diagnostics: Value,
     input_grant: Option<InputGrant>,
     grant_deadline: Option<Instant>,
@@ -91,6 +92,7 @@ impl NativeWindows {
             catalog_header: Value::Null,
             catalog_complete: false,
             root_runtime: None,
+            foreground_anchor: None,
             diagnostics: Value::Null,
             input_grant,
             grant_deadline,
@@ -274,6 +276,7 @@ impl NativeWindows {
         self.check_identity()?;
         let _dpi = DpiScope::enter()?;
         let before = self.current()?;
+        let foreground = desktop::input_foreground(&before, self.desktop_policy.is_some())?;
         let displays = desktop::displays()?;
         let rectangle = before
             .dwm_visible_frame
@@ -347,7 +350,8 @@ impl NativeWindows {
         self.check_identity()?;
         let after = self.current()?;
         let after_displays = desktop::displays()?;
-        if before.visible != after.visible
+        if foreground != desktop::input_foreground(&after, self.desktop_policy.is_some())?
+            || before.visible != after.visible
             || before.minimized != after.minimized
             || before.cloaked != after.cloaked
             || before.window_dpi != after.window_dpi
@@ -355,6 +359,7 @@ impl NativeWindows {
             || before.dwm_visible_frame != after.dwm_visible_frame
             || before.foreground != after.foreground
             || before.owner_chain != after.owner_chain
+            || before.owner_chain_complete != after.owner_chain_complete
             || before.enabled != after.enabled
             || before.title != after.title
             || before.title_truncated != after.title_truncated
@@ -386,9 +391,7 @@ impl NativeWindows {
                 pid: before.pid,
                 element: None,
             },
-            focus_window: desktop::window_id(unsafe {
-                windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow()
-            }),
+            focus_window: foreground.window.clone(),
             layout: digest(
                 serde_json::to_string(&(&displays, rectangle, before.window_dpi))
                     .unwrap()
@@ -400,6 +403,7 @@ impl NativeWindows {
                     epoch,
                     &self.root_runtime,
                     &before.owner_chain,
+                    &foreground,
                     before.enabled,
                 ))
                 .unwrap()
@@ -416,12 +420,13 @@ impl NativeWindows {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
+        self.foreground_anchor = foreground.anchor.clone();
         let mutation_ready = self.input_grant.as_ref().is_some_and(|g| g.allows(&before))
-            && before.foreground
+            && foreground.anchor.is_some()
             && before.enabled
             && uia_details["status"] == "available";
-        self.diagnostics = json!({"window":before,"displays":displays,"focused_element_ids":focused_element_ids,"uia":uia_details,"capture_timing":timing,"capture_backend":"GetDC desktop / CreateDIBSection / BitBlt SRCCOPY|CAPTUREBLT / GdiFlush","capture_scope":"visible desktop pixels; other occlusion remains visible; RCU feedback is quiesced during grounding capture", "capture_bounds_source":if before.dwm_visible_frame.is_some(){"DWM_EXTENDED_FRAME_BOUNDS in global physical pixels; NOT a PrintWindow buffer"}else{"GetWindowRect in PMv2 physical pixels"},"content_fidelity":"8-bit SDR; HDR/protected-content/cursor fidelity unavailable","native_window_epoch_assurance":"HWND + PID + process creation + class; UIA root runtime when available. No WinEvent generation tracking","physical_host_guest_mapping":"not attested inside Windows; external input grant records configured VM route separately","input_grant":self.input_grant});
-        Ok(Scene{identity:self.identity.clone(),assurance:"native-attested".into(),binding:Some(binding),mutation_ready,blocked:Some(!before.enabled || !before.foreground),image_size:[rectangle.width,rectangle.height],pixel_to_desktop:Some([1.,0.,0.,1.,f64::from(rectangle.x),f64::from(rectangle.y)]),elements,captured_unix_ms:SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64,atomicity:"bounded UIA walk/GDI pre-post checks; input rechecks native focus/identity per balanced gesture; no atomic window-scoped SendInput or compositor transaction".into(),image_normalization:format!("top-down BGRA BI_RGB to RGB PNG; alpha discarded; physical pixels, no scaling; modal={modal:?}"),png})
+        self.diagnostics = json!({"window":before,"input_foreground":foreground,"displays":displays,"focused_element_ids":focused_element_ids,"uia":uia_details,"capture_timing":timing,"capture_backend":"GetDC desktop / CreateDIBSection / BitBlt SRCCOPY|CAPTUREBLT / GdiFlush","capture_scope":"visible desktop pixels; other occlusion remains visible; RCU feedback is quiesced during grounding capture", "capture_bounds_source":if before.dwm_visible_frame.is_some(){"DWM_EXTENDED_FRAME_BOUNDS in global physical pixels; NOT a PrintWindow buffer"}else{"GetWindowRect in PMv2 physical pixels"},"content_fidelity":"8-bit SDR; HDR/protected-content/cursor fidelity unavailable","native_window_epoch_assurance":"HWND + PID + process creation + class; UIA root runtime when available. No WinEvent generation tracking","physical_host_guest_mapping":"not attested inside Windows; external input grant records configured VM route separately","input_grant":self.input_grant});
+        Ok(Scene{identity:self.identity.clone(),assurance:"native-attested".into(),binding:Some(binding),mutation_ready,blocked:Some(!before.enabled || foreground.anchor.is_none()),image_size:[rectangle.width,rectangle.height],pixel_to_desktop:Some([1.,0.,0.,1.,f64::from(rectangle.x),f64::from(rectangle.y)]),elements,captured_unix_ms:SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64,atomicity:"bounded UIA walk/GDI pre-post checks; input rechecks native focus/identity per balanced gesture; no atomic window-scoped SendInput or compositor transaction".into(),image_normalization:format!("top-down BGRA BI_RGB to RGB PNG; alpha discarded; physical pixels, no scaling; modal={modal:?}"),png})
     }
 }
 impl Backend for NativeWindows {
@@ -440,7 +445,7 @@ impl Backend for NativeWindows {
             .as_ref()
             .is_some_and(|g| g.validate(&self.identity, input::now_ms()).is_ok())
             && self.lifecycle_deadline.is_some_and(|d| Instant::now() < d);
-        json!({"checked_context_policy":if self.desktop_policy.is_some(){"native_element"}else{"whole_document"},"activation_authorization":if self.desktop_policy.is_some(){Some("selected-window")}else{None},"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded native UIA control-view cache","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"revalidation_timings":self.revalidation_timings,"input_grant":self.input_grant,"input_contract":"opt-in allocated root/owned dialogs + exact native identity + expiry + lease + foreground/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","pointer_feedback":crate::pointer_feedback::status(),"pointer_drag":{"implemented":true,"button":"left","coordinate_space":"offset_from_grounded_reference_in_device_physical_pixels","max_waypoints":rcu_core::trajectory::MAX_WAYPOINTS,"max_duration_ms":rcu_core::trajectory::MAX_DURATION_MS,"sample_interval_ms":crate::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS,"sampling_policy":"bounded optional interpolation; all requested vertices and times retained","max_lateness_ms":crate::input_trajectory::MAX_LATENESS_MS,"scope":"same native element ancestry and fixed-geometry foreground window; not cross-window drag","physical_motion_takeover_detection":false},"text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
+        json!({"checked_context_policy":if self.desktop_policy.is_some(){"native_element"}else{"whole_document"},"activation_authorization":if self.desktop_policy.is_some(){Some("selected-window")}else{None},"lifecycle_preflight":lifecycle_ready,"lifecycle_preflight_contract":"read-only bounded inventory, coverage failure counts/examples and explicit cleanup state; no reservation, launch, activation or input", "application_launch":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.launches.is_empty()),"window_activation":lifecycle_ready && self.lifecycle_grant.as_ref().is_some_and(|g|!g.activations.is_empty()),"lifecycle_grant":self.lifecycle_grant,"lifecycle_contract":"exact argv/image/file SHA, native identity, monotonic deadline and lease; launch authorization once per run; complete bounded inventories and native events; no implicit input grants; explicit once-only activation; bind remains read-only","lifecycle_epoch_assurance":"HWND/PID/process creation/class plus scoped WinEvent history; no persistent HWND generation counter; destroy/recreate ambiguity remains fail-closed","backend":"windows-native-rust","execution_arch":std::env::consts::ARCH,"observe":true,"discover_windows":true,"bind_owned_popup":true,"semantic_source":"bounded UIA control-view plus authoritative GetFocusedElementBuildCache/root ancestry; cached focus flags diagnostic only","input":self.input_grant.as_ref().is_some_and(|g|g.validate(&self.identity,input::now_ms()).is_ok()) && self.grant_deadline.is_some_and(|d|Instant::now()<d),"input_dispatch":self.input_counters,"revalidation_timings":self.revalidation_timings,"input_grant":self.input_grant,"input_contract":"authorized desktop selection or allocated root/owned dialogs + exact native identity + expiry + lease + foreground (selected window or proven native owner)/runtime-ID checks; SendInput count is not goal verification; no auto-focus, clipboard or UIA mutation","pointer_feedback":crate::pointer_feedback::status(),"pointer_drag":{"implemented":true,"button":"left","coordinate_space":"offset_from_grounded_reference_in_device_physical_pixels","max_waypoints":rcu_core::trajectory::MAX_WAYPOINTS,"max_duration_ms":rcu_core::trajectory::MAX_DURATION_MS,"sample_interval_ms":crate::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS,"sampling_policy":"bounded optional interpolation; all requested vertices and times retained","max_lateness_ms":crate::input_trajectory::MAX_LATENESS_MS,"scope":"same native element ancestry and fixed-geometry foreground window; not cross-window drag","physical_motion_takeover_detection":false},"text_limit_utf16":1024,"text_control_characters":false,"scroll_units":"signed wheel units, multiples of 120, +/-1200","verify":["window_title","focused_window","element_value (ValuePattern or bounded TextPattern)","modal"],"capture":"visible single-monitor-contained native window, GDI SDR RGB PNG","spanning_capture":false,"capture_hdr":false,"monitor_effective_dpi":"unavailable; awareness-qualified window DPI only","native_strong_cancellation":false,"native_provider_allocator_hard_limit":false,"cancellation":"cooperative per balanced gesture; no subsequent batch after observed cancel, lease expiry, grant expiry or focus loss; release-only cleanup may follow partial insertion; in-flight native call retains slot/resources","uia_connection_timeout_ms":250,"uia_transaction_timeout_ms":250,"tree_budget":{"nodes":128,"depth":8,"cooperative_ms":1500},"artifact_limits":{"frame_bytes":rcu_core::MAX_FRAME_BYTES,"total_bytes":rcu_core::ARTIFACT_BUDGET,"inline_bytes":rcu_core::INLINE_BYTES},"native_details":self.diagnostics})
     }
     fn lifecycle_grant(&self) -> Result<rcu_core::lifecycle::LifecycleGrant> {
         if desktop::identity()? != self.identity {
@@ -587,7 +592,7 @@ impl Backend for NativeWindows {
             self.fresh_agent_selected_proof(expected, target)?;
         }
         let grant = self.input_grant.clone().ok_or_else(|| fault("input_not_enabled", "Use a fresh allocated --windows-input-grant with --allow-input; default is read-only."))?;
-        let plan = input_plan::plan(intent, value)?;
+        let plan = input_plan::plan_with_policy(intent, value, self.desktop_policy.is_some())?;
         let _dpi = DpiScope::enter()?;
         let now = self.revalidate(target)?;
         if !grounding_matches(expected, &now, target)
@@ -627,6 +632,7 @@ impl Backend for NativeWindows {
             self.grant_deadline.expect("input grant deadline"),
             &self.identity,
             &window,
+            self.foreground_anchor.as_ref(),
             target,
             expected.mutation_context.as_ref(),
             &plan,

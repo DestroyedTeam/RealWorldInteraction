@@ -36,13 +36,11 @@ impl NativeWindows {
         if !policy.input {
             return Ok(());
         };
-        let root = if matches!(relation, rcu_core::WindowRelation::Initial) {
-            window.clone()
-        } else {
-            self.allocated_root
-                .clone()
-                .ok_or_else(|| fault("root_not_selected", "Select the authorized root first."))?
-        };
+        // Desktop authorization already covers each fresh selection. Retaining
+        // an initially selected dialog as an immutable grant root incorrectly
+        // prevents its proven return-to-owner transition. Legacy grants are
+        // separate and remain root-limited.
+        let root = window.clone();
         let expires = input::now_ms() + 3_600_000;
         let grant = InputGrant {
             run_id: policy.context.clone(),

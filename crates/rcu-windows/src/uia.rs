@@ -1,4 +1,5 @@
 //! Per-call MTA and bounded cached UIA walk. COM objects never cross threads.
+mod focus;
 mod input;
 mod value;
 use crate::desktop::{api, hit_window, rect, window_id};
@@ -270,6 +271,7 @@ pub struct Walk {
     pub complete: bool,
     pub truncation: Option<String>,
     pub elapsed_ms: f64,
+    pub focus_unavailable: Option<String>,
     pub document_state: Option<String>,
     pub document_context_unavailable: Option<String>,
 }
@@ -297,6 +299,7 @@ pub(crate) fn root_identity(w: HWND) -> Result<Walk> {
         complete: false,
         truncation: Some("root identity only; descendant tree not requested".into()),
         elapsed_ms: start.elapsed().as_secs_f64() * 1000.,
+        focus_unavailable: Some("not read for pixel preflight".into()),
         document_state: None,
         document_context_unavailable: Some(
             "not read for native-policy pixel hash revalidation".into(),
@@ -315,12 +318,26 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
             .and_then(|p| unsafe { p.CurrentIsModal() }.ok())
             .map(|b| b.as_bool());
     drop(call);
-    let mut stack = vec![(root, 0usize)];
+    let (focused, focus_unavailable) = match focus::read(&client, &root) {
+        Ok(sample) => (Some(sample), None),
+        Err(e) if e.code == "operation_cancelled" || e.code == "operation_deadline" => {
+            return Err(e);
+        }
+        Err(e) => (None, Some(e.code)),
+    };
+    let mut projection =
+        crate::uia_focus::Projection::new(focused.as_ref().map(|f| f.runtime.clone()));
+    let mut stack = vec![(root, 0usize, true)];
+    // Exact focus may be deeper than the bounded tree. Observe it first using
+    // the SAME native metadata reader, never invent a container keyboard target.
+    if let Some(focused) = focused {
+        stack.push((focused.element, 0, false));
+    }
     let mut elements = vec![];
     let mut details = vec![];
     let mut truncation = None;
     let mut documents = crate::document_context::Documents::default();
-    while let Some((e, depth)) = stack.pop() {
+    while let Some((e, depth, traverse)) = stack.pop() {
         checkpoint("uia_walk_node")?;
         if details.len() >= 128 || start.elapsed() > Duration::from_millis(1500) {
             truncation = Some("128 nodes / 1500 ms cooperative traversal budget".into());
@@ -331,7 +348,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         let pass = unsafe { e.CachedIsPassword() }.ok().map(|b| b.as_bool());
         let enabled = unsafe { e.CachedIsEnabled() }.ok().map(|b| b.as_bool());
         let offscreen = unsafe { e.CachedIsOffscreen() }.ok().map(|b| b.as_bool());
-        let focus = unsafe { e.CachedHasKeyboardFocus() }
+        let cached_focus = unsafe { e.CachedHasKeyboardFocus() }
             .ok()
             .map(|b| b.as_bool());
         let bounds = unsafe { e.CachedBoundingRectangle() }.ok().and_then(rect);
@@ -355,77 +372,83 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         let id = rid
             .as_ref()
             .map(|r| digest(format!("{}:{pid}:{epoch}:{r:?}", window_id(w)).as_bytes()));
-        let mut value_revision = None;
-        if matches!(control, Some(50004 | 50030)) {
-            // Read only visible Edit/Document controls; no password or unknown
-            // classification is silently converted to an empty document proof.
-            if offscreen != Some(true) {
-                if pass != Some(false) || offscreen.is_none() || id.is_none() {
-                    documents.reject("document visibility/password/runtime identity unknown");
-                } else {
-                    match bounded_document_value(&e) {
-                        Ok(value) => {
-                            value_revision = Some(digest(value.as_bytes()));
-                            documents.push(id.as_deref().unwrap(), &value);
+        let focus = projection.focused(rid.as_ref());
+        if projection.publish(id.as_deref()) {
+            let mut value_revision = None;
+            if matches!(control, Some(50004 | 50030)) {
+                // Read only visible Edit/Document controls; no password or unknown
+                // classification is silently converted to an empty document proof.
+                if offscreen != Some(true) {
+                    if pass != Some(false) || offscreen.is_none() || id.is_none() {
+                        documents.reject("document visibility/password/runtime identity unknown");
+                    } else {
+                        match bounded_document_value(&e) {
+                            Ok(value) => {
+                                value_revision = Some(digest(value.as_bytes()));
+                                documents.push(id.as_deref().unwrap(), &value);
+                            }
+                            Err(error) => documents.reject(&error.code),
                         }
-                        Err(error) => documents.reject(&error.code),
                     }
                 }
+            } else if control.is_none() && offscreen != Some(true) {
+                documents.reject("visible control type unknown");
             }
-        } else if control.is_none() && offscreen != Some(true) {
-            documents.reject("visible control type unknown");
+            if let (Some(id), Some(bounds)) = (&id, bounds) {
+                let point = [
+                    f64::from(bounds.x) + f64::from(bounds.width) / 2.,
+                    f64::from(bounds.y) + f64::from(bounds.height) / 2.,
+                ];
+                let occluded = match hit_window(point) {
+                    Some(h) if h != window_id(w) => Some(true),
+                    Some(_) => client.hit_matches(&e, point, start)?.map(|hit| !hit),
+                    None => None,
+                };
+                let visible = match (offscreen, enabled, pass, ep) {
+                    // Control-view descendants can legitimately be hosted by another
+                    // process (ApplicationFrameHost/UWP). Keep provider PID distinct
+                    // from window PID; input/value use re-proves native root ancestry.
+                    (Some(false), Some(true), Some(false), Some(p)) if p > 0 => Some(true),
+                    (Some(true), _, _, _) | (_, Some(false), _, _) => Some(false),
+                    _ => None,
+                };
+                let revision = digest(
+                    serde_json::to_string(&(
+                        ep,
+                        rid.as_ref(),
+                        &name,
+                        &automation_id,
+                        bounds,
+                        enabled,
+                        offscreen,
+                        pass,
+                        focus,
+                        control,
+                        &value_revision,
+                    ))
+                    .unwrap_or_default()
+                    .as_bytes(),
+                );
+                elements.push(Element {
+                    id: id.clone(),
+                    name: name.clone().unwrap_or_default(),
+                    point,
+                    visible,
+                    occluded,
+                    state_revision: Some(revision),
+                });
+            }
+            details.push(serde_json::json!({"element_id":id,"value_revision":value_revision,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded control-view tree plus prioritized exact focus proven under HWND root; provider PID need not equal HWND owner PID; re-prove ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"cached_keyboard_focus":cached_focus,"focus_source":"GetFocusedElementBuildCache + runtime ID + native root ancestry; cached flags are diagnostic only","depth":if traverse {Some(depth)} else {None},"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));
         }
-        if let (Some(id), Some(bounds)) = (&id, bounds) {
-            let point = [
-                f64::from(bounds.x) + f64::from(bounds.width) / 2.,
-                f64::from(bounds.y) + f64::from(bounds.height) / 2.,
-            ];
-            let occluded = match hit_window(point) {
-                Some(h) if h != window_id(w) => Some(true),
-                Some(_) => client.hit_matches(&e, point, start)?.map(|hit| !hit),
-                None => None,
-            };
-            let visible = match (offscreen, enabled, pass, ep) {
-                // Control-view descendants can legitimately be hosted by another
-                // process (ApplicationFrameHost/UWP). Keep provider PID distinct
-                // from window PID; input/value use re-proves native root ancestry.
-                (Some(false), Some(true), Some(false), Some(p)) if p > 0 => Some(true),
-                (Some(true), _, _, _) | (_, Some(false), _, _) => Some(false),
-                _ => None,
-            };
-            let revision = digest(
-                serde_json::to_string(&(
-                    ep,
-                    rid.as_ref(),
-                    &name,
-                    &automation_id,
-                    bounds,
-                    enabled,
-                    offscreen,
-                    pass,
-                    focus,
-                    control,
-                    &value_revision,
-                ))
-                .unwrap_or_default()
-                .as_bytes(),
-            );
-            elements.push(Element {
-                id: id.clone(),
-                name: name.clone().unwrap_or_default(),
-                point,
-                visible,
-                occluded,
-                state_revision: Some(revision),
-            });
+        if !traverse {
+            continue;
         }
-        details.push(serde_json::json!({"element_id":id,"value_revision":value_revision,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded native control-view descendants of HWND root; provider PID need not equal HWND owner PID; re-prove root ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"depth":depth,"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));
         if depth != 0 {
             let call = native_call("uia_next_sibling")?;
             let sibling = client.related(&e, 1);
             drop(call);
             match sibling {
-                Ok(Some(s)) => stack.push((s, depth)),
+                Ok(Some(s)) => stack.push((s, depth, true)),
                 Ok(None) => (),
                 Err(err) => {
                     truncation = Some(err.to_string());
@@ -438,7 +461,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
             let child = client.related(&e, 0);
             drop(call);
             match child {
-                Ok(Some(c)) => stack.push((c, depth + 1)),
+                Ok(Some(c)) => stack.push((c, depth + 1, true)),
                 Ok(None) => (),
                 Err(err) => {
                     truncation = Some(err.to_string());
@@ -459,6 +482,7 @@ pub fn walk(w: HWND, pid: u32, epoch: &str) -> Result<Walk> {
         complete: truncation.is_none(),
         truncation,
         elapsed_ms: start.elapsed().as_secs_f64() * 1000.,
+        focus_unavailable,
         document_state,
         document_context_unavailable: documents.unavailable,
     })

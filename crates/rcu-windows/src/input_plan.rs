@@ -17,7 +17,16 @@ pub(crate) struct Plan {
     pub drag: Option<rcu_core::trajectory::DragPath>,
 }
 
-pub(crate) fn plan(intent: &Intent, value: Option<&str>) -> Result<Plan> {
+#[cfg(test)]
+fn plan(intent: &Intent, value: Option<&str>) -> Result<Plan> {
+    plan_with_policy(intent, value, false)
+}
+
+pub(crate) fn plan_with_policy(
+    intent: &Intent,
+    value: Option<&str>,
+    desktop_keys: bool,
+) -> Result<Plan> {
     intent.validate(value)?;
     let need_value = || value.ok_or_else(|| fault("value_required", "Supply the action value."));
     let mut keyboard = false;
@@ -69,7 +78,10 @@ pub(crate) fn plan(intent: &Intent, value: Option<&str>) -> Result<Plan> {
         }
         Intent::KeyChord => {
             keyboard = true;
-            vec![Batch::Chord(chord(need_value()?)?)]
+            vec![Batch::Chord(chord_with_policy(
+                need_value()?,
+                desktop_keys,
+            )?)]
         }
         Intent::Scroll => {
             let units = need_value()?.parse::<i32>().map_err(|_| {
@@ -95,12 +107,16 @@ pub(crate) fn plan(intent: &Intent, value: Option<&str>) -> Result<Plan> {
     })
 }
 
+#[cfg(test)]
 fn chord(value: &str) -> Result<Vec<u16>> {
+    chord_with_policy(value, false)
+}
+fn chord_with_policy(value: &str, desktop_keys: bool) -> Result<Vec<u16>> {
     let parts = value.split('+').collect::<Vec<_>>();
-    if parts.is_empty() || parts.len() > 4 {
+    if parts.is_empty() || parts.len() > 5 {
         return Err(fault(
             "unsupported_chord",
-            "Use Ctrl/Alt/Shift plus one supported key. Win/system keys are not enabled.",
+            "Use nonduplicate Ctrl/Alt/Shift modifiers plus one key; Win and desktop switching require desktop policy.",
         ));
     }
     let mut keys = Vec::new();
@@ -109,10 +125,11 @@ fn chord(value: &str) -> Result<Vec<u16>> {
             "ctrl" => 0x11,
             "alt" => 0x12,
             "shift" => 0x10,
+            "win" if desktop_keys => 0x5b,
             _ => {
                 return Err(fault(
                     "unsupported_chord",
-                    "Only Ctrl, Alt and Shift modifiers are supported.",
+                    "Unknown modifier or desktop shortcut outside desktop policy.",
                 ));
             }
         };
@@ -126,6 +143,7 @@ fn chord(value: &str) -> Result<Vec<u16>> {
     }
     let last = parts.last().unwrap().to_ascii_lowercase();
     let key = match last.as_str() {
+        "win" if desktop_keys => 0x5b,
         "enter" => 0x0d,
         "tab" => 0x09,
         "escape" => 0x1b,
@@ -156,14 +174,16 @@ fn chord(value: &str) -> Result<Vec<u16>> {
             ));
         }
     };
-    // Do not expose the secure-attention chord or window-switching/system UI.
+    // Secure attention is not SendInput. Ordinary shell/window switching is
+    // available only under desktop policy; reobserve after the one balanced chord.
     if (key == 0x2e && keys.contains(&0x11) && keys.contains(&0x12))
-        || (key == 0x09 && keys.contains(&0x12))
-        || (key == 0x1b && keys.contains(&0x11))
+        || (!desktop_keys
+            && ((key == 0x09 && keys.contains(&0x12)) || (key == 0x1b && keys.contains(&0x11))))
+        || keys.contains(&key)
     {
         return Err(fault(
             "unsupported_chord",
-            "System/session-switching chords are not supported.",
+            "Secure attention, duplicate keys, or desktop switching outside desktop policy are unsupported.",
         ));
     }
     keys.push(key);
@@ -294,6 +314,30 @@ mod tests {
             "Ctrl+Alt+Delete",
         ] {
             assert!(chord(key).is_err(), "{key}");
+        }
+    }
+    #[test]
+    fn desktop_policy_plans_balanced_shell_keys_without_enabling_secure_attention() {
+        for (chord, keys) in [
+            ("Win+E", vec![0x5b, 0x45]),
+            ("Win+R", vec![0x5b, 0x52]),
+            ("Win", vec![0x5b]),
+            ("Alt+Tab", vec![0x12, 0x09]),
+            ("Ctrl+Escape", vec![0x11, 0x1b]),
+        ] {
+            let p = plan_with_policy(&Intent::KeyChord, Some(chord), true).unwrap();
+            assert!(p.keyboard);
+            assert_eq!(p.batches, vec![Batch::Chord(keys)]);
+            assert!(plan_with_policy(&Intent::KeyChord, Some(chord), false).is_err());
+        }
+        for bad in [
+            "Ctrl+Alt+Delete",
+            "Win+Win+E",
+            "Win+Win",
+            "Ctrl+Ctrl+S",
+            "Win++E",
+        ] {
+            assert!(plan_with_policy(&Intent::KeyChord, Some(bad), true).is_err());
         }
     }
     #[test]

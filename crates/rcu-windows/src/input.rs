@@ -38,12 +38,19 @@ pub(crate) fn dispatch(
     grant_deadline: Instant,
     identity: &Identity,
     window: &WindowRecord,
+    foreground: Option<&crate::foreground::Anchor>,
     target: &Resolved,
     context: Option<&MutationContext>,
     plan: &Plan,
     counters: &mut Counters,
     agent_authority: Option<&crate::agent_binding::AgentInputAuthority>,
 ) -> Result<Option<bool>> {
+    let foreground = foreground.ok_or_else(|| {
+        fault(
+            "input_foreground_unproven",
+            "Reobserve the selected window and its foreground anchor.",
+        )
+    })?;
     if plan.drag.is_some() {
         counters.last_drag = None;
         counters.drag_guard_phases = trajectory::GuardTiming::default();
@@ -71,6 +78,7 @@ pub(crate) fn dispatch(
         grant,
         identity,
         window,
+        foreground,
         target,
         context,
         first_batch: true,
@@ -121,6 +129,7 @@ struct NativeSink<'a> {
     grant: &'a InputGrant,
     identity: &'a Identity,
     window: &'a WindowRecord,
+    foreground: &'a crate::foreground::Anchor,
     target: &'a Resolved,
     context: Option<&'a MutationContext>,
     first_batch: bool,
@@ -210,7 +219,8 @@ impl GuardPhases for NativeSink<'_> {
                 "Window context changed before input; no implicit retry.",
             ));
         }
-        if !current.foreground
+        let foreground = desktop::input_foreground(&current, self.agent_selection.is_none())?;
+        if foreground.anchor.as_ref() != Some(self.foreground)
             || !current.enabled
             || !current.visible
             || current.minimized
@@ -221,6 +231,7 @@ impl GuardPhases for NativeSink<'_> {
             || current.dwm_visible_frame != self.window.dwm_visible_frame
             || current.window_dpi != self.window.window_dpi
             || current.owner_chain != self.window.owner_chain
+            || current.owner_chain_complete != self.window.owner_chain_complete
             || self
                 .context
                 .is_some_and(|c| current.title_truncated || current.title != c.window_title)
@@ -242,7 +253,7 @@ impl GuardPhases for NativeSink<'_> {
         }
         // No further document walk follows the exact UIA/native checks. This
         // closes the avoidable stale-guard interval, not the OS SendInput race.
-        if desktop::window_id(unsafe { GetForegroundWindow() }) != self.window.window {
+        if desktop::window_id(unsafe { GetForegroundWindow() }) != self.foreground.key.window {
             return Err(fault(
                 "input_focus_changed",
                 "Foreground changed during the native guard; no input.",
@@ -327,7 +338,7 @@ fn key(vk: u16, unicode: Option<u16>, up: bool) -> INPUT {
     };
     if unicode.is_some() {
         flags |= KEYEVENTF_UNICODE;
-    } else if [0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2e].contains(&vk) {
+    } else if [0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2e, 0x5b].contains(&vk) {
         flags |= KEYEVENTF_EXTENDEDKEY;
     }
     INPUT {
@@ -428,5 +439,16 @@ mod tests {
         assert_eq!(cleanup.len(), 2);
         assert_eq!(unsafe { chord[2].Anonymous.ki.wVk }.0, 0x53);
         assert_eq!(unsafe { chord[3].Anonymous.ki.wVk }.0, 0x11);
+        let (shell, cleanup) = events(&Batch::Chord(vec![0x5b, 0x45]), [0., 0.]).unwrap();
+        assert_eq!(shell.len(), 4);
+        assert_eq!(cleanup.len(), 2);
+        assert_eq!(
+            unsafe { shell[0].Anonymous.ki.dwFlags },
+            KEYEVENTF_EXTENDEDKEY
+        );
+        assert_eq!(
+            unsafe { shell[3].Anonymous.ki.dwFlags },
+            KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP
+        );
     }
 }

@@ -75,6 +75,7 @@ impl NativeWindows {
             authority.retain_selection(&current)?;
         }
         self.root_runtime = None;
+        self.foreground_anchor = None;
         self.selected = Some(current.clone());
         self.selected_catalog_id = self.catalog_id.clone();
         self.diagnostics = Value::Null;

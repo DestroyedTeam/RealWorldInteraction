@@ -5,8 +5,12 @@ pub mod agent_contract;
 mod contract;
 #[cfg(any(windows, test))]
 mod document_context;
+#[cfg(any(windows, test))]
+mod foreground;
 #[cfg(windows)]
 pub mod recovery;
+#[cfg(any(windows, test))]
+mod uia_focus;
 pub use contract::*;
 #[cfg(any(windows, test))]
 mod application;

@@ -469,3 +469,27 @@ pub fn hit_window(point: [f64; 2]) -> Option<String> {
     }
     Some(window_id(unsafe { GetAncestor(w, GA_ROOT) }))
 }
+
+/// Read-only foreground identity. Owned popups can share their owner's active
+/// input queue without ever becoming GetForegroundWindow themselves.
+pub(crate) fn input_foreground(
+    selected: &WindowRecord,
+    allow_owned: bool,
+) -> Result<crate::foreground::State> {
+    let foreground = unsafe { GetForegroundWindow() };
+    let anchor = if foreground.0.is_null() {
+        None
+    } else {
+        crate::foreground::Anchor::attest(selected, &record(foreground, 0)?, allow_owned)
+    };
+    if unsafe { GetForegroundWindow() } != foreground {
+        return Err(fault(
+            "native_foreground_changed",
+            "Foreground changed during identity read; reobserve.",
+        ));
+    }
+    Ok(crate::foreground::State {
+        window: window_id(foreground),
+        anchor,
+    })
+}

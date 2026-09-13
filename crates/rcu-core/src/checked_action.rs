@@ -99,7 +99,11 @@ impl Engine {
         {
             return Err(fault(
                 "checked_context_unavailable",
-                "A complete bounded document context and ready native binding are required; no legacy/pixel fallback.",
+                if element_policy {
+                    "The observed native window must be input-ready and unblocked; inspect native foreground/element evidence. No legacy/pixel fallback."
+                } else {
+                    "A complete bounded document context and ready native binding are required; no legacy/pixel fallback."
+                },
             ));
         }
         let old = self.resolve(target, frame, Locator::Element { id: element.into() })?;

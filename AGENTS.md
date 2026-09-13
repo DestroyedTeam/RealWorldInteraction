@@ -13,6 +13,12 @@
 
 ## Approved multi-endpoint architecture
 
+- User clarification 2026-09-13: the authorized Windows desktop includes OS
+  dialogs, Save/Open, Explorer and other applications, not a Paint-only app list.
+  Application allowlisting is optional future policy, not a current task gate.
+  Fresh window selection/owner/foreground grounding still applies; an ordinary
+  owned popup is not a new permission request. Secure-desktop/session changes
+  remain distinct native identities, never inferred from ordinary dialog access.
 - User clarification 2026-09-12: GUI and terminal are parallel complementary
   channels within one flow, including cross-execution, verification, feedback
   and iteration. Neither is a replacement/fallback for the other. Preserve
