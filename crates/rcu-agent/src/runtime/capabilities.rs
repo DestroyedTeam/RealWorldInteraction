@@ -50,6 +50,9 @@ impl Runtime {
                 let implemented =
                     control || implementation && (!native_lifecycle || platform == "windows");
                 let prerequisite = match tool.name {
+                    "computer.capture_visual" if platform == "windows" => {
+                        Some("selected_window_required")
+                    }
                     "computer.launch_application" => Some("application_policy_not_configured"),
                     "computer.lifecycle_preflight"
                     | "computer.activate_window"

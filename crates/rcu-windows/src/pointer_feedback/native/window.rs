@@ -223,9 +223,13 @@ impl Window {
 }
 impl Drop for Window {
     fn drop(&mut self) {
-        let _ = self.hide();
+        if self.hide().is_err() {
+            rcu_core::operation::resource_release_uncertain();
+        }
         unsafe {
-            let _ = DestroyWindow(self.hwnd);
+            if DestroyWindow(self.hwnd).is_err() {
+                rcu_core::operation::resource_release_uncertain();
+            }
         }
     }
 }
@@ -293,13 +297,16 @@ impl Drop for Surface {
     fn drop(&mut self) {
         unsafe {
             if !self.previous.0.is_null() {
-                SelectObject(self.dc, self.previous);
+                let restored = SelectObject(self.dc, self.previous);
+                if restored.0.is_null() || restored.0 as isize == -1 {
+                    rcu_core::operation::resource_release_uncertain();
+                }
             }
-            if !self.bitmap.0.is_null() {
-                let _ = DeleteObject(HGDIOBJ(self.bitmap.0));
+            if !self.bitmap.0.is_null() && !DeleteObject(HGDIOBJ(self.bitmap.0)).as_bool() {
+                rcu_core::operation::resource_release_uncertain();
             }
-            if !self.dc.0.is_null() {
-                let _ = DeleteDC(self.dc);
+            if !self.dc.0.is_null() && !DeleteDC(self.dc).as_bool() {
+                rcu_core::operation::resource_release_uncertain();
             }
         }
     }

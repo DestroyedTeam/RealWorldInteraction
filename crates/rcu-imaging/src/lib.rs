@@ -2,6 +2,8 @@
 use rcu_core::{Result, fault, operation::checkpoint};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Write};
+mod visual;
+pub use visual::encode_visual_rgb;
 
 pub const MAX_PIXELS: usize = 16_000_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,10 +40,11 @@ impl Rect {
 struct BoundedOutput {
     bytes: Vec<u8>,
     limit_exceeded: bool,
+    limit: usize,
 }
 impl Write for BoundedOutput {
     fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
-        if self.bytes.len().saturating_add(b.len()) > rcu_core::MAX_FRAME_BYTES {
+        if self.bytes.len().saturating_add(b.len()) > self.limit {
             self.limit_exceeded = true;
             return Err(std::io::Error::other("PNG artifact size limit"));
         }
@@ -53,6 +56,9 @@ impl Write for BoundedOutput {
     }
 }
 pub fn encode_rgb(size: [u32; 2], rgb: &[u8]) -> Result<Vec<u8>> {
+    encode_rgb_limited(size, rgb, rcu_core::MAX_FRAME_BYTES)
+}
+fn encode_rgb_limited(size: [u32; 2], rgb: &[u8], limit: usize) -> Result<Vec<u8>> {
     Rect {
         x: 0,
         y: 0,
@@ -70,6 +76,7 @@ pub fn encode_rgb(size: [u32; 2], rgb: &[u8]) -> Result<Vec<u8>> {
     let mut out = BoundedOutput {
         bytes: Vec::new(),
         limit_exceeded: false,
+        limit,
     };
     let encoded: Result<()> = (|| {
         let mut enc = png::Encoder::new(&mut out, size[0], size[1]);
@@ -104,7 +111,7 @@ pub fn encode_rgb(size: [u32; 2], rgb: &[u8]) -> Result<Vec<u8>> {
     if out.limit_exceeded {
         return Err(fault(
             "png_size_limit",
-            "Encoded PNG exceeded the 32 MiB original-artifact limit; capture and transport are distinct stages.",
+            "Encoded PNG exceeded its byte budget; capture and transport are distinct stages. Request a smaller visual rather than altering desktop resolution.",
         ));
     }
     encoded?;

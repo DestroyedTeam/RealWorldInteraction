@@ -1,5 +1,6 @@
 //! Rust-only intent engine. OS input lives behind a target-bound native Backend.
 mod checked_action;
+mod visual;
 pub use checked_action::CheckedAction;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ use std::{
     time::{Duration, Instant},
 };
 use uuid::Uuid;
+pub use visual::*;
 pub mod device;
 #[cfg(any(test, feature = "fixture"))]
 pub mod fixture;

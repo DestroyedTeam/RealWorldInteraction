@@ -31,6 +31,12 @@ pub fn definitions() -> Vec<ToolDefinition> {
             writes: false,
         },
         ToolDefinition {
+            name: "computer.capture_visual",
+            description: "Read a lightweight visible-desktop image of the exact selected native window. max_edge=64..2048 (default 1024), no upscaling. feedback=exclude (default) suspends the device presenter only during pixel copy; include means do not actively exclude, not a promise that a marker appears. No UIA walk, activation, lease, frame, artifact, view or input reference. This visual_id cannot authorize input. Native worker/cancellation and pre/post identity/visibility/geometry checks still apply; pixels are not an atomic compositor transaction.",
+            input_schema: serde_json::to_value(schemars::schema_for!(CaptureVisualArgs)).unwrap(),
+            writes: false,
+        },
+        ToolDefinition {
             name: "computer.resolve",
             description: "Bind one semantic element or original-image pixel to a specific frame, native window and PID. Ambiguous/unknown mappings are rejected.",
             input_schema: serde_json::to_value(schemars::schema_for!(ResolveArgs)).unwrap(),
@@ -148,6 +154,10 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
         }
         "computer.observe" => {
             let _: ObserveArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.capture_visual" => {
+            let _: CaptureVisualArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.resolve" => {

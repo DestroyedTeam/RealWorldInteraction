@@ -49,6 +49,32 @@ impl Executor {
                 }
                 Ok(result)
             }
+            "computer.capture_visual" => {
+                let a = args!(CaptureVisualArgs);
+                let visual = self.engine.capture_visual(
+                    &a.target,
+                    rcu_core::VisualOptions {
+                        max_edge: a.max_edge,
+                        feedback: a.feedback,
+                    },
+                )?;
+                let encoded = STANDARD.encode(&visual.capture.png);
+                if encoded.len() != visual.base64_bytes
+                    || encoded.len() > rcu_core::MAX_VISUAL_BASE64_BYTES
+                {
+                    return Err(rcu_core::fault(
+                        "visual_transport_budget",
+                        "Visual base64 exceeded its independent transport budget.",
+                    ));
+                }
+                rcu_core::operation::checkpoint("capture_visual_base64_encoded")?;
+                let mut result = DeviceResult::value(&visual);
+                result.images.push(DeviceImage {
+                    mime: "image/png".into(),
+                    base64: encoded,
+                });
+                Ok(result)
+            }
             "computer.discover" => {
                 let a = args!(TargetArgs);
                 value(self.engine.discover_with(

@@ -4,7 +4,8 @@ use rcu_core::{
     Result, fault,
     operation::{checkpoint, native_call},
 };
-use rcu_imaging::{Rect, bgra_to_rgb, encode_rgb};
+use rcu_core::{VisualFeedback, VisualFeedbackMode, operation::resource_release_uncertain};
+use rcu_imaging::{Raster, Rect, bgra_to_rgb, encode_rgb};
 use serde::Serialize;
 use std::{ffi::c_void, mem::size_of, time::Instant};
 use windows::Win32::Graphics::Gdi::*;
@@ -19,16 +20,19 @@ impl Drop for Surface {
     fn drop(&mut self) {
         unsafe {
             if !self.previous.0.is_null() {
-                SelectObject(self.memory, self.previous);
+                let restored = SelectObject(self.memory, self.previous);
+                if restored.0.is_null() || restored.0 as isize == -1 {
+                    resource_release_uncertain();
+                }
             }
-            if !self.bitmap.0.is_null() {
-                let _ = DeleteObject(HGDIOBJ(self.bitmap.0));
+            if !self.bitmap.0.is_null() && !DeleteObject(HGDIOBJ(self.bitmap.0)).as_bool() {
+                resource_release_uncertain();
             }
-            if !self.memory.0.is_null() {
-                let _ = DeleteDC(self.memory);
+            if !self.memory.0.is_null() && !DeleteDC(self.memory).as_bool() {
+                resource_release_uncertain();
             }
-            if !self.desktop.0.is_null() {
-                ReleaseDC(None, self.desktop);
+            if !self.desktop.0.is_null() && ReleaseDC(None, self.desktop) == 0 {
+                resource_release_uncertain();
             }
         }
     }
@@ -43,10 +47,32 @@ pub struct Timing {
     pub png_bytes: usize,
 }
 pub fn capture(r: Rect) -> Result<(Vec<u8>, Timing)> {
+    let RawCapture {
+        raster, mut timing, ..
+    } = capture_rgb(r, VisualFeedbackMode::Exclude)?;
+    let encode = Instant::now();
+    let png = encode_rgb(raster.size, &raster.rgb)?;
+    timing.encoding_ms = encode.elapsed().as_secs_f64() * 1000.;
+    timing.png_bytes = png.len();
+    Ok((png, timing))
+}
+pub(crate) struct RawCapture {
+    pub raster: Raster,
+    pub timing: Timing,
+    pub feedback: VisualFeedback,
+}
+pub(crate) fn capture_rgb(r: Rect, mode: VisualFeedbackMode) -> Result<RawCapture> {
     let r = r.checked()?;
     let start = Instant::now();
-    let feedback_capture = crate::pointer_feedback::suspend_capture()?;
+    let feedback_capture = match mode {
+        VisualFeedbackMode::Exclude => Some(crate::pointer_feedback::suspend_capture()?),
+        VisualFeedbackMode::Include => None,
+    };
     let feedback_suspend_ms = start.elapsed().as_secs_f64() * 1000.;
+    let before_copy = feedback_capture
+        .as_ref()
+        .map_or_else(crate::pointer_feedback::capture_status, |g| g.evidence());
+    let ticket = feedback_capture.as_ref().map(|g| g.ticket);
     let _call = native_call("GDI_capture")?;
     let mut surface = Surface {
         desktop: unsafe { GetDC(None) },
@@ -123,9 +149,28 @@ pub fn capture(r: Rect) -> Result<(Vec<u8>, Timing)> {
             "GDI raster synchronization failed.",
         ));
     }
+    if let Some(guard) = &feedback_capture {
+        guard.ensure_hidden()?;
+    }
+    let after_copy = crate::pointer_feedback::capture_status();
     // The DIB has its own copy now. The real screen may resume the bounded hint,
     // but feedback pixels can never enter this grounding image/content hash.
     drop(feedback_capture);
+    let feedback = VisualFeedback {
+        requested: mode,
+        suspension_ticket: ticket,
+        exclusion: if mode == VisualFeedbackMode::Include {
+            "not_requested; marker presence not guaranteed"
+        } else if after_copy["presenter"] == "not_started" || after_copy["presenter"] == "stopped" {
+            "presenter_not_running; startup remained suspended"
+        } else {
+            "acknowledged_hidden_for_this_ticket"
+        }
+        .into(),
+        before_copy,
+        after_copy,
+        after_release: crate::pointer_feedback::capture_status(),
+    };
     let capture_ms = start.elapsed().as_secs_f64() * 1000.;
     drop(_call);
     checkpoint("capture_returned")?;
@@ -135,15 +180,20 @@ pub fn capture(r: Rect) -> Result<(Vec<u8>, Timing)> {
     let rgb = bgra_to_rgb([r.width, r.height], r.width as usize * 4, raw)?;
     let conversion_ms = convert.elapsed().as_secs_f64() * 1000.;
     drop(surface);
-    let encode = Instant::now();
-    let png = encode_rgb([r.width, r.height], &rgb)?;
     let timing = Timing {
         feedback_suspend_ms,
         capture_ms,
         conversion_ms,
-        encoding_ms: encode.elapsed().as_secs_f64() * 1000.,
+        encoding_ms: 0.,
         raw_bytes: n,
-        png_bytes: png.len(),
+        png_bytes: 0,
     };
-    Ok((png, timing))
+    Ok(RawCapture {
+        raster: Raster {
+            size: [r.width, r.height],
+            rgb,
+        },
+        timing,
+        feedback,
+    })
 }

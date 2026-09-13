@@ -4,6 +4,8 @@ mod dispatch;
 mod dispatch_tests;
 mod execution;
 mod namespace;
+#[cfg(all(test, feature = "fixture"))]
+mod visual_tests;
 pub use namespace::NamespaceRepair;
 mod recovery;
 use crate::{

@@ -26,7 +26,9 @@ pub struct Handle(pub HANDLE);
 impl Drop for Handle {
     fn drop(&mut self) {
         unsafe {
-            let _ = CloseHandle(self.0);
+            if CloseHandle(self.0).is_err() {
+                rcu_core::operation::resource_release_uncertain();
+            }
         }
     }
 }
@@ -34,7 +36,9 @@ struct InputDesktop(HDESK);
 impl Drop for InputDesktop {
     fn drop(&mut self) {
         unsafe {
-            let _ = CloseDesktop(self.0);
+            if CloseDesktop(self.0).is_err() {
+                rcu_core::operation::resource_release_uncertain();
+            }
         }
     }
 }
@@ -55,7 +59,9 @@ impl DpiScope {
 impl Drop for DpiScope {
     fn drop(&mut self) {
         unsafe {
-            SetThreadDpiAwarenessContext(self.0);
+            if SetThreadDpiAwarenessContext(self.0).0.is_null() {
+                rcu_core::operation::resource_release_uncertain();
+            }
         }
     }
 }

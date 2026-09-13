@@ -74,7 +74,49 @@ impl Backend for Fixture {
         self.0.lock().unwrap().identity.clone()
     }
     fn capabilities(&self) -> serde_json::Value {
-        serde_json::json!({"adapter":"synthetic-fixture","native":false})
+        serde_json::json!({"adapter":"synthetic-fixture","native":false,"capture_visual":{"implemented":true,"native":false,"source":"fixed synthetic 1x1 grayscale-alpha PNG; not application pixels"}})
+    }
+    fn capture_visual(&mut self, options: VisualOptions) -> Result<VisualCapture> {
+        options.validate()?;
+        operation::checkpoint("fixture_visual")?;
+        let a = self.0.lock().unwrap();
+        Ok(VisualCapture {
+            identity: a.identity.clone(),
+            window: lifecycle::WindowIdentity {
+                window: "fixture-window".into(),
+                pid: 42,
+                process_created: 1,
+                native_epoch: format!("fixture-epoch-{}", a.epoch),
+            },
+            source_rect: VisualRect {
+                x: -1920,
+                y: 0,
+                width: 1,
+                height: 1,
+            },
+            image_size: [1, 1],
+            visual_to_desktop: [1., 0., 0., 1., -1920., 0.],
+            captured_unix_ms: lifecycle::now_ms(),
+            assurance: "synthetic-fixture".into(),
+            atomicity: "synthetic-locked; no native capture".into(),
+            normalization: "fixed synthetic 1x1 grayscale-alpha PNG; no app pixels or authority"
+                .into(),
+            feedback: VisualFeedback {
+                requested: options.feedback,
+                suspension_ticket: None,
+                exclusion: "fixture_has_no_presenter".into(),
+                before_copy: serde_json::json!({"presenter":"not_implemented","active_suspensions":0}),
+                after_copy: serde_json::json!({"presenter":"not_implemented","active_suspensions":0}),
+                after_release: serde_json::json!({"presenter":"not_implemented","active_suspensions":0}),
+            },
+            details: serde_json::json!({"native":false}),
+            png: vec![
+                137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0,
+                1, 8, 4, 0, 0, 0, 181, 28, 12, 2, 0, 0, 0, 11, 73, 68, 65, 84, 120, 218, 99, 252,
+                255, 31, 0, 3, 3, 2, 0, 239, 162, 167, 91, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96,
+                130,
+            ],
+        })
     }
     fn observe(&mut self) -> Result<Scene> {
         let a = self.0.lock().unwrap();

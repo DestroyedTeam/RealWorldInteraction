@@ -24,6 +24,21 @@ fn yes() -> bool {
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct CaptureVisualArgs {
+    pub target: String,
+    #[serde(default = "visual_edge")]
+    #[schemars(range(min = 64, max = 2048))]
+    pub max_edge: u32,
+    #[serde(default)]
+    pub feedback: crate::VisualFeedbackMode,
+    #[serde(default, rename = "correlation_id", alias = "operation_id")]
+    pub operation_id: Option<String>,
+}
+fn visual_edge() -> u32 {
+    1024
+}
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ResolveArgs {
     pub target: String,
     pub frame: String,

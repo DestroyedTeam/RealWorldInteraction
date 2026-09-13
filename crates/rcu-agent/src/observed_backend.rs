@@ -24,6 +24,9 @@ impl Backend for Observed {
     fn observe(&mut self) -> Result<Scene> {
         self.inner.observe()
     }
+    fn capture_visual(&mut self, options: VisualOptions) -> Result<VisualCapture> {
+        self.inner.capture_visual(options)
+    }
     fn observe_region(&mut self, r: [u32; 4]) -> Result<Scene> {
         self.inner.observe_region(r)
     }

@@ -40,6 +40,8 @@ mod revalidation;
 mod uia;
 #[cfg(any(windows, test))]
 mod uia_ancestry;
+#[cfg(any(windows, test))]
+mod visual_policy;
 #[cfg(windows)]
 pub use native::*;
 

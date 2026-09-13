@@ -4,7 +4,31 @@ mod motion;
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]
-pub(crate) use native::{Gesture, start, status, stop, suspend_capture};
+pub(crate) use native::{Gesture, capture_status, start, status, stop, suspend_capture};
+
+/// Own exactly one release action, including early errors and unwind paths.
+pub(super) struct ReleaseOnce<T> {
+    value: Option<T>,
+    release: fn(T),
+}
+impl<T> ReleaseOnce<T> {
+    pub fn new(value: T, release: fn(T)) -> Self {
+        Self {
+            value: Some(value),
+            release,
+        }
+    }
+    pub fn get(&self) -> Option<&T> {
+        self.value.as_ref()
+    }
+}
+impl<T> Drop for ReleaseOnce<T> {
+    fn drop(&mut self) {
+        if let Some(value) = self.value.take() {
+            (self.release)(value);
+        }
+    }
+}
 
 pub(super) const SIZE: usize = 160;
 pub(super) const CENTER: usize = SIZE / 2;
@@ -117,5 +141,32 @@ mod tests {
         assert_eq!(gate.suspended, 1);
         gate.resume();
         assert!(!gate.capture_ready(b));
+    }
+    #[test]
+    fn capture_ticket_precedes_worker_start_and_releases_only_its_own_nested_hold() {
+        use std::sync::{Arc, Mutex};
+        fn release(g: Arc<Mutex<CaptureGate>>) {
+            g.lock().unwrap().resume();
+        }
+        let gate = Arc::new(Mutex::new(CaptureGate::default()));
+        let first = gate.lock().unwrap().suspend();
+        let outer = ReleaseOnce::new(gate.clone(), release);
+        assert!(outer.get().is_some());
+        let outcome = std::panic::catch_unwind(|| {
+            let ticket = gate.lock().unwrap().suspend();
+            let _inner = ReleaseOnce::new(gate.clone(), release);
+            let mut model = gate.lock().unwrap();
+            assert_eq!(model.suspended, 2); // A newly starting renderer must hide.
+            model.acknowledge(first, false);
+            assert!(!model.capture_ready(ticket));
+            model.acknowledge(ticket, false);
+            assert!(model.capture_ready(ticket));
+            drop(model);
+            panic!("synthetic cancelled/error capture unwind");
+        });
+        assert!(outcome.is_err());
+        assert_eq!(gate.lock().unwrap().suspended, 1);
+        drop(outer);
+        assert_eq!(gate.lock().unwrap().suspended, 0);
     }
 }

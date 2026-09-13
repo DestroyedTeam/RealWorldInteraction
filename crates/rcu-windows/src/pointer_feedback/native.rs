@@ -26,6 +26,7 @@ use windows::Win32::{
     UI::{HiDpi::GetDpiForWindow, WindowsAndMessaging::*},
 };
 
+static SHARED: OnceLock<Arc<Shared>> = OnceLock::new();
 static PRESENTER: OnceLock<std::result::Result<Arc<Shared>, String>> = OnceLock::new();
 static GESTURE_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -53,6 +54,8 @@ struct Model {
     phase: Option<Phase>,
     shutdown: bool,
     service_started: bool,
+    worker_requested: bool,
+    cleanup_uncertain: bool,
     gate: CaptureGate,
     started: bool,
     stopped: bool,
@@ -81,29 +84,45 @@ impl Shared {
     }
 }
 
+fn shared() -> &'static Arc<Shared> {
+    SHARED.get_or_init(|| Arc::new(Shared::default()))
+}
+
 fn presenter() -> Option<&'static Arc<Shared>> {
     PRESENTER
         .get_or_init(|| {
-            let shared = Arc::new(Shared::default());
+            let shared = shared().clone();
+            shared.lock().worker_requested = true;
             let worker = shared.clone();
             std::thread::Builder::new()
                 .name("rcu-pointer-feedback".into())
                 .spawn(move || {
+                    let cleanup = rcu_core::operation::CleanupAudit::begin();
                     let outcome =
                         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&worker)));
                     let mut model = worker.lock();
+                    model.cleanup_uncertain = cleanup.uncertain();
                     model.error = match outcome {
                         Ok(Ok(())) => None,
                         Ok(Err(error)) => Some(error),
                         Err(_) => Some("pointer presenter panicked".into()),
                     };
                     // run's thread-owned Window/Surface guards were destroyed before this.
-                    model.gate.visible = false;
+                    if !model.cleanup_uncertain {
+                        model.gate.visible = false;
+                    }
                     model.stopped = true;
                     model.gate.applied_revision = model.gate.revision;
                     worker.changed.notify_all();
                 })
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| {
+                    let mut model = shared.lock();
+                    model.error = Some(e.to_string());
+                    model.stopped = true;
+                    model.gate.visible = false;
+                    shared.changed.notify_all();
+                    e.to_string()
+                })?;
             Ok(shared)
         })
         .as_ref()
@@ -189,50 +208,8 @@ impl Drop for Gesture {
     }
 }
 
-/// Grounding frames exclude this presenter. Otherwise an expiring halo would
-/// change the content hash even though the target application had not changed.
-pub(crate) struct CaptureGuard(Option<Arc<Shared>>);
-pub(crate) fn suspend_capture() -> Result<CaptureGuard> {
-    let Some(Ok(shared)) = PRESENTER.get() else {
-        return Ok(CaptureGuard(None));
-    };
-    let mut model = shared.lock();
-    if model.stopped {
-        return Ok(CaptureGuard(None));
-    }
-    model.capture_suspensions += 1;
-    let ticket = model.gate.suspend();
-    let guard = CaptureGuard(Some(shared.clone()));
-    shared.changed.notify_all();
-    let deadline = Instant::now() + Duration::from_millis(250);
-    while !model.stopped && !model.gate.capture_ready(ticket) {
-        let now = Instant::now();
-        if now >= deadline {
-            drop(model);
-            drop(guard);
-            return Err(fault(
-                "pointer_feedback_capture_busy",
-                "Feedback did not acknowledge hidden state; no potentially contaminated grounding frame returned.",
-            ));
-        }
-        model = shared
-            .changed
-            .wait_timeout(model, deadline - now)
-            .unwrap_or_else(|e| e.into_inner())
-            .0;
-    }
-    drop(model);
-    Ok(guard)
-}
-impl Drop for CaptureGuard {
-    fn drop(&mut self) {
-        if let Some(shared) = &self.0 {
-            let mut model = shared.lock();
-            model.gate.resume();
-            shared.changed.notify_all();
-        }
-    }
-}
+mod capture;
+pub(crate) use capture::{snapshot as capture_status, suspend_capture};
 
 pub(crate) fn status() -> serde_json::Value {
     let mut result = serde_json::json!({
@@ -271,6 +248,7 @@ pub(crate) fn status() -> serde_json::Value {
         Some(Err(e)) => result["error"] = e.clone().into(),
         None => {}
     }
+    result["capture_state"] = capture_status();
     result
 }
 

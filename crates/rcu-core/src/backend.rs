@@ -43,6 +43,12 @@ pub trait Backend: Send {
         ))
     }
     fn observe(&mut self) -> Result<Scene>;
+    fn capture_visual(&mut self, _: crate::VisualOptions) -> Result<crate::VisualCapture> {
+        Err(fault(
+            "capability_unavailable",
+            "This backend has no independent read-only visual capture; observe is not substituted.",
+        ))
+    }
     fn observe_region(&mut self, _region: [u32; 4]) -> Result<Scene> {
         Err(fault(
             "capability_unavailable",
