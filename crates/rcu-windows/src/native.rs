@@ -370,6 +370,14 @@ impl Backend for NativeWindows {
         let native_count = windows.len();
         let displays = desktop::displays()?;
         self.check_discovery_identity()?;
+        let foreground = if self.desktop_policy.is_some() {
+            match desktop::foreground_identity() {
+                Ok(identity) => json!({"status":"known","identity":identity}),
+                Err(error) => json!({"status":"unavailable","identity":null,"error":error}),
+            }
+        } else {
+            json!({"status":"outside_legacy_discovery_scope"})
+        };
         let title = query.title_contains.as_ref().map(|s| s.to_lowercase());
         self.catalog = windows
             .into_iter()
@@ -392,7 +400,7 @@ impl Backend for NativeWindows {
             )
             .as_bytes(),
         );
-        self.catalog_header = json!({"identity":self.identity,"enumeration_complete":complete,"native_windows_enumerated":native_count,"catalog_ttl_ms":10000,"displays":displays,"selected":self.selected,"filter":query,"input_grant_scoped":self.desktop_policy.is_none() && self.input_grant.is_some(),"native_api":"EnumWindows, GetWindow(GW_OWNER), process creation FILETIME, DWM, PMv2","coverage_note":"complete is true only if this response includes every matching native window and enumeration completed; pagination/partial is not absence. Prefer pid/title filtering."});
+        self.catalog_header = json!({"identity":self.identity,"foreground":foreground,"captured_unix_ms":input::now_ms(),"enumeration_complete":complete,"native_windows_enumerated":native_count,"catalog_ttl_ms":10000,"displays":displays,"selected":self.selected,"filter":query,"input_grant_scoped":self.desktop_policy.is_none() && self.input_grant.is_some(),"native_api":"EnumWindows, GetWindow(GW_OWNER), process creation FILETIME, DWM, PMv2","coverage_note":"complete is true only if this response includes every matching native window and enumeration completed; pagination/partial is not absence. Prefer pid/title filtering."});
         crate::catalog_page(
             self.catalog_header.clone(),
             &self.catalog,
@@ -405,10 +413,15 @@ impl Backend for NativeWindows {
         self.bind_selected(selection)
     }
     fn observe(&mut self) -> Result<Scene> {
-        self.scene(true, None, crate::revalidation::Scope::FullTree)
+        self.scene(true, None, crate::revalidation::Scope::FullTree, None)
     }
     fn observe_region(&mut self, region: [u32; 4]) -> Result<Scene> {
-        self.scene(true, Some(region), crate::revalidation::Scope::FullTree)
+        self.scene(
+            true,
+            Some(region),
+            crate::revalidation::Scope::FullTree,
+            None,
+        )
     }
     fn revalidate(&mut self, r: &Resolved) -> Result<Scene> {
         let scope = crate::revalidation::Scope::for_reference(
@@ -416,7 +429,7 @@ impl Backend for NativeWindows {
             r.scope.element.is_some(),
         );
         let started = Instant::now();
-        let result = self.scene(r.scope.element.is_none(), None, scope);
+        let result = self.scene(r.scope.element.is_none(), None, scope, Some(r));
         self.revalidation_timings
             .record(scope, started.elapsed(), result.is_ok());
         result

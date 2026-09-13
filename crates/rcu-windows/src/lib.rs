@@ -11,6 +11,8 @@ mod foreground;
 pub mod recovery;
 #[cfg(any(windows, test))]
 mod uia_focus;
+#[cfg(any(windows, test))]
+mod value_guard;
 pub use contract::*;
 #[cfg(any(windows, test))]
 mod application;

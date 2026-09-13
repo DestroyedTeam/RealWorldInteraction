@@ -68,6 +68,7 @@ impl<'a> Reader<'a> {
         let focus = self.projection.focused(rid.as_ref());
         if self.projection.publish(id.as_deref()) {
             let mut value_revision = None;
+            let mut classification_error = None;
             if matches!(control, Some(50004 | 50030)) {
                 // Read only visible Edit/Document controls; no password or unknown
                 // classification is silently converted to an empty document proof.
@@ -81,7 +82,20 @@ impl<'a> Reader<'a> {
                                 value_revision = Some(digest(value.as_bytes()));
                                 self.documents.push(id.as_deref().unwrap(), &value);
                             }
-                            Err(error) => self.documents.reject(&error.code),
+                            Err(error)
+                                if matches!(
+                                    error.code.as_str(),
+                                    "operation_cancelled" | "operation_deadline"
+                                ) =>
+                            {
+                                return Err(error);
+                            }
+                            Err(error) => {
+                                if crate::value_guard::blocks_input(&error.code) {
+                                    classification_error = Some(error.code.clone());
+                                }
+                                self.documents.reject(&error.code);
+                            }
                         }
                     }
                 }
@@ -98,13 +112,17 @@ impl<'a> Reader<'a> {
                     Some(_) => client.hit_matches(e, point, start)?.map(|hit| !hit),
                     None => None,
                 };
-                let visible = match (offscreen, enabled, pass, ep) {
-                    // Control-view descendants can legitimately be hosted by another
-                    // process (ApplicationFrameHost/UWP). Keep provider PID distinct
-                    // from window PID; input/value use re-proves native root ancestry.
-                    (Some(false), Some(true), Some(false), Some(p)) if p > 0 => Some(true),
-                    (Some(true), _, _, _) | (_, Some(false), _, _) => Some(false),
-                    _ => None,
+                let visible = if classification_error.is_some() {
+                    None
+                } else {
+                    match (offscreen, enabled, pass, ep) {
+                        // Control-view descendants can legitimately be hosted by another
+                        // process (ApplicationFrameHost/UWP). Keep provider PID distinct
+                        // from window PID; input/value use re-proves native root ancestry.
+                        (Some(false), Some(true), Some(false), Some(p)) if p > 0 => Some(true),
+                        (Some(true), _, _, _) | (_, Some(false), _, _) => Some(false),
+                        _ => None,
+                    }
                 };
                 let revision = digest(
                     serde_json::to_string(&(
@@ -132,7 +150,7 @@ impl<'a> Reader<'a> {
                     state_revision: Some(revision),
                 });
             }
-            self.details.push(serde_json::json!({"element_id":id,"value_revision":value_revision,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded control-view tree plus prioritized exact focus proven under HWND root; provider PID need not equal HWND owner PID; re-prove ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"cached_keyboard_focus":cached_focus,"focus_source":"GetFocusedElementBuildCache + runtime ID + native root ancestry; cached flags are diagnostic only","depth":depth,"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));
+            self.details.push(serde_json::json!({"element_id":id,"value_revision":value_revision,"classification_error":classification_error,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded control-view tree plus prioritized exact focus proven under HWND root; provider PID need not equal HWND owner PID; re-prove ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"cached_keyboard_focus":cached_focus,"focus_source":"GetFocusedElementBuildCache + runtime ID + native root ancestry; cached flags are diagnostic only","depth":depth,"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));
         }
         Ok(())
     }

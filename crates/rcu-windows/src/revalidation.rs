@@ -6,13 +6,16 @@ use std::time::Duration;
 pub(crate) enum Scope {
     FullTree,
     RootIdentity,
+    TargetElement,
 }
 impl Scope {
     pub fn for_reference(native_element_policy: bool, has_element: bool) -> Self {
-        if native_element_policy && !has_element {
-            Self::RootIdentity
-        } else {
+        if !native_element_policy {
             Self::FullTree
+        } else if has_element {
+            Self::TargetElement
+        } else {
+            Self::RootIdentity
         }
     }
 }
@@ -21,6 +24,7 @@ impl Scope {
 pub(crate) struct Timings {
     pub full_tree: Measurement,
     pub root_identity: Measurement,
+    pub target_element: Measurement,
 }
 #[derive(Default, serde::Serialize)]
 pub(crate) struct Measurement {
@@ -35,6 +39,7 @@ impl Timings {
         let m = match scope {
             Scope::FullTree => &mut self.full_tree,
             Scope::RootIdentity => &mut self.root_identity,
+            Scope::TargetElement => &mut self.target_element,
         };
         m.calls += 1;
         m.failures += u64::from(!success);
@@ -57,6 +62,9 @@ mod tests {
                 );
             }
         }
+        assert_eq!(Scope::for_reference(true, true), Scope::TargetElement);
+        assert_eq!(Scope::for_reference(false, true), Scope::FullTree);
+        assert_eq!(Scope::for_reference(false, false), Scope::FullTree);
     }
     #[test]
     fn timing_preserves_failures_and_separates_scopes() {
@@ -64,12 +72,15 @@ mod tests {
         t.record(Scope::RootIdentity, Duration::from_millis(2), true);
         t.record(Scope::RootIdentity, Duration::from_millis(5), false);
         t.record(Scope::FullTree, Duration::from_millis(1000), true);
+        t.record(Scope::TargetElement, Duration::from_millis(7), true);
         assert_eq!(t.root_identity.calls, 2);
         assert_eq!(t.root_identity.failures, 1);
         assert_eq!(t.root_identity.total_ms, 7.);
         assert_eq!(t.root_identity.max_ms, 5.);
         assert_eq!(t.full_tree.calls, 1);
         assert_eq!(t.full_tree.total_ms, 1000.);
+        assert_eq!(t.target_element.calls, 1);
+        assert_eq!(t.target_element.total_ms, 7.);
     }
 
     #[test]
@@ -142,5 +153,88 @@ mod tests {
         let mut changed = scene;
         changed.binding.as_mut().unwrap().scope.pid = 8;
         assert!(!grounding_matches(&binding, &changed, &target));
+    }
+
+    #[test]
+    fn exact_target_still_binds_revision_identity_point_visibility_and_native_context() {
+        use rcu_core::{Binding, Element, Identity, Resolved, Scene, Scope, grounding_matches};
+        let element = Element {
+            id: "original".into(),
+            name: "same label".into(),
+            point: [10., 20.],
+            visible: Some(true),
+            occluded: Some(false),
+            state_revision: Some("known-state".into()),
+        };
+        let scope = Scope {
+            window: "window".into(),
+            pid: 9,
+            element: None,
+        };
+        let binding = Binding {
+            scope: scope.clone(),
+            focus_window: "owner".into(),
+            layout: "layout".into(),
+            content: "not-compared-for-semantic".into(),
+            native_epoch: "window-root-owner-epochs".into(),
+            mutation_context: None,
+        };
+        let target = Resolved {
+            reference: "r".into(),
+            target: "t".into(),
+            frame: "f".into(),
+            point: element.point,
+            scope: Scope {
+                element: Some(element.id.clone()),
+                ..scope
+            },
+            element_revision: Some(element.revision()),
+        };
+        let scene = Scene {
+            identity: Identity {
+                host: "host".into(),
+                guest: None,
+                session: "session".into(),
+                seat: "seat".into(),
+                desktop: "desktop".into(),
+            },
+            assurance: "fixture".into(),
+            binding: Some(binding.clone()),
+            mutation_ready: true,
+            blocked: Some(false),
+            image_size: [100, 100],
+            pixel_to_desktop: None,
+            elements: vec![element],
+            captured_unix_ms: 1,
+            atomicity: "fixture".into(),
+            image_normalization: "fixture".into(),
+            png: vec![],
+        };
+        assert!(grounding_matches(&binding, &scene, &target));
+        for field in [
+            "id",
+            "name",
+            "point",
+            "visible",
+            "occluded",
+            "state_revision",
+            "layout",
+            "native_epoch",
+            "focus_window",
+        ] {
+            let mut changed = serde_json::to_value(&scene).unwrap();
+            match field {
+                "visible" | "occluded" => changed["elements"][0][field] = serde_json::Value::Null,
+                "point" => changed["elements"][0][field] = serde_json::json!([11., 20.]),
+                "layout" | "native_epoch" | "focus_window" => {
+                    changed["binding"][field] = "changed".into()
+                }
+                _ => changed["elements"][0][field] = "changed".into(),
+            }
+            assert!(
+                !grounding_matches(&binding, &serde_json::from_value(changed).unwrap(), &target),
+                "{field}"
+            );
+        }
     }
 }

@@ -2,6 +2,7 @@
 mod focus;
 mod input;
 mod observation;
+mod target;
 mod value;
 use crate::desktop::{api, hit_window, rect, window_id};
 pub(crate) use input::InputScope;
@@ -14,6 +15,7 @@ use std::{
     mem::size_of,
     time::{Duration, Instant},
 };
+pub(crate) use target::read as revalidate_target;
 use value::bounded_document_value;
 use windows::{
     Win32::{

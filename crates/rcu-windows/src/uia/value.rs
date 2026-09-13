@@ -2,6 +2,10 @@
 use super::*;
 pub(super) fn bounded_document_value(e: &IUIAutomationElement) -> Result<String> {
     let _call = native_call("uia_document_precondition")?;
+    crate::value_guard::read(|| classify(e), || read_native_value(e))
+}
+
+fn read_native_value(e: &IUIAutomationElement) -> Result<String> {
     // TextPattern has a request-time bound; ValuePattern has only a post-read
     // bound. Never claim a hard allocator/native-provider preemption guarantee.
     let actual = if let Some(text) = pattern::<IUIAutomationTextPattern>(e, UIA_TextPatternId)? {
@@ -28,5 +32,19 @@ pub(super) fn bounded_document_value(e: &IUIAutomationElement) -> Result<String>
             "uia_document_non_unicode",
             "Document text is not valid UTF-16.",
         )
+    })
+}
+
+fn classify(e: &IUIAutomationElement) -> Result<crate::value_guard::Class> {
+    checkpoint("uia_value_current_classification")?;
+    Ok(crate::value_guard::Class {
+        control: api("uia_control_type_unknown", unsafe {
+            e.CurrentControlType()
+        })?
+        .0,
+        provider: api("uia_provider_unknown", unsafe { e.CurrentProcessId() })?,
+        runtime: runtime_id(e)?,
+        password: api("uia_password_unknown", unsafe { e.CurrentIsPassword() })?.as_bool(),
+        offscreen: api("uia_visibility_unknown", unsafe { e.CurrentIsOffscreen() })?.as_bool(),
     })
 }

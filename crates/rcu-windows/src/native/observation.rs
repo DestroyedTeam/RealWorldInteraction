@@ -7,6 +7,7 @@ impl NativeWindows {
         with_capture: bool,
         region: Option<[u32; 4]>,
         semantic_scope: crate::revalidation::Scope,
+        target: Option<&Resolved>,
     ) -> Result<Scene> {
         self.check_identity()?;
         let _dpi = DpiScope::enter()?;
@@ -44,6 +45,17 @@ impl NativeWindows {
                 uia::walk(hwnd(&before.window)?, before.pid, epoch)
             }
             crate::revalidation::Scope::RootIdentity => uia::root_identity(hwnd(&before.window)?),
+            crate::revalidation::Scope::TargetElement => uia::revalidate_target(
+                hwnd(&before.window)?,
+                before.pid,
+                epoch,
+                target.ok_or_else(|| {
+                    fault(
+                        "exact_element_required",
+                        "Targeted scene requires the original reference.",
+                    )
+                })?,
+            ),
         };
         let (mut elements, modal, uia_details) = match semantic_read {
             Ok(walk) => {
