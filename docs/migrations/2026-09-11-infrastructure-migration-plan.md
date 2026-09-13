@@ -1,5 +1,8 @@
 # RCU 通用基础设施：小步迁移与真实验收计划
 
+> 以下保留 2026-09-11 提案时的基线及待执行措辞，不是当前完成状态或禁止继续
+> 实施的指令。架构随后已获用户批准；当前进度见 `../product/implementation-status.md`。
+
 日期：2026-09-11。状态：**待评审的实施计划，本轮没有执行迁移或 live 验收**。
 
 依据：[架构提案](</Users/vincentadamnemessis/AI Projects/Real Computer Use/docs/adr/0002-headless-control-infrastructure-review.md>)、[CrossMacro 源码对照](</Users/vincentadamnemessis/AI Projects/Real Computer Use/docs/architecture-crossmacro-comparison-2026-09-11.md>)。当前根目录是唯一可编辑产品源码，不再复制 `work/*/source` 开发分支。

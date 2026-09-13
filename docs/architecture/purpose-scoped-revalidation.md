@@ -6,7 +6,7 @@ Paint. Discovery, authorization and device services remain task-independent.
 | Read purpose | Current native work |
 |---|---|
 | Public observation / ROI observation | Existing full bounded UIA walk and native capture |
-| Semantic reference revalidation | Existing full UIA walk; exact element revision/point/visibility retained |
+| Semantic reference with native-element desktop policy | Fresh exact runtime ID/root ancestry and the shared node reader; unrelated descendants are not walked |
 | Pixel reference with native-element desktop policy | Fresh UIA root identity, full native image, pre/post window/session/layout checks |
 | Legacy whole-document policy | Full walk and document preconditions, unchanged |
 
@@ -21,7 +21,7 @@ state. No permissions, deduplication, cancellation or late-drag limits changed.
 A root-only read reports incomplete descendant coverage and no document proof.
 It is internal: it does not mint a public semantic frame or make unknown
 elements actionable. Failed root reads remain unavailable, not empty success.
-`revalidation_timings` separates full-tree/root-only counts, failures and elapsed
+`revalidation_timings` separates full-tree/root-only/target-element counts, failures and elapsed
 time. These measurements include backend scene creation, not transport/model time.
 
 The JavaScript helper separately rejects known blocked/fenced or unknown
@@ -30,6 +30,15 @@ This local check can only reject; it is not authority to bypass the server.
 `RcuInputNotReadyError.data.source=client_precondition` distinguishes it from a
 native receipt. Prior action receipts and normal release behavior remain intact.
 
-Still pending: a public image-only visual channel (including feedback), targeted
-semantic revalidation, authoritative focused-element selection, and bounded
-multi-action orchestration. Do not present this optimization as those features.
+Target-element reads first try the authoritative focused element only when its
+runtime ID equals the original reference. Otherwise they read at the original
+point and prove bounded native ancestry, never select by a similar name. The
+original revision algorithm, both existing revalidation boundaries and final
+native input checks remain. Text requires its known value revision; Edit/Document
+classification is checked before and after value access. Unknown/changed safety
+classification blocks that element, whereas an unavailable value pattern does
+not become a new universal prerequisite for non-text keyboard shortcuts.
+
+Authoritative focused-element selection is also implemented. Still pending: a
+public image-only visual channel (including feedback) and bounded multi-action
+orchestration. Do not present this optimization as those features.

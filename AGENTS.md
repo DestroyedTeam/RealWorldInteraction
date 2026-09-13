@@ -13,6 +13,14 @@
 
 ## Approved multi-endpoint architecture
 
+- User clarification 2026-09-13: supplemental bug reports reprioritize the full
+  implementation plan; they do not replace it or make one fix/commit a stopping
+  condition. Continue through the remaining plan. Notify only at meaningful
+  milestones or when user intervention is necessary. Acceptance deliverables
+  use concise Chinese explanations and chronological actual screenshots, with
+  each step's result/problem explicit. Track current work in
+  `docs/product/implementation-status.md`; historical frozen runbooks are not
+  current slot limits or permission rules.
 - User clarification 2026-09-13: the authorized Windows desktop includes OS
   dialogs, Save/Open, Explorer and other applications, not a Paint-only app list.
   Application allowlisting is optional future policy, not a current task gate.
