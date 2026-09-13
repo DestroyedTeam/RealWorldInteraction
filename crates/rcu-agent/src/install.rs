@@ -1,4 +1,40 @@
 //! Windows per-user installation. Bundle/config describe a service, never a task.
+/// One-shot configuration diagnosis. Creates only the explicitly named report
+/// under an already validated private directory, never a service or state root.
+#[cfg(windows)]
+pub fn check_config(path: &std::path::Path, report: &std::path::Path) -> std::io::Result<()> {
+    use rcu_windows::agent_binding::{PrivateDirectory, read_private_file_no_reparse};
+    use std::io;
+    let directory = PrivateDirectory::open(
+        report
+            .parent()
+            .ok_or_else(|| io::Error::other("report_parent_required"))?,
+    )
+    .map_err(|e| io::Error::other(e.to_string()))?;
+    let name = report
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| io::Error::other("literal_report_name_required"))?;
+    let result = (|| -> io::Result<()> {
+        let bytes = read_private_file_no_reparse(path, 65536)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        let config: crate::config::Config = serde_json::from_slice(&bytes)?;
+        config.validate()
+    })();
+    let facts = serde_json::json!({
+        "check":"private_config_read_and_schema_only",
+        "configuration_valid":result.is_ok(),
+        "error":result.as_ref().err().map(ToString::to_string),
+        "checking_process":rcu_windows::agent_binding::current_process_status().ok(),
+        "service_started":false,"state_directory_touched":false,
+        "tls_loaded":false,"gui_validated":false,"input_sent":false
+    });
+    directory
+        .create_new(name, &serde_json::to_vec(&facts)?, 65536)
+        .map_err(|e| io::Error::other(e.to_string()))?;
+    result
+}
+
 #[cfg(windows)]
 pub fn import(path: &std::path::Path) -> std::io::Result<serde_json::Value> {
     use base64::{Engine as _, engine::general_purpose::STANDARD};

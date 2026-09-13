@@ -14,6 +14,10 @@ fn private_read(path: &Path, cap: usize) -> io::Result<Vec<u8>> {
 async fn run() -> io::Result<()> {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
     #[cfg(windows)]
+    if args.len() == 3 && args[0] == "--check-config" {
+        return rcu_agent::install::check_config(Path::new(&args[1]), Path::new(&args[2]));
+    }
+    #[cfg(windows)]
     if args.len() == 3 && args[0] == "--describe-process" {
         let pid = args[1]
             .to_str()
@@ -42,7 +46,7 @@ async fn run() -> io::Result<()> {
     }
     if args.len() != 2 || (args[0] != "--config" && args[0] != "--repair-namespace") {
         return Err(io::Error::other(
-            "usage: rcu-agent --config ABS_PRIVATE_SERVICE_CONFIG | --repair-namespace ABS_PRIVATE_REPAIR_SPEC; Windows read-only diagnostics: --describe-process PID CREATION_FILETIME",
+            "usage: rcu-agent --config ABS_PRIVATE_SERVICE_CONFIG | --repair-namespace ABS_PRIVATE_REPAIR_SPEC; Windows diagnostics: --describe-process PID CREATION_FILETIME | --check-config ABS_PRIVATE_CONFIG ABS_CREATE_ONLY_PRIVATE_REPORT",
         ));
     }
     let repair: Option<rcu_agent::runtime::NamespaceRepair> = if args[0] == "--repair-namespace" {
