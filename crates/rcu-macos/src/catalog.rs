@@ -1,0 +1,204 @@
+//! Bounded, context-local on-screen catalog. Fingerprints are not window birth IDs.
+#[cfg(test)]
+use crate::geometry::Rect;
+use crate::native::Window;
+use rcu_core::{DiscoveryQuery, Identity, Result, WindowRelation, WindowSelection, digest, fault};
+use serde::Serialize;
+use serde_json::{Value, json};
+use std::time::{Duration, Instant};
+
+const TTL: Duration = Duration::from_secs(10);
+const PAGE_ROWS: usize = 8;
+const PAGE_BYTES: usize = 12 * 1024;
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct WindowRecord {
+    pub window: String,
+    pub pid: u32,
+    pub process_start: String,
+    pub native_epoch: String,
+    pub bounds: [f64; 4],
+    pub title: Option<String>,
+    pub title_truncated: bool,
+}
+impl WindowRecord {
+    pub(crate) fn from_native(identity: &Identity, w: &Window, process: String) -> Result<Self> {
+        if !w.rect.valid() || !w.alpha.is_finite() {
+            return Err(fault(
+                "window_geometry_unknown",
+                "Window geometry cannot be safely catalogued.",
+            ));
+        }
+        let native_epoch = digest(
+            format!(
+                "{}:{process}:{}:{:?}:{}:{:?}",
+                identity.key(),
+                w.id,
+                w.rect,
+                w.alpha,
+                w.title
+            )
+            .as_bytes(),
+        );
+        let title = w.title.as_ref().map(|title| {
+            let mut end = title.len().min(1024);
+            while !title.is_char_boundary(end) {
+                end -= 1;
+            }
+            title[..end].to_owned()
+        });
+        Ok(Self {
+            window: format!("cgwindow:{}", w.id),
+            pid: w.pid,
+            process_start: process,
+            native_epoch,
+            bounds: [w.rect.x, w.rect.y, w.rect.w, w.rect.h],
+            title_truncated: w.title.as_ref().is_some_and(|t| t.len() > 1024),
+            title,
+        })
+    }
+    pub(crate) fn require_same(&self, current: &Self) -> Result<()> {
+        if self != current {
+            return Err(fault(
+                "window_epoch_changed",
+                "Observed CGWindowID/PID/process/bounds/title fingerprint changed; discover and select explicitly.",
+            ));
+        }
+        Ok(())
+    }
+    #[cfg(test)]
+    pub(crate) fn rect(&self) -> Rect {
+        let [x, y, w, h] = self.bounds;
+        Rect { x, y, w, h }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct Catalog {
+    rows: Vec<WindowRecord>,
+    at: Option<Instant>,
+    id: String,
+    header: Value,
+}
+impl Catalog {
+    pub(crate) fn replace(&mut self, rows: Vec<WindowRecord>, header: Value) -> Result<Value> {
+        if rows.len() > 2048
+            || rows
+                .iter()
+                .enumerate()
+                .any(|(i, w)| rows[..i].iter().any(|p| p.window == w.window))
+        {
+            return Err(fault(
+                "catalog_identity_ambiguous",
+                "Native catalog exceeds its bound or repeats a CGWindowID; no binding is accepted.",
+            ));
+        }
+        self.id =
+            rcu_core::digest(format!("{:?}:{}", std::time::SystemTime::now(), header).as_bytes());
+        self.at = Some(Instant::now());
+        self.rows = rows;
+        self.header = header;
+        self.page(None)
+    }
+    fn require_fresh(&self) -> Result<()> {
+        if self.at.is_none_or(|at| at.elapsed() > TTL) {
+            return Err(fault(
+                "catalog_expired",
+                "Discover again before selecting; cached window rows are not current facts.",
+            ));
+        }
+        Ok(())
+    }
+    pub(crate) fn page(&self, cursor: Option<&str>) -> Result<Value> {
+        self.require_fresh()?;
+        let offset = if let Some(cursor) = cursor {
+            let (id, offset) = cursor
+                .split_once('/')
+                .ok_or_else(|| fault("invalid_catalog_cursor", "Use the returned next_cursor."))?;
+            if id != self.id {
+                return Err(fault(
+                    "catalog_expired",
+                    "The cursor belongs to a different discovery/context.",
+                ));
+            }
+            offset
+                .parse::<usize>()
+                .map_err(|_| fault("invalid_catalog_cursor", "Use the returned next_cursor."))?
+        } else {
+            0
+        };
+        if offset > self.rows.len() || (offset == self.rows.len() && offset != 0) {
+            return Err(fault(
+                "invalid_catalog_cursor",
+                "Cursor is outside this bounded catalog.",
+            ));
+        }
+        let mut count = (self.rows.len() - offset).min(PAGE_ROWS);
+        loop {
+            let mut page = self.header.clone();
+            let end = offset + count;
+            page["windows"] = json!(&self.rows[offset..end]);
+            page["catalog_id"] = json!(self.id);
+            page["next_cursor"] = if end < self.rows.len() {
+                json!(format!("{}/{end}", self.id))
+            } else {
+                Value::Null
+            };
+            page["matching_windows"] = json!(self.rows.len());
+            page["complete"] = json!(
+                offset == 0 && end == self.rows.len() && page["enumeration_complete"] == true
+            );
+            page["catalog_ttl_ms"] = json!(TTL.as_millis() as u64);
+            if serde_json::to_vec(&page)
+                .map_err(|_| fault("catalog_encoding", "Invalid native catalog metadata."))?
+                .len()
+                <= PAGE_BYTES
+            {
+                return Ok(page);
+            }
+            if count <= 1 {
+                return Err(fault(
+                    "catalog_page_budget",
+                    "One catalog record/header exceeds the public 12 KiB budget.",
+                ));
+            }
+            count -= 1;
+        }
+    }
+    pub(crate) fn select(&self, selection: &WindowSelection) -> Result<WindowRecord> {
+        self.require_fresh()?;
+        if !matches!(selection.relation, WindowRelation::Initial) {
+            return Err(fault(
+                "capability_unavailable",
+                "Native macOS owner-chain transitions are not implemented. Use a fresh explicit initial selection under the same authorized desktop; this does not activate it.",
+            ));
+        }
+        self.rows
+            .iter()
+            .find(|w| {
+                w.window == selection.window
+                    && w.pid == selection.pid
+                    && w.native_epoch == selection.native_epoch
+            })
+            .cloned()
+            .ok_or_else(|| {
+                fault(
+                    "window_not_discovered",
+                    "Select an exact fresh catalog entry, never a title/PID substitute.",
+                )
+            })
+    }
+}
+
+pub(crate) fn matches_query(window: &Window, query: &DiscoveryQuery) -> bool {
+    query.pid.is_none_or(|pid| pid == window.pid)
+        && query.title_contains.as_ref().is_none_or(|title| {
+            window
+                .title
+                .as_ref()
+                .is_some_and(|v| v.to_lowercase().contains(&title.to_lowercase()))
+        })
+}
+
+#[cfg(test)]
+mod tests;

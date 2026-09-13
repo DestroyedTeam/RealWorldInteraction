@@ -9,7 +9,11 @@ pub(super) fn source() -> Result<CGEventSource> {
         )
     })
 }
-pub(super) fn key_event(key: u16, flags: CGEventFlags, text: Option<&[u16]>) -> Result<()> {
+pub(super) fn key_events(
+    key: u16,
+    flags: CGEventFlags,
+    text: Option<&[u16]>,
+) -> Result<(CGEvent, CGEvent)> {
     let down = CGEvent::new_keyboard_event(source()?, key, true)
         .map_err(|_| fault("input_allocation_failed", "Key event was not allocated."))?;
     let up = CGEvent::new_keyboard_event(source()?, key, false)
@@ -20,9 +24,7 @@ pub(super) fn key_event(key: u16, flags: CGEventFlags, text: Option<&[u16]>) -> 
             event.set_string_from_utf16_unchecked(text);
         }
     }
-    down.post(CGEventTapLocation::HID);
-    up.post(CGEventTapLocation::HID);
-    Ok(())
+    Ok((down, up))
 }
 pub(super) fn utf16_chunks(text: &str, limit: usize) -> Vec<Vec<u16>> {
     let mut out = Vec::new();

@@ -1,5 +1,10 @@
-//! Native input execution; split from observation without changing behavior.
+//! First-frame grounding and invocation-local native continuation guards.
 use super::*;
+mod anchor_native;
+mod continuation;
+mod dispatch;
+use anchor_native::AxObject;
+use continuation::{Facts, Kind, Sequence};
 
 impl NativeMac {
     pub(super) fn dispatch_input(
@@ -21,28 +26,16 @@ impl NativeMac {
                 "Reference belongs to another native target.",
             ));
         }
-        let now = self.revalidate(target)?;
-        if !grounding_matches(expected, &now, target)
-            || !now.mutation_ready
-            || now.blocked != Some(false)
-        {
+        if matches!(intent, Intent::Drag(_)) {
             return Err(fault(
-                "stale_reference",
-                "Native recheck failed immediately before dispatch; no input sent.",
+                "capability_unavailable",
+                "Native drag is not implemented on this macOS backend; no input dispatched.",
             ));
         }
-        self.focus_and_hit(
-            target,
-            matches!(intent, Intent::Text),
-            matches!(intent, Intent::Text | Intent::KeyChord),
-        )?;
+        let mut sequence = Sequence::new(intent);
+        let counter = self.dispatches.clone();
         match intent {
-            Intent::Drag(_) => {
-                return Err(fault(
-                    "capability_unavailable",
-                    "Native drag is not implemented on this macOS backend; no input dispatched.",
-                ));
-            }
+            Intent::Drag(_) => unreachable!("rejected before native reads"),
             Intent::Click | Intent::DoubleClick | Intent::ContextMenu => {
                 let right = matches!(intent, Intent::ContextMenu);
                 let button = if right {
@@ -65,25 +58,37 @@ impl NativeMac {
                 } else {
                     1
                 } {
-                    self.focus_and_hit(target, false, false)?;
                     let press = CGEvent::new_mouse_event(
                         source()?,
                         down,
                         CGPoint::new(target.point[0], target.point[1]),
                         button,
                     )
-                    .map_err(|_| fault("input_allocation_failed", "No event allocated."))?;
+                    .map_err(|_| {
+                        fault("input_allocation_failed", "No mouse down event allocated.")
+                    })?;
                     let release = CGEvent::new_mouse_event(
                         source()?,
                         up,
                         CGPoint::new(target.point[0], target.point[1]),
                         button,
                     )
-                    .map_err(|_| fault("input_allocation_failed", "No event allocated."))?;
+                    .map_err(|_| {
+                        fault(
+                            "input_allocation_failed",
+                            "No mouse release event allocated.",
+                        )
+                    })?;
                     press.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, n);
                     release.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, n);
-                    press.post(CGEventTapLocation::HID);
-                    release.post(CGEventTapLocation::HID);
+                    sequence.pair(
+                        expected,
+                        target,
+                        &counter,
+                        (press, release),
+                        |first| self.read_input_batch(first, expected, target, intent),
+                        |e| e.post(CGEventTapLocation::HID),
+                    )?;
                 }
             }
             Intent::Text => {
@@ -91,15 +96,30 @@ impl NativeMac {
                     fault("value_required", "Text intent requires Unicode value.")
                 })?;
                 for chunk in utf16_chunks(text, 20) {
-                    self.focus_and_hit(target, true, true)?;
-                    key_event(0, CGEventFlags::empty(), Some(&chunk))?;
+                    let (down, up) = key_events(0, CGEventFlags::empty(), Some(&chunk))?;
+                    sequence.pair(
+                        expected,
+                        target,
+                        &counter,
+                        (down, up),
+                        |first| self.read_input_batch(first, expected, target, intent),
+                        |e| e.post(CGEventTapLocation::HID),
+                    )?;
                 }
             }
             Intent::KeyChord => {
                 let (key, flags) = parse_chord(value.ok_or_else(|| {
                     fault("value_required", "Key chord requires a supported chord.")
                 })?)?;
-                key_event(key, flags, None)?;
+                let (down, up) = key_events(key, flags, None)?;
+                sequence.pair(
+                    expected,
+                    target,
+                    &counter,
+                    (down, up),
+                    |first| self.read_input_batch(first, expected, target, intent),
+                    |e| e.post(CGEventTapLocation::HID),
+                )?;
             }
             Intent::Scroll => {
                 let distance: i32 = value
@@ -128,10 +148,48 @@ impl NativeMac {
                         CGPoint::new(target.point[0], target.point[1]),
                     );
                 }
-                event.post(CGEventTapLocation::HID);
+                let facts = self.read_input_batch(true, expected, target, intent)?;
+                facts.validate(expected, target, Kind::Scroll)?;
+                dispatch::single(&counter, || event.post(CGEventTapLocation::HID))?;
             }
         }
         // CGEventPost returns void: native dispatch is not an OS effect acknowledgement.
         Ok(None)
     }
+    fn read_input_batch(
+        &mut self,
+        first: bool,
+        expected: &Binding,
+        target: &Resolved,
+        intent: &Intent,
+    ) -> Result<Facts<AxObject>> {
+        operation::checkpoint("macos_before_input_batch")?;
+        if first {
+            let now = self.revalidate(target)?;
+            validate_batch_scene(&self.identity, expected, target, &now)?;
+        }
+        self.input_anchor_facts(target, intent)
+    }
 }
+
+fn validate_batch_scene(
+    identity: &Identity,
+    expected: &Binding,
+    target: &Resolved,
+    now: &Scene,
+) -> Result<()> {
+    if &now.identity != identity
+        || !grounding_matches(expected, now, target)
+        || !now.mutation_ready
+        || now.blocked != Some(false)
+    {
+        return Err(fault(
+            "stale_reference",
+            "Native identity/focus/layout/element/visibility recheck failed immediately before dispatch; no input sent.",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests;

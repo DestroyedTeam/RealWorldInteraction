@@ -1,11 +1,15 @@
 //! Platform construction depends on policy and the current OS context, never a task.
-#[cfg(any(windows, feature = "fixture"))]
+#[cfg(any(windows, target_os = "macos", feature = "fixture"))]
 use crate::config::PlatformPolicy;
 use crate::config::{Config, Principal};
 use rcu_core::{Backend, Result, fault};
 
 /// Independent of a selected window and backend readiness; does not request rights.
 pub fn process_status(config: &Config) -> serde_json::Value {
+    #[cfg(target_os = "macos")]
+    if let PlatformPolicy::MacOs { user_uid } = config.platform {
+        return rcu_macos::process_status(user_uid);
+    }
     #[cfg(windows)]
     if matches!(config.platform, PlatformPolicy::Windows { .. }) {
         return match rcu_windows::agent_binding::current_process_status() {
@@ -20,6 +24,11 @@ pub fn process_status(config: &Config) -> serde_json::Value {
 }
 pub fn backend(config: &Config, policy: &Principal, context: &str) -> Result<Box<dyn Backend>> {
     match &config.platform {
+        #[cfg(target_os = "macos")]
+        PlatformPolicy::MacOs { user_uid } => Ok(Box::new(rcu_macos::NativeMacDesktop::new(
+            *user_uid,
+            policy.input,
+        )?)),
         #[cfg(windows)]
         PlatformPolicy::Windows {
             user_sid,
@@ -55,6 +64,8 @@ pub fn backend(config: &Config, policy: &Principal, context: &str) -> Result<Box
 
 pub fn input_resources(config: &Config) -> Result<serde_json::Value> {
     match &config.platform {
+        #[cfg(target_os = "macos")]
+        PlatformPolicy::MacOs { user_uid } => rcu_macos::input_resources(*user_uid),
         #[cfg(windows)]
         PlatformPolicy::Windows { .. } => rcu_windows::recovery::input_resources(),
         #[cfg(feature = "fixture")]

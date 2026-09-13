@@ -4,6 +4,11 @@ use core_graphics::geometry::{CGPoint, CGRect, CGSize};
 use rcu_core::{Result, fault};
 use std::ffi::c_void;
 pub type Ref = *const c_void;
+#[link(name = "Security", kind = "framework")]
+unsafe extern "C" {
+    // AuthSession.h: callerSecuritySession = UINT32_MAX; no session creation.
+    pub fn SessionGetInfo(session: u32, actual: *mut u32, attributes: *mut u32) -> i32;
+}
 #[link(name = "ApplicationServices", kind = "framework")]
 unsafe extern "C" {
     pub fn AXIsProcessTrusted() -> u8;
@@ -12,6 +17,7 @@ unsafe extern "C" {
     pub fn AXUIElementCopyElementAtPosition(element: Ref, x: f32, y: f32, value: *mut Ref) -> i32;
     pub fn AXUIElementGetPid(element: Ref, pid: *mut i32) -> i32;
     pub fn AXUIElementSetMessagingTimeout(element: Ref, timeout: f32) -> i32;
+    pub fn AXUIElementIsAttributeSettable(element: Ref, name: Ref, settable: *mut u8) -> i32;
     pub fn AXValueGetType(value: Ref) -> u32;
     pub fn AXValueGetValue(value: Ref, kind: u32, value_out: *mut c_void) -> u8;
     pub fn AXValueGetTypeID() -> usize;
@@ -23,6 +29,10 @@ unsafe extern "C" {
     pub fn CGRectMakeWithDictionaryRepresentation(dict: Ref, rect: *mut CGRect) -> u8;
     pub fn CGPreflightScreenCaptureAccess() -> bool;
     pub fn CGPreflightPostEventAccess() -> bool;
+    pub fn CGPreflightListenEventAccess() -> bool;
+    pub fn CGEventSourceKeyState(state: i32, key: u16) -> bool;
+    pub fn CGEventSourceButtonState(state: i32, button: u32) -> bool;
+    pub fn CGEventSourceFlagsState(state: i32) -> u64;
     pub fn CGEventSetLocation(event: Ref, point: CGPoint);
 }
 #[link(name = "CoreFoundation", kind = "framework")]
@@ -69,6 +79,20 @@ impl Cf {
             ));
         }
         unsafe { Self::owned(out) }
+    }
+    pub fn attribute_settable(&self, name: &str) -> Result<bool> {
+        let name = CFString::new(name);
+        let mut settable = 0;
+        let code = unsafe {
+            AXUIElementIsAttributeSettable(self.0, name.as_concrete_TypeRef().cast(), &mut settable)
+        };
+        if code != 0 {
+            return Err(fault(
+                "ax_writability_unknown",
+                "Native AX attribute writability is unavailable; no retry or input substitution.",
+            ));
+        }
+        Ok(settable != 0)
     }
     pub fn pid(&self) -> Result<u32> {
         let mut pid = 0;

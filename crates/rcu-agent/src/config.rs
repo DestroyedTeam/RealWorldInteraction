@@ -23,6 +23,10 @@ pub struct Config {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PlatformPolicy {
+    #[serde(rename = "macos")]
+    MacOs {
+        user_uid: u32,
+    },
     Windows {
         user_sid: String,
         privilege: String,
@@ -60,6 +64,9 @@ impl Config {
             && (!user_sid.starts_with("S-1-")
                 || !matches!(privilege.as_str(), "ordinary" | "admin"))
         {
+            return Err(io::Error::other("invalid_native_user_policy"));
+        }
+        if matches!(self.platform, PlatformPolicy::MacOs { user_uid: u32::MAX }) {
             return Err(io::Error::other("invalid_native_user_policy"));
         }
         #[cfg(feature = "fixture")]

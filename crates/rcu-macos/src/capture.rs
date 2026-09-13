@@ -1,4 +1,5 @@
 //! ScreenCaptureKit callback ownership is confined to callbacks. Only owned bytes cross threads.
+mod pending;
 use crate::{ffi, geometry::Rect};
 use block2::RcBlock;
 use core_graphics::{
@@ -18,12 +19,8 @@ use rcu_core::{MAX_FRAME_BYTES, Result, fault};
 use std::{
     ffi::c_void,
     io::Write,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-        mpsc,
-    },
-    time::Duration,
+    sync::{Arc, atomic::AtomicBool, mpsc},
+    time::{Duration, Instant},
 };
 
 #[link(name = "ScreenCaptureKit", kind = "framework")]
@@ -32,6 +29,7 @@ pub struct Capture {
     pub png: Vec<u8>,
     pub size: [u32; 2],
 }
+#[derive(Clone)]
 pub struct Capturer {
     busy: Arc<AtomicBool>,
 }
@@ -50,26 +48,39 @@ fn class(name: &std::ffi::CStr) -> Result<&'static AnyClass> {
         )
     })
 }
+pub(crate) fn api_available() -> bool {
+    [
+        c"SCShareableContent",
+        c"SCContentFilter",
+        c"SCStreamConfiguration",
+        c"SCScreenshotManager",
+    ]
+    .iter()
+    .all(|name| AnyClass::get(name).is_some())
+}
 impl Capturer {
     pub fn capture(&self, pid: u32, window: u32, expected: Rect) -> Result<Capture> {
-        // If a timed-out native callback never completes, keep this target busy rather
-        // than accumulating unbounded asynchronous captures on every retry.
-        if self.busy.swap(true, Ordering::AcqRel) {
+        if !unsafe { ffi::CGPreflightScreenCaptureAccess() } {
             return Err(fault(
-                "capture_busy",
-                "Previous native capture is still pending; do not enqueue more captures.",
+                "screen_capture_permission_missing",
+                "Native screenshot permission is unavailable; no permission request is issued.",
             ));
         }
+        // If a timed-out native callback never completes, keep this target busy rather
+        // than accumulating unbounded asynchronous captures on every retry.
+        let pending = pending::Pending::begin(self.busy.clone())?;
         let (tx, rx) = mpsc::sync_channel(1);
-        let busy = self.busy.clone();
+        let callback_pending = pending.clone();
         let start = (|| -> Result<()> {
             let share = class(c"SCShareableContent")?;
             let filter_class = class(c"SCContentFilter")?;
             let configuration_class = class(c"SCStreamConfiguration")?;
             let screenshot_class = class(c"SCScreenshotManager")?;
             let callback = RcBlock::new(move |content: *mut AnyObject, error: *mut AnyObject| {
+                let _keep_native_scope = &callback_pending;
                 autoreleasepool(|_| {
                     let result = callback_result(|| -> Result<()> {
+                        callback_pending.require_active()?;
                         if content.is_null() || !error.is_null() {
                             return Err(fault(
                                 "screen_capture_denied",
@@ -147,12 +158,12 @@ impl Capturer {
                                 msg_send![&*configuration,setIgnoreShadowsSingleWindow:Bool::YES];
                             let _: () = msg_send![&*configuration,setScalesToFit:Bool::NO];
                             let tx = tx.clone();
-                            let completed = busy.clone();
+                            let completed = callback_pending.clone();
                             let keep_filter = filter.clone();
                             let keep_configuration = configuration.clone();
                             let completion = RcBlock::new(
                                 move |image: *const c_void, error: *mut AnyObject| {
-                                    let _ = (&keep_filter, &keep_configuration);
+                                    let _ = (&keep_filter, &keep_configuration, &completed);
                                     let result = if image.is_null() || !error.is_null() {
                                         Err(fault(
                                             "capture_failed",
@@ -160,19 +171,19 @@ impl Capturer {
                                         ))
                                     } else {
                                         callback_result(|| {
+                                            completed.require_active()?;
                                             encode_native_image(image, width, height)
                                         })
                                     };
-                                    completed.store(false, Ordering::Release);
                                     let _ = tx.send(result);
                                 },
                             );
+                            callback_pending.require_active()?;
                             let _: () = msg_send![screenshot_class,captureImageWithFilter:&*filter,configuration:&*configuration,completionHandler:&*completion];
                         }
                         Ok(())
                     });
                     if let Err(e) = result {
-                        busy.store(false, Ordering::Release);
                         let _ = tx.send(Err(e));
                     }
                 });
@@ -182,11 +193,26 @@ impl Capturer {
             }
             Ok(())
         })();
-        if let Err(e) = start {
-            self.busy.store(false, Ordering::Release);
-            return Err(e);
+        start?;
+        let started = Instant::now();
+        loop {
+            if let Err(error) = rcu_core::operation::checkpoint("macos_capture_wait") {
+                pending.abandon();
+                return Err(error);
+            }
+            match rx.recv_timeout(Duration::from_millis(50)) {
+                Ok(result) => return result,
+                Err(mpsc::RecvTimeoutError::Timeout)
+                    if started.elapsed() < Duration::from_secs(6) => {}
+                Err(_) => {
+                    pending.abandon();
+                    return Err(fault(
+                        "capture_timeout",
+                        "Native capture did not complete. Its callback retains the native scope and shared capture slot; do not replay input.",
+                    ));
+                }
+            }
         }
-        rx.recv_timeout(Duration::from_secs(6)).map_err(|_|fault("capture_timeout","Native capture did not complete. Do not replay input; pending capture remains bounded."))?
     }
 }
 fn callback_result<T>(operation: impl FnOnce() -> Result<T>) -> Result<T> {

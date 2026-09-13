@@ -14,10 +14,16 @@ impl Runtime {
         };
         let identity = native.as_ref().ok().map(|b| b.identity());
         let runtime_status = native.as_ref().ok().map(|b| b.runtime_status());
+        let native_capabilities = native
+            .as_ref()
+            .ok()
+            .map(|b| b.capabilities())
+            .unwrap_or_default();
         let domain = identity.as_ref().map(rcu_core::Identity::key);
         let native_ready = native.is_ok();
         let reason = native.err().map(|e| e.code);
         let (platform, implementation) = match &self.config.platform {
+            PlatformPolicy::MacOs { .. } => ("macos", cfg!(target_os = "macos")),
             PlatformPolicy::Windows { .. } => ("windows", cfg!(windows)),
             PlatformPolicy::Unsupported { platform } => (platform.as_str(), false),
             #[cfg(feature = "fixture")]
@@ -47,9 +53,15 @@ impl Runtime {
                         | "computer.lifecycle_receipt"
                 );
                 // Fixture is not an implementation of native window/lifecycle APIs.
-                let implemented =
-                    control || implementation && (!native_lifecycle || platform == "windows");
+                let implemented = control
+                    || implementation
+                        && if platform == "macos" {
+                            macos_tool_implemented(tool.name)
+                        } else {
+                            !native_lifecycle || platform == "windows"
+                        };
                 let prerequisite = match tool.name {
+                    _ if platform == "macos" => macos_prerequisite(tool.name, &native_capabilities),
                     "computer.capture_visual" if platform == "windows" => {
                         Some("selected_window_required")
                     }
@@ -116,6 +128,63 @@ impl Runtime {
         };
         result
     }
+}
+
+fn macos_tool_implemented(tool: &str) -> bool {
+    matches!(
+        tool,
+        "computer.targets"
+            | "computer.operation"
+            | "computer.cancel"
+            | "computer.discover"
+            | "computer.bind_window"
+            | "computer.observe"
+            | "computer.resolve"
+            | "computer.claim"
+            | "computer.act"
+            | "computer.act_checked"
+            | "computer.verify"
+            | "computer.release"
+            | "computer.artifact"
+            | "computer.image"
+            | "computer.resolve_view"
+            | "computer.recover_input"
+    )
+}
+
+#[cfg(test)]
+mod macos_tests;
+fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static str> {
+    let permissions = &caps["permissions"];
+    if matches!(
+        tool,
+        "computer.observe" | "computer.act" | "computer.act_checked" | "computer.verify"
+    ) && permissions["accessibility"] != true
+    {
+        return Some("accessibility_permission_missing");
+    }
+    if tool == "computer.observe" {
+        if permissions["screen_capture"] != true {
+            return Some("screen_capture_permission_missing");
+        }
+        if permissions["screenshot_api"] != true {
+            return Some("capture_api_unavailable");
+        }
+    }
+    if matches!(tool, "computer.act" | "computer.act_checked") && permissions["post_event"] != true
+    {
+        return Some("input_permission_missing");
+    }
+    if tool == "computer.recover_input" && permissions["listen_event"] != true {
+        return Some("reconciliation_unavailable");
+    }
+    if matches!(
+        tool,
+        "computer.observe" | "computer.act" | "computer.act_checked" | "computer.verify"
+    ) {
+        return Some("selected_foreground_window_required");
+    }
+    None
 }
 
 #[cfg(test)]

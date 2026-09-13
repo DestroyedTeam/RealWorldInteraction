@@ -3,6 +3,21 @@ use super::*;
 
 impl NativeMac {
     pub fn new(pid: u32, window: u32, allow_input: bool) -> Result<Self> {
+        Self::with_shared_resources(
+            pid,
+            window,
+            allow_input,
+            Capturer::default(),
+            std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        )
+    }
+    pub(crate) fn with_shared_resources(
+        pid: u32,
+        window: u32,
+        allow_input: bool,
+        capturer: Capturer,
+        dispatches: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    ) -> Result<Self> {
         if pid == 0 || pid > i32::MAX as u32 || window == 0 {
             return Err(fault(
                 "invalid_target",
@@ -15,11 +30,21 @@ impl NativeMac {
             identity: console_identity()?,
             process: process_epoch(pid)?,
             allow_input,
-            capturer: Capturer::default(),
+            capturer,
+            dispatches,
         })
     }
     pub(super) fn window_name(&self) -> String {
         format!("cgwindow:{}", self.window)
+    }
+    pub(crate) fn require_discovered_process(&self, process: &str) -> Result<()> {
+        if self.process != process {
+            return Err(fault(
+                "window_epoch_changed",
+                "The exact process birth changed while constructing the selected native backend.",
+            ));
+        }
+        Ok(())
     }
     pub(super) fn metadata_scene(&self, meta: Metadata, size: [u32; 2], png: Vec<u8>) -> Scene {
         let mut binding = meta.binding;
@@ -35,6 +60,7 @@ impl NativeMac {
             image_normalization:"CGImage -> device RGB bitmap -> straight RGBA PNG; native dimensions; no resizing; color/alpha normalization, not source-byte identity".into(),png}
     }
     pub(super) fn metadata(&self) -> Result<Metadata> {
+        let _call = operation::native_call("macos_ax_metadata")?;
         let identity = console_identity()?;
         if identity != self.identity || process_epoch(self.pid)? != self.process {
             return Err(fault(
@@ -46,12 +72,6 @@ impl NativeMac {
             return Err(fault(
                 "accessibility_permission_missing",
                 "Grant permission to the native binary through an authorized setup, not this observation call.",
-            ));
-        }
-        if !unsafe { ffi::CGPreflightScreenCaptureAccess() } {
-            return Err(fault(
-                "screen_capture_permission_missing",
-                "Screen capture must already be permitted; no permission prompt is triggered automatically.",
             ));
         }
         let all = windows()?;
@@ -132,6 +152,12 @@ impl NativeMac {
             content: native_epoch.clone(),
             native_epoch,
         };
+        if console_identity()? != identity || process_epoch(self.pid)? != self.process {
+            return Err(fault(
+                "session_or_process_changed",
+                "The native context/process changed during AX readback; discard this observation.",
+            ));
+        }
         Ok(Metadata {
             identity,
             rect: window.rect,
@@ -142,89 +168,5 @@ impl NativeMac {
             blocked,
             mapping_ready,
         })
-    }
-    pub(super) fn focus_and_hit(
-        &self,
-        target: &Resolved,
-        text: bool,
-        keyboard: bool,
-    ) -> Result<()> {
-        if console_identity()? != self.identity || process_epoch(self.pid)? != self.process {
-            return Err(fault(
-                "session_or_process_changed",
-                "No further input is sent.",
-            ));
-        }
-        let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()) }?;
-        unsafe {
-            ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
-        }
-        let app = system.attr("AXFocusedApplication")?;
-        if app.pid()? != self.pid {
-            return Err(fault(
-                "focus_mismatch",
-                "Focus changed immediately before dispatch.",
-            ));
-        }
-        let focused = app.attr("AXFocusedWindow")?;
-        let rect = ax_rect(&focused)?;
-        let all = windows()?;
-        let index = all
-            .iter()
-            .position(|w| w.id == self.window && w.pid == self.pid && w.rect.same(rect))
-            .ok_or_else(|| {
-                fault(
-                    "window_binding_changed",
-                    "Window binding changed immediately before dispatch.",
-                )
-            })?;
-        if all[..index]
-            .iter()
-            .any(|w| w.alpha > 0.01 && w.rect.contains(target.point))
-        {
-            return Err(fault(
-                "target_occluded",
-                "Another native window owns the action point.",
-            ));
-        }
-        if !rect.contains(target.point) {
-            return Err(fault(
-                "outside_target",
-                "Action point left the pinned native window.",
-            ));
-        }
-        let hit = hit_test(&system, target.point)?;
-        if hit.pid()? != self.pid {
-            return Err(fault(
-                "target_occluded",
-                "Native hit test points to another PID.",
-            ));
-        }
-        let hit_window = hit.attr("AXWindow")?;
-        if unsafe { ffi::CFEqual(hit_window.0, focused.0) } == 0 {
-            return Err(fault(
-                "target_occluded",
-                "Native hit test belongs to another window.",
-            ));
-        }
-        let hit_description = element_description(&hit)?;
-        require_nonsecure_input(&hit_description)?;
-        if let Some(id) = &target.scope.element
-            && hit_description.element.id != *id
-        {
-            return Err(fault(
-                "element_changed",
-                "The grounded element moved or was replaced.",
-            ));
-        }
-        if keyboard {
-            let el = app.attr("AXFocusedUIElement")?;
-            let description = element_description(&el)?;
-            require_nonsecure_input(&description)?;
-            if text {
-                require_text_target(&description, target.scope.element.as_deref())?;
-            }
-        }
-        Ok(())
     }
 }

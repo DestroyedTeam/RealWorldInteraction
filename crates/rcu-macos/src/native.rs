@@ -5,6 +5,7 @@ use crate::{
     capture::Capturer,
     ffi::{self, Cf},
     geometry::Rect,
+    session::console_identity,
 };
 use core_graphics::{
     display::CGDisplay,
@@ -31,6 +32,7 @@ pub struct NativeMac {
     process: String,
     allow_input: bool,
     capturer: Capturer,
+    dispatches: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 #[derive(Clone)]
 struct AxElement {
@@ -78,21 +80,42 @@ struct Metadata {
     mapping_ready: bool,
 }
 #[derive(Clone)]
-struct Window {
-    id: u32,
-    pid: u32,
-    rect: Rect,
-    alpha: f64,
+pub(crate) struct Window {
+    pub id: u32,
+    pub pid: u32,
+    pub rect: Rect,
+    pub alpha: f64,
+    pub title: Option<String>,
 }
 
 impl Backend for NativeMac {
+    fn input_dispatch_count(&self) -> Option<u64> {
+        Some(self.dispatches.load(std::sync::atomic::Ordering::Acquire))
+    }
     fn identity(&self) -> Identity {
         self.identity.clone()
     }
     fn capabilities(&self) -> serde_json::Value {
-        serde_json::json!({"adapter":"rust-macos-native","capture":"ScreenCaptureKit.SCScreenshotManager","input":"CoreGraphics.CGEvent","oracle":"Accessibility.AXUIElement","input_opt_in":self.allow_input,"permissions":"checked without prompts on observation","target_scope":"pinned foreground PID + CGWindowID + process start","ax_tree":"bounded_partial","mapping":"single containing unrotated display only","unsupported":["cross-window modal rebinding","mixed-display windows","rotated displays","drag","clipboard","unattended unlock"],"live_acceptance":"pending","atomicity":"pre/post validation; OS does not offer a transactional capture-and-input primitive"})
+        let mut caps = crate::desktop::native_capabilities(
+            self.allow_input,
+            crate::session::permissions(),
+            crate::session::current_facts()
+                .ok()
+                .and_then(|f| f.console_seat),
+        );
+        caps["target_scope"] =
+            serde_json::json!("pinned foreground PID + CGWindowID + process start");
+        // The legacy pinned constructor does not gain dynamic catalog operations.
+        caps["window_discovery"]["implemented"] = serde_json::json!(false);
+        caps
     }
     fn observe(&mut self) -> Result<Scene> {
+        if !unsafe { ffi::CGPreflightScreenCaptureAccess() } {
+            return Err(fault(
+                "screen_capture_permission_missing",
+                "Screen capture must already be permitted; no permission request is triggered.",
+            ));
+        }
         let before = self.metadata()?;
         let capture = self.capturer.capture(self.pid, self.window, before.rect)?;
         let after = self.metadata()?;
@@ -117,6 +140,12 @@ impl Backend for NativeMac {
         Ok(self.metadata_scene(after, capture.size, capture.png))
     }
     fn revalidate(&mut self, reference: &Resolved) -> Result<Scene> {
+        if reference.source_region.is_some() {
+            return Err(fault(
+                "capability_unavailable",
+                "Native source-region capture/revalidation is not implemented on macOS; no full-window substitution.",
+            ));
+        }
         if reference.scope.element.is_none() {
             return self.observe();
         }
@@ -180,7 +209,7 @@ impl Backend for NativeMac {
         })
     }
 }
-fn process_epoch(pid: u32) -> Result<String> {
+pub(crate) fn process_epoch(pid: u32) -> Result<String> {
     let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
     let bytes = unsafe {
         libc::proc_pidinfo(
@@ -209,66 +238,20 @@ fn process_epoch(pid: u32) -> Result<String> {
         pid, info.pbi_start_tvsec, info.pbi_start_tvusec
     ))
 }
-fn console_identity() -> Result<Identity> {
-    unsafe {
-        let dict = Cf::owned(ffi::CGSessionCopyCurrentDictionary())?;
-        if ffi::boolean(ffi::field(dict.0, "kCGSSessionOnConsoleKey")) != Some(true)
-            || ffi::boolean(ffi::field(dict.0, "kCGSessionLoginDoneKey")) != Some(true)
-        {
-            return Err(fault(
-                "session_not_interactive",
-                "No authenticated console GUI session.",
-            ));
-        }
-        let user = ffi::number(ffi::field(dict.0, "kCGSSessionUserIDKey"))
-            .ok_or_else(|| fault("session_unknown", "Missing console UID."))?;
-        let console = ffi::number(ffi::field(dict.0, "kCGSSessionConsoleSetKey"))
-            .ok_or_else(|| fault("session_unknown", "Missing console seat identity."))?;
-        if user != libc::geteuid() as i64 {
-            return Err(fault(
-                "session_user_mismatch",
-                "MCP process is not the console user.",
-            ));
-        }
-        let mut host = [0u8; 16];
-        let timeout = libc::timespec {
-            tv_sec: 1,
-            tv_nsec: 0,
-        };
-        if libc::gethostuuid(host.as_mut_ptr(), &timeout) != 0 {
-            return Err(fault(
-                "host_identity_unknown",
-                "Cannot attest local host UUID.",
-            ));
-        }
-        let mut boot = libc::timeval {
-            tv_sec: 0,
-            tv_usec: 0,
-        };
-        let mut len = std::mem::size_of_val(&boot);
-        if libc::sysctlbyname(
-            c"kern.boottime".as_ptr(),
-            (&mut boot as *mut libc::timeval).cast(),
-            &mut len,
-            std::ptr::null_mut(),
-            0,
-        ) != 0
-        {
-            return Err(fault("session_unknown", "Cannot bind current boot epoch."));
-        }
-        Ok(Identity {
-            host: format!("macos-{}", digest(&host)),
-            guest: None,
-            session: format!("uid:{user}:console:{console}:boot:{}", boot.tv_sec),
-            seat: format!("console:{console}"),
-            desktop: "quartz-console".into(),
-        })
-    }
+pub(crate) fn windows() -> Result<Vec<Window>> {
+    Ok(window_inventory()?.windows)
 }
-fn windows() -> Result<Vec<Window>> {
+pub(crate) struct WindowInventory {
+    pub windows: Vec<Window>,
+    pub native_rows: usize,
+    pub invalid_rows: usize,
+}
+pub(crate) fn window_inventory() -> Result<WindowInventory> {
+    let _call = operation::native_call("macos_window_inventory")?;
     unsafe {
         let array = Cf::owned(ffi::CGWindowListCopyWindowInfo(1 | 16, 0))?;
         let rows = ffi::array(array.0, 2048)?;
+        let native_rows = rows.len();
         let mut out = Vec::new();
         for row in rows {
             let number = ffi::number(ffi::field(row.0, "kCGWindowNumber"));
@@ -283,7 +266,10 @@ fn windows() -> Result<Vec<Window>> {
             {
                 continue;
             }
-            if let (Some(id), Some(pid)) = (number, pid) {
+            if let (Some(id), Some(pid)) = (number, pid)
+                && (1..=i64::from(u32::MAX)).contains(&id)
+                && (1..=i64::from(i32::MAX)).contains(&pid)
+            {
                 out.push(Window {
                     id: id as u32,
                     pid: pid as u32,
@@ -294,10 +280,15 @@ fn windows() -> Result<Vec<Window>> {
                         h: rect.size.height,
                     },
                     alpha: ffi::real(ffi::field(row.0, "kCGWindowAlpha")).unwrap_or(1.0),
+                    title: ffi::string(ffi::field(row.0, "kCGWindowName")).ok(),
                 });
             }
         }
-        Ok(out)
+        Ok(WindowInventory {
+            invalid_rows: native_rows - out.len(),
+            native_rows,
+            windows: out,
+        })
     }
 }
 fn display_layout(window: Rect) -> Result<(String, bool)> {
@@ -372,6 +363,15 @@ fn require_text_target(el: &AxElement, requested: Option<&str>) -> Result<()> {
     } else {
         Ok(())
     }
+}
+fn require_keyboard_target(el: &AxElement, requested: Option<&str>) -> Result<()> {
+    if requested != Some(el.element.id.as_str()) {
+        return Err(fault(
+            "keyboard_target_not_focused",
+            "Keyboard input requires the exact observed focused native AX element; pixel and other-element substitutions are rejected.",
+        ));
+    }
+    Ok(())
 }
 fn verify_value(el: &AxElement, expected: &str) -> Result<bool> {
     if !el.text_class.readable() {
@@ -450,6 +450,7 @@ fn ax_tree(
     let mut nodes = 0;
     let mut out = Vec::new();
     while let Some((node, depth)) = pending.pop_front() {
+        operation::checkpoint("macos_ax_tree")?;
         if nodes >= 128 || start.elapsed() > Duration::from_millis(1500) {
             break;
         }

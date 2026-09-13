@@ -814,6 +814,7 @@ dependencies = [
  "rcu-core",
  "rcu-imaging",
  "rcu-link-trust",
+ "rcu-macos",
  "rcu-native-link",
  "rcu-windows",
  "serde",
@@ -886,8 +887,10 @@ dependencies = [
  "objc2-foundation",
  "png",
  "rcu-core",
+ "serde",
  "serde_json",
  "sha2",
+ "tempfile",
 ]
 
 [[package]]

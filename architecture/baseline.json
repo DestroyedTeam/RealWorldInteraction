@@ -34,6 +34,7 @@
       "rcu-core",
       "rcu-imaging",
       "rcu-link-trust",
+      "rcu-macos",
       "rcu-native-link",
       "rcu-windows"
     ]
