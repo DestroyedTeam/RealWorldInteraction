@@ -2,7 +2,7 @@
 
 状态：持续验收，不是全项目完成。GUI 全部经当前 Host 加载的原生 RCU MCP；SSH 仅用于部署和独立取证，没有 Shell/Python GUI 客户端。
 
-直观看过程：[21 步实际截图](../../outputs/acceptance-20260913/README.md)。每张保留原生 PNG，不补画、不修图。
+直观看过程：[27 步实际截图](../../outputs/acceptance-20260913/README.md)。每张保留原生 PNG，不补画、不修图。
 
 ## 已实际确认
 
@@ -16,6 +16,8 @@
 | 显式恢复 | 原生写入空闲、254 个键／鼠标状态核对通过后解除该资源围栏；原不确定输入历史仍禁止重放 |
 | ROI 输入 | 新 agent 的局部观察 `[1269,712,512,512]` 产生引用，局部点 `[130,330]` 映射桌面 `[1993,1229]`；约 739 ms 的动作调用画出左下第三个闭合菱形，随后释放成功 |
 | 缩略图细线 | 最近邻预览丢细线；面积平均预览保留本次闭合轮廓。升级前后原生切片 SHA 相同，证实不是重画导致变化 |
+| 原画重开 | GUI Open 对话框输入原 PNG 路径；系统确认后只丢弃本轮有截图的 Untitled 测试草稿。新观察确认原图重开，原文件仍12676字节、SHA `d155aa4f…` |
+| 原画独立像素对照 | 首次切片与基线相差2px，位于鼠标悬停位置附近；通过原生点击Pencil移到工具栏后，512px切片SHA为 `ab04a812…`，与本轮步骤10完全相同。未通过修图隐藏差异 |
 
 ROI／面积采样已部署 Windows PID **11876**，进程出生标识 `134337701190355262`；可回滚的开发版，不声称正式 UIOS 验收。
 
@@ -34,11 +36,13 @@ ROI／面积采样已部署 Windows PID **11876**，进程出生标识 `13433770
 4. WinUI 菜单焦点／树的完整 runtime ID 不一致时鼠标被拒绝；未截断 ID、同名替代或 Invoke。另一次新鲜焦点上的独立 Enter 才创建本轮测试画布。
 5. agent 重启后旧 Host 有两次 Broken pipe，新只读查询才恢复。没有重发输入或重复启动。
 6. 截止取消的首次父级租约清理返回 `context_busy`。该错误保留；Rust 有界清理修订尚待新 Host 实测。
+7. 重开操作的调用方最初忽略 discover 的8项分页，漏看Open弹窗；旧主窗口被正确阻止输入。用精确PID+已知标题过滤并确认完整覆盖后才绑定。另有一次SDK未保存观察的本地拒绝，未派发输入。
+8. 丢弃本轮草稿后，首次观察遇 `native_scene_changed`；没有重放已成功的点击，新的只读观察确认原图已打开。这类异步窗口转换不能按输入失败重试。
 
 ## 仍在推进
 
 - 新连接池代际退役／单次只读重连，以及取消后的有界清理：独立评审和最终离线门禁通过；新全局 MCP SHA `45ae1911…` 已安装，profile／身份材料未变。安装后真实工具仍返回旧进程的 transport 字段，尚未把它记为新 Host 运行态验收。
-- 原测试文档处置、原 PNG 的 GUI 重开和独立文件复核。
+- 已处置本轮临时测试文档、GUI重开原PNG并独立复核；整个应用关闭后的服务健康与重开仍单列，不把关闭Open弹窗当成退出Paint。
 - 菜单精确指针目标提示、真实人工介入／异常窗口重用、公共 UIA 观察开销、Mac 通用受控端与剩余架构债务，继续跟踪完整实施计划。
 
 ## 最终离线门禁（独立 verifier，Darwin arm64）
@@ -63,5 +67,6 @@ ROI／面积采样已部署 Windows PID **11876**，进程出生标识 `13433770
 - `pre-area-current.json`、`area-preview-live.json`、`roi-native-stroke.json`、`roi-native-operation.json`：实际预览、ROI 动作和终态。
 - `final-gate-verifier-r2-command-log.json`：精确命令／环境、计数和日志索引。
 - `mcp-resume-install.json`、`mcp-after-file-replace-runtime.json`：磁盘新版本和仍在运行的旧 Host，分开留证。
+- `reopen-*.json`、`reopened-original-*.json`、`original-tile-comparison.json`：原生文件对话框／草稿处置、重开、SSH文件哈希与2px差异调查。
 
 二进制、凭据和原始截图不提交 Git。整体状态见 [完整实施计划](../product/implementation-status.md)。
