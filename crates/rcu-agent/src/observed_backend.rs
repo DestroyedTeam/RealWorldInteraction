@@ -143,6 +143,15 @@ impl lifecycle::LifecycleDriver for ObservedLifecycle {
     fn check_window(&mut self, w: &lifecycle::WindowIdentity) -> Result<()> {
         self.inner.check_window(w)
     }
+    fn window_presentation(
+        &mut self,
+        w: &lifecycle::WindowIdentity,
+    ) -> Result<lifecycle::WindowPresentation> {
+        self.inner.window_presentation(w)
+    }
+    fn restore(&mut self, w: &lifecycle::WindowIdentity) -> Result<bool> {
+        self.effect(|d| d.restore(w))
+    }
     fn activate(&mut self, w: &lifecycle::WindowIdentity) -> Result<bool> {
         self.effect(|d| d.activate(w))
     }
@@ -245,6 +254,17 @@ mod tests {
         fn check_window(&mut self, _: &WindowIdentity) -> Result<()> {
             Ok(())
         }
+        fn window_presentation(&mut self, _: &WindowIdentity) -> Result<WindowPresentation> {
+            Ok(WindowPresentation {
+                visible: true,
+                minimized: false,
+                cloaked: Some(false),
+                usable_geometry: true,
+            })
+        }
+        fn restore(&mut self, _: &WindowIdentity) -> Result<bool> {
+            self.mutate()
+        }
         fn activate(&mut self, _: &WindowIdentity) -> Result<bool> {
             self.mutate()
         }
@@ -300,6 +320,7 @@ mod tests {
         driver.identity().unwrap();
         driver.begin_activation_events(&window()).unwrap();
         driver.check_window(&window()).unwrap();
+        assert!(driver.window_presentation(&window()).unwrap().presented());
         driver.foreground().unwrap();
         driver.user_input_tick().unwrap();
         driver.events().unwrap();
@@ -372,5 +393,39 @@ mod tests {
             assert_eq!(driver.launch(&permission).is_err(), reject_before);
             assert_eq!(driver.entered.load(Ordering::Acquire), !reject_before);
         }
+    }
+    #[test]
+    fn restore_is_an_observed_effect_including_rejection_failure_and_panic() {
+        for known_counter in [false, true] {
+            let mut driver = wrapper(Driver {
+                known_counter,
+                reject_before: true,
+                ..Default::default()
+            });
+            assert!(driver.restore(&window()).is_err());
+            assert_eq!(driver.entered.load(Ordering::Acquire), !known_counter);
+        }
+        for panic_after in [false, true] {
+            let mut driver = wrapper(Driver {
+                known_counter: true,
+                fail_after: !panic_after,
+                panic_after,
+                ..Default::default()
+            });
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                driver.restore(&window())
+            }));
+            assert!(result.is_err() || result.unwrap().is_err());
+            assert!(driver.entered.load(Ordering::Acquire));
+            assert_eq!(driver.native_effect_count(), Some(1));
+        }
+        let mut driver = wrapper(Driver {
+            known_counter: true,
+            ..Default::default()
+        });
+        assert!(driver.restore(&window()).unwrap());
+        assert!(driver.activate(&window()).unwrap());
+        assert!(driver.entered.load(Ordering::Acquire));
+        assert_eq!(driver.native_effect_count(), Some(2));
     }
 }

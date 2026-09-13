@@ -190,12 +190,37 @@ pub struct LaunchReceipt {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct WindowPresentation {
+    pub visible: bool,
+    pub minimized: bool,
+    /// Unknown native cloak state is not evidence that a window is presented.
+    pub cloaked: Option<bool>,
+    /// Positive native bounds intersect an actual display. Not a pixel/render oracle.
+    pub usable_geometry: bool,
+}
+impl WindowPresentation {
+    pub fn restore_eligible(&self) -> bool {
+        self.visible && self.cloaked == Some(false) && self.minimized
+    }
+    pub fn presented(&self) -> bool {
+        self.visible && !self.minimized && self.cloaked == Some(false) && self.usable_geometry
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ActivationReceipt {
     pub request_id: String,
     pub authorization_id: String,
     pub window: WindowIdentity,
     pub state: String,
     pub api_accepted: Option<bool>,
+    /// ShowWindowAsync only reports that restoration started, not completion.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restore_api_accepted: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_presentation: Option<WindowPresentation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_presentation: Option<WindowPresentation>,
     pub before_foreground: Option<WindowIdentity>,
     pub after_foreground: Option<WindowIdentity>,
     pub user_intervened: bool,
@@ -254,6 +279,21 @@ pub trait LifecycleDriver {
     fn foreground(&mut self) -> Result<Option<WindowIdentity>>;
     fn user_input_tick(&mut self) -> Result<u64>;
     fn check_window(&mut self, window: &WindowIdentity) -> Result<()>;
+    /// Read-only exact identity plus presentation; unavailable facts fail closed.
+    fn window_presentation(&mut self, _: &WindowIdentity) -> Result<WindowPresentation> {
+        Err(crate::fault(
+            "window_presentation_unsupported",
+            "This driver cannot prove native presentation; do not infer a usable window.",
+        ))
+    }
+    /// One explicit restore request, which may itself activate the window.
+    /// Acceptance is not completion and queued effects cannot be recalled.
+    fn restore(&mut self, _: &WindowIdentity) -> Result<bool> {
+        Err(crate::fault(
+            "window_restore_unsupported",
+            "This driver cannot restore an exact window; no fallback or replay.",
+        ))
+    }
     /// SetForegroundWindow ONCE, never AttachThreadInput/key injection/foreground retry.
     fn activate(&mut self, window: &WindowIdentity) -> Result<bool>;
     /// Optional proof that a rejected launch/activation never entered its native

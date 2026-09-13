@@ -44,7 +44,11 @@ fn errors_remain_uncertain_even_when_final_cleanup_also_observes_interference() 
 fn elapsed_observation_and_lease_deadlines_reject_after_a_native_effect_without_sleeping() {
     let (mut r, mut d) = once(Script::default());
     let past = Instant::now() - Duration::from_millis(1);
-    let e = observe_completion(&mut d, &grant(), &mut r, 100, past).unwrap_err();
+    let mut budget = ObservationBudget {
+        deadline: past,
+        pauses: 0,
+    };
+    let e = observe_completion(&mut d, &grant(), &mut r, 100, &mut budget).unwrap_err();
     assert_eq!(e.code, "activation_observation_timeout");
     let e = operation::with_dispatch_deadline(past, || {
         sample(&mut d, &grant(), &mut r, 100, "activation_after_cleanup")

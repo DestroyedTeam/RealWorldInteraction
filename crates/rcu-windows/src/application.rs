@@ -190,7 +190,8 @@ mod win {
         lifecycle::{
             AllowedFile, ApplicationIdentity, EventBatch, Inventory, LaunchPermission,
             LifecycleDriver, MAX_METADATA_BYTES, MAX_WINDOWS, NativeEvent, NativeLaunch,
-            ObservedPackage, WindowEvidence, WindowIdentity, pin_failure_context,
+            ObservedPackage, WindowEvidence, WindowIdentity, WindowPresentation,
+            pin_failure_context,
         },
         operation::{checkpoint, native_call, resource_release_uncertain},
     };
@@ -204,6 +205,7 @@ mod win {
     use windows::{
         Win32::{
             Foundation::*,
+            Graphics::Gdi::{MONITOR_DEFAULTTONULL, MonitorFromRect},
             Security::{Authorization::ConvertSidToStringSidW, *},
             Storage::FileSystem::*,
             System::{StationsAndDesktops::*, Threading::*},
@@ -727,6 +729,7 @@ mod win {
         release_failed: bool,
         bound_identity: Identity,
         activation_attempted: bool,
+        restore_attempted: bool,
         _thread_affinity: Rc<()>,
     }
     impl WindowsLifecycleDriver {
@@ -742,6 +745,7 @@ mod win {
                 release_failed: false,
                 bound_identity: desktop::identity()?,
                 activation_attempted: false,
+                restore_attempted: false,
                 _thread_affinity: Rc::new(()),
             })
         }
@@ -1269,6 +1273,71 @@ mod win {
             }
             Ok(())
         }
+        fn window_presentation(&mut self, window: &WindowIdentity) -> Result<WindowPresentation> {
+            self.thread()?;
+            let _call = native_call("lifecycle_window_presentation")?;
+            let record = desktop::record(desktop::hwnd(&window.window)?, 0)?;
+            if window_key(&record)? != *window {
+                return Err(fault(
+                    "application_window_identity_changed",
+                    "Presentation must belong to the exact HWND/PID/birth/epoch.",
+                ));
+            }
+            // Negative coordinates are valid on multi-monitor desktops. A
+            // minimized sentinel or an offscreen rect is not usable geometry.
+            let usable_geometry = record
+                .dwm_visible_frame
+                .or(record.rectangle)
+                .and_then(|r| {
+                    if r.width == 0 || r.height == 0 {
+                        return None;
+                    }
+                    Some(RECT {
+                        left: r.x,
+                        top: r.y,
+                        right: i32::try_from(i64::from(r.x) + i64::from(r.width)).ok()?,
+                        bottom: i32::try_from(i64::from(r.y) + i64::from(r.height)).ok()?,
+                    })
+                })
+                .is_some_and(|r| {
+                    !unsafe { MonitorFromRect(&r, MONITOR_DEFAULTTONULL) }
+                        .0
+                        .is_null()
+                });
+            self.check_window(window)?;
+            Ok(WindowPresentation {
+                visible: record.visible,
+                minimized: record.minimized,
+                cloaked: record.cloaked,
+                usable_geometry,
+            })
+        }
+        fn restore(&mut self, window: &WindowIdentity) -> Result<bool> {
+            if self.restore_attempted {
+                return Err(fault(
+                    "lifecycle_restore_already_attempted",
+                    "This driver never repeats ShowWindowAsync restoration.",
+                ));
+            }
+            if !self.window_presentation(window)?.restore_eligible() {
+                return Err(fault(
+                    "window_restore_state_changed",
+                    "Restore only an exact visible, known non-cloaked, minimized window; reobserve.",
+                ));
+            }
+            if desktop::identity()? != self.bound_identity {
+                return Err(fault(
+                    "session_mismatch",
+                    "Native desktop changed before ShowWindowAsync; yield.",
+                ));
+            }
+            let hwnd = desktop::hwnd(&window.window)?;
+            let _call = native_call("ShowWindowAsync_restore_once")?;
+            self.restore_attempted = true;
+            // SW_RESTORE may also activate. Nonzero only means the request was
+            // started; the core owns bounded observation and cancellation.
+            Ok(unsafe { ShowWindowAsync(hwnd, SW_RESTORE) }.as_bool())
+        }
         fn activate(&mut self, window: &WindowIdentity) -> Result<bool> {
             if self.activation_attempted {
                 return Err(fault(
@@ -1276,7 +1345,12 @@ mod win {
                     "This driver never repeats SetForegroundWindow.",
                 ));
             }
-            self.check_window(window)?;
+            if !self.window_presentation(window)?.presented() {
+                return Err(fault(
+                    "activation_presentation_unavailable",
+                    "The exact target is no longer visibly presented; do not focus or restore implicitly.",
+                ));
+            }
             if desktop::identity()? != self.bound_identity {
                 return Err(fault(
                     "session_mismatch",
@@ -1293,7 +1367,11 @@ mod win {
             std::thread::sleep(Duration::from_millis(milliseconds.min(100)));
         }
         fn native_effect_count(&self) -> Option<u64> {
-            Some(u64::from(self.launch_attempted) + u64::from(self.activation_attempted))
+            Some(
+                u64::from(self.launch_attempted)
+                    + u64::from(self.restore_attempted)
+                    + u64::from(self.activation_attempted),
+            )
         }
     }
 }

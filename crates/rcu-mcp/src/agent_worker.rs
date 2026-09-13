@@ -440,6 +440,18 @@ impl LifecycleDriver for GuardedLifecycleDriver {
         self.guard.check(GuardOperation::Read)?;
         self.inner.check_window(window)
     }
+    fn window_presentation(&mut self, window: &WindowIdentity) -> Result<WindowPresentation> {
+        self.guard.check(GuardOperation::Read)?;
+        self.inner.window_presentation(window)
+    }
+    fn restore(&mut self, window: &WindowIdentity) -> Result<bool> {
+        self.guard.check(GuardOperation::Activate)?;
+        let result = self.inner.restore(window);
+        if result.is_err() {
+            self.guard.hold();
+        }
+        result
+    }
     fn activate(&mut self, window: &WindowIdentity) -> Result<bool> {
         self.guard.check(GuardOperation::Activate)?;
         let result = self.inner.activate(window);

@@ -1,4 +1,12 @@
 use super::*;
+pub(super) fn presentation() -> WindowPresentation {
+    WindowPresentation {
+        visible: true,
+        minimized: false,
+        cloaked: Some(false),
+        usable_geometry: true,
+    }
+}
 pub(super) fn window(n: u32) -> WindowEvidence {
     WindowEvidence {
         key: WindowIdentity {

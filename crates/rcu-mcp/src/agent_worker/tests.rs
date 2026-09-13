@@ -446,6 +446,17 @@ impl LifecycleDriver for CleanupDriver {
     fn check_window(&mut self, _: &WindowIdentity) -> Result<()> {
         Ok(())
     }
+    fn window_presentation(&mut self, _: &WindowIdentity) -> Result<WindowPresentation> {
+        Ok(WindowPresentation {
+            visible: true,
+            minimized: false,
+            cloaked: Some(false),
+            usable_geometry: true,
+        })
+    }
+    fn restore(&mut self, _: &WindowIdentity) -> Result<bool> {
+        panic!("held or wrong-stage restore must not delegate")
+    }
     fn activate(&mut self, _: &WindowIdentity) -> Result<bool> {
         panic!("held activation must not delegate")
     }
@@ -462,9 +473,19 @@ fn lifecycle_cleanup_is_delegated_after_hold_without_authorizing_input() {
         guard: guard.clone(),
     };
     driver.begin_events().unwrap();
+    let window = WindowIdentity {
+        window: "hwnd:1".into(),
+        pid: 1,
+        process_created: 1,
+        native_epoch: "fixture".into(),
+    };
+    assert!(driver.window_presentation(&window).unwrap().presented());
+    assert!(driver.restore(&window).is_err());
     guard.hold();
     assert!(driver.events().is_err());
     assert!(driver.identity().is_err());
+    assert!(driver.window_presentation(&window).is_err());
+    assert!(driver.restore(&window).is_err());
     driver.pause(50);
     assert!(driver.end_events().unwrap().hooks_released);
     assert_eq!(count.load(Ordering::SeqCst), 1);

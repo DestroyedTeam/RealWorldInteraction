@@ -207,6 +207,9 @@ mod tests {
         fn check_window(&mut self, _: &WindowIdentity) -> Result<()> {
             Ok(())
         }
+        fn window_presentation(&mut self, _: &WindowIdentity) -> Result<WindowPresentation> {
+            Ok(super::super::test_support::presentation())
+        }
         fn activate(&mut self, w: &WindowIdentity) -> Result<bool> {
             self.activations += 1;
             if self.activation_cleanup {
