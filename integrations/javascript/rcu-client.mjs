@@ -28,6 +28,14 @@ export class RcuInputNotReadyError extends Error {
   }
 }
 
+export class RcuActivationError extends Error {
+  constructor(reply) {
+    const data = reply.data;
+    super(`Window activation ${data.state ?? 'unconfirmed'}; observe the actual foreground before another explicit action. No activation or input is replayed.`);
+    this.name = 'RcuActivationError'; this.data = data; this.reply = reply;
+  }
+}
+
 export class RcuClient {
   #callTool;
   constructor(callTool) {
@@ -63,17 +71,66 @@ class RcuWindow {
   #elements = new Map();
   #aliases = new Map();
   #active = null;
+  #selection = null;
+  #revision = 0;
   constructor(client, target) { this.#client = client; this.#target = target; }
+  #invalidate() {
+    this.#observation = null; this.#elements.clear(); this.#aliases.clear();
+    return ++this.#revision;
+  }
+  #requireRevision(revision, reply) {
+    if (revision !== this.#revision) {
+      const error = new Error('Observation or binding was superseded while awaiting; obtain the current state. No operation is replayed.');
+      error.reply = reply; throw error;
+    }
+  }
   async bind(selection) {
     if (this.#active) throw new Error('Do not replace a binding during an input batch');
-    this.#observation = null;
-    this.#elements.clear();
-    this.#aliases.clear();
-    return (await this.#client.call('computer.bind_window', { target: this.#target, selection })).data;
+    const revision = this.#invalidate();
+    this.#selection = null;
+    const selected = Object.fromEntries(['window','pid','native_epoch','relation'].map(k => [k, selection[k]]));
+    const state = { inFlight: true }; this.#active = state;
+    try {
+      const reply = await this.#client.call('computer.bind_window', { target: this.#target, selection: selected });
+      this.#requireRevision(revision, reply);
+      const result = reply.data;
+      this.#selection = selected;
+      return result;
+    } finally { if (this.#active === state) this.#active = null; }
+  }
+  /** Explicit focus operation, not input on an observed background window. */
+  async activate({ expectedForeground, requestId, authorizationId = 'selected-window', ttlMs = 5000 } = {}) {
+    if (this.#active) throw new Error('Another input or activation batch is active');
+    if (!this.#selection) throw new Error('Bind a fresh exact window before activation');
+    if (expectedForeground === undefined || !requestId || typeof requestId !== 'string' || !Number.isInteger(ttlMs) || ttlMs < 100 || ttlMs > 60000) throw new TypeError('Supply a stable requestId, explicit fresh expectedForeground (null only when known absent), and bounded ttlMs');
+    if (expectedForeground !== null && (typeof expectedForeground !== 'object' || typeof expectedForeground.window !== 'string' || !Number.isInteger(expectedForeground.pid) || expectedForeground.pid <= 0 || typeof expectedForeground.process_created !== 'string' || !/^\d+$/.test(expectedForeground.process_created) || typeof expectedForeground.native_epoch !== 'string')) throw new TypeError('Use the exact lossless foreground tuple from fresh discovery');
+    const foreground = expectedForeground === null ? null : Object.fromEntries(['window', 'pid', 'process_created', 'native_epoch'].map(k => [k, expectedForeground[k]]));
+    const selected = this.#selection;
+    this.#invalidate();
+    const state = { inFlight: true }; this.#active = state;
+    let lease, value, release, failure;
+    try {
+      const claimed = (await this.#client.call('computer.claim', { target: this.#target, ttl_ms: ttlMs })).data;
+      if (typeof claimed.lease !== 'string') throw new Error('Claim did not return a lease');
+      lease = claimed.lease;
+      value = await this.#client.call('computer.activate_window', { target: this.#target, authorization_id: authorizationId, expected_foreground: foreground, request_id: requestId, lease });
+      if (!['foreground_observed', 'already_foreground'].includes(value.data.state) || value.data.user_intervened !== false || value.data.error || value.data.resources_released !== true || value.data.resource_release_uncertain !== false || !['window', 'pid', 'native_epoch'].every(k => value.data.window?.[k] === selected[k]) || !['window', 'pid', 'native_epoch', 'process_created'].every(k => value.data.after_foreground?.[k] === value.data.window?.[k])) throw new RcuActivationError(value);
+    } catch (error) { failure = asError(error); }
+    finally {
+      if (lease) {
+        try { release = await this.#client.call('computer.release', { lease }); }
+        catch (error) { if (failure) failure.releaseError = asError(error); else failure = asError(error); }
+      }
+      this.#active = null;
+    }
+    if (failure) { failure.activationRequestId = requestId; failure.activationResult = value ?? null; throw failure; }
+    return { value, release }; // No observation or input authority is carried across the focus change.
   }
   async observe(options = {}) {
     if (this.#active?.inFlight) throw new Error('Do not observe concurrently with a pending action');
+    const revision = this.#invalidate();
     const result = await this.#client.call('computer.observe', { ...options, target: this.#target, inline_image: options.inline_image ?? false });
+    this.#requireRevision(revision, result);
     if (!result.data.frame || !Array.isArray(result.data.scene?.elements)) throw new Error('Observation lacks an exact frame/element list');
     this.#observation = result.data;
     this.#elements = new Map(result.data.scene.elements.map(e => [e.id, e]));
@@ -85,6 +142,7 @@ class RcuWindow {
     if (!o) throw new Error('Observe before reading a summary');
     if (!Number.isInteger(offset) || offset < 0 || offset > this.#aliases.size || !Number.isInteger(limit) || limit < 1 || limit > 128) throw new TypeError('Use a bounded summary page');
     const rows = [...this.#aliases];
+    const coverageReason = o.adapter_status?.native_details?.uia?.walk?.truncation ?? o.adapter_status?.native_details?.uia?.error?.code;
     const elements = rows.slice(offset, offset + limit).map(([ref, id]) => {
       const e = this.#elements.get(id);
       const row = { ref, name: e.name ?? '' };
@@ -92,6 +150,7 @@ class RcuWindow {
       if (e.keyboard_focus === true) row.focused = true;
       if (e.visible === false) row.hidden = true;
       if (e.occluded === true) row.occluded = true;
+      if (e.visible === null || e.occluded === null) row.unconfirmed = true;
       return row;
     });
     return {
@@ -99,7 +158,7 @@ class RcuWindow {
       frame: o.frame,
       window: o.adapter_status?.native_details?.window ? Object.fromEntries(['title','pid','window','native_epoch'].filter(k => o.adapter_status.native_details.window[k] !== undefined).map(k => [k,o.adapter_status.native_details.window[k]])) : null,
       elements,
-      coverage: { loaded: rows.length, returned: elements.length, next_offset: offset + elements.length < rows.length ? offset + elements.length : null, native_total: o.presentation?.elements?.total ?? null, native_complete: o.presentation?.elements?.native_complete ?? null, adapter_next_offset: o.presentation?.elements?.next_offset ?? null },
+      coverage: { loaded: rows.length, returned: elements.length, next_offset: offset + elements.length < rows.length ? offset + elements.length : null, native_total: o.presentation?.elements?.total ?? null, native_complete: o.presentation?.elements?.native_complete ?? null, adapter_next_offset: o.presentation?.elements?.next_offset ?? null, reason: coverageReason == null ? null : String(coverageReason).slice(0, 240) },
       blocked: o.scene.blocked ?? null,
       mutation_ready: o.scene.mutation_ready ?? null,
       assurance: o.scene.assurance ?? null,
@@ -166,9 +225,7 @@ class RcuWindow {
         if (!this.#elements.has(element)) throw new Error('Select an element from this observation or retrieve its omitted page first');
         const frame = this.#observation.frame;
         // Invalidate immediately, including on uncertain failure. Never reuse stale state.
-        this.#observation = null;
-        this.#elements.clear();
-        this.#aliases.clear();
+        this.#invalidate();
         state.actions++;
         const record = { requestId, reply: null };
         state.actionResults.push(record);

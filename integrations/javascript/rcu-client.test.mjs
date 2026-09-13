@@ -202,3 +202,119 @@ test('a fresh ready observation recovers only client state, not a replay', async
   assert.equal(calls.filter(n=>n.name==='computer.claim').length,1);
   assert.equal(calls.filter(n=>n.name==='computer.act_checked').length,1);
 });
+
+function activationSetup(state = 'foreground_observed', failRelease = false) {
+  const calls = [];
+  const selected = { window: 'hwnd:1', pid: 7, native_epoch: 'epoch' };
+  const native = { ...selected, process_created: '123' };
+  const previous = { window: 'hwnd:2', pid: 8, native_epoch: 'other', process_created: '456' };
+  const client = new RcuClient(async (name, args) => {
+    calls.push({ name, args });
+    let data = {};
+    if (name === 'computer.bind_window') data = { bound: selected };
+    if (name === 'computer.observe') data = { frame: 'before-focus', scene: { mutation_ready: false, blocked: true, elements: [{ id: 'old', visible: true, occluded: false }] } };
+    if (name === 'computer.claim') data = { lease: 'activation-lease' };
+    if (name === 'computer.activate_window') data = { window: native, state, before_foreground: previous, after_foreground: state === 'wrong_window' ? previous : native, user_intervened: state === 'yielded', error: null, resources_released: true, resource_release_uncertain: false, operation_ref: { execution_nonce: 'native-activation' }, goal_verified: false, input_authority_granted: false };
+    if (name === 'computer.release') {
+      if (failRelease) throw new Error('release-unconfirmed');
+      data = { released: true };
+    }
+    return { structuredContent: data };
+  });
+  return { win: client.window('device:context'), calls, selected, previous };
+}
+test('explicit activation uses a separate short lease and invalidates old frames, not a background input bypass', async () => {
+  const {win,calls,selected,previous}=activationSetup();
+  await win.bind({...selected,relation:'initial'}); await win.snapshot();
+  const result=await win.activate({expectedForeground:previous,requestId:'focus-once'});
+  assert.equal(result.value.data.goal_verified,false); assert.equal(result.release.data.released,true);
+  assert.deepEqual(calls.map(c=>c.name),['computer.bind_window','computer.observe','computer.claim','computer.activate_window','computer.release']);
+  assert.equal(calls.find(c=>c.name==='computer.claim').args.ttl_ms,5000);
+  assert.deepEqual(calls.find(c=>c.name==='computer.activate_window').args.expected_foreground,previous);
+  await assert.rejects(win.withInput(()=>{}),/Observe/);
+  assert.throws(()=>win.summary(),/Observe/);
+});
+test('yielded or unconfirmed activation is never retried and cleanup cannot hide its native reference', async () => {
+  for(const state of ['yielded','not_foreground','uncertain','wrong_window']){
+    const {win,calls,selected,previous}=activationSetup(state,true);
+    await win.bind({...selected,relation:'initial'});
+    await assert.rejects(win.activate({expectedForeground:previous,requestId:'original-focus'}), e=>e.activationRequestId==='original-focus' && e.activationResult.data.operation_ref.execution_nonce==='native-activation' && e.releaseError.message==='release-unconfirmed');
+    assert.equal(calls.filter(c=>c.name==='computer.activate_window').length,1);
+    assert.equal(calls.filter(c=>c.name==='computer.act_checked').length,0);
+  }
+});
+test('activation requires a bound selection and explicit lossless foreground evidence before claiming', async () => {
+  const {win,calls,selected}=activationSetup();
+  await assert.rejects(win.activate({expectedForeground:null,requestId:'one'}),/Bind/);
+  await win.bind({...selected,relation:'initial'});
+  await assert.rejects(win.activate({requestId:'one'}),/explicit fresh/);
+  await assert.rejects(win.activate({expectedForeground:{window:'w',pid:1,process_created:123,native_epoch:'e'},requestId:'one'}),/lossless/);
+  assert.equal(calls.filter(c=>c.name==='computer.claim').length,0);
+});
+test('activation reserves locally before await and never mutates caller foreground evidence', async () => {
+  const {win,calls,selected,previous}=activationSetup();
+  await win.bind({...selected,relation:'initial'});
+  const expected={...previous};const running=win.activate({expectedForeground:expected,requestId:'one'});expected.window='mutated';
+  await assert.rejects(win.activate({expectedForeground:previous,requestId:'two'}),/active/);
+  await assert.rejects(win.snapshot(),/concurrently/);
+  await running;
+  assert.equal(calls.find(c=>c.name==='computer.activate_window').args.expected_foreground.window,previous.window);
+});
+test('partial UIA coverage exposes a bounded reason and unconfirmed controls instead of pretending readiness', async () => {
+  const client=new RcuClient(async()=>({structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'a',visible:true,occluded:null}]},adapter_status:{native_details:{uia:{walk:{truncation:'uia_walk_failed: '+ 'x'.repeat(500)}}}}}}));
+  const s=await client.window('t').snapshot();
+  assert(s.data.coverage.reason.startsWith('uia_walk_failed:'));
+  assert.equal(s.data.coverage.reason.length,240);
+  assert.equal(s.data.elements[0].unconfirmed,true);
+});
+
+test('late observations cannot restore aliases across activation before or after its completion', async () => {
+  for(const late of ['during','after']){
+    let finishObserve, finishActivation;
+    const selected={window:'hwnd:1',pid:7,native_epoch:'e'};const native={...selected,process_created:'1'};
+    const client=new RcuClient(async name=>{
+      if(name==='computer.observe')return await new Promise(r=>{finishObserve=r;});
+      if(name==='computer.activate_window')return await new Promise(r=>{finishActivation=()=>r({structuredContent:{state:'foreground_observed',window:native,after_foreground:native,user_intervened:false,resources_released:true,resource_release_uncertain:false}});});
+      return {structuredContent:name==='computer.claim'?{lease:'l'}:{released:true}};
+    });
+    const win=client.window('t');await win.bind({...selected,relation:'initial'});
+    const old=win.observe();const rejected=assert.rejects(old,/superseded/);
+    const activated=win.activate({expectedForeground:null,requestId:'focus'});
+    while(!finishActivation)await Promise.resolve();
+    if(late==='after'){finishActivation();await activated;}
+    finishObserve({structuredContent:{frame:'old',scene:{mutation_ready:true,blocked:false,elements:[{id:'old'}]}}});await rejected;
+    if(late==='during'){finishActivation();await activated;}
+    assert.throws(()=>win.summary(),/Observe/);
+  }
+});
+test('a late observation cannot cross a new binding or replace a newer observation', async () => {
+  const pending=[];
+  const client=new RcuClient(async name=> name==='computer.observe'? await new Promise(r=>pending.push(r)):{structuredContent:{}});
+  const win=client.window('t');
+  const old=win.observe();const rejected=assert.rejects(old,/superseded/);
+  await win.bind({window:'new',pid:2,native_epoch:'e',relation:'initial'});
+  pending.shift()({structuredContent:{frame:'old',scene:{elements:[]}}});await rejected;
+  const a=win.observe();const aRejected=assert.rejects(a,/superseded/);const b=win.observe();
+  pending[1]({structuredContent:{frame:'newest',scene:{mutation_ready:true,blocked:false,elements:[]}}});await b;
+  pending[0]({structuredContent:{frame:'older',scene:{elements:[]}}});await aRejected;
+  assert.equal(win.summary().frame,'newest');
+});
+test('an in-flight bind excludes reads and mutations until its native outcome is known', async () => {
+  for(const fail of [false,true]){
+    let finishBind;const calls=[];
+    const client=new RcuClient(async name=>{
+      calls.push(name);
+      if(name==='computer.bind_window')return await new Promise((resolve,reject)=>{finishBind=()=> fail?reject(new Error('binding outcome unknown')):resolve({structuredContent:{}});});
+      return {structuredContent:{frame:'old-binding',scene:{mutation_ready:true,blocked:false,elements:[]}}};
+    });
+    const win=client.window('t');await win.observe();
+    const binding=win.bind({window:'B',pid:2,native_epoch:'e',relation:'initial'});
+    const outcome=fail?assert.rejects(binding,/unknown/):binding;
+    await assert.rejects(win.observe(),/concurrently/);
+    await assert.rejects(win.withInput(()=>{}),/active/);
+    await assert.rejects(win.bind({}),/binding during/);
+    finishBind();await outcome;
+    assert.throws(()=>win.summary(),/Observe/);
+    assert.equal(calls.filter(c=>c==='computer.observe').length,1);
+  }
+});
