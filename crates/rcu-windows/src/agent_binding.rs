@@ -1,5 +1,6 @@
 //! Real Windows bindings for the native-link supervisor. No process discovery,
 //! input, desktop switching, remote paths, or termination-by-PID is provided.
+mod diagnostics;
 use crate::{
     agent_contract::{
         AuthenticationId, OwnerProof, PrivateAclEvidence, PrivateAclScope, PrivilegeMode,
@@ -8,6 +9,7 @@ use crate::{
     },
     desktop::{self, api},
 };
+pub use diagnostics::{current_token_privilege, require_current_privilege};
 use rcu_core::{Result, fault};
 use sha2::{Digest, Sha256};
 use std::{
@@ -229,20 +231,6 @@ fn process_privilege(process: HANDLE) -> Result<TokenPrivilegeFacts> {
         ui_access: ui_access != 0,
         app_container: app_container != 0,
     })
-}
-
-/// Read actual process token facts. No mode is inferred from configuration,
-/// launcher, administrator group name, command line or the caller's claims.
-pub fn current_token_privilege() -> Result<TokenPrivilegeFacts> {
-    let session = current_session()?;
-    let facts = process_privilege(unsafe { GetCurrentProcess() })?;
-    session.require_same(&current_session()?)?;
-    Ok(facts)
-}
-pub fn require_current_privilege(mode: PrivilegeMode) -> Result<TokenPrivilegeFacts> {
-    let facts = current_token_privilege()?;
-    facts.require_mode(mode)?;
-    Ok(facts)
 }
 
 /// Includes the frozen backend's WTSActive/unlocked/WinSta0/input-desktop checks.
