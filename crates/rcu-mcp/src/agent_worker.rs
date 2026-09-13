@@ -405,6 +405,13 @@ impl LifecycleDriver for GuardedLifecycleDriver {
         self.guard.check(GuardOperation::Read)?;
         self.inner.begin_events()
     }
+    fn begin_activation_events(&mut self, window: &WindowIdentity) -> Result<()> {
+        self.guard.check(GuardOperation::Read)?;
+        self.inner.begin_activation_events(window)
+    }
+    fn native_effect_count(&self) -> Option<u64> {
+        self.inner.native_effect_count()
+    }
     fn events(&mut self) -> Result<EventBatch> {
         self.guard.check(GuardOperation::Read)?;
         self.inner.events()

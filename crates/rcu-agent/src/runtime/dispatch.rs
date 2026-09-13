@@ -4,6 +4,32 @@ use super::*;
 use serde_json::Value;
 
 struct Finish(Operation);
+fn needs_input_fence(
+    writes: bool,
+    entered: bool,
+    resources_released: bool,
+    result: &DeviceResult,
+) -> bool {
+    writes
+        && (!resources_released
+            || result.data["resource_release_uncertain"] == true
+            || (entered
+                && (result.is_error
+                    || result.data["dispatch"] == "uncertain"
+                    || result.data["state"] == "uncertain")))
+}
+#[cfg(test)]
+#[test]
+fn cleanup_uncertainty_is_not_mistaken_for_a_clean_pre_dispatch_rejection() {
+    let rejection = DeviceResult::error("foreground_changed", "Reobserve, no dispatch.");
+    assert!(!needs_input_fence(true, false, true, &rejection));
+    assert!(needs_input_fence(true, false, false, &rejection));
+    assert!(needs_input_fence(true, true, true, &rejection));
+    assert!(!needs_input_fence(false, false, true, &rejection));
+    let mut cleanup = rejection.clone();
+    cleanup.data["resource_release_uncertain"] = true.into();
+    assert!(needs_input_fence(true, false, true, &cleanup));
+}
 impl Drop for Finish {
     fn drop(&mut self) {
         self.0.finish();
@@ -175,7 +201,7 @@ impl Runtime {
             result=worker_entry.envelope(result);
             result.data["operation"]=worker_entry.status().data;
             result.data["native_dispatch_entered"]=json!(entered.load(Ordering::Acquire));
-            if worker_entry.writes && entered.load(Ordering::Acquire) && (result.is_error || result.data["dispatch"]=="uncertain" || result.data["state"]=="uncertain" || !operation.status().resources_released) {
+            if needs_input_fence(worker_entry.writes, entered.load(Ordering::Acquire), operation.status().resources_released, &result) {
                 worker_context.domain.fenced.store(true,Ordering::Release);
             }
             result.data["input_domain_fenced"]=json!(worker_context.domain.fenced.load(Ordering::Acquire));

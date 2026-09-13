@@ -199,6 +199,9 @@ pub struct ActivationReceipt {
     pub before_foreground: Option<WindowIdentity>,
     pub after_foreground: Option<WindowIdentity>,
     pub user_intervened: bool,
+    /// Bounded observation evidence, not a lossless record of all user activity.
+    #[serde(default)]
+    pub native_events: EventBatch,
     pub error: Option<Fault>,
     pub goal_verified: bool,
     pub input_authority_granted: bool,
@@ -240,6 +243,11 @@ pub trait LifecycleDriver {
     }
     fn inventory(&mut self, apps: &[ApplicationIdentity]) -> Result<Inventory>;
     fn begin_events(&mut self) -> Result<()>;
+    /// Observe target lifetime and desktop foreground, not unrelated window traffic.
+    fn begin_activation_events(&mut self, _: &WindowIdentity) -> Result<()> {
+        self.begin_events()
+    }
+    /// Cumulative events; missing/overflowed coverage must remain incomplete.
     fn events(&mut self) -> Result<EventBatch>;
     fn end_events(&mut self) -> Result<EventBatch>;
     fn launch(&mut self, permission: &LaunchPermission) -> Result<NativeLaunch>;
@@ -248,5 +256,10 @@ pub trait LifecycleDriver {
     fn check_window(&mut self, window: &WindowIdentity) -> Result<()>;
     /// SetForegroundWindow ONCE, never AttachThreadInput/key injection/foreground retry.
     fn activate(&mut self, window: &WindowIdentity) -> Result<bool>;
+    /// Optional proof that a rejected launch/activation never entered its native
+    /// effect API. None preserves conservative uncertainty for unknown drivers.
+    fn native_effect_count(&self) -> Option<u64> {
+        None
+    }
     fn pause(&mut self, milliseconds: u64);
 }

@@ -1,4 +1,4 @@
-// Native event session; mechanically extracted from application.rs.
+// Native out-of-context events stay on the owning worker thread.
 use super::*;
 use std::cell::{Cell, RefCell};
 use windows::Win32::UI::Accessibility::*;
@@ -27,6 +27,7 @@ struct RawEvent {
 struct Recorder {
     hooks: Vec<usize>,
     events: BoundedEvents<RawEvent>,
+    activation_window: Option<usize>,
 }
 thread_local! {
     static CALLBACK_RECORDER: RefCell<Option<Rc<RefCell<Recorder>>>> = const { RefCell::new(None) };
@@ -43,7 +44,10 @@ unsafe extern "system" fn event_callback(
     time: u32,
 ) {
     let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        if hwnd.0.is_null() || object != OBJID_WINDOW.0 || child != 0 {
+        if (hwnd.0.is_null() && event != EVENT_SYSTEM_FOREGROUND)
+            || object != OBJID_WINDOW.0
+            || child != 0
+        {
             return;
         }
         CALLBACK_RECORDER.with(|slot| {
@@ -58,8 +62,21 @@ unsafe extern "system" fn event_callback(
                 CALLBACK_FAILED.with(|f| f.set(true));
                 return;
             };
+            if hwnd.0.is_null() && recorder.activation_window.is_none() {
+                return; // Preserve the launch inventory's non-null event scope.
+            }
             if !recorder.hooks.contains(&(hook.0 as usize)) {
                 recorder.events.complete = false;
+                return;
+            }
+            // Foreground changes are desktop-wide; lifetime events are relevant
+            // only to this exact target, even within the same application PID.
+            if !activation_event_relevant(
+                recorder.activation_window,
+                hwnd.0 as usize,
+                event == EVENT_SYSTEM_FOREGROUND,
+                matches!(event, EVENT_OBJECT_CREATE | EVENT_OBJECT_DESTROY),
+            ) {
                 return;
             }
             recorder.events.push(RawEvent {
@@ -88,11 +105,20 @@ pub(super) struct EventSession {
     recorder: Rc<RefCell<Recorder>>,
     hooks: Vec<Hook>,
     released: bool,
+    closed: bool,
 }
 impl EventSession {
     pub(super) fn begin() -> Result<Self> {
-        if HOOK_THREAD_POISONED.with(Cell::get)
-            || CALLBACK_RECORDER.with(|r| r.borrow().is_some())
+        Self::begin_for(None)
+    }
+    pub(super) fn begin_activation(window: &WindowIdentity) -> Result<Self> {
+        Self::begin_for(Some((
+            desktop::hwnd(&window.window)?.0 as usize,
+            window.pid,
+        )))
+    }
+    fn begin_for(activation: Option<(usize, u32)>) -> Result<Self> {
+        if HOOK_THREAD_POISONED.with(Cell::get) || CALLBACK_RECORDER.with(|r| r.borrow().is_some())
         {
             return Err(fault(
                 "lifecycle_event_thread_busy",
@@ -103,6 +129,7 @@ impl EventSession {
         let recorder = Rc::new(RefCell::new(Recorder {
             hooks: Vec::with_capacity(3),
             events: BoundedEvents::new(),
+            activation_window: activation.map(|(hwnd, _)| hwnd),
         }));
         CALLBACK_FAILED.with(|f| f.set(false));
         CALLBACK_RECORDER.with(|r| *r.borrow_mut() = Some(recorder.clone()));
@@ -110,19 +137,28 @@ impl EventSession {
             recorder,
             hooks: Vec::with_capacity(3),
             released: true,
+            closed: false,
         };
-        for (first, last) in [
-            (EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW),
-            (EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE),
-            (EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND),
-        ] {
+        let ranges = if let Some((_, pid)) = activation {
+            vec![
+                (EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY, pid),
+                (EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, 0),
+            ]
+        } else {
+            vec![
+                (EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW, 0),
+                (EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE, 0),
+                (EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, 0),
+            ]
+        };
+        for (first, last, pid) in ranges {
             let h = unsafe {
                 SetWinEventHook(
                     first,
                     last,
                     None,
                     Some(event_callback),
-                    0,
+                    pid,
                     0,
                     WINEVENT_OUTOFCONTEXT,
                 )
@@ -130,7 +166,7 @@ impl EventSession {
             if h.0.is_null() {
                 return Err(fault(
                     "lifecycle_event_hook_failed",
-                    "Native WinEvent registration failed; no launch is permitted.",
+                    "Native WinEvent registration failed; no lifecycle dispatch is permitted.",
                 ));
             }
             session.hooks.push(ReleaseGuard::new(h, close_hook));
@@ -196,8 +232,19 @@ impl EventSession {
         }
     }
     pub(super) fn close(&mut self) -> bool {
-        for hook in &mut self.hooks {
-            self.released &= hook.close();
+        if self.closed {
+            return self.released;
+        }
+        let activation = self.recorder.borrow().activation_window.is_some();
+        for index in 0..self.hooks.len() {
+            // Keep foreground observation last, including during other cleanup.
+            if activation && self.hooks[index].value.is_some() && self.pump(true).is_err() {
+                self.incomplete();
+            }
+            self.released &= self.hooks[index].close();
+        }
+        if activation && self.pump(true).is_err() {
+            self.incomplete();
         }
         CALLBACK_RECORDER.with(|r| {
             let mut r = r.borrow_mut();
@@ -210,6 +257,7 @@ impl EventSession {
         if !self.released {
             self.incomplete();
         }
+        self.closed = true;
         self.released
     }
 }

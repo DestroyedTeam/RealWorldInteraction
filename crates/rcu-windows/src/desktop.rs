@@ -493,3 +493,35 @@ pub(crate) fn input_foreground(
         anchor,
     })
 }
+
+/// Independent desktop fact, not inferred from a filtered or paged catalog.
+pub(crate) fn foreground_identity() -> Result<Option<rcu_core::lifecycle::WindowIdentity>> {
+    let foreground = unsafe { GetForegroundWindow() };
+    if foreground.0.is_null() {
+        return Ok(None);
+    }
+    let w = record(foreground, 0)?;
+    let identity = rcu_core::lifecycle::WindowIdentity {
+        window: w.window,
+        pid: w.pid,
+        process_created: w.process_created.ok_or_else(|| {
+            fault(
+                "foreground_identity_unknown",
+                "Native process birth is unavailable; do not substitute null foreground.",
+            )
+        })?,
+        native_epoch: w.native_epoch.ok_or_else(|| {
+            fault(
+                "foreground_identity_unknown",
+                "Native foreground epoch is unavailable.",
+            )
+        })?,
+    };
+    if unsafe { GetForegroundWindow() } != foreground {
+        return Err(fault(
+            "foreground_changed",
+            "Foreground changed during its native identity read.",
+        ));
+    }
+    Ok(Some(identity))
+}

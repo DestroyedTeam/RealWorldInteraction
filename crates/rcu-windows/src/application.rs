@@ -171,6 +171,15 @@ impl<T> BoundedEvents<T> {
     }
 }
 
+fn activation_event_relevant(
+    target: Option<usize>,
+    hwnd: usize,
+    foreground: bool,
+    lifetime: bool,
+) -> bool {
+    target.is_none_or(|target| foreground || (hwnd == target && lifetime))
+}
+
 #[cfg(windows)]
 mod win {
     use super::*;
@@ -1090,6 +1099,18 @@ mod win {
             self.event_session = Some(EventSession::begin()?);
             Ok(())
         }
+        fn begin_activation_events(&mut self, window: &WindowIdentity) -> Result<()> {
+            self.thread()?;
+            if self.event_session.is_some() {
+                return Err(fault(
+                    "lifecycle_events_active",
+                    "End the existing event collection first.",
+                ));
+            }
+            self.last_events = None;
+            self.event_session = Some(EventSession::begin_activation(window)?);
+            Ok(())
+        }
         fn events(&mut self) -> Result<EventBatch> {
             self.thread()?;
             let session = self.event_session.as_ref().ok_or_else(|| {
@@ -1271,6 +1292,9 @@ mod win {
             // Short bounded sleeps; the controller owns the overall wait budget.
             std::thread::sleep(Duration::from_millis(milliseconds.min(100)));
         }
+        fn native_effect_count(&self) -> Option<u64> {
+            Some(u64::from(self.launch_attempted) + u64::from(self.activation_attempted))
+        }
     }
 }
 #[cfg(windows)]
@@ -1279,6 +1303,21 @@ pub use win::WindowsLifecycleDriver;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn activation_events_ignore_unrelated_window_traffic_before_the_bounded_queue() {
+        let mut events = BoundedEvents::new();
+        for hwnd in 2..10_000 {
+            if activation_event_relevant(Some(1), hwnd, false, true) {
+                events.push(hwnd);
+            }
+        }
+        assert!(events.complete && events.events.is_empty());
+        assert!(activation_event_relevant(Some(1), 1, false, true));
+        assert!(activation_event_relevant(Some(1), 3, true, false));
+        assert!(activation_event_relevant(Some(1), 0, true, false));
+        assert!(!activation_event_relevant(Some(1), 1, false, false));
+        assert!(activation_event_relevant(None, 3, false, true));
+    }
     use std::{cell::Cell, rc::Rc};
 
     #[test]
