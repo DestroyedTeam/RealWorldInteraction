@@ -47,6 +47,11 @@ file export and file reopening as separate acceptance nodes.
 - Discover and bind a fresh exact window when needed. Binding does not focus it.
   A returned device/context/window generation belongs only to that context.
   Pass `device_id` when cached artifact identifiers collide across devices.
+- Discovery is paged (8 windows / 12 KiB). Prefer the known PID/title filter;
+  `next_cursor` alone continues the cached catalog. An exact requested native
+  tuple already present can be bound without reading unrelated pages. Incomplete
+  pages cannot prove absence or uniqueness of a name-based search. Preserve
+  `complete`/`next_cursor` when summarizing discovery, rather than hiding them.
 - Observe before grounded input. `inline_image: false` omits the inline image;
   it does not guarantee that the current backend avoids capture internally.
   Obtain images/tiles through `computer.image`; view coordinates need
@@ -73,6 +78,13 @@ stable mutation ID; it invalidates old observations. Observe again before anothe
 action. The helper releases its lease; the Rust supervisor also cleans up leases
 created by the cell. No lease survives intentionally across model turns.
 
+Call this wrapper's `snapshot()` or `observe()` **before** `withInput`; its initial
+readiness check needs an SDK-owned observation. Use that fresh frame for the first
+action, then callback `input.snapshot()`/`input.observe()` before each next action.
+Raw `rcu.call('computer.observe', ...)` does not populate a window wrapper's cache,
+and raw input does not invalidate that cache. Either use the raw calls consistently
+or refresh the wrapper before returning to SDK actions; do not mix stale state.
+
 For model-facing observations prefer `const s = await state.win.snapshot()` and
 `emit(s.data)`. This returns concise controls with frame-scoped refs such as `e3`,
 roles and meaningful flags, not repeated native IDs and diagnostic trees.
@@ -85,6 +97,12 @@ evidence of absence. For pixels, use `snapshot({preview:true})`, which defaults
 to a mapped 1024px long-edge preview. Emit `s.media` as images separately. Request
 an original-coordinate crop or higher maxEdge only for detail that needs it.
 Never change the user's display resolution or treat preview pixels as originals.
+
+Window foreground/presentation is separate from keyboard-control focus.
+`mutation_ready=true` is not proof that a keyboard target exists. If no exact
+focused element is available, an explicit click on a grounded, non-sensitive
+control followed by a fresh observation can establish it; never invent a focus
+ref, repeat activation as a focus trick, or send keys through a rejected target.
 
 Native drag support does not attest visual Pointer feedback. A static cursor or
 halo in one screenshot is not proof of continuous following or its latency.
@@ -108,13 +126,14 @@ from the grounded reference, never preview/controller pixels. Times increase
 strictly, 2..128 points, total 16..5000ms; stay in the same fixed-geometry native
 window and selected element ancestry. Observe the effect afterward. Cancellation
 or failure may leave a partial stroke; query the original operation, never replay
-the whole drag. Nominal 16ms sampling is not proof of rendering FPS or latency.
+the whole drag. The advertised sampling interval is not proof of rendering FPS or latency.
 
 The cell has a 30s default / 60s maximum execution deadline and a 64-call limit;
 it is not a background task. Emit only the needed data, since calls are not
 automatically echoed. Parent-owned `calls` retain operation references and detail
-`result_ref`s. Cancellation/error/reset discard JS state, not native history;
-query uncertain operations instead of repeating the cell. A returned `generation`
+`result_ref`s. Check `state_retained`: an unhandled cell error, cancellation or reset
+discards JS state, not native history; a caught native-tool error need not discard
+state. Query uncertain operations instead of repeating the cell. A returned `generation`
 can guard subsequent calls against a reset, but is not a native identity.
 
 `computer.js_reset` stops only this adapter's JS worker. Direct native MCP tools
@@ -184,6 +203,9 @@ possible, but stop on changed state or failure before choosing further actions.
   replay an uncertain input**; query the original operation instead.
 - Old context/window/frame references require fresh discovery after restart or
   replacement. Do not reuse handles from a previous client instance.
+- An accepted action followed by `native_scene_changed` needs a new read, not a
+  replay of the action or whole JS cell. If `state_retained=false`, rebuild the
+  needed wrappers/bindings from current facts, while retaining native receipts.
 - `computer.cancel` and Host Stop request cooperative cancellation. Inspect
   `terminal`, `native_call_pending` and `resources_released`; acknowledgement
   does not prove a native provider stopped. Do not poll already terminal success.

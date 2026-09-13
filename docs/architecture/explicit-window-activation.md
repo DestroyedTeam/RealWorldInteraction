@@ -36,7 +36,7 @@
 同一 Explorer 从 minimized=true 变为 false；恢复约 **105 ms**，没有额外
 SetForegroundWindow（`api_accepted=null`），lease 释放，截图证实窗口展开。
 
-随后发现窗口已展开但没有精确键盘控件焦点：没有强行发快捷键，而是根据新截图
+随后发现窗口已展开但未获得精确键盘控件焦点：没有强行发快捷键，而是根据新截图
 显式点击地址栏、重新确认 `Address Bar` 焦点，再打开系统 Run 界面。最终由 GUI
 启动新 Paint 进程并打开既有 PNG；原图像素和磁盘 SHA 都与基线一致。
 
