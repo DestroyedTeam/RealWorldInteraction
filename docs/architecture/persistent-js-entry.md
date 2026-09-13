@@ -36,8 +36,9 @@ agent remains governed by existing native cancellation/uncertainty rules.
 
 ## Public contract
 
-The adapter catalog has 23 tools: 20 device capabilities plus `computer.result`,
-`computer.js`, `computer.js_reset`. Device wire protocol remains v2.
+The canonical adapter catalog includes device capabilities plus `computer.result`,
+`computer.js`, `computer.js_reset`; tool presence does not depend on a selected
+window. Device wire protocol remains v2.
 
 `computer.js` accepts an async function body in `code`, optional `timeout_ms`
 (default 30000, range 100..60000), and optional `generation`. `state.*` and its
@@ -98,6 +99,31 @@ whose response was lost can remain uncertain; its accepted operation reference
 and native expiry/control evidence, not an invented lease ID, are authoritative.
 Cell deadline can be followed by up to 3s native cancellation wait, 1s worker
 reaping and 2s parallel lease cleanup. These control operations are not new input.
+
+The 2026-09-13 cleanup revision associates a cell's explicitly acknowledged native
+cancellations with its own claim receipts. It queries the **full original
+execution reference** through the independent control lane; terminal=true,
+native_call_pending=false and resources_released=true are required before
+reporting quiescence. The shared 2s cleanup budget includes at most 1.5s of
+settling and 64 queries across all leases, not a fresh budget per lease. Normal
+successful calls require no settling queries. Expiry, identity change, failed
+reads and unknown association remain unconfirmed.
+
+A known lease is released through its original context: Prepare must return an
+exact same-device/instance/context reference before one Execute is sent. It never
+borrows the adapter's newer context. Only an exact context_busy release response
+plus a fresh original-execution quiescence check permits one additional release
+attempt inside the same deadline. Original call errors, cleanup attempts and
+uncertain accepted references remain evidence. No automatic recover_input,
+fence clearing or original input replay is performed. Live Host acceptance of
+this revision remains separate from the earlier cancellation evidence.
+
+Cleanup jobs themselves belong to Trace. Cancelling an await, resuming cleanup
+or dropping Trace transfers/continues the **same** jobs and budget, rather than
+reconstructing a new release from the lease token. Even an empty/partially joined
+job set cannot authorize a second send. Deterministic held-response tests cover
+Drop after the first Execute and after the one qualified second Execute, with
+total releases bounded to one and two respectively.
 
 ## Complementary channels and measurement
 

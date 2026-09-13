@@ -43,11 +43,29 @@ reply, write/read failure or identity mismatch drops it. Only a validated reply
 returns a negotiated stream to the pool. Domain-error replies are still valid
 framed replies, not evidence of a successful native effect.
 
-An idle peer may close unexpectedly. The next call can fail; it is **not retried**,
-including when a test peer happens not to have executed it. A caller queries the
-original service operation/durable request rather than repeating input. A later
-distinct call may open a new authenticated stream. TCP disconnection is not proof
-that accepted native execution ended or its resources were released.
+An idle peer may close unexpectedly. Native actions, Prepare/Execute, context
+creation, cancellation and operation queries are **never transparently retried**,
+including when a test peer happens not to have executed them. A caller queries
+the original service operation/durable request rather than repeating input.
+
+The 2026-09-13 revision permits one narrowly bounded exception: **Describe on an
+already-reused stream** may make one fresh authenticated connection after
+BrokenPipe/ConnectionReset/ConnectionAborted/NotConnected or an empty clean EOF.
+First-use failure, a partial frame, UnexpectedEof, timeout, malformed JSON, pin,
+protocol or identity failure does not enter this path. The replacement repeats
+full mTLS and pin checks, not input. Describe may update ordinary service context
+idle accounting; it never renews a native input grant or grounding frame.
+
+The work and control pools share a retirement generation. An old borrowed stream
+cannot return to or invalidate a new generation. First-binding origins have a
+bounded permission to complete a *first send*, not permission to return to or
+retire the winner pool. True retirement removes that permission too. Cold
+concurrency may require extra replacement handshakes; warm reuse and cold
+initialization costs are measured separately.
+
+TCP disconnection and successful reconnection are not proof that accepted native
+execution ended or its resources were released. The revision has offline tests;
+fresh Host runtime acceptance is tracked separately from installed file hashes.
 
 ## Evidence and diagnostics
 
@@ -57,6 +75,9 @@ checkouts, writes started and replies validated. Other tool results do not repea
 these counters. Counters are shared by client clones, reset with the adapter and
 are independently sampled; a concurrent snapshot is not an atomic transaction.
 They are not OS action counts, effect verification, latency or model thinking time.
+One bounded last-reconnect record retains the original failure and any replacement
+failure, including a dropped reconnect future's unobserved completion. It is not
+an operation ledger, and older completions cannot overwrite a newer record.
 
 Offline tests cover sequential clone reuse, bounded concurrent exclusivity,
 saturated-work cancellation, dropped futures, idle expiry, reply ID/instance
