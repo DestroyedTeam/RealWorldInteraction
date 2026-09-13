@@ -2,6 +2,9 @@
 use super::*;
 use rcu_core::device::{DeviceResult, OperationRef};
 use tokio::io::AsyncBufReadExt;
+mod first_bind;
+mod generations;
+mod reconnect;
 
 struct Case {
     _dir: tempfile::TempDir,
@@ -414,8 +417,8 @@ async fn negotiated_connection_closed_after_success_never_replays_next_call() {
         write(&mut stream, &reply(first), RESPONSE_CAP)
             .await
             .unwrap();
-        // The peer goes away despite negotiation. Do not retry the next request,
-        // even if this particular synthetic peer did not execute it.
+        // The peer goes away despite negotiation. CloseContext, unlike the
+        // narrowly read-only Describe exception, still must never be retried.
         stream.shutdown().await.unwrap();
         assert!(
             tokio::time::timeout(Duration::from_millis(100), listener.accept())
@@ -430,7 +433,7 @@ async fn negotiated_connection_closed_after_success_never_replays_next_call() {
         .unwrap();
     assert!(
         client
-            .call(&request("second", Call::Describe))
+            .call(&request("second", Call::CloseContext))
             .await
             .is_err()
     );
@@ -442,6 +445,30 @@ async fn negotiated_connection_closed_after_success_never_replays_next_call() {
 
 #[tokio::test]
 async fn concurrent_replies_are_exclusive_and_pool_stays_bounded() {
+    let (s, idle) = parallel_replies(false).await;
+    // A cold first-bind barrier can discard the other three initial work
+    // connections. Their replacements are fresh handshakes, not request replay.
+    assert!((4..=7).contains(&s.authenticated_connections));
+    assert_eq!(s.replies_validated, 30);
+    assert_eq!(s.request_writes_started, 30);
+    assert_eq!(s.reused_checkouts, 30 - s.authenticated_connections);
+    assert!(s.retired_returns_discarded <= 3);
+    assert!((1..=4).contains(&idle));
+    assert_eq!(s.describe_reconnect_attempts, 0);
+}
+
+#[tokio::test]
+async fn warm_concurrent_replies_keep_exact_four_connection_reuse_counts() {
+    let (s, idle) = parallel_replies(true).await;
+    assert_eq!(s.authenticated_connections, 4);
+    assert_eq!(s.replies_validated, 31);
+    assert_eq!(s.request_writes_started, 31);
+    assert_eq!(s.reused_checkouts, 27);
+    assert_eq!(s.retired_returns_discarded, 0);
+    assert_eq!(idle, 4);
+}
+
+async fn parallel_replies(warm: bool) -> (TransportStats, usize) {
     let (case, listener) = Case::new().await;
     let _server = case.serve(listener, |_, r| async {
         tokio::time::sleep(Duration::from_millis(if r.id.ends_with('0') {
@@ -453,6 +480,12 @@ async fn concurrent_replies_are_exclusive_and_pool_stays_bounded() {
         reply(r)
     });
     let client = case.client();
+    if warm {
+        client
+            .call(&request("warm", Call::OpenContext))
+            .await
+            .unwrap();
+    }
     let mut calls = tokio::task::JoinSet::new();
     for n in 0..30 {
         let client = client.clone();
@@ -471,11 +504,8 @@ async fn concurrent_replies_are_exclusive_and_pool_stays_bounded() {
     while let Some(done) = calls.join_next().await {
         done.unwrap();
     }
-    let s = client.transport_stats();
-    assert_eq!(s.authenticated_connections, 4);
-    assert_eq!(s.replies_validated, 30);
-    assert_eq!(s.reused_checkouts, 26);
-    assert_eq!(client.shared.work.idle.lock().unwrap().len(), 4);
+    let idle = client.shared.work.idle.lock().unwrap().len();
+    (client.transport_stats(), idle)
 }
 
 #[tokio::test]

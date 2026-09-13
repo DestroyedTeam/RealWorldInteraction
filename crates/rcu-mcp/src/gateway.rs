@@ -92,7 +92,23 @@ impl Gateway {
             .client
             .as_ref()
             .map_err(|e| DeviceResult::error("device_configuration_invalid", e))?;
-        client.call(&Request{version:device::PROTOCOL_VERSION,id:uuid::Uuid::new_v4().to_string(),device:id.into(),context:token,call}).await.map_err(|e|DeviceResult::error("device_connection_failed",&format!("{e}; request was not automatically retried; an action effect may be unknown")))
+        let failure_scope = if matches!(call, Call::Describe) {
+            "only a disconnected reused Describe may reconnect once; native input is never retried"
+        } else {
+            "request was not automatically retried; an action effect may be unknown"
+        };
+        client
+            .call(&Request {
+                version: device::PROTOCOL_VERSION,
+                id: uuid::Uuid::new_v4().to_string(),
+                device: id.into(),
+                context: token,
+                call,
+            })
+            .await
+            .map_err(|e| {
+                DeviceResult::error("device_connection_failed", &format!("{e}; {failure_scope}"))
+            })
     }
     async fn targets(&self) -> DeviceResult {
         let mut pending = tokio::task::JoinSet::new();

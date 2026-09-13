@@ -2,7 +2,7 @@
 mod client;
 mod server;
 use crate::invalid;
-pub use client::{Client, TransportStats};
+pub use client::{Client, DescribeReconnect, TransportFailure, TransportStats};
 use rcu_core::device::{PROTOCOL_VERSION, Reply, Request, valid_id};
 use rcu_link_trust::{Identity, IdentityPaths, PeerPin};
 use serde::{Deserialize, Serialize};

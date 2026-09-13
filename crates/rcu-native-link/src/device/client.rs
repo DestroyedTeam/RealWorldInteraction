@@ -1,5 +1,11 @@
-//! Exclusive connection checkout; uncertain calls discard their stream, never retry.
+//! Exclusive checkout; only a disconnected, reused Describe may reconnect once.
+mod diagnostics;
+mod pool;
+mod response;
 use super::*;
+use diagnostics::ReconnectLog;
+pub use diagnostics::{DescribeReconnect, TransportFailure};
+use pool::Generation;
 use rcu_core::device::Call;
 use std::sync::{
     Mutex,
@@ -17,6 +23,7 @@ struct Connection {
     persistent: bool,
     instance: Option<String>,
     idle_since: Instant,
+    generation: Arc<()>,
 }
 struct Lane {
     permits: Semaphore,
@@ -29,27 +36,19 @@ impl Lane {
             idle: Mutex::new(Vec::new()),
         }
     }
-    fn take(&self) -> Option<Connection> {
-        let mut idle = self.idle.lock().unwrap_or_else(|e| e.into_inner());
-        idle.retain(|c| c.idle_since.elapsed() < CLIENT_IDLE_TIMEOUT);
-        idle.pop()
-    }
-    fn put(&self, mut connection: Connection) {
-        connection.idle_since = Instant::now();
-        self.idle
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .push(connection);
-    }
 }
 struct Shared {
     work: Lane,
     control: Lane,
+    generation: Mutex<Generation>,
+    reconnects: Mutex<ReconnectLog>,
     connected: AtomicU64,
     negotiated: AtomicU64,
     reused: AtomicU64,
     write_started: AtomicU64,
     replies_validated: AtomicU64,
+    pool_invalidations: AtomicU64,
+    retired_returns_discarded: AtomicU64,
 }
 /// Adapter-local counters, not native execution/effect or network latency evidence.
 #[derive(Clone, Debug, Serialize)]
@@ -59,6 +58,43 @@ pub struct TransportStats {
     pub reused_checkouts: u64,
     pub request_writes_started: u64,
     pub replies_validated: u64,
+    pub pool_invalidations: u64,
+    pub retired_returns_discarded: u64,
+    pub describe_reconnect_attempts: u64,
+    pub describe_reconnect_successes: u64,
+    pub last_describe_reconnect: Option<DescribeReconnect>,
+}
+
+struct Failure {
+    error: io::Error,
+    disconnected: bool,
+}
+impl Failure {
+    fn other(error: io::Error) -> Self {
+        Self {
+            error,
+            disconnected: false,
+        }
+    }
+    fn transport(error: io::Error) -> Self {
+        // Deliberately exclude timeout, UnexpectedEof (including partial frames),
+        // TLS InvalidData/authentication, framing/JSON and envelope failures.
+        let disconnected = matches!(
+            error.kind(),
+            io::ErrorKind::BrokenPipe
+                | io::ErrorKind::ConnectionReset
+                | io::ErrorKind::ConnectionAborted
+                | io::ErrorKind::NotConnected
+        );
+        Self {
+            error,
+            disconnected,
+        }
+    }
+}
+struct AttemptFailure {
+    failure: Failure,
+    reused: bool,
 }
 
 #[derive(Clone)]
@@ -81,25 +117,35 @@ impl Client {
             shared: Arc::new(Shared {
                 work: Lane::new(4),
                 control: Lane::new(2),
+                generation: Mutex::new(Generation::default()),
+                reconnects: Mutex::new(ReconnectLog::default()),
                 connected: AtomicU64::new(0),
                 negotiated: AtomicU64::new(0),
                 reused: AtomicU64::new(0),
                 write_started: AtomicU64::new(0),
                 replies_validated: AtomicU64::new(0),
+                pool_invalidations: AtomicU64::new(0),
+                retired_returns_discarded: AtomicU64::new(0),
             }),
         })
     }
     pub fn transport_stats(&self) -> TransportStats {
         let s = &self.shared;
+        let reconnects = s.reconnects.lock().unwrap_or_else(|e| e.into_inner());
         TransportStats {
             authenticated_connections: s.connected.load(Ordering::Relaxed),
             keepalive_connections: s.negotiated.load(Ordering::Relaxed),
             reused_checkouts: s.reused.load(Ordering::Relaxed),
             request_writes_started: s.write_started.load(Ordering::Relaxed),
             replies_validated: s.replies_validated.load(Ordering::Relaxed),
+            pool_invalidations: s.pool_invalidations.load(Ordering::Relaxed),
+            retired_returns_discarded: s.retired_returns_discarded.load(Ordering::Relaxed),
+            describe_reconnect_attempts: reconnects.attempts,
+            describe_reconnect_successes: reconnects.successes,
+            last_describe_reconnect: reconnects.last(),
         }
     }
-    async fn connect(&self) -> io::Result<Connection> {
+    async fn connect(&self, generation: Arc<()>) -> io::Result<Connection> {
         tokio::time::timeout(CONNECT_TIMEOUT, async {
             let tcp = TcpStream::connect(self.device.endpoint).await?;
             tcp.set_nodelay(true)?;
@@ -123,12 +169,15 @@ impl Client {
                 persistent,
                 instance: None,
                 idle_since: Instant::now(),
+                generation,
             })
         })
         .await
         .map_err(|_| invalid("device_connect_timeout"))?
     }
-    /// One send only, including when a formerly healthy idle connection was closed.
+    /// One send for every call except Describe on a reused, explicitly disconnected
+    /// stream: that control-plane query may reconnect/authenticate once. Describe's
+    /// existing context-idle touch is bookkeeping, not input authority renewal.
     /// A dropped future owns/drops its in-flight stream. Only validated replies
     /// return a connection to the pool; leases and operation history are independent.
     pub async fn call(&self, request: &Request) -> io::Result<Reply> {
@@ -157,35 +206,107 @@ impl Client {
             .await
             .map_err(|_| invalid("device_pool_busy_not_sent"))?
             .map_err(|_| invalid("device_pool_closed_not_sent"))?;
-        let mut connection = match lane.take() {
+        let original = match self.attempt(lane, request, &bytes, false).await {
+            Ok(reply) => return Ok(reply),
+            Err(error) => error,
+        };
+        if !matches!(request.call, Call::Describe)
+            || !original.reused
+            || !original.failure.disconnected
+        {
+            return Err(original.failure.error);
+        }
+        let ticket = self
+            .shared
+            .reconnects
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .begin(request, &original.failure.error);
+        // No loop and no pool checkout: the single exception must perform a new
+        // authenticated handshake. OpenContext/Execute/etc. never reach here.
+        let result = self
+            .attempt(lane, request, &bytes, true)
+            .await
+            .map_err(|error| error.failure.error);
+        self.shared
+            .reconnects
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .finish(&ticket, &result);
+        result.map_err(|error| {
+            io::Error::new(
+                error.kind(),
+                format!(
+                    "{}; describe_reconnect_failed: {error}; no further retry",
+                    original.failure.error
+                ),
+            )
+        })
+    }
+    async fn attempt(
+        &self,
+        lane: &Lane,
+        request: &Request,
+        bytes: &[u8],
+        fresh: bool,
+    ) -> Result<Reply, AttemptFailure> {
+        let (cached, generation) = self.shared.checkout(lane, fresh);
+        let reused = cached.is_some();
+        let mut connection = match cached {
             Some(c) => {
                 self.shared.reused.fetch_add(1, Ordering::Relaxed);
                 c
             }
-            None => self.connect().await?,
+            None => match self.connect(generation.clone()).await {
+                Ok(c) => c,
+                Err(error) => {
+                    self.shared.retire(&generation);
+                    return Err(AttemptFailure {
+                        failure: Failure::other(error),
+                        reused,
+                    });
+                }
+            },
         };
-        let reply = tokio::time::timeout(CALL_TIMEOUT, async {
+        let result = self.exchange(&mut connection, request, bytes).await;
+        match result {
+            Ok(reply) => {
+                self.shared
+                    .replies_validated
+                    .fetch_add(1, Ordering::Relaxed);
+                self.shared.release(lane, connection, &reply.instance);
+                Ok(reply)
+            }
+            Err(failure) => {
+                self.shared.retire(&connection.generation);
+                Err(AttemptFailure { failure, reused })
+            }
+        }
+    }
+    async fn exchange(
+        &self,
+        connection: &mut Connection,
+        request: &Request,
+        bytes: &[u8],
+    ) -> Result<Reply, Failure> {
+        if !self.shared.send_permitted(&connection.generation) {
+            return Err(Failure::other(invalid("device_pool_retired_not_sent")));
+        }
+        tokio::time::timeout(CALL_TIMEOUT, async {
             self.shared.write_started.fetch_add(1, Ordering::Relaxed);
-            connection.stream.write_all(&bytes).await?;
-            connection.stream.flush().await?;
-            let raw = crate::wire::read_frame(&mut connection.stream, RESPONSE_CAP).await?
-                .ok_or_else(|| invalid("device_response_lost"))?;
-            let reply: Reply = serde_json::from_slice(&raw)?;
+            connection.stream.write_all(bytes).await.map_err(Failure::transport)?;
+            connection.stream.flush().await.map_err(Failure::transport)?;
+            let raw = response::read(&mut connection.stream).await?
+                .ok_or_else(|| Failure { error: invalid("device_response_lost"), disconnected: true })?;
+            let reply: Reply = serde_json::from_slice(&raw)
+                .map_err(|error| Failure::other(error.into()))?;
             if reply.version != PROTOCOL_VERSION {
-                return Err(invalid("device_protocol_version_unsupported; update adapter and agent together; no downgrade or retry"));
+                return Err(Failure::other(invalid("device_protocol_version_unsupported; update adapter and agent together; no downgrade or retry")));
             }
             if reply.id != request.id || reply.device != request.device || !valid_id(&reply.instance)
                 || connection.instance.as_ref().is_some_and(|i| i != &reply.instance)
-            { return Err(invalid("device_reply_binding")); }
+            { return Err(Failure::other(invalid("device_reply_binding"))); }
             Ok(reply)
-        }).await.map_err(|_| invalid("device_call_timeout_effect_unknown"))??;
-        self.shared
-            .replies_validated
-            .fetch_add(1, Ordering::Relaxed);
-        connection.instance = Some(reply.instance.clone());
-        if connection.persistent {
-            lane.put(connection);
-        }
-        Ok(reply)
+        }).await.map_err(|_| Failure::other(invalid("device_call_timeout_effect_unknown")))?
     }
 }
