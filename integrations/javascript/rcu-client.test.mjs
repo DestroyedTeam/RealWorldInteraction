@@ -318,3 +318,206 @@ test('an in-flight bind excludes reads and mutations until its native outcome is
     assert.equal(calls.filter(c=>c==='computer.observe').length,1);
   }
 });
+
+test('same-target wrappers share ownership during claim and invalidate each other after binding', async () => {
+  let finishClaim;const calls=[];
+  const client=new RcuClient(async(name,args)=>{
+    calls.push({name,args});
+    if(name==='computer.claim')return await new Promise(r=>{finishClaim=()=>r({structuredContent:{lease:'lease'}});});
+    if(name==='computer.observe')return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
+    return {structuredContent:{released:true}};
+  });
+  const a=client.window('t'),b=client.window('t');await a.observe();
+  const batch=a.withInput(async input=>{
+    await assert.rejects(a.observe(),/owner-bound/);
+    await assert.rejects(b.observe(),/owner-bound/);
+    await assert.rejects(b.elementsPage(0),/owner-bound/);
+    await input.observe();
+  });
+  await assert.rejects(b.bind({}),/active/);
+  await assert.rejects(b.withInput(()=>{}),/active/);
+  finishClaim();await batch;
+  await b.bind({window:'other',pid:2,native_epoch:'e',relation:'initial'});
+  assert.throws(()=>a.summary(),/superseded/);
+  await assert.rejects(a.withInput(()=>{}),/superseded/);
+  assert.equal(calls.filter(c=>c.name==='computer.claim').length,1);
+});
+test('owner-bound pagination can admit a fresh omitted control without external state mutation', async () => {
+  const client=new RcuClient(async(name,args)=>({structuredContent:
+    name==='computer.observe'?{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[]},presentation:{result_ref:'r'}}:
+    name==='computer.result'?{result_ref:'r',source_tool:'computer.observe',value:[{id:'tail'}]}:
+    name==='computer.claim'?{lease:'l'}:name==='computer.act_checked'?{system_accepted:true}:{released:true}}));
+  const w=client.window('t');await w.observe();
+  await w.withInput(async i=>{await i.elementsPage(0);await i.act({element:'tail',intent:'click',requestId:'one'});});
+});
+test('duplicate IDs and old deduplicated receipts poison further scheduling', async () => {
+  for(const oldReceipt of [false,true]){
+    let actions=0;const c=new RcuClient(async name=>({structuredContent:
+      name==='computer.observe'?{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}:
+      name==='computer.claim'?{lease:'l'}:name==='computer.act_checked'?{system_accepted:true,deduplicated:(actions++,oldReceipt),operation_ref:{execution_nonce:'original'}}:{released:true}}));
+    const w=c.window('t');await w.observe();
+    await assert.rejects(w.withInput(async i=>{
+      try{await i.act({element:'button',intent:'click',requestId:'same'});}catch{}
+      try{await i.observe();await i.act({element:'button',intent:'click',requestId:'same'});}catch{}
+      try{await i.observe();await i.act({element:'button',intent:'click',requestId:'new-id'});}catch{}
+    }), e=>e.actionResults.length===1&&(oldReceipt?e.data.code==='deduplicated_batch_stop':/unique stable/.test(e.message)));
+    assert.equal(actions,1);
+  }
+});
+async function clockTest(body){
+  const original=Object.getOwnPropertyDescriptor(globalThis,'performance');const clock={now:0};
+  Object.defineProperty(globalThis,'performance',{configurable:true,value:{now:()=>clock.now}});
+  try{await body(clock);}finally{Object.defineProperty(globalThis,'performance',original);}
+}
+test('claim time, backwards clocks, invalid clocks and reserved drag duration stop before dispatch', async()=>{
+  for(const mode of ['claim','backward','invalid','drag'])await clockTest(async clock=>{
+    const calls=[];const c=new RcuClient(async name=>{
+      calls.push(name);
+      if(name==='computer.observe')return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
+      if(name==='computer.claim'){clock.now=mode==='claim'?101:mode==='backward'?-1:mode==='invalid'?NaN:20;return {structuredContent:{lease:'l'}};}
+      return {structuredContent:{released:true}};
+    });
+    const w=c.window('t');await w.observe();
+    await assert.rejects(w.withInput(i=>i.act({element:'button',intent:{drag:{waypoints:[{at_ms:0,offset:[0,0]},{at_ms:90,offset:[1,1]}]}},requestId:'once'}),{ttlMs:1000,maxDurationMs:100}),/deadline|monotonic/);
+    assert(!calls.includes('computer.act_checked'));assert.equal(calls.at(-1),'computer.release');
+  });
+});
+test('deadline after an in-flight action retains its receipt, waits for it and releases', async()=>clockTest(async clock=>{
+  let finish,release=false;const calls=[];
+  const c=new RcuClient(async name=>{
+    calls.push(name);
+    if(name==='computer.observe')return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
+    if(name==='computer.claim')return {structuredContent:{lease:'l'}};
+    if(name==='computer.act_checked')return await new Promise(r=>{finish=()=>{clock.now=101;r({structuredContent:{system_accepted:true,operation_ref:{execution_nonce:'still-exact'}}});};});
+    release=true;throw Error('release-unconfirmed');
+  });
+  const w=c.window('t');await w.observe();
+  const running=w.withInput(async i=>{try{await i.act({element:'button',intent:'click',requestId:'one'});}catch{}try{await i.observe();await i.act({element:'button',intent:'click',requestId:'two'});}catch{}},{ttlMs:1000,maxDurationMs:100});
+  while(!finish)await Promise.resolve();assert.equal(release,false);
+  const outcome=assert.rejects(running,e=>/deadline/.test(e.message)&&e.actionResults[0].reply.data.operation_ref.execution_nonce==='still-exact'&&e.releaseError.message==='release-unconfirmed');
+  finish();await outcome;assert.equal(calls.filter(n=>n==='computer.act_checked').length,1);assert.equal(release,true);
+}));
+test('unawaited read settles before release and a caught observation failure blocks more actions', async()=>{
+  for(const fail of [false,true]){
+    let done=false,observations=0;const calls=[];
+    const c=new RcuClient(async name=>{
+      calls.push(name);
+      if(name==='computer.observe'){
+        if(++observations===2){await new Promise(r=>setTimeout(r,5));done=true;if(fail)throw Error('provider-unavailable');}
+        return {structuredContent:{frame:'f'+observations,scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
+      }
+      if(name==='computer.claim')return {structuredContent:{lease:'l'}};
+      if(name==='computer.release')assert(done);
+      return {structuredContent:{released:true}};
+    });
+    const w=c.window('t');await w.observe();
+    const batch=w.withInput(async i=>{const read=i.observe();if(fail){try{await read;}catch{}try{await i.act({element:'button',intent:'click',requestId:'never'});}catch{}}});
+    if(fail)await assert.rejects(batch,/provider-unavailable/);else await batch;
+    assert.equal(calls.at(-1),'computer.release');assert(!calls.includes('computer.act_checked'));
+  }
+});
+test('an in-flight internal observation cannot race another input in the callback',async()=>{
+  let finish,observations=0;
+  const c=new RcuClient(async name=>{
+    if(name==='computer.observe'){if(++observations===2)await new Promise(r=>{finish=r;});return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};}
+    if(name==='computer.act_checked')assert.fail('no input while observing');
+    return {structuredContent:name==='computer.claim'?{lease:'l'}:{released:true}};
+  });
+  const w=c.window('t');await w.observe();
+  await assert.rejects(w.withInput(async i=>{const read=i.observe();while(!finish)await Promise.resolve();await assert.rejects(i.act({element:'button',intent:'click',requestId:'never'}),/Concurrent/);finish();await read;}),/Concurrent/);
+});
+test('late observations from another wrapper cannot replace a newer frame',async()=>{
+  const pending=[];const c=new RcuClient(async()=>await new Promise(r=>pending.push(r)));
+  const a=c.window('t'),b=c.window('t');const old=a.observe();const outcome=assert.rejects(old,/superseded/);const current=b.observe();
+  pending[1]({structuredContent:{frame:'new',scene:{elements:[]}}});await current;
+  pending[0]({structuredContent:{frame:'old',scene:{elements:[]}}});await outcome;
+  assert.equal(b.summary().frame,'new');assert.throws(()=>a.summary(),/superseded/);
+});
+test('scheduling limits leave lease headroom and local target coordination is bounded',async()=>{
+  const {window,calls,client}=setup();await window.observe();
+  for(const options of [{ttlMs:1000,maxDurationMs:501},{maxDurationMs:Infinity},{maxDurationMs:0},{ttlMs:60000,maxDurationMs:55001}])await assert.rejects(window.withInput(()=>{},options),/bounded scheduling/);
+  assert.equal(calls.length,1);
+  for(let i=1;i<64;i++)client.window('target-'+i);
+  assert.throws(()=>client.window('too-many'),/wrapper limit/);assert.doesNotThrow(()=>client.window('exact-target'));
+});
+
+test('response-only visual capture neither creates nor renews input frames or aliases',async()=>{
+  const seen=[];const client=new RcuClient(async(name,args)=>{
+    seen.push({name,args});
+    if(name==='computer.observe')return {structuredContent:{frame:'grounded',scene:{elements:[{id:'button'}],mutation_ready:true,blocked:false}}};
+    return {structuredContent:{visual_id:'visual:one',frame_created:false,input_authority_granted:false},content:[{type:'image',mimeType:'image/png',data:'fixture'}]};
+  });
+  const w=client.window('t');const v=await w.captureVisual();assert.equal(v.data.frame_created,false);assert.throws(()=>w.summary(),/Observe/);
+  await w.observe();const before=w.summary();await w.captureVisual({maxEdge:800,feedback:'include'});assert.deepEqual(w.summary(),before);
+  assert.equal(seen.at(-1).args.max_edge,800);assert.equal(seen.at(-1).args.feedback,'include');
+  for(const o of [{maxEdge:63},{maxEdge:2049},{feedback:'guaranteed-visible'}])await assert.rejects(w.captureVisual(o),/maxEdge/);
+  assert.equal(seen.length,3);
+});
+
+test('outside page/preview started earlier cannot cross claim, callback, release or completed ownership',async()=>{
+  for(const kind of ['page','preview'])for(const phase of ['claim','callback','release','after']){
+    let finishRead,finishClaim,finishCallback,finishRelease;
+    const c=new RcuClient(async name=>{
+      if(name==='computer.observe')return {structuredContent:{frame:'f',artifact_id:'a',scene:{mutation_ready:true,blocked:false,elements:[]},presentation:{result_ref:'r'}}};
+      if(name==='computer.result'||name==='computer.image')return await new Promise(r=>{finishRead=()=>r({structuredContent:name==='computer.result'?{result_ref:'r',source_tool:'computer.observe',value:[{id:'outside'}]}:{view_id:'outside-preview',mapping:{}}});});
+      if(name==='computer.claim')return await new Promise(r=>{finishClaim=()=>r({structuredContent:{lease:'l'}});});
+      if(name==='computer.release')return await new Promise(r=>{finishRelease=()=>r({structuredContent:{released:true}});});
+    });
+    const w=c.window('t');await w.observe();
+    const read=kind==='page'?w.elementsPage(0):w.snapshot({preview:true});const rejected=assert.rejects(read,/superseded/);
+    while(!finishRead)await Promise.resolve();
+    const batch=w.withInput(()=>new Promise(r=>{finishCallback=r;}));
+    if(phase!=='claim'){finishClaim();while(!finishCallback)await Promise.resolve();}
+    if(phase==='release'||phase==='after'){finishCallback();while(!finishRelease)await Promise.resolve();}
+    if(phase==='after'){finishRelease();await batch;}
+    finishRead();await rejected;assert.deepEqual(w.summary().elements,[]);
+    if(phase==='claim'){finishClaim();while(!finishCallback)await Promise.resolve();}
+    if(phase==='claim'||phase==='callback'){finishCallback();while(!finishRelease)await Promise.resolve();}
+    if(phase!=='after'){finishRelease();await batch;}
+  }
+});
+
+test('late read deadlines preserve the returned native reference across swallowed and release errors',async()=>clockTest(async clock=>{
+  let count=0;const c=new RcuClient(async name=>{
+    if(name==='computer.observe'){if(++count>1)clock.now=101;return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[]},operation_ref:{execution_nonce:'last-read-native'}}};}
+    if(name==='computer.claim')return {structuredContent:{lease:'l'}};
+    throw Error('release-unconfirmed');
+  });
+  const w=c.window('t');await w.observe();
+  await assert.rejects(w.withInput(async i=>{try{await i.observe();}catch{}},{ttlMs:1000,maxDurationMs:100}),e=>e.reply?.data.operation_ref.execution_nonce==='last-read-native'&&e.releaseError.message==='release-unconfirmed'&&e.callbackError.message.includes('deadline'));
+}));
+test('ownership rejection retains the exact late native observation result',async()=>{
+  let finish;const selected={window:'w',pid:1,native_epoch:'e'};
+  const c=new RcuClient(async name=>name==='computer.observe'?await new Promise(r=>{finish=r;}):{structuredContent:name==='computer.claim'?{lease:'l'}:name==='computer.activate_window'?{state:'already_foreground',window:{...selected,process_created:'1'},after_foreground:{...selected,process_created:'1'},user_intervened:false,resources_released:true,resource_release_uncertain:false}:{released:true}});
+  const w=c.window('t');await w.bind({...selected,relation:'initial'});const old=w.observe();const outcome=assert.rejects(old,e=>/superseded/.test(e.message)&&e.reply.data.operation_ref.execution_nonce==='late-native-read');
+  await w.activate({expectedForeground:null,requestId:'activation'});
+  finish({structuredContent:{frame:'late',scene:{elements:[]},operation_ref:{execution_nonce:'late-native-read'}}});await outcome;
+});
+
+test('direct and unawaited final read timeouts retain evidence through cleanup',async()=>{
+  for(const mode of ['direct','unawaited'])await clockTest(async clock=>{
+    let n=0;const c=new RcuClient(async name=>{
+      if(name==='computer.observe'){if(++n>1)clock.now=101;return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[]},operation_ref:{execution_nonce:mode}}};}
+      return {structuredContent:name==='computer.claim'?{lease:'l'}:{released:true}};
+    });
+    const w=c.window('t');await w.observe();
+    await assert.rejects(w.withInput(async i=>{const read=i.observe();if(mode==='direct')await read;},{ttlMs:1000,maxDurationMs:100}),e=>e.reply.data.operation_ref.execution_nonce===mode&&/deadline/.test(e.message));
+  });
+});
+
+test('local concurrency rejection cannot hide the later native read cleanup failure',async()=>{
+  let n=0,finish;const c=new RcuClient(async name=>{
+    if(name==='computer.observe'){
+      if(++n===2)return await new Promise(r=>{finish=()=>r({isError:true,structuredContent:{code:'native_read_cleanup_uncertain',operation_ref:{execution_nonce:'pending-native-read'}}});});
+      return {structuredContent:{frame:'f',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
+    }
+    if(name==='computer.act_checked')assert.fail('no input while reading');
+    return {structuredContent:name==='computer.claim'?{lease:'l'}:{released:true}};
+  });
+  const w=c.window('t');await w.observe();
+  await assert.rejects(w.withInput(async i=>{
+    const read=i.observe();while(!finish)await Promise.resolve();
+    try{await i.act({element:'button',intent:'click',requestId:'never'});}catch{}
+    finish();try{await read;}catch{}
+  }),e=>/Concurrent/.test(e.message)&&e.pendingError.data.operation_ref.execution_nonce==='pending-native-read'&&e.actionResults.length===0);
+});

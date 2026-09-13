@@ -30,6 +30,33 @@ no display resolution or original artifact is changed. `crop` uses original
 pixels and `maxEdge` can request detail explicitly. Preview mappings remain
 authoritative; this does not establish lower whole-task model latency.
 
+### Explicit focus resumption
+
+Do not reuse a previous task's foreground assumption. Discover the exact window
+again and bind it; binding never focuses. `discover` reports a separate native
+`foreground` fact even when a title filter omits that foreground from its rows.
+Only `foreground.status === 'known'` supplies `identity` (null means truly none).
+
+```js
+const d = await rcu.call('computer.discover', {target, title_contains: title});
+// Select one exact returned native window; reject ambiguity/transition states.
+await state.window.bind(selection);
+await state.window.activate({
+  expectedForeground: d.data.foreground.identity,
+  requestId: uniqueActivationRequest
+});
+const current = await state.window.snapshot();
+```
+
+Use discovery and activation in the same bounded cell, not across a model turn.
+The helper claims/releases a separate lease without treating background input as
+ready. It checks the exact native activation receipt and then requires a fresh
+observation. Delayed observation replies cannot restore old aliases. A rejected,
+yielded or uncertain activation is never automatically repeated; its error keeps
+the native receipt/reference and any release error. Actual foreground success is
+not a verified application goal. Minimized/newly opening windows remain explicit
+states, not permission to choose another similarly named window.
+
 ### Device-paced drag (advertised Windows capability)
 
 When the target advertises `pointer_drag.implemented`, one checked intent may
@@ -49,9 +76,11 @@ await state.window.withInput(input => input.act({
 
 Offsets are **device physical desktop pixels from the native reference**, not
 preview/controller pixels. Use 2..128 vertices with strictly increasing times,
-ending at 16..5000ms. The Windows executor retains every vertex and samples each
-line at nominal 16ms intervals, holding/releasing the left button in one native
-operation. It is not a guaranteed 60fps renderer. The entire path must remain in
+ending at 16..5000ms. The Windows executor retains every requested vertex and
+uses the advertised `pointer_drag.sample_interval_ms` for optional interpolation
+(the current development native build uses 64ms, not the portable 16ms default),
+holding/releasing the left button in one native operation. It is not a guaranteed
+60fps renderer. The entire path must remain in
 the same fixed-geometry foreground window and selected element ancestry.
 Cancellation/focus loss/late schedule stops further movement; release-only
 cleanup does not replay the path. Failed release remains uncertain/fenced.
@@ -83,10 +112,22 @@ implemented REPL wiring; global Plugin packaging remains separate work.
   `presentation.elements.next_offset` means the display is paged, not complete.
   `elementsPage(offset)` reads retained metadata without another screenshot and
   admits those original-frame elements for checked actions.
-- `withInput(callback, {ttlMs, maxActions})` claims once for the prepared callback,
+- `withInput(callback, {ttlMs, maxActions, maxDurationMs})` claims once for the prepared callback,
   offers `act({element,intent,value,requestId})` and `observe()`, then releases.
   Await it in the same Host evaluation. Observe after mutation before selecting
   another action. A caught/ignored action failure still poisons the batch.
+- Wrappers from one `RcuClient` coordinate per exact target: ownership covers
+  claim, native work, reads and cleanup. Inside a batch use the callback's
+  `observe`, `snapshot`, and `elementsPage`, not outside window methods. Reads on
+  a different target remain independent. Rebinding/observing through another
+  wrapper invalidates old local aliases; the service lease remains authoritative
+  across other clients and Hosts. Local coordination retains at most 64 targets.
+- `maxDurationMs` is a monotonic **scheduling cutoff**, not a hard native kill.
+  Default is 25s or less for a short lease; native work, claim and internal reads
+  count against it, and TTL reserves cleanup headroom. Known drag duration must
+  fit before dispatch. No further step is sent after an expired/invalid clock,
+  a duplicate request ID, or an existing deduplicated receipt. Pending reads and
+  actions settle before release; Stop remains the Rust supervisor's job.
 - Errors retain original replies/execution references and `actionResults`;
   release failure is attached rather than hiding an earlier operation failure.
   There is no retry, automatic reconnection/replay, focus change or goal-success
@@ -95,6 +136,34 @@ implemented REPL wiring; global Plugin packaging remains separate work.
   can wait indefinitely; native lease expiry remains enforced, and Host Stop/
   transport cancellation must be wired by the actual Host integration. Do not
   claim these helpers alone solve REPL cancellation or native provider hangs.
+
+### Several already-decided steps, one cell
+
+Use the existing bounded callback rather than a stored business workflow or an
+implicit state-transition DSL. Every action still requires fresh observation:
+
+```js
+await state.window.snapshot();
+const batch = await state.window.withInput(async input => {
+  for (const step of preparedSteps) {
+    const s = await input.snapshot();
+    const selected = selectExactObservedControl(s.data, step); // Caller decision.
+    if (!selected) throw new Error('State changed; stop, do not guess');
+    await input.act({ref: selected.ref, frame: s.data.frame,
+      intent: step.intent, value: step.value, requestId: step.requestId});
+  }
+}, {maxActions: preparedSteps.length, maxDurationMs: 15000, ttlMs: 20000});
+// Lease released before final visual feedback/model deliberation.
+const after = await state.window.snapshot({preview: true});
+```
+
+This is host-side continuous orchestration with device-paced individual drags,
+not an atomic device multi-stroke transaction. It does not reuse `e0` across
+frames, assume value changes are authorized, or select a new window on failure.
+The caller explicitly reads and chooses each next action. `batch.timing` covers
+only the callback/claim/cleanup segment, not the whole model task or time between
+separate tool calls. Visible focus changes stop input; an unobserved away-and-back
+user intervention is not claimed detectable from these snapshots alone.
 
 ## Complementary GUI and terminal peers
 
