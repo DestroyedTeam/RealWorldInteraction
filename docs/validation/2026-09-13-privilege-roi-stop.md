@@ -2,7 +2,24 @@
 
 状态：持续验收，不是全项目完成。GUI 全部经当前 Host 加载的原生 RCU MCP；SSH 仅用于部署和独立取证，没有 Shell/Python GUI 客户端。
 
-直观看过程：[27 步实际截图](../../outputs/acceptance-20260913/README.md)。每张保留原生 PNG，不补画、不修图。
+直观看过程：[35 步实际截图](../../outputs/acceptance-20260913/README.md)。每张保留原生 PNG，不补画、不修图。
+
+## 第二次重启后的收口
+
+- 新Host返回新增transport字段，独立只读verifier也确认当前入口可用。Windows agent
+  重启后，首次targets内部只做一次Describe重连，`BrokenPipe → reply_validated`；
+  原笔画durable记录前后逐字节相同、`replay_allowed=false`。
+- 实际调用指定1200ms截止；cell约1274ms返回，原生轨迹约863ms／13次移动后取消并
+  抬键。父级查明terminal、无native pending、resources released后，一次释放租约成功。
+  这次没有context_busy，未自动清除围栏；显式恢复核对空闲与按键后，原uncertain历史仍不变。
+- Paint窗口发现完整且为空，另经成功CIM查询确认旧PID2024已不存在；MCP服务仍available。
+  后续最小化Explorer恢复缺口已实现并实测；详情见[显式窗口激活](../architecture/explicit-window-activation.md)。
+- 原生GUI从Explorer打开系统Run界面，填写mspaint与原PNG路径后启动新Paint，
+  PID7372／出生标识134337780956635793；不是SSH启动或Shell MCP客户端。
+  文件仍12676字节／`d155aa4f…`，512px画布切片仍`ab04a812…`。
+
+新截图28–35是本轮；30是关闭确认框，不冒充进程退出截图。1200ms输入参数取自实际
+工具调用并有明确转录，非独立抓包。1274ms与863ms都不等于整轮模型思考或屏幕显示延迟。
 
 ## 已实际确认
 
@@ -41,8 +58,7 @@ ROI／面积采样已部署 Windows PID **11876**，进程出生标识 `13433770
 
 ## 仍在推进
 
-- 新连接池代际退役／单次只读重连，以及取消后的有界清理：独立评审和最终离线门禁通过；新全局 MCP SHA `45ae1911…` 已安装，profile／身份材料未变。安装后真实工具仍返回旧进程的 transport 字段，尚未把它记为新 Host 运行态验收。
-- 已处置本轮临时测试文档、GUI重开原PNG并独立复核；整个应用关闭后的服务健康与重开仍单列，不把关闭Open弹窗当成退出Paint。
+- 新连接池／有界清理、整个应用退出后服务健康与GUI重开已按上节实测；历史旧Host失败记录不改写。
 - 菜单精确指针目标提示、真实人工介入／异常窗口重用、公共 UIA 观察开销、Mac 通用受控端与剩余架构债务，继续跟踪完整实施计划。
 
 ## 最终离线门禁（独立 verifier，Darwin arm64）
