@@ -3,6 +3,21 @@
 use crate::config::PlatformPolicy;
 use crate::config::{Config, Principal};
 use rcu_core::{Backend, Result, fault};
+
+/// Independent of a selected window and backend readiness; does not request rights.
+pub fn process_status(config: &Config) -> serde_json::Value {
+    #[cfg(windows)]
+    if matches!(config.platform, PlatformPolicy::Windows { .. }) {
+        return match rcu_windows::agent_binding::current_process_status() {
+            Ok(status) => status,
+            Err(error) => {
+                serde_json::json!({"status":"unavailable","pid":std::process::id(),"error":error})
+            }
+        };
+    }
+    let _ = config;
+    serde_json::json!({"status":"unsupported_for_this_platform_policy","platform":std::env::consts::OS,"native_token_measured":false})
+}
 pub fn backend(config: &Config, policy: &Principal, context: &str) -> Result<Box<dyn Backend>> {
     match &config.platform {
         #[cfg(windows)]

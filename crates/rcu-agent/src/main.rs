@@ -14,6 +14,21 @@ fn private_read(path: &Path, cap: usize) -> io::Result<Vec<u8>> {
 async fn run() -> io::Result<()> {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
     #[cfg(windows)]
+    if args.len() == 3 && args[0] == "--describe-process" {
+        let pid = args[1]
+            .to_str()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or_else(|| io::Error::other("positive PID required"))?;
+        let birth = args[2]
+            .to_str()
+            .and_then(|s| s.parse::<u64>().ok())
+            .ok_or_else(|| io::Error::other("exact creation FILETIME required"))?;
+        let status = rcu_windows::agent_binding::inspect_process(pid, birth)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        println!("{}", serde_json::to_string(&status)?);
+        return Ok(());
+    }
+    #[cfg(windows)]
     if args.len() == 2 && args[0] == "--import-bundle" {
         println!("{}", rcu_agent::install::import(Path::new(&args[1]))?);
         return Ok(());
@@ -27,7 +42,7 @@ async fn run() -> io::Result<()> {
     }
     if args.len() != 2 || (args[0] != "--config" && args[0] != "--repair-namespace") {
         return Err(io::Error::other(
-            "usage: rcu-agent --config ABS_PRIVATE_SERVICE_CONFIG | --repair-namespace ABS_PRIVATE_REPAIR_SPEC",
+            "usage: rcu-agent --config ABS_PRIVATE_SERVICE_CONFIG | --repair-namespace ABS_PRIVATE_REPAIR_SPEC; Windows read-only diagnostics: --describe-process PID CREATION_FILETIME",
         ));
     }
     let repair: Option<rcu_agent::runtime::NamespaceRepair> = if args[0] == "--repair-namespace" {

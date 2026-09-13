@@ -9,7 +9,9 @@ use crate::{
     },
     desktop::{self, api},
 };
-pub use diagnostics::{current_token_privilege, require_current_privilege};
+pub use diagnostics::{
+    current_process_status, current_token_privilege, inspect_process, require_current_privilege,
+};
 use rcu_core::{Result, fault};
 use sha2::{Digest, Sha256};
 use std::{
@@ -76,6 +78,19 @@ struct TokenIdentity {
 }
 
 fn token_identity(process: HANDLE) -> Result<TokenIdentity> {
+    let identity = raw_token_identity(process)?;
+    validate_user_sid(&identity.sid)?;
+    if identity.session == 0 {
+        return Err(fault(
+            "agent_session_zero_refused",
+            "Require an allocated interactive user session, not session zero.",
+        ));
+    }
+    Ok(identity)
+}
+
+// Observation-only token facts. Interactive input policy stays in token_identity.
+fn raw_token_identity(process: HANDLE) -> Result<TokenIdentity> {
     let mut token = HANDLE::default();
     api("agent_token_unavailable", unsafe {
         OpenProcessToken(process, TOKEN_QUERY, &mut token)
@@ -108,7 +123,6 @@ fn token_identity(process: HANDLE) -> Result<TokenIdentity> {
     }
     let user = unsafe { &*storage.as_ptr().cast::<TOKEN_USER>() };
     let sid = sid_string(user.User.Sid)?;
-    validate_user_sid(&sid)?;
     let mut stats = TOKEN_STATISTICS::default();
     api("agent_logon_unavailable", unsafe {
         GetTokenInformation(
@@ -129,12 +143,6 @@ fn token_identity(process: HANDLE) -> Result<TokenIdentity> {
             &mut needed,
         )
     })?;
-    if session == 0 {
-        return Err(fault(
-            "agent_session_zero_refused",
-            "Require an allocated interactive user session, not session zero.",
-        ));
-    }
     Ok(TokenIdentity {
         sid,
         session,

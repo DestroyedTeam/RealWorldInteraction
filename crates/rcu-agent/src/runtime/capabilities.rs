@@ -107,6 +107,54 @@ impl Runtime {
             json!(domain.as_deref().is_some_and(|key| self.is_fenced(key)));
         result.data["resource_domain"] = json!(domain);
         result.data["runtime_status"] = json!(runtime_status);
+        // Diagnostic process facts remain available when desktop construction is
+        // unavailable. They do not turn service health into GUI/input authority.
+        result.data["service_process_status"] = if policy.observe {
+            platform::process_status(&self.config)
+        } else {
+            json!({"status":"not_authorized"})
+        };
         result
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    #[test]
+    fn service_diagnostics_neither_require_a_window_nor_bypass_observation_policy() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut policy = Principal {
+            certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
+            observe: true,
+            input: false,
+        };
+        let runtime = Runtime::new(Config {
+            version: 1,
+            device_id: "diagnostic-test".into(),
+            bind: "127.0.0.1:0".parse().unwrap(),
+            identity: rcu_link_trust::IdentityPaths::in_profile(dir.path()),
+            principals: vec![policy.clone()],
+            state_root: dir.path().join("state"),
+            platform: PlatformPolicy::Unsupported {
+                platform: "offline-test".into(),
+            },
+        })
+        .unwrap();
+        let result = runtime.describe(&policy);
+        assert_eq!(result.data["service"], "healthy");
+        assert_eq!(result.data["availability"], "unavailable");
+        assert_eq!(
+            result.data["service_process_status"]["native_token_measured"],
+            false
+        );
+        assert!(result.data["service_process_status"].get("pid").is_none());
+        policy.observe = false;
+        let denied = runtime.describe(&policy);
+        assert_eq!(
+            denied.data["service_process_status"],
+            json!({"status":"not_authorized"})
+        );
+        assert_eq!(denied.data["service"], "healthy");
     }
 }
