@@ -44,3 +44,19 @@ Windows agent SHA：`3daf39ed271f433dd974d6a618dca5505a732e2f649c27cbd639fa20452
 Mac MCP SHA：`76936d7591c18fbe89478ec0286cf13799f0bfa89928412a7f6666f21acd39ff`。
 既有配置、启动任务未变，回滚件均保留。长日志在
 `work/resume-and-performance-20260913/`，不提交截图、二进制或运行态数据。
+
+## 当前 Host 的补充只读采样
+
+本补充使用后续 `45ae1911…` Host MCP 与 `a0472225…` Windows agent，
+不是上节历史版本；部署完整SHA见同日 `2026-09-13-privilege-roi-stop.md`。
+
+后续同日重新发现时，Windows 桌面已为2582×1824，Paint窗口已变为2582×1656；
+本工具没有修改显示模式。按新原生记录重绑，再读取三帧，没有发输入或沿用旧坐标。
+原生 MCP `observe` 三次约712/591/616ms，其中 UIA 遍历约491/428/433ms；
+另一次1024px `capture_visual` 约140ms、178549字节，不走UIA、不生成输入frame。
+全部在同一JS调用内完成，整体约2.315s，包括发现和绑定，但不包含模型返回后的间隔。
+
+这是当前应用状态的一组小样本，不是跨版本A/B：窗口尺寸、应用重启与控件状态
+都与早前不同。语义覆盖仍为depth 8不完整；不能从39个已加载控件推断全树只有39项。
+截图见主图文第36步；原始计时为 `work/resume-and-performance-20260913/`
+下 `observe-baseline-current-host.json`、`observe-baseline-current-uia.json`。
