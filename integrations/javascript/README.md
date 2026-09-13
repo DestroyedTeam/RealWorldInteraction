@@ -119,7 +119,7 @@ node --test integrations/javascript/rcu-client.test.mjs
 
 These tests inject a synthetic MCP function. They validate client sequencing and
 failure handling, not Windows execution or overall model latency.
-# Readiness rejection
+## Readiness rejection
 
 `withInput` requires an observed `mutation_ready: true` and `blocked: false`;
 a known input-domain fence also stops it before claim. Every newly observed

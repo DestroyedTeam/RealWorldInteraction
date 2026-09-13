@@ -73,7 +73,24 @@ full_tree 0 次，证明两次复核保留而非被删除。root-only 总计 157
 - 默认 workspace：281 passed / 3 ignored；fmt 和 all-targets/all-features
   clippy 通过；Windows ARM64 release/cross-clippy 通过；JS 18 tests 通过。
   增加 scope 路由、图像/epoch/layout/title 约束、就绪拦截与真实 fixture RPC
-  不发 claim/action 的回归。all-features/架构重构结果另补。
+  不发 claim/action 的回归。最终 all-features：368 passed / 4 ignored，38 suites。
+
+## 独立的纯模块重构
+
+- `pointer_feedback/native.rs` 758→467 行，窗口/Surface/放置移至
+  `pointer_feedback/native/window.rs`（306 行）。
+- `uia.rs` 748→584 行，输入作用域移至 `uia/input.rs`（168 行）。
+- 保留函数体，机械比较仅忽略空白及模块内所需可见性；两组比较均通过。
+  架构规则文件未修改，ratchet 检查 passed=true / violations=[]。
+  既有允许债务仍在，不将这个结果解释为“整体架构已完成”。
+- 重构后 release/cross-clippy、默认 workspace、all-features workspace 均通过。
+  最终 Windows 进程 PID 13060 / Session 1，实例
+  `e0057173-88fb-4b6e-9755-a015face838d`，SHA256
+  `d4e9efc950605ba8e54775bdc791c114825c5f61bac438669ec060147b62e352`。
+  独立 rollback 保留，配置与任务定义未变。
+- 最终构建再次经当前 Host 原生 MCP 点击验证：act 322.062ms，root-only
+  复核 2 次、full-tree 0 次，插入/释放正常；窗口及画布 hash 与上表不变。
+  这次 smoke 不混入前后 3 样本对照，不作为额外性能倍数证据。
 
 原始 native 回执、安装记录及日志在 `work/pixel-preflight-20260913/`，
 截图、二进制、profile 和运行身份均不提交 Git。后续纯模块拆分单独提交，
