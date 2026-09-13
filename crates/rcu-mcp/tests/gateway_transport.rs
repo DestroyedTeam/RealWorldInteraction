@@ -197,6 +197,7 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                                 };
                             }
                             if arguments["operation_id"] == "sdk-observe"
+                                || arguments["operation_id"] == "sdk-blocked-observe"
                                 || arguments["request_id"] == "sdk-action"
                             {
                                 return Reply {
@@ -205,7 +206,7 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                                     device: r.device,
                                     instance: "test-instance".into(),
                                     result: DeviceResult::value(
-                                        json!({"frame":"fixture-frame","scene":{"elements":[{"id":"fixture-element"}]},"system_accepted":arguments["request_id"] == "sdk-action","goal_verified":false,"operation_ref":operation_ref}),
+                                        json!({"frame":"fixture-frame","scene":{"mutation_ready":arguments["operation_id"] != "sdk-blocked-observe","blocked":arguments["operation_id"] == "sdk-blocked-observe","elements":[{"id":"fixture-element"}]},"system_accepted":arguments["request_id"] == "sdk-action","goal_verified":false,"operation_ref":operation_ref}),
                                     ),
                                 };
                             }
@@ -354,6 +355,32 @@ async fn js_sdk_batch_and_parent_lease_cleanup_use_real_authenticated_fixture_rp
     assert_eq!(failed["state_retained"], false);
     assert_eq!(failed["cleanup"][0]["lease"], "repl-fixture-lease");
     assert_eq!(failed["cleanup"][0]["result"]["released"], true, "{failed}");
+    host.stop().await;
+}
+
+#[tokio::test]
+async fn js_sdk_rejects_observed_blocked_state_before_any_claim_or_action_rpc() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap().join("private");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .unwrap();
+    let d = device(&root, "repl-device", false).await;
+    let mut host = Host::start(&profile(&root, &[&d])).await;
+    host.tool(2, "computer.targets", json!({})).await;
+    let result=host.tool(3,"computer.js",json!({"code":"state.win=rcu.window('target-repl-device');await state.win.observe({operation_id:'sdk-blocked-observe'});await state.win.withInput(b=>b.act({element:'fixture-element',intent:'click',requestId:'must-not-send'}));"})).await;
+    assert!(
+        result["error"]
+            .as_str()
+            .unwrap()
+            .contains("client_observation_not_ready"),
+        "{result}"
+    );
+    assert_eq!(result["calls"].as_array().unwrap().len(), 1);
+    assert_eq!(result["calls"][0]["tool"], "computer.observe");
+    assert_eq!(result["cleanup"], json!([]));
+    assert_eq!(result["state_retained"], false);
     host.stop().await;
 }
 #[tokio::test]

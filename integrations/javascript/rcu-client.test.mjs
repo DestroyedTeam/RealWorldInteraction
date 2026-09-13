@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RcuClient, RcuToolError } from './rcu-client.mjs';
+import { RcuClient, RcuToolError, RcuInputNotReadyError } from './rcu-client.mjs';
 
 function setup(failAction = false, failRelease = false) {
   const calls = []; let frame = 0;
   const client = new RcuClient(async (name, args) => {
     calls.push({ name, args });
     let data = {};
-    if (name === 'computer.observe') data = { frame: `frame-${++frame}`, scene: { elements: [{ id: 'button' }] } };
+    if (name === 'computer.observe') data = { frame: `frame-${++frame}`, scene: { mutation_ready: true, blocked: false, elements: [{ id: 'button' }] } };
     if (name === 'computer.claim') data = { lease: 'lease', ttl_ms: args.ttl_ms };
     if (name === 'computer.release') {
       if (failRelease) return { isError: true, structuredContent: { code: 'unknown_lease' } };
@@ -76,7 +76,7 @@ test('cleanup waits for an accidentally unawaited action', async () => {
   const calls=[]; let finished=false;
   const client=new RcuClient(async name=>{
     calls.push(name);
-    if(name==='computer.observe')return {structuredContent:{frame:'one',scene:{elements:[{id:'button'}]}}};
+    if(name==='computer.observe')return {structuredContent:{frame:'one',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
     if(name==='computer.claim')return {structuredContent:{lease:'one'}};
     if(name==='computer.act_checked'){await new Promise(resolve=>setTimeout(resolve,10));finished=true;return {structuredContent:{system_accepted:true}};}
     if(name==='computer.release'){assert(finished);return {structuredContent:{released:true}};}
@@ -89,7 +89,7 @@ test('omitted elements are usable only after reading this observation metadata p
   const seen=[];
   const client=new RcuClient(async (name,args)=>{
     seen.push(name);
-    const data=name==='computer.observe'?{frame:'frame',scene:{elements:[]},presentation:{result_ref:'metadata'}}
+    const data=name==='computer.observe'?{frame:'frame',scene:{mutation_ready:true,blocked:false,elements:[]},presentation:{result_ref:'metadata'}}
       :name==='computer.result'?{result_ref:args.result_ref,source_tool:'computer.observe',value:[{id:'tail'}]}
       :name==='computer.claim'?{lease:'lease'}
       :name==='computer.act_checked'?{system_accepted:true}:{released:true};
@@ -107,7 +107,7 @@ test('text-only failures retain their native execution reference', async () => {
 test('non-Error transport rejections cannot hide the request identity during cleanup', async () => {
   for (const reason of ['transport_unknown', null, undefined]) {
   const client=new RcuClient(async name=>{
-    if(name==='computer.observe')return {structuredContent:{frame:'frame',scene:{elements:[{id:'button'}]}}};
+    if(name==='computer.observe')return {structuredContent:{frame:'frame',scene:{mutation_ready:true,blocked:false,elements:[{id:'button'}]}}};
     if(name==='computer.claim')return {structuredContent:{lease:'lease'}};
     if(name==='computer.act_checked')throw reason;
     return {structuredContent:{released:true}};
@@ -163,4 +163,42 @@ test('paged summary refs do not accept element overrides or missing frame', asyn
   assert.throws(()=>window.summary({offset:2}),/bounded summary/);
   await assert.rejects(window.withInput(i=>i.act({ref:'e0',intent:'click',requestId:'one'})),/exact observed frame/);
   assert(!calls.some(c=>c.name==='computer.act_checked'));
+});
+
+test('known blocked, unknown readiness or fenced observation sends no claim or action', async () => {
+  for (const flags of [{mutation_ready:false,blocked:false},{mutation_ready:true,blocked:true},{mutation_ready:true,blocked:null},{blocked:false},{mutation_ready:true,blocked:false,fenced:true}]) {
+    const calls=[];
+    const client=new RcuClient(async name=>{calls.push(name);return {structuredContent:{frame:'f',scene:{...flags,elements:[{id:'button'}]},input_domain_fenced:flags.fenced??false,presentation:{result_ref:'details'}}};});
+    const w=client.window('t');await w.observe();
+    await assert.rejects(w.withInput(()=>{throw Error('callback must not run');}),e=>e instanceof RcuInputNotReadyError&&e.data.native_dispatched===false&&e.data.details_ref==='details');
+    assert.deepEqual(calls,['computer.observe']);
+  }
+});
+
+test('new blocked observation inside a batch stops second action and still releases', async () => {
+  const calls=[];let observed=0;
+  const client=new RcuClient(async name=>{
+    calls.push(name);
+    if(name==='computer.observe')return {structuredContent:{frame:`f${++observed}`,scene:{elements:[{id:'button'}],mutation_ready:observed===1,blocked:observed!==1}}};
+    if(name==='computer.claim')return {structuredContent:{lease:'lease'}};
+    if(name==='computer.act_checked')return {structuredContent:{system_accepted:true}};
+    return {structuredContent:{released:true}};
+  });
+  const w=client.window('t');await w.observe();
+  await assert.rejects(w.withInput(async i=>{
+    await i.act({element:'button',intent:'click',requestId:'one'});await i.observe();
+    try {await i.act({element:'button',intent:'click',requestId:'two'});}catch {}
+  }),e=>e instanceof RcuInputNotReadyError&&e.actionResults.length===1);
+  assert.equal(calls.filter(n=>n==='computer.act_checked').length,1);
+  assert.equal(calls.at(-1),'computer.release');
+});
+
+test('a fresh ready observation recovers only client state, not a replay', async () => {
+  const {window,calls}=setup();const o=await window.observe();
+  o.data.scene.mutation_ready=false;
+  await assert.rejects(window.withInput(()=>{}),RcuInputNotReadyError);
+  await window.observe();
+  await window.withInput(i=>i.act({element:'button',intent:'click',requestId:'new-intent'}));
+  assert.equal(calls.filter(n=>n.name==='computer.claim').length,1);
+  assert.equal(calls.filter(n=>n.name==='computer.act_checked').length,1);
 });

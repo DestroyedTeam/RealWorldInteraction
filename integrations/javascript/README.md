@@ -119,3 +119,12 @@ node --test integrations/javascript/rcu-client.test.mjs
 
 These tests inject a synthetic MCP function. They validate client sequencing and
 failure handling, not Windows execution or overall model latency.
+# Readiness rejection
+
+`withInput` requires an observed `mutation_ready: true` and `blocked: false`;
+a known input-domain fence also stops it before claim. Every newly observed
+step inside a batch is checked again. `RcuInputNotReadyError.data` identifies
+`client_precondition`, the frame, readiness flags and retained detail reference.
+This rejects known-unready work locally; it never grants native permission,
+automatically recovers a fence, observes again or retries prior input. The
+server remains authoritative and earlier action receipts/lease cleanup survive.

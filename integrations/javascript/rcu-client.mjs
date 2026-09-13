@@ -17,6 +17,17 @@ export class RcuToolError extends Error {
   }
 }
 
+/** Local rejection only. This is not a native receipt or an authorization grant. */
+export class RcuInputNotReadyError extends Error {
+  constructor(observation) {
+    const scene = observation.scene ?? {};
+    const data = { code: 'client_observation_not_ready', source: 'client_precondition', frame: observation.frame, mutation_ready: scene.mutation_ready ?? null, blocked: scene.blocked ?? null, input_domain_fenced: observation.input_domain_fenced ?? null, details_ref: observation.presentation?.result_ref ?? null, native_dispatched: false };
+    super(`${data.code}: mutation_ready=${data.mutation_ready}, blocked=${data.blocked}, input_domain_fenced=${data.input_domain_fenced}; no action sent for this attempt. Observe the changed state or reconcile the fence; never replay previous input.`);
+    this.name = 'RcuInputNotReadyError';
+    this.data = data;
+  }
+}
+
 export class RcuClient {
   #callTool;
   constructor(callTool) {
@@ -124,10 +135,15 @@ class RcuWindow {
     }
     return page;
   }
+  #requireInputReady() {
+    const o = this.#observation;
+    if (o.scene.mutation_ready !== true || o.scene.blocked !== false || o.input_domain_fenced === true) throw new RcuInputNotReadyError(o);
+  }
   async withInput(callback, { ttlMs = 30000, maxActions = 16 } = {}) {
     if (this.#active) throw new Error('An input batch is already active on this binding');
     if (typeof callback !== 'function' || !Number.isInteger(ttlMs) || ttlMs < 100 || ttlMs > 60000 || !Number.isInteger(maxActions) || maxActions < 1 || maxActions > 64) throw new TypeError('Use a bounded input batch');
     if (!this.#observation) throw new Error('Observe before preparing an input batch');
+    this.#requireInputReady(); // Known blocked/unknown state must not acquire a lease.
     // Reserve locally before awaiting claim, so concurrent batches cannot race.
     const state = { lease: null, actions: 0, closed: false, inFlight: false, failure: null, pending: new Set(), actionResults: [] };
     this.#active = state;
@@ -141,6 +157,7 @@ class RcuWindow {
         if (state.failure) throw state.failure;
         if (!requestId || typeof requestId !== 'string') throw new TypeError('Each intended action needs a stable requestId');
         if (!this.#observation) throw new Error('Observe the resulting state before the next action');
+        this.#requireInputReady(); // Also applies to each freshly observed step inside a batch.
         if (ref !== undefined) {
           if (element !== undefined || expectedFrame !== this.#observation.frame || !this.#aliases.has(ref)) throw new Error('Summary ref requires its exact observed frame and no element override');
           element = this.#aliases.get(ref);
