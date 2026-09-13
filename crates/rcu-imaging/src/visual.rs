@@ -31,18 +31,17 @@ pub fn encode_visual_rgb(size: [u32; 2], rgb: &[u8], max_edge: u32) -> Result<(V
             size,
         ));
     }
-    let sx = f64::from(size[0]) / f64::from(output[0]);
-    let sy = f64::from(size[1]) / f64::from(output[1]);
-    let mut sampled = Vec::with_capacity(output[0] as usize * output[1] as usize * 3);
-    for y in 0..output[1] {
-        checkpoint("visual_rgb_sample_row")?;
-        for x in 0..output[0] {
-            let ox = (((f64::from(x) + 0.5) * sx).floor() as u32).min(size[0] - 1);
-            let oy = (((f64::from(y) + 0.5) * sy).floor() as u32).min(size[1] - 1);
-            let i = (oy as usize * size[0] as usize + ox as usize) * 3;
-            sampled.extend_from_slice(&rgb[i..i + 3]);
-        }
-    }
+    let sampled = sampling::area_rgb(
+        size,
+        rgb,
+        Rect {
+            x: 0,
+            y: 0,
+            width: size[0],
+            height: size[1],
+        },
+        output,
+    )?;
     Ok((
         encode_rgb_limited(output, &sampled, rcu_core::MAX_VISUAL_PNG_BYTES)?,
         output,
@@ -52,7 +51,7 @@ pub fn encode_visual_rgb(size: [u32; 2], rgb: &[u8], max_edge: u32) -> Result<(V
 mod tests {
     use super::*;
     #[test]
-    fn raw_rgb_resize_encodes_correct_pixel_centers_once() {
+    fn raw_rgb_area_resize_preserves_linear_gradient_means() {
         let size = [256, 128];
         let mut rgb = Vec::new();
         for y in 0..size[1] {

@@ -2,6 +2,7 @@
 use rcu_core::{Result, fault, operation::checkpoint};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Write};
+mod sampling;
 mod visual;
 pub use visual::encode_visual_rgb;
 
@@ -303,16 +304,7 @@ pub fn view(
     };
     let sx = f64::from(crop.width) / f64::from(size[0]);
     let sy = f64::from(crop.height) / f64::from(size[1]);
-    let mut rgb = Vec::with_capacity(size[0] as usize * size[1] as usize * 3);
-    for y in 0..size[1] {
-        checkpoint("view_sample_row")?;
-        for x in 0..size[0] {
-            let ox = crop.x as usize + ((f64::from(x) + 0.5) * sx).floor() as usize;
-            let oy = crop.y as usize + ((f64::from(y) + 0.5) * sy).floor() as usize;
-            let i = (oy * raster.size[0] as usize + ox) * 3;
-            rgb.extend_from_slice(&raster.rgb[i..i + 3]);
-        }
-    }
+    let rgb = sampling::area_rgb(raster.size, &raster.rgb, crop, size)?;
     let png = encode_rgb(size, &rgb)?;
     if png.len() > rcu_core::INLINE_BYTES {
         return Err(fault(
@@ -320,7 +312,7 @@ pub fn view(
             "Use a smaller preview or tile; original remains unchanged.",
         ));
     }
-    Ok((png,ViewMapping{kind:if sx==1.0&&sy==1.0 {"native_resolution_tile"}else{"nearest_neighbor_preview"}.into(),original_size:raster.size,crop,view_size:size,view_to_original:[sx,0.0,0.0,sy,f64::from(crop.x)+(sx-1.0)/2.0,f64::from(crop.y)+(sy-1.0)/2.0],original_to_desktop:desktop,normalization:"view only: 8-bit RGB, RGBA composited on white; pixel-center affine; original PNG untouched".into()}))
+    Ok((png,ViewMapping{kind:if sx==1.0&&sy==1.0 {"native_resolution_tile"}else{"area_average_preview"}.into(),original_size:raster.size,crop,view_size:size,view_to_original:[sx,0.0,0.0,sy,f64::from(crop.x)+(sx-1.0)/2.0,f64::from(crop.y)+(sy-1.0)/2.0],original_to_desktop:desktop,normalization:"view only: 8-bit RGB, RGBA composited on white; downscale uses area-weighted RGB8 box average with half-up rounding; pixel-center affine; original PNG untouched".into()}))
 }
 #[cfg(test)]
 mod tests {

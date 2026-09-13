@@ -75,7 +75,7 @@ impl NativeWindows {
             image_size, visual_to_desktop: [sx,0.,0.,sy,f64::from(rectangle.x)+(sx-1.)/2.,f64::from(rectangle.y)+(sy-1.)/2.],
             captured_unix_ms, assurance: "native-attested-visible-desktop".into(),
             atomicity: "non-atomic visible-desktop rectangle; pre/post selected identity, visibility, geometry, display and DPI checks; other occlusion remains visible".into(),
-            normalization: "GDI top-down BGRA -> raw RGB -> optional nearest-neighbor pixel-center downsample -> one SDR 8-bit RGB PNG encode; no upscaling".into(),
+            normalization: "GDI top-down BGRA -> raw RGB -> optional area-weighted RGB8 box downsample with half-up rounding -> one SDR 8-bit RGB PNG encode; no upscaling".into(),
             feedback: raw.feedback,
             details: json!({"window_dpi":before.window_dpi,"window_dpi_awareness":before.window_dpi_awareness,"bounds_source":if before.dwm_visible_frame.is_some(){"DWM_EXTENDED_FRAME_BOUNDS"}else{"GetWindowRect under PMv2"},"foreground_before":before.foreground,"foreground_after":after.foreground,"displays":displays,"capture_timing":raw.timing,"resize_and_encode_ms":resize.elapsed().as_secs_f64()*1000.,"output_png_bytes":png.len(),"capture_backend":"GetDC/CreateDIBSection/BitBlt SRCCOPY|CAPTUREBLT/GdiFlush","hdr_protected_content_cursor_fidelity":"not attested","native_window_epoch_assurance":"HWND/PID/process birth/class; no persistent HWND generation tracking","uia_reads":0,"input_grant_updated":false,"selection_updated":false}),
             png,
