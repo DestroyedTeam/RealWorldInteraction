@@ -125,3 +125,37 @@ fn utf8_and_unknown_titles_are_bounded_and_filters_are_explicit() {
         }
     ));
 }
+#[test]
+fn authorized_display_requires_an_unambiguous_matching_display() {
+    let built_in = DisplayRecord {
+        id: 1,
+        built_in: true,
+        bounds: [282.0, 1152.0, 1800.0, 1169.0],
+    };
+    let external = DisplayRecord {
+        id: 3,
+        built_in: false,
+        bounds: [0.0, 0.0, 2048.0, 1152.0],
+    };
+    let policy = AuthorizedDisplay {
+        built_in: true,
+        id: None,
+    };
+    assert!(policy.allows(Some(&built_in)));
+    assert!(!policy.allows(Some(&external)));
+    assert!(!policy.allows(None));
+    assert!(
+        AuthorizedDisplay {
+            built_in: true,
+            id: Some(1)
+        }
+        .allows(Some(&built_in))
+    );
+    assert!(
+        !AuthorizedDisplay {
+            built_in: true,
+            id: Some(2)
+        }
+        .allows(Some(&built_in))
+    );
+}

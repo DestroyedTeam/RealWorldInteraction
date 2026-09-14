@@ -18,6 +18,7 @@ mod recovery;
 #[cfg(target_os = "macos")]
 mod session;
 #[cfg(target_os = "macos")]
+pub use catalog::AuthorizedDisplay;
 pub use desktop::NativeMacDesktop;
 #[cfg(target_os = "macos")]
 pub use native::*;

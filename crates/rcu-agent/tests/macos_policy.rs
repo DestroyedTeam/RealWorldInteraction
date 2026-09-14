@@ -18,7 +18,10 @@ fn config(root: &std::path::Path) -> Config {
             input: false,
         }],
         state_root: root.join("state"),
-        platform: PlatformPolicy::MacOs { user_uid: 501 },
+        platform: PlatformPolicy::MacOs {
+            user_uid: 501,
+            authorized_display: None,
+        },
     }
 }
 #[test]
@@ -42,7 +45,10 @@ fn macos_policy_requires_only_a_native_uid_not_window_or_windows_identity() {
         assert!(serde_json::from_value::<Config>(malformed).is_err());
     }
     let mut invalid = c;
-    invalid.platform = PlatformPolicy::MacOs { user_uid: u32::MAX };
+    invalid.platform = PlatformPolicy::MacOs {
+        user_uid: u32::MAX,
+        authorized_display: None,
+    };
     assert!(invalid.validate().is_err());
 }
 #[tokio::test]

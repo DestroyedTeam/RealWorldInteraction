@@ -20,12 +20,23 @@ pub struct Config {
     pub state_root: PathBuf,
     pub platform: PlatformPolicy,
 }
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DisplayPolicy {
+    pub built_in: bool,
+    #[serde(default)]
+    pub id: Option<u32>,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PlatformPolicy {
     #[serde(rename = "macos")]
     MacOs {
         user_uid: u32,
+        /// Optional placement policy: only windows on a matching display may
+        /// be bound. Omitted means every on-screen window stays selectable.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        authorized_display: Option<DisplayPolicy>,
     },
     Windows {
         user_sid: String,
@@ -66,7 +77,22 @@ impl Config {
         {
             return Err(io::Error::other("invalid_native_user_policy"));
         }
-        if matches!(self.platform, PlatformPolicy::MacOs { user_uid: u32::MAX }) {
+        if let PlatformPolicy::MacOs {
+            authorized_display, ..
+        } = &self.platform
+            && authorized_display
+                .as_ref()
+                .is_some_and(|display| !display.built_in && display.id.is_none())
+        {
+            return Err(io::Error::other("invalid_display_policy"));
+        }
+        if matches!(
+            self.platform,
+            PlatformPolicy::MacOs {
+                user_uid: u32::MAX,
+                ..
+            }
+        ) {
             return Err(io::Error::other("invalid_native_user_policy"));
         }
         #[cfg(feature = "fixture")]

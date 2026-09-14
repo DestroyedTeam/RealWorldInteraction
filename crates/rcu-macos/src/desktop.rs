@@ -20,17 +20,28 @@ pub struct NativeMacDesktop {
     catalog: Catalog,
     capturer: Capturer,
     dispatches: Arc<AtomicU64>,
+    authorized_display: Option<crate::catalog::AuthorizedDisplay>,
 }
 impl NativeMacDesktop {
     /// Reads only native process/console identity, never windows, AX, capture or input.
-    pub fn new(uid: u32, allow_input: bool) -> Result<Self> {
+    pub fn new(
+        uid: u32,
+        allow_input: bool,
+        authorized_display: Option<crate::AuthorizedDisplay>,
+    ) -> Result<Self> {
         Ok(Self::from_identity(
             session::identity_for_uid(uid)?,
             uid,
             allow_input,
+            authorized_display,
         ))
     }
-    fn from_identity(identity: Identity, uid: u32, allow_input: bool) -> Self {
+    fn from_identity(
+        identity: Identity,
+        uid: u32,
+        allow_input: bool,
+        authorized_display: Option<crate::AuthorizedDisplay>,
+    ) -> Self {
         Self {
             identity,
             uid,
@@ -39,6 +50,7 @@ impl NativeMacDesktop {
             catalog: Catalog::default(),
             capturer: Capturer::default(),
             dispatches: Arc::new(AtomicU64::new(0)),
+            authorized_display,
         }
     }
     fn check_identity(&self) -> Result<()> {
@@ -165,6 +177,17 @@ impl Backend for NativeMacDesktop {
         let display = crate::native::displays()
             .ok()
             .and_then(|list| crate::native::containing_display(&list, current.rect).cloned());
+        if let Some(policy) = &self.authorized_display {
+            let record = display
+                .as_ref()
+                .map(crate::catalog::DisplayRecord::from_native);
+            if !policy.allows(record.as_ref()) {
+                return Err(fault(
+                    "unauthorized_display",
+                    "Refusing to bind a window that is not on the authorized display; place it there explicitly first.",
+                ));
+            }
+        }
         selected.require_same(&WindowRecord::from_native(
             &self.identity,
             current,
@@ -225,6 +248,7 @@ mod tests {
             },
             501,
             false,
+            None,
         )
     }
     #[test]
@@ -274,7 +298,7 @@ mod tests {
         let uid = unsafe { libc::getuid() };
         let status = session::process_status(uid);
         let mut report = json!({"diagnostic":"process_only_no_ui","process":status});
-        match NativeMacDesktop::new(uid, false) {
+        match NativeMacDesktop::new(uid, false, None) {
             Ok(mut backend) => {
                 assert!(backend.selected.is_none());
                 assert_eq!(

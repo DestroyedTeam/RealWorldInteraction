@@ -7,7 +7,7 @@ use rcu_core::{Backend, Result, fault};
 /// Independent of a selected window and backend readiness; does not request rights.
 pub fn process_status(config: &Config) -> serde_json::Value {
     #[cfg(target_os = "macos")]
-    if let PlatformPolicy::MacOs { user_uid } = config.platform {
+    if let PlatformPolicy::MacOs { user_uid, .. } = config.platform {
         return rcu_macos::process_status(user_uid);
     }
     #[cfg(windows)]
@@ -25,9 +25,18 @@ pub fn process_status(config: &Config) -> serde_json::Value {
 pub fn backend(config: &Config, policy: &Principal, context: &str) -> Result<Box<dyn Backend>> {
     match &config.platform {
         #[cfg(target_os = "macos")]
-        PlatformPolicy::MacOs { user_uid } => Ok(Box::new(rcu_macos::NativeMacDesktop::new(
+        PlatformPolicy::MacOs {
+            user_uid,
+            authorized_display,
+        } => Ok(Box::new(rcu_macos::NativeMacDesktop::new(
             *user_uid,
             policy.input,
+            authorized_display
+                .as_ref()
+                .map(|display| rcu_macos::AuthorizedDisplay {
+                    built_in: display.built_in,
+                    id: display.id,
+                }),
         )?)),
         #[cfg(windows)]
         PlatformPolicy::Windows {
@@ -65,7 +74,7 @@ pub fn backend(config: &Config, policy: &Principal, context: &str) -> Result<Box
 pub fn input_resources(config: &Config) -> Result<serde_json::Value> {
     match &config.platform {
         #[cfg(target_os = "macos")]
-        PlatformPolicy::MacOs { user_uid } => rcu_macos::input_resources(*user_uid),
+        PlatformPolicy::MacOs { user_uid, .. } => rcu_macos::input_resources(*user_uid),
         #[cfg(windows)]
         PlatformPolicy::Windows { .. } => rcu_windows::recovery::input_resources(),
         #[cfg(feature = "fixture")]

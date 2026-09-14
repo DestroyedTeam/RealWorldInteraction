@@ -31,6 +31,20 @@ pub(crate) struct DisplayRecord {
     pub built_in: bool,
     pub bounds: [f64; 4],
 }
+/// Optional call-site policy: a window may only be bound when its containing
+/// display matches. Windows without an unambiguous display never match.
+#[derive(Clone, Copy, Debug)]
+pub struct AuthorizedDisplay {
+    pub built_in: bool,
+    pub id: Option<u32>,
+}
+impl AuthorizedDisplay {
+    pub(crate) fn allows(&self, display: Option<&DisplayRecord>) -> bool {
+        display.is_some_and(|display| {
+            display.built_in == self.built_in && self.id.is_none_or(|id| display.id == id)
+        })
+    }
+}
 impl DisplayRecord {
     pub(crate) fn from_native(display: &crate::native::Display) -> Self {
         Self {
