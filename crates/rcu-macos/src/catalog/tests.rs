@@ -24,6 +24,7 @@ fn row(id: u32) -> WindowRecord {
             title: Some(format!("Window {id}")),
         },
         "100:1:1".into(),
+        None,
     )
     .unwrap()
 }
@@ -106,7 +107,7 @@ fn utf8_and_unknown_titles_are_bounded_and_filters_are_explicit() {
         alpha: 1.,
         title: Some("中文🙂".repeat(2000)),
     };
-    let r = WindowRecord::from_native(&identity(), &w, "100:1:1".into()).unwrap();
+    let r = WindowRecord::from_native(&identity(), &w, "100:1:1".into(), None).unwrap();
     assert!(r.title_truncated && r.title.as_ref().unwrap().len() <= 1024);
     assert!(matches_query(
         &w,

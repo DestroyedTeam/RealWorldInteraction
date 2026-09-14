@@ -319,31 +319,67 @@ pub(crate) fn window_inventory() -> Result<WindowInventory> {
         })
     }
 }
-fn display_layout(window: Rect) -> Result<(String, bool)> {
+/// One active display as reported by CoreGraphics, including whether it is the
+/// built-in panel. Bounded read-only inventory; no display reconfiguration.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Display {
+    pub id: u32,
+    pub built_in: bool,
+    pub rect: Rect,
+    pub pixels: [u64; 2],
+    pub rotation: f64,
+}
+pub(crate) fn displays() -> Result<Vec<Display>> {
     let mut ids = CGDisplay::active_displays()
         .map_err(|_| fault("layout_unknown", "Cannot enumerate native active displays."))?;
     if ids.len() > 32 {
         return Err(fault("display_budget", "More than 32 native displays."));
     }
     ids.sort_unstable();
+    let mut out = Vec::new();
+    for id in ids {
+        let display = CGDisplay::new(id);
+        let bounds = display.bounds();
+        out.push(Display {
+            id,
+            built_in: unsafe { ffi::CGDisplayIsBuiltin(id) != 0 },
+            rect: Rect {
+                x: bounds.origin.x,
+                y: bounds.origin.y,
+                w: bounds.size.width,
+                h: bounds.size.height,
+            },
+            pixels: [display.pixels_wide(), display.pixels_high()],
+            rotation: display.rotation(),
+        });
+    }
+    Ok(out)
+}
+/// The single unrotated active display that fully contains the window. Windows
+/// spanning no display or more than one display stay unassigned rather than
+/// being attributed to their largest overlap.
+pub(crate) fn containing_display(displays: &[Display], window: Rect) -> Option<&Display> {
+    let mut found = None;
+    for display in displays {
+        if display.rotation.abs() < 0.001 && display.rect.contains_rect(window) {
+            if found.is_some() {
+                return None;
+            }
+            found = Some(display);
+        }
+    }
+    found
+}
+fn display_layout(window: Rect) -> Result<(String, bool)> {
+    let displays = displays()?;
     let mut text = String::new();
     let mut containing = 0;
-    for id in ids {
-        let d = CGDisplay::new(id);
-        let b = d.bounds();
-        let r = Rect {
-            x: b.origin.x,
-            y: b.origin.y,
-            w: b.size.width,
-            h: b.size.height,
-        };
+    for display in &displays {
         text.push_str(&format!(
-            "{id}:{r:?}:{}:{}:{};",
-            d.pixels_wide(),
-            d.pixels_high(),
-            d.rotation()
+            "{}:{:?}:{}:{}:{};",
+            display.id, display.rect, display.pixels[0], display.pixels[1], display.rotation
         ));
-        if r.contains_rect(window) && d.rotation().abs() < 0.001 {
+        if display.rotation.abs() < 0.001 && display.rect.contains_rect(window) {
             containing += 1;
         }
     }
@@ -544,6 +580,51 @@ fn ax_tree(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn display(id: u32, built_in: bool, x: f64, y: f64, w: f64, h: f64) -> Display {
+        Display {
+            id,
+            built_in,
+            rect: Rect { x, y, w, h },
+            pixels: [(w as u64) * 2, (h as u64) * 2],
+            rotation: 0.0,
+        }
+    }
+    #[test]
+    fn window_display_assignment_requires_one_unrotated_containing_display() {
+        let built_in = display(1, true, 0.0, 0.0, 100.0, 80.0);
+        let external = display(2, false, 100.0, 0.0, 120.0, 80.0);
+        let mut rotated = display(3, false, 0.0, 80.0, 90.0, 60.0);
+        rotated.rotation = 90.0;
+        let displays = vec![built_in, external, rotated];
+        let inside = Rect {
+            x: 10.0,
+            y: 10.0,
+            w: 40.0,
+            h: 30.0,
+        };
+        assert_eq!(containing_display(&displays, inside).map(|d| d.id), Some(1));
+        let over_both = Rect {
+            x: 80.0,
+            y: 10.0,
+            w: 40.0,
+            h: 30.0,
+        };
+        assert!(containing_display(&displays, over_both).is_none());
+        let on_rotated = Rect {
+            x: 10.0,
+            y: 90.0,
+            w: 40.0,
+            h: 30.0,
+        };
+        assert!(containing_display(&displays, on_rotated).is_none());
+        let outside = Rect {
+            x: 500.0,
+            y: 500.0,
+            w: 10.0,
+            h: 10.0,
+        };
+        assert!(containing_display(&displays, outside).is_none());
+    }
     #[test]
     #[ignore = "Explicit live AX diagnostic: press the default button of a modal sheet on one pid/window; setup only"]
     fn press_default_button_diagnostic() {

@@ -115,6 +115,7 @@ impl Backend for NativeMacDesktop {
         let inventory = window_inventory()?;
         let count = inventory.native_rows;
         let native = inventory.windows;
+        let display_list = crate::native::displays().ok();
         let missing_titles = native.iter().filter(|w| w.title.is_none()).count();
         let mut rows = Vec::new();
         let mut unknown = inventory.invalid_rows;
@@ -123,9 +124,12 @@ impl Backend for NativeMacDesktop {
             if !matches_query(&window, query) {
                 continue;
             }
-            match process_epoch(window.pid)
-                .and_then(|process| WindowRecord::from_native(&self.identity, &window, process))
-            {
+            let display = display_list
+                .as_ref()
+                .and_then(|list| crate::native::containing_display(list, window.rect));
+            match process_epoch(window.pid).and_then(|process| {
+                WindowRecord::from_native(&self.identity, &window, process, display)
+            }) {
                 Ok(row) => rows.push(row),
                 Err(error) if error.code == "process_user_mismatch" => (),
                 Err(_) => unknown += 1,
@@ -158,10 +162,14 @@ impl Backend for NativeMacDesktop {
             ));
         }
         let current = candidates[0];
+        let display = crate::native::displays()
+            .ok()
+            .and_then(|list| crate::native::containing_display(&list, current.rect).cloned());
         selected.require_same(&WindowRecord::from_native(
             &self.identity,
             current,
             process_epoch(current.pid)?,
+            display.as_ref(),
         )?)?;
         let backend = NativeMac::with_shared_resources(
             current.pid,

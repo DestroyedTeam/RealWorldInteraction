@@ -37,6 +37,7 @@ unsafe extern "C" {
     pub fn CGEventSourceButtonState(state: i32, button: u32) -> bool;
     pub fn CGEventSourceFlagsState(state: i32) -> u64;
     pub fn CGEventSetLocation(event: Ref, point: CGPoint);
+    pub fn CGDisplayIsBuiltin(display: u32) -> i32;
 }
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {

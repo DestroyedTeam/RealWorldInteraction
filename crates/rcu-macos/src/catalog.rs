@@ -20,9 +20,38 @@ pub(crate) struct WindowRecord {
     pub bounds: [f64; 4],
     pub title: Option<String>,
     pub title_truncated: bool,
+    /// The single unrotated active display containing this window, when it is
+    /// unambiguous. `built_in` distinguishes the laptop panel from external
+    /// displays so callers can honor a screen allocation exactly.
+    pub display: Option<DisplayRecord>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct DisplayRecord {
+    pub id: u32,
+    pub built_in: bool,
+    pub bounds: [f64; 4],
+}
+impl DisplayRecord {
+    pub(crate) fn from_native(display: &crate::native::Display) -> Self {
+        Self {
+            id: display.id,
+            built_in: display.built_in,
+            bounds: [
+                display.rect.x,
+                display.rect.y,
+                display.rect.w,
+                display.rect.h,
+            ],
+        }
+    }
 }
 impl WindowRecord {
-    pub(crate) fn from_native(identity: &Identity, w: &Window, process: String) -> Result<Self> {
+    pub(crate) fn from_native(
+        identity: &Identity,
+        w: &Window,
+        process: String,
+        display: Option<&crate::native::Display>,
+    ) -> Result<Self> {
         if !w.rect.valid() || !w.alpha.is_finite() {
             return Err(fault(
                 "window_geometry_unknown",
@@ -55,13 +84,14 @@ impl WindowRecord {
             bounds: [w.rect.x, w.rect.y, w.rect.w, w.rect.h],
             title_truncated: w.title.as_ref().is_some_and(|t| t.len() > 1024),
             title,
+            display: display.map(DisplayRecord::from_native),
         })
     }
     pub(crate) fn require_same(&self, current: &Self) -> Result<()> {
         if self != current {
             return Err(fault(
                 "window_epoch_changed",
-                "Observed CGWindowID/PID/process/bounds/title fingerprint changed; discover and select explicitly.",
+                "Observed CGWindowID/PID/process/bounds/title/display fingerprint changed; discover and select explicitly.",
             ));
         }
         Ok(())
