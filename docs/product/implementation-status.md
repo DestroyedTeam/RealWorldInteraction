@@ -61,6 +61,12 @@
   差异集中在 **sheet/panel 窗口的事件路由**：候选修复方向 =（a）把事件按父窗口号投递并用
   父窗口局部坐标（sheet 可能在父窗口事件路径内转发），（b）为对话框控件提供原生 AXPress
   动作回退（VoiceOver 同源，不依赖合成事件路由）。
+- 判定实验（提交 22bbc67）：在实机诊断中对同一面板的 "Cancel" 按钮执行原生
+  `AXUIElementPerformAction(AXPress)` → 返回 0（kAXErrorSuccess），**面板随即关闭、只剩
+  文档窗口**。结论：sheet/panel 控件的**原生 AX 动作路径可用**，合成点击路径对该类窗口
+  无效。下一轮实现（需设计，勿静默替换语义）：为 `click` 增加明确的原生动作路径——例如
+  新增 `press` 意图或在 `act_checked`（native_element 策略）内落地 AXPress，并保留相同的
+  元素身份/可见性/启用/租约/不重放校验与回归。
 - 本轮未完成：sheet 修复的端到端模态验证、独立验证子会话、Mac 视觉反馈（AI 光标层）、
   正式验收文档与总提交。
 
