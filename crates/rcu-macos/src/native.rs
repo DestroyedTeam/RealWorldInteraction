@@ -121,28 +121,51 @@ impl Backend for NativeMac {
         {
             std::thread::sleep(std::time::Duration::from_millis(30));
         }
-        let before = self.metadata()?;
-        let capture = self.capturer.capture(self.pid, self.window, before.rect)?;
-        let after = self.metadata()?;
-        if before.binding != after.binding
-            || before.blocked != after.blocked
-            || before
-                .elements
-                .iter()
-                .map(|e| (e.element.revision(), &e.value))
-                .collect::<Vec<_>>()
-                != after
-                    .elements
-                    .iter()
-                    .map(|e| (e.element.revision(), &e.value))
-                    .collect::<Vec<_>>()
-        {
-            return Err(fault(
-                "capture_binding_changed",
-                "Focus/layout/AX content changed during capture; observe again.",
-            ));
+        // A window that is mid-animation repaints between the pre/post reads even
+        // though nothing actionable changed. Retry the read-only capture a bounded
+        // number of times with a short settle wait; the returned frame is still
+        // fully revalidated and no input is ever inferred or replayed.
+        let mut settled = None;
+        for attempt in 0..3 {
+            let result = (|| -> Result<Scene> {
+                let before = self.metadata()?;
+                let capture = self.capturer.capture(self.pid, self.window, before.rect)?;
+                let after = self.metadata()?;
+                if before.binding != after.binding
+                    || before.blocked != after.blocked
+                    || before
+                        .elements
+                        .iter()
+                        .map(|e| (e.element.revision(), &e.value))
+                        .collect::<Vec<_>>()
+                        != after
+                            .elements
+                            .iter()
+                            .map(|e| (e.element.revision(), &e.value))
+                            .collect::<Vec<_>>()
+                {
+                    return Err(fault(
+                        "capture_binding_changed",
+                        "Focus/layout/AX content changed during capture; observe again.",
+                    ));
+                }
+                Ok(self.metadata_scene(
+                    after,
+                    capture.size,
+                    capture.png,
+                    Some(&capture.content_sha),
+                ))
+            })();
+            match result {
+                Ok(scene) => return Ok(scene),
+                Err(error) if error.code == "capture_binding_changed" && attempt < 2 => {
+                    settled = Some(error);
+                    std::thread::sleep(std::time::Duration::from_millis(150));
+                }
+                Err(error) => return Err(error),
+            }
         }
-        Ok(self.metadata_scene(after, capture.size, capture.png, Some(&capture.content_sha)))
+        Err(settled.expect("capture settle attempts exhausted"))
     }
     fn revalidate(&mut self, reference: &Resolved) -> Result<Scene> {
         if reference.source_region.is_some() {
