@@ -174,26 +174,73 @@ impl Backend for NativeMacDesktop {
             ));
         }
         let current = candidates[0];
-        let display = crate::native::displays()
+        let mut display = crate::native::displays()
             .ok()
             .and_then(|list| crate::native::containing_display(&list, current.rect).cloned());
-        if let Some(policy) = &self.authorized_display {
-            let record = display
-                .as_ref()
-                .map(crate::catalog::DisplayRecord::from_native);
-            if !policy.allows(record.as_ref()) {
-                return Err(fault(
-                    "unauthorized_display",
-                    "Refusing to bind a window that is not on the authorized display; place it there explicitly first.",
-                ));
-            }
-        }
         selected.require_same(&WindowRecord::from_native(
             &self.identity,
             current,
             process_epoch(current.pid)?,
             display.as_ref(),
         )?)?;
+        let mut placed = None;
+        if let Some(policy) = &self.authorized_display
+            && !policy.allows(
+                display
+                    .as_ref()
+                    .map(crate::catalog::DisplayRecord::from_native)
+                    .as_ref(),
+            )
+        {
+            let list = crate::native::displays()?;
+            let target = list
+                .iter()
+                .find(|candidate| {
+                    policy.allows(
+                        Some(crate::catalog::DisplayRecord::from_native(candidate)).as_ref(),
+                    )
+                })
+                .ok_or_else(|| {
+                    fault(
+                        "unauthorized_display",
+                        "No active display matches the authorized-display policy; the window could not be placed.",
+                    )
+                })?;
+            let placement = NativeMac::with_shared_resources(
+                current.pid,
+                current.id,
+                self.allow_input,
+                self.capturer.clone(),
+                self.dispatches.clone(),
+            )?;
+            placement.require_discovered_process(&selected.process_start)?;
+            placement.place_window_on(target)?;
+            let moved_rect = windows()?
+                .iter()
+                .find(|w| w.id == current.id && w.pid == current.pid)
+                .map(|w| w.rect)
+                .ok_or_else(|| {
+                    fault(
+                        "window_missing",
+                        "The window disappeared during native placement.",
+                    )
+                })?;
+            display = crate::native::displays()
+                .ok()
+                .and_then(|list| crate::native::containing_display(&list, moved_rect).cloned());
+            if !policy.allows(
+                display
+                    .as_ref()
+                    .map(crate::catalog::DisplayRecord::from_native)
+                    .as_ref(),
+            ) {
+                return Err(fault(
+                    "unauthorized_display",
+                    "Native placement did not move the window onto the authorized display; not bound.",
+                ));
+            }
+            placed = Some(moved_rect);
+        }
         let backend = NativeMac::with_shared_resources(
             current.pid,
             current.id,
@@ -210,8 +257,11 @@ impl Backend for NativeMacDesktop {
         }
         self.check_identity()?;
         self.selected = Some(backend);
+        let placed_json = placed.map(|rect| {
+            json!({"bounds":[rect.x,rect.y,rect.w,rect.h],"display":display.as_ref().map(crate::catalog::DisplayRecord::from_native)})
+        });
         Ok(
-            json!({"bound":selected,"relation":selection.relation,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"next":"Observe this exact window. Background observation and input are supported; the window does not need to be frontmost. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
+            json!({"bound":selected,"relation":selection.relation,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"placed":placed_json,"next":"Observe this exact window. Background observation and input are supported; the window does not need to be frontmost. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
         )
     }
     fn observe(&mut self) -> Result<Scene> {

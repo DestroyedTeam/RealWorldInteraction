@@ -370,6 +370,17 @@ pub(crate) fn containing_display(displays: &[Display], window: Rect) -> Option<&
     }
     found
 }
+/// Keep the window size; place it near the display origin with a margin,
+/// clamped so it stays inside the display whenever the window fits.
+pub(crate) fn placement_position(window: Rect, display: Rect) -> (f64, f64) {
+    const MARGIN: f64 = 24.0;
+    let max_x = display.x + (display.w - window.w).max(0.0);
+    let max_y = display.y + (display.h - window.h).max(0.0);
+    (
+        (display.x + MARGIN).min(max_x.max(display.x)),
+        (display.y + MARGIN).min(max_y.max(display.y)),
+    )
+}
 fn display_layout(window: Rect) -> Result<(String, bool)> {
     let displays = displays()?;
     let mut text = String::new();
@@ -588,6 +599,29 @@ mod tests {
             pixels: [(w as u64) * 2, (h as u64) * 2],
             rotation: 0.0,
         }
+    }
+    #[test]
+    fn placement_keeps_windows_inside_the_authorized_display() {
+        let display = Rect {
+            x: 282.0,
+            y: 1152.0,
+            w: 1800.0,
+            h: 1169.0,
+        };
+        let small = Rect {
+            x: 232.0,
+            y: 55.0,
+            w: 656.0,
+            h: 422.0,
+        };
+        assert_eq!(placement_position(small, display), (306.0, 1176.0));
+        let huge = Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 2400.0,
+            h: 1500.0,
+        };
+        assert_eq!(placement_position(huge, display), (282.0, 1152.0));
     }
     #[test]
     fn window_display_assignment_requires_one_unrotated_containing_display() {

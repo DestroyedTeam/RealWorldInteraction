@@ -24,6 +24,8 @@ unsafe extern "C" {
     pub fn AXValueGetType(value: Ref) -> u32;
     pub fn AXValueGetValue(value: Ref, kind: u32, value_out: *mut c_void) -> u8;
     pub fn AXValueGetTypeID() -> usize;
+    pub fn AXUIElementSetAttributeValue(element: Ref, attribute: Ref, value: Ref) -> i32;
+    pub fn AXValueCreate(kind: u32, value: *const c_void) -> Ref;
 }
 #[link(name = "CoreGraphics", kind = "framework")]
 unsafe extern "C" {

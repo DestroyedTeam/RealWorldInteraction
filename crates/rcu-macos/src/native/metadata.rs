@@ -220,6 +220,43 @@ impl NativeMac {
                 .then_some(false),
         }
     }
+    /// Native placement: set the window's accessibility position so its
+    /// top-left lands on the authorized display. No activation, no synthetic
+    /// input; the exact window element is re-resolved first and failures stay
+    /// fail-closed.
+    pub(crate) fn place_window_on(&self, display: &crate::native::Display) -> Result<()> {
+        let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(application.0, 1.0);
+        }
+        let window = self.resolve_window_element(&application, self.window_frame()?)?;
+        let (x, y) = crate::native::placement_position(ax_rect(&window)?, display.rect);
+        let point = core_graphics::geometry::CGPoint::new(x, y);
+        let value = unsafe {
+            ffi::AXValueCreate(
+                1,
+                (&point as *const core_graphics::geometry::CGPoint).cast(),
+            )
+        };
+        let value = unsafe { Cf::owned(value)? };
+        use core_foundation::base::TCFType;
+        let attribute = core_foundation::string::CFString::new("AXPosition");
+        let code = unsafe {
+            ffi::AXUIElementSetAttributeValue(
+                window.0,
+                attribute.as_concrete_TypeRef().cast(),
+                value.0,
+            )
+        };
+        if code != 0 {
+            return Err(fault(
+                "placement_rejected",
+                "The application refused the native window position change; the window stays where it is.",
+            ));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        Ok(())
+    }
     pub(super) fn resolve_window_element(&self, application: &Cf, expected: Rect) -> Result<Cf> {
         let value = application.attr("AXWindows")?;
         let mut windows = unsafe { ffi::array(value.0, 64)? };
