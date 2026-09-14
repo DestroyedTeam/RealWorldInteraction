@@ -153,21 +153,7 @@ impl NativeMac {
             .or_else(|| window.title.clone())
             .unwrap_or_default();
         let modal = focused.attr("AXModal").ok().and_then(|v| v.boolean());
-        // Native sheet/panel windows often do not expose AXModal at all. An
-        // unknown state stays fail-closed unless this exact window is the
-        // application's focused window, which is by definition the current
-        // interaction surface (the dialog itself, not something it blocks).
-        let blocked = match modal {
-            Some(value) => Some(value),
-            None => {
-                let focused_here = application
-                    .attr("AXFocusedWindow")
-                    .ok()
-                    .and_then(|element| ffi::window_number_for_ax_element(&element))
-                    .is_some_and(|number| number == self.window);
-                focused_here.then_some(false)
-            }
-        };
+        let blocked = self.modal_state(&application, &focused);
         let (layout, mapping_ready) = display_layout(window.rect)?;
         let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide())? };
         unsafe {
@@ -215,6 +201,25 @@ impl NativeMac {
     /// `AXWindows`, and some sandboxed panels appear only as the application's
     /// focused/main window, so both are covered with the same strict bounds
     /// rule. Ambiguity always fails closed.
+    /// Panel/sheet windows often do not expose `AXModal` at all. Unknown
+    /// modality is acceptable only for the application's focused window, which
+    /// is by definition the current interaction surface (the dialog itself,
+    /// not something it blocks); every other unknown state stays fail-closed.
+    pub(super) fn modal_state(&self, application: &Cf, window_element: &Cf) -> Option<bool> {
+        match window_element
+            .attr("AXModal")
+            .ok()
+            .and_then(|value| value.boolean())
+        {
+            Some(value) => Some(value),
+            None => application
+                .attr("AXFocusedWindow")
+                .ok()
+                .and_then(|element| ffi::window_number_for_ax_element(&element))
+                .is_some_and(|number| number == self.window)
+                .then_some(false),
+        }
+    }
     pub(super) fn resolve_window_element(&self, application: &Cf, expected: Rect) -> Result<Cf> {
         let value = application.attr("AXWindows")?;
         let mut windows = unsafe { ffi::array(value.0, 64)? };

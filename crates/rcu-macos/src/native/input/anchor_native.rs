@@ -105,10 +105,7 @@ impl NativeMac {
             layout,
             mapping_ready,
             permissions: true,
-            modal: window_element
-                .attr("AXModal")
-                .ok()
-                .and_then(|v| v.boolean()),
+            modal: self.modal_state(&application, &window_element),
             // Cross-window coverage does not block background delivery; input is
             // addressed to the pinned window/PID directly.
             occluded: false,
