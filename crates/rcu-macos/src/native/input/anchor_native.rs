@@ -18,6 +18,13 @@ fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<Cf> {
     Ok(element_at_point(window, point)?.unwrap_or_else(|| window.retained()))
 }
 pub(super) struct AxObject(Cf);
+impl AxObject {
+    /// The exact native element, for actions that must not go through
+    /// synthetic event routing (e.g. an accessibility press).
+    pub(super) fn native(&self) -> &Cf {
+        &self.0
+    }
+}
 impl PartialEq for AxObject {
     fn eq(&self, other: &Self) -> bool {
         unsafe { ffi::CFEqual(self.0.0, other.0.0) != 0 }

@@ -43,13 +43,20 @@ impl NativeMac {
                 | Intent::Scroll
                 | Intent::Drag(_)
         );
+        // Sheet/panel windows that the application does not list in AXWindows
+        // cannot be reached by background synthetic events (the click
+        // dispatches but never activates); they accept the native
+        // accessibility press action instead, with the same grounded element
+        // validation and no synthetic primer.
+        let native_press = matches!(intent, Intent::Click) && self.native_press_required(target)?;
         if pointer && !crate::background::pointer_delivery_available() {
             return Err(fault(
                 "background_delivery_unavailable",
                 "Window-local background event addressing is unavailable on this macOS build; no input dispatched.",
             ));
         }
-        if self.foreground_pid() != Some(self.pid)
+        if !native_press
+            && self.foreground_pid() != Some(self.pid)
             && !self.window_is_main()
             && crate::background::activate_background_window(self.pid, self.window)
         {
@@ -64,6 +71,9 @@ impl NativeMac {
                 self.dispatch_drag(expected, target, path)?;
             }
             Intent::Click | Intent::DoubleClick | Intent::ContextMenu => {
+                if native_press {
+                    return self.dispatch_native_press(expected, target);
+                }
                 let right = matches!(intent, Intent::ContextMenu);
                 let button = if right {
                     CGMouseButton::Right
@@ -183,6 +193,42 @@ impl NativeMac {
             }
         }
         // CGEventPost returns void: native dispatch is not an OS effect acknowledgement.
+        Ok(None)
+    }
+    fn native_press_required(&self, target: &Resolved) -> Result<bool> {
+        if target.scope.element.is_none() {
+            return Ok(false);
+        }
+        let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(application.0, 0.25);
+        }
+        let value = application.attr("AXWindows")?;
+        let windows = unsafe { ffi::array(value.0, 64)? };
+        Ok(!windows
+            .iter()
+            .any(|w| ffi::window_number_for_ax_element(w) == Some(self.window)))
+    }
+    fn dispatch_native_press(
+        &mut self,
+        expected: &Binding,
+        target: &Resolved,
+    ) -> Result<Option<bool>> {
+        let facts = self.drag_anchor_facts(target)?;
+        facts.validate(expected, target, Kind::Pointer)?;
+        use core_foundation::base::TCFType;
+        let action = core_foundation::string::CFString::new("AXPress");
+        let _call = operation::native_call("macos_native_press")?;
+        dispatch::count(&self.dispatches);
+        let code = unsafe {
+            ffi::AXUIElementPerformAction(facts.hit.native().0, action.as_concrete_TypeRef().cast())
+        };
+        if code != 0 {
+            return Err(fault(
+                "native_press_rejected",
+                "The native accessibility press action was refused by the application; no synthetic input was sent.",
+            ));
+        }
         Ok(None)
     }
     fn read_input_batch(
