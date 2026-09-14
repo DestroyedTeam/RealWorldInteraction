@@ -34,6 +34,12 @@
   ① 身份改用 boot 秒级（修复 kern.boottime 微秒漂移引发的全量 session_mismatch）；
   ② 窗口解析支持 AX 子级 sheet/对话框（修复模态面板 window_missing，使其可观察可操作）；
   ③ 窗口发现/绑定携带所属显示器（id/built_in/bounds）。
+- 授权显示器**放置**（提交随本轮，实测通过）：策略开启时，绑定落在其他屏的窗口会先经原生
+  AXPosition 放到授权屏（无合成输入、无激活），原生复查通过才绑定并在响应里报告
+  `placed`；放不动则拒绝。实测：TextEdit 打开时在扩展屏（built_in:false）→ 绑定后被放到
+  内建屏（bounds 306,1190 / display id:1）并绑定成功；已在内建屏的 Paint S 窗口
+  `placed=null` 不多余移动。说明：应用启动本身仍由 Host/macOS 决定落点（macOS
+  launch_application 未实现），首个绑定即完成归位。
 - 授权显示器门槛（已实现+实测，提交随本轮）：macOS 平台策略新增可选
   `platform.authorized_display={built_in,id?}`；绑定前校验窗口所属显示器，不匹配或无
   唯一归属即拒绝 `unauthorized_display`（不绑定、不输入）。实测：扩展屏（built_in:false）
