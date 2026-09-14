@@ -64,9 +64,11 @@
 - 判定实验（提交 22bbc67）：在实机诊断中对同一面板的 "Cancel" 按钮执行原生
   `AXUIElementPerformAction(AXPress)` → 返回 0（kAXErrorSuccess），**面板随即关闭、只剩
   文档窗口**。结论：sheet/panel 控件的**原生 AX 动作路径可用**，合成点击路径对该类窗口
-  无效。下一轮实现（需设计，勿静默替换语义）：为 `click` 增加明确的原生动作路径——例如
-  新增 `press` 意图或在 `act_checked`（native_element 策略）内落地 AXPress，并保留相同的
-  元素身份/可见性/启用/租约/不重放校验与回归。
+  无效。实现（提交 2e05a56，不改动 MCP 工具 schema）：macOS 后端在 `click` 时先判定"该
+  窗口是否不在应用 AXWindows 中"（即合成事件到不了的 sheet/panel），是则对同一接地元素
+  执行原生 `AXPress`，保留元素身份/可见性/启用/模态/租约/不重放校验，且不发送合成事件与
+  primer。**端到端验证通过**：经 MCP 常规 `computer.act`(click) 关闭 Paint S "Open" 面板，
+  复查只剩文档窗口。模态对话框链条（发现→绑定→观察→校验→派发→生效）全线打通。
 - 本轮未完成：sheet 修复的端到端模态验证、独立验证子会话、Mac 视觉反馈（AI 光标层）、
   正式验收文档与总提交。
 
