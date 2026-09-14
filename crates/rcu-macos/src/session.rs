@@ -126,7 +126,12 @@ pub(crate) fn current_facts() -> Result<ContextFacts> {
         on_console: unsafe { ffi::boolean(ffi::field(dictionary.0, "kCGSSessionOnConsoleKey")) },
         login_done: unsafe { ffi::boolean(ffi::field(dictionary.0, "kCGSessionLoginDoneKey")) },
         host: format!("macos-{}", digest(&host)),
-        boot: format!("{}:{}", boot.tv_sec, boot.tv_usec),
+        // Some Apple Silicon systems recompute the sub-second part of
+        // `kern.boottime` after time-sync/sleep adjustments, so an identity that
+        // embedded tv_usec flipped and fenced every operation with a false
+        // `session_mismatch`. Real context changes (reboot, login, seat) are
+        // already fenced by the boot epoch second, security session and host.
+        boot: boot.tv_sec.to_string(),
     })
 }
 
