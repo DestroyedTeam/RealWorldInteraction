@@ -1,6 +1,6 @@
 # 完整实施计划：当前状态
 
-更新：2026-09-13。以已批准 ADR 0002 和 requirements-and-acceptance.md 为准。
+更新：2026-09-14。以已批准 ADR 0002 和 requirements-and-acceptance.md 为准。
 用户临时发现的问题只改变优先级；提交、推送、一个成功截图均不是总完成标准。
 
 ## 正在执行的顺序
@@ -14,6 +14,26 @@
 | 5 | 完整真实验证与简洁交付 | 重启后真实Host已加载45ae版；agent重启后的首次查询自动单次重连成功，原操作记录未变。1200ms截止后的原生停止/一次租约清理成功，显式恢复仍保留不确定历史。最小化修订独立393默认/480全feature门禁通过并实测，无需再重启Host。原Paint PID2024已退出，新PID7372由GUI重开原图；文件与512px切片SHA均不变。另按新发现的窗口尺寸重绑，3次观察约712/591/616ms，只读截图约140ms，不算跨版本A/B。截图36步，历史失败全部保留 |
 | 6 | Mac 受控端 | 通用 agent 装配、无选窗身份、动态CG发现/绑定、AX/CG输入与取消/回调资源已实现，独立默认424/全feature511通过；实际无窗口身份预检通过。R1长文本/双击自身状态变化导致中断的问题已审出并修复。本机用户级开发版已部署：新私有配对（agent-mac-v1）、loopback mTLS 连通、运行进程 accessibility/screen_capture/post_event/listen_event 预检为真，证据见 work/macos-deployment-20260914/；Host 原生 GUI 验收待做；Pointer/drag/ROI/capture_visual/lifecycle等仍未实现，详见本批验证文档 |
 | 7 | 跨端和架构收尾 | agent_binding从1592行纯拆分至根222行/子模块≤310行，76函数体和12类型保持；继续剩余模块债务、生产feature、多端故障隔离与资源上界。已有离线通过不能替代未测真实平台 |
+
+## Mac 绘图应用实测（2026-09-14，进行中）
+
+- 目标：内建屏上用 Freeform / Paint S 临摹窗口示意图并对比 MCP 体验；证据与对比表
+  见 work/macos-mcp-draw-comparison-20260914/（work/ 为中间产物，不提交）。
+- Freeform：后台观察/元素点击/拖拽派发可用；但"Draw with Pen"位于 Insert Shape 瞬态
+  面板（AX visibility=unknown/occluded），element/pixel/checked 三路径分别以
+  `visibility_unknown`/`stale_reference` 拒绝，无法进入画笔模式；选择模式下拖拽只框选。
+  仿图未完成，画板仅留此前插入的少量对象（freeform-board-20260914.png）。
+- Paint S（沙盒）：窗口/画布可用；形状工具可创建对象（图层与尺寸可读），但默认
+  Border:None 且颜色/样式面板为独立瞬态 UI 不可达；新建文档模态尺寸面板不可完成
+  （`capability_unavailable` owner-chain 未实现、sheet AX `window_missing`），只能以
+  打开已有图片绕过。仿图未完成（paint-s-window-region.png）。
+- 对照 Paintbrush（非沙盒）同一路径已完成 29 笔仿图与形状版仿图 → 差别主要来自
+  应用 UI 结构（AX 暴露度、瞬态面板、沙盒、模态窗口）。
+- 基础设施发现（待排期修复）：① macOS owner-chain 窗口切换未实现，同一 context 不能
+  改绑另一窗口；② 身份含 `kern.boottime` 微秒位，实测一次整体漂移导致全量
+  `session_mismatch`，只能重启 agent 换 context，建议改为秒级/容差比较；
+  ③ 瞬态面板会被 observe 的内部激活事件关闭，与内容校验叠加导致重试才偶发成功。
+- 本轮未完成：独立验证子会话、Mac 视觉反馈（AI 光标层）、正式验收文档与总提交。
 
 ## 已有基础，不重复从零做
 
