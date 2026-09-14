@@ -153,7 +153,21 @@ impl NativeMac {
             .or_else(|| window.title.clone())
             .unwrap_or_default();
         let modal = focused.attr("AXModal").ok().and_then(|v| v.boolean());
-        let blocked = modal;
+        // Native sheet/panel windows often do not expose AXModal at all. An
+        // unknown state stays fail-closed unless this exact window is the
+        // application's focused window, which is by definition the current
+        // interaction surface (the dialog itself, not something it blocks).
+        let blocked = match modal {
+            Some(value) => Some(value),
+            None => {
+                let focused_here = application
+                    .attr("AXFocusedWindow")
+                    .ok()
+                    .and_then(|element| ffi::window_number_for_ax_element(&element))
+                    .is_some_and(|number| number == self.window);
+                focused_here.then_some(false)
+            }
+        };
         let (layout, mapping_ready) = display_layout(window.rect)?;
         let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide())? };
         unsafe {
@@ -198,8 +212,9 @@ impl NativeMac {
     /// Exact private-SPI window match first; a strict geometry fallback only
     /// when the private attribute is unavailable. Modal sheets and dialogs are
     /// child elements of a top-level AX window rather than entries in
-    /// `AXWindows`, so a bounded one-level child pass covers them. Ambiguity
-    /// always fails closed.
+    /// `AXWindows`, and some sandboxed panels appear only as the application's
+    /// focused/main window, so both are covered with the same strict bounds
+    /// rule. Ambiguity always fails closed.
     pub(super) fn resolve_window_element(&self, application: &Cf, expected: Rect) -> Result<Cf> {
         let value = application.attr("AXWindows")?;
         let mut windows = unsafe { ffi::array(value.0, 64)? };
@@ -223,6 +238,12 @@ impl NativeMac {
                 ));
             }
         }
+        // Sheet/panel windows are often absent from AXWindows entirely. Before
+        // any relay on slower reads, look at the native child sheets first with
+        // the same strict bounds rule.
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(application.0, 0.25);
+        }
         let mut child_exact = Vec::new();
         let mut child_geometric = Vec::new();
         for window in &windows {
@@ -242,15 +263,39 @@ impl NativeMac {
             }
         }
         match (child_exact.len(), child_geometric.len()) {
-            (1, _) => Ok(child_exact.remove(0)),
-            (0, 1) => Ok(child_geometric.remove(0)),
-            (0, 0) => Err(fault(
+            (1, _) => return Ok(child_exact.remove(0)),
+            (0, 1) => return Ok(child_geometric.remove(0)),
+            (0, 0) => (),
+            _ => {
+                return Err(fault(
+                    "window_binding_ambiguous",
+                    "Multiple AX child sheets/dialogs match the pinned identity or bounds; rebind explicitly.",
+                ));
+            }
+        }
+        // Some apps (e.g. the sandboxed open panel) expose the sheet only as
+        // the application's focused or main window.
+        let mut relay = Vec::new();
+        for key in ["AXFocusedWindow", "AXMainWindow"] {
+            let Ok(element) = application.attr(key) else {
+                continue;
+            };
+            if ffi::window_number_for_ax_element(&element) == Some(self.window) {
+                return Ok(element);
+            }
+            if dialog_subrole(&element) && ax_rect(&element).is_ok_and(|r| r.same(expected)) {
+                relay.push(element);
+            }
+        }
+        match relay.len() {
+            1 => Ok(relay.remove(0)),
+            0 => Err(fault(
                 "window_missing",
                 "Pinned CGWindowID/PID has no matching AX window; do not substitute another window.",
             )),
             _ => Err(fault(
                 "window_binding_ambiguous",
-                "Multiple AX child sheets/dialogs match the pinned identity or bounds; rebind explicitly.",
+                "Multiple AX focused/main windows match the pinned identity or bounds; rebind explicitly.",
             )),
         }
     }

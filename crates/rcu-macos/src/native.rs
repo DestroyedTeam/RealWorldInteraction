@@ -684,6 +684,34 @@ mod tests {
             .unwrap_or(18858);
         let application =
             unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32)).unwrap() };
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(application.0, 1.0);
+        }
+        for key in ["AXFocusedWindow", "AXMainWindow"] {
+            if let Ok(element) = application.attr(key) {
+                println!(
+                    "AX {key} number={:?} rect={:?} title={:?} subrole={:?} modal={:?}",
+                    ffi::window_number_for_ax_element(&element),
+                    ax_rect(&element).ok(),
+                    element.attr("AXTitle").ok().and_then(|v| v.string().ok()),
+                    element.attr("AXSubrole").ok().and_then(|v| v.string().ok()),
+                    element.attr("AXModal").ok().and_then(|v| v.boolean())
+                );
+            }
+        }
+        if let Ok(children_value) = application.attr("AXChildren")
+            && let Ok(children) = unsafe { ffi::array(children_value.0, 32) }
+        {
+            for child in &children {
+                println!(
+                    "AX app-child subrole={:?} number={:?} rect={:?} title={:?}",
+                    child.attr("AXSubrole").ok().and_then(|v| v.string().ok()),
+                    ffi::window_number_for_ax_element(child),
+                    ax_rect(child).ok(),
+                    child.attr("AXTitle").ok().and_then(|v| v.string().ok())
+                );
+            }
+        }
         let value = application.attr("AXWindows").unwrap();
         let windows = unsafe { ffi::array(value.0, 64).unwrap() };
         for w in &windows {
@@ -696,6 +724,23 @@ mod tests {
             println!(
                 "AX window number={number:?} rect={rect:?} title={title:?} main={main:?} focused={focused:?} minimized={minimized:?}"
             );
+        }
+        for w in &windows {
+            let Ok(children_value) = w.attr("AXChildren") else {
+                continue;
+            };
+            let Ok(children) = (unsafe { ffi::array(children_value.0, 32) }) else {
+                continue;
+            };
+            for child in &children {
+                let subrole = child.attr("AXSubrole").ok().and_then(|v| v.string().ok());
+                let number = ffi::window_number_for_ax_element(child);
+                let rect = ax_rect(child).ok();
+                let title = child.attr("AXTitle").ok().and_then(|v| v.string().ok());
+                println!(
+                    "AX child subrole={subrole:?} number={number:?} rect={rect:?} title={title:?}"
+                );
+            }
         }
         for w in window_inventory()
             .unwrap()
