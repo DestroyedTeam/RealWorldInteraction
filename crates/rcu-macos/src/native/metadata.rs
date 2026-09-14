@@ -196,30 +196,71 @@ impl NativeMac {
         })
     }
     /// Exact private-SPI window match first; a strict geometry fallback only
-    /// when the private attribute is unavailable. Ambiguity always fails closed.
+    /// when the private attribute is unavailable. Modal sheets and dialogs are
+    /// child elements of a top-level AX window rather than entries in
+    /// `AXWindows`, so a bounded one-level child pass covers them. Ambiguity
+    /// always fails closed.
     pub(super) fn resolve_window_element(&self, application: &Cf, expected: Rect) -> Result<Cf> {
         let value = application.attr("AXWindows")?;
-        let windows = unsafe { ffi::array(value.0, 64)? };
+        let mut windows = unsafe { ffi::array(value.0, 64)? };
         let mut exact = Vec::new();
         let mut geometric = Vec::new();
-        for window in windows {
-            if ffi::window_number_for_ax_element(&window) == Some(self.window) {
-                exact.push(window);
-            } else if ax_rect(&window).is_ok_and(|r| r.same(expected)) {
-                geometric.push(window);
+        for (index, window) in windows.iter().enumerate() {
+            if ffi::window_number_for_ax_element(window) == Some(self.window) {
+                exact.push(index);
+            } else if ax_rect(window).is_ok_and(|r| r.same(expected)) {
+                geometric.push(index);
             }
         }
         match (exact.len(), geometric.len()) {
-            (1, _) => Ok(exact.pop().expect("one exact window")),
-            (0, 1) => Ok(geometric.pop().expect("one geometric window")),
+            (1, _) => return Ok(windows.swap_remove(exact[0])),
+            (0, 1) => return Ok(windows.swap_remove(geometric[0])),
+            (0, 0) => (),
+            _ => {
+                return Err(fault(
+                    "window_binding_ambiguous",
+                    "Multiple AX windows match the pinned identity or bounds; rebind explicitly.",
+                ));
+            }
+        }
+        let mut child_exact = Vec::new();
+        let mut child_geometric = Vec::new();
+        for window in &windows {
+            let Ok(children_value) = window.attr("AXChildren") else {
+                continue;
+            };
+            let Ok(children) = (unsafe { ffi::array(children_value.0, 32) }) else {
+                continue;
+            };
+            for child in children {
+                if ffi::window_number_for_ax_element(&child) == Some(self.window) {
+                    child_exact.push(child);
+                } else if dialog_subrole(&child) && ax_rect(&child).is_ok_and(|r| r.same(expected))
+                {
+                    child_geometric.push(child);
+                }
+            }
+        }
+        match (child_exact.len(), child_geometric.len()) {
+            (1, _) => Ok(child_exact.remove(0)),
+            (0, 1) => Ok(child_geometric.remove(0)),
             (0, 0) => Err(fault(
                 "window_missing",
                 "Pinned CGWindowID/PID has no matching AX window; do not substitute another window.",
             )),
             _ => Err(fault(
                 "window_binding_ambiguous",
-                "Multiple AX windows match the pinned identity or bounds; rebind explicitly.",
+                "Multiple AX child sheets/dialogs match the pinned identity or bounds; rebind explicitly.",
             )),
         }
     }
+}
+
+/// Sheets and dialogs are native child windows of their parent AX window.
+fn dialog_subrole(element: &Cf) -> bool {
+    element
+        .attr("AXSubrole")
+        .ok()
+        .and_then(|value| value.string().ok())
+        .is_some_and(|subrole| subrole == "AXSheet" || subrole == "AXDialog")
 }
