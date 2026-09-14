@@ -28,7 +28,7 @@ pub(crate) struct Counters {
     pub events_inserted: u64,
     pub release_cleanup_calls: u64,
     pub release_events_inserted: u64,
-    pub last_drag: Option<crate::input_trajectory::DragStats>,
+    pub last_drag: Option<rcu_core::input_trajectory::DragStats>,
     pub drag_guard_phases: trajectory::GuardTiming,
 }
 
@@ -101,8 +101,8 @@ pub(crate) fn dispatch(
         feedback: crate::pointer_feedback::Gesture::new(),
     };
     if let Some(path) = &plan.drag {
-        let stats =
-            crate::input_trajectory::execute(path, target.point, &mut sink).map_err(|mut e| {
+        let stats = rcu_core::input_trajectory::execute(path, target.point, &mut sink).map_err(
+            |mut e| {
                 let mut diagnostic = e
                     .diagnostic
                     .take()
@@ -115,7 +115,8 @@ pub(crate) fn dispatch(
                     serde_json::json!(sink.counters.drag_guard_phases);
                 e.diagnostic = Some(Box::new(diagnostic));
                 e
-            })?;
+            },
+        )?;
         sink.counters.last_drag = Some(stats);
     } else {
         input_plan::execute(plan, &mut sink)?;

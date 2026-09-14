@@ -17,6 +17,7 @@ pub use visual::*;
 pub mod device;
 #[cfg(any(test, feature = "fixture"))]
 pub mod fixture;
+pub mod input_trajectory;
 pub mod lease;
 pub mod lifecycle;
 pub mod operation;

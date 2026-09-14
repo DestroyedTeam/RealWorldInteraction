@@ -1,15 +1,15 @@
 //! Device-paced execution with release-only cleanup on every post-down exit.
 //! This module is portable so cancellation/partial insertion can be tested offline.
-use rcu_core::{Result, fault, operation::checkpoint, trajectory::DragPath};
+use crate::{Result, fault, operation::checkpoint, trajectory::DragPath};
 
-pub(crate) const MAX_LATENESS_MS: u64 = 250;
+pub const MAX_LATENESS_MS: u64 = 250;
 // Measured synchronous UIA guards cannot sustain a 16ms interpolation grid in
 // real applications. Coarsen optional interpolation, never caller waypoints or
 // safety checks. This is a development cadence, not an FPS/latency guarantee.
-pub(crate) const NATIVE_SAMPLE_INTERVAL_MS: u64 = 64;
-pub(crate) trait TrajectorySink {
+pub const NATIVE_SAMPLE_INTERVAL_MS: u64 = 64;
+pub trait TrajectorySink {
     fn sample_interval_ms(&self) -> u64 {
-        rcu_core::trajectory::SAMPLE_INTERVAL_MS
+        crate::trajectory::SAMPLE_INTERVAL_MS
     }
     fn now_ms(&self) -> u64;
     fn sleep_ms(&mut self, ms: u64);
@@ -22,7 +22,7 @@ pub(crate) trait TrajectorySink {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct DragStats {
+pub struct DragStats {
     pub interpolation_interval_ms: u64,
     pub samples_planned: usize,
     pub moves_inserted: usize,
@@ -39,7 +39,7 @@ impl<S: TrajectorySink> Held<'_, S> {
         self.active = false;
         let result = self.sink.release_left();
         if result.is_err() {
-            rcu_core::operation::resource_release_uncertain();
+            crate::operation::resource_release_uncertain();
         }
         result
     }
@@ -52,7 +52,7 @@ impl<S: TrajectorySink> Drop for Held<'_, S> {
     }
 }
 
-pub(crate) fn execute(
+pub fn execute(
     path: &DragPath,
     origin: [f64; 2],
     sink: &mut impl TrajectorySink,
@@ -118,7 +118,7 @@ pub(crate) fn execute(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rcu_core::{
+    use crate::{
         operation::{self, Operation, Registry},
         trajectory::Waypoint,
     };
@@ -137,7 +137,7 @@ mod tests {
     impl TrajectorySink for Fake {
         fn sample_interval_ms(&self) -> u64 {
             self.interval_ms
-                .unwrap_or(rcu_core::trajectory::SAMPLE_INTERVAL_MS)
+                .unwrap_or(crate::trajectory::SAMPLE_INTERVAL_MS)
         }
         fn now_ms(&self) -> u64 {
             self.now
