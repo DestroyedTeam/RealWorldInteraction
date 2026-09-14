@@ -28,6 +28,9 @@ unsafe extern "C" {}
 pub struct Capture {
     pub png: Vec<u8>,
     pub size: [u32; 2],
+    /// Content-region digest: the native title-bar chrome band is excluded so
+    /// activation-state repaints cannot invalidate actionable content.
+    pub content_sha: String,
 }
 #[derive(Clone)]
 pub struct Capturer {
@@ -272,9 +275,12 @@ unsafe fn encode_native_image(ptr: *const c_void, w: usize, h: usize) -> Result<
             }
         }
     }
+    let band = (h / 16).clamp(16, 96).min(h / 4);
+    let content_sha = rcu_core::digest(&pixels[band * w * 4..]);
     Ok(Capture {
         png: encode_rgba(w, h, pixels)?,
         size: [w as u32, h as u32],
+        content_sha,
     })
 }
 struct Limited(Vec<u8>);

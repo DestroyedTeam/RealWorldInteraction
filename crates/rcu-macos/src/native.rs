@@ -142,7 +142,7 @@ impl Backend for NativeMac {
                 "Focus/layout/AX content changed during capture; observe again.",
             ));
         }
-        Ok(self.metadata_scene(after, capture.size, capture.png))
+        Ok(self.metadata_scene(after, capture.size, capture.png, Some(&capture.content_sha)))
     }
     fn revalidate(&mut self, reference: &Resolved) -> Result<Scene> {
         if reference.source_region.is_some() {
@@ -154,7 +154,7 @@ impl Backend for NativeMac {
         if reference.scope.element.is_none() {
             return self.observe();
         }
-        Ok(self.metadata_scene(self.metadata()?, [0, 0], Vec::new()))
+        Ok(self.metadata_scene(self.metadata()?, [0, 0], Vec::new(), None))
     }
 
     fn act(
@@ -522,6 +522,56 @@ fn ax_tree(
 mod tests {
     use super::*;
     #[test]
+    #[ignore = "Explicit live AX diagnostic: press the default button of a modal sheet on one pid/window; setup only"]
+    fn press_default_button_diagnostic() {
+        let pid: u32 = std::env::var("RCU_DIAG_PID")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(18858);
+        let want: String = std::env::var("RCU_DIAG_WINDOW").unwrap_or_else(|_| "Untitled 5".into());
+        let application =
+            unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32)).unwrap() };
+        let value = application.attr("AXWindows").unwrap();
+        let windows = unsafe { ffi::array(value.0, 64).unwrap() };
+        let mut target = None;
+        for w in &windows {
+            if w.attr("AXTitle")
+                .ok()
+                .and_then(|v| v.string().ok())
+                .as_deref()
+                == Some(want.as_str())
+            {
+                target = Some(w.retained());
+            }
+        }
+        let window = target.expect("window not found");
+        fn find_button(node: &Cf, depth: usize) -> Option<Cf> {
+            if depth > 8 {
+                return None;
+            }
+            let role = node.attr("AXRole").ok().and_then(|v| v.string().ok());
+            let title = node.attr("AXTitle").ok().and_then(|v| v.string().ok());
+            let default = node.attr("AXDefaultButton").ok().and_then(|v| v.boolean());
+            if role.as_deref() == Some("AXButton")
+                && (title.as_deref() == Some("OK") || default == Some(true))
+            {
+                return Some(node.retained());
+            }
+            for child in node.children().unwrap_or_default() {
+                if let Some(found) = find_button(&child, depth + 1) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        let button = find_button(&window, 0).expect("OK button not found");
+        use core_foundation::base::TCFType;
+        let action = core_foundation::string::CFString::new("AXPress");
+        let code =
+            unsafe { ffi::AXUIElementPerformAction(button.0, action.as_concrete_TypeRef().cast()) };
+        println!("AXPress code={code}");
+    }
+    #[test]
     #[ignore = "Explicit live AX/CG window identity dump for one pid; read-only, no input"]
     fn dump_ax_windows_for_pid_diagnostic() {
         let pid: u32 = std::env::var("RCU_DIAG_PID")
@@ -536,7 +586,12 @@ mod tests {
             let number = ffi::window_number_for_ax_element(w);
             let rect = ax_rect(w).ok();
             let title = w.attr("AXTitle").ok().and_then(|v| v.string().ok());
-            println!("AX window number={number:?} rect={rect:?} title={title:?}");
+            let main = w.attr("AXMain").ok().and_then(|v| v.boolean());
+            let focused = w.attr("AXFocused").ok().and_then(|v| v.boolean());
+            let minimized = w.attr("AXMinimized").ok().and_then(|v| v.boolean());
+            println!(
+                "AX window number={number:?} rect={rect:?} title={title:?} main={main:?} focused={focused:?} minimized={minimized:?}"
+            );
         }
         for w in window_inventory()
             .unwrap()
@@ -545,9 +600,47 @@ mod tests {
             .filter(|w| w.pid == pid)
         {
             println!(
-                "CG window id={} rect=({},{},{},{}) title={:?} alpha={}",
+                "CG onscreen id={} rect=({},{},{},{}) title={:?} alpha={}",
                 w.id, w.rect.x, w.rect.y, w.rect.w, w.rect.h, w.title, w.alpha
             );
+        }
+        unsafe {
+            let array = Cf::owned(ffi::CGWindowListCopyWindowInfo(0, 0)).unwrap();
+            for row in ffi::array(array.0, 2048).unwrap() {
+                let owner = ffi::number(ffi::field(row.0, "kCGWindowOwnerPID")).unwrap_or(-1);
+                if owner != i64::from(pid) {
+                    continue;
+                }
+                let id = ffi::number(ffi::field(row.0, "kCGWindowNumber")).unwrap_or(-1);
+                let onscreen = ffi::number(ffi::field(row.0, "kCGWindowIsOnscreen")).unwrap_or(-1);
+                let layer = ffi::number(ffi::field(row.0, "kCGWindowLayer")).unwrap_or(-1);
+                println!("CG all id={id} onscreen={onscreen} layer={layer}");
+            }
+        }
+        let capturer = crate::capture::Capturer::default();
+        for id in std::env::var("RCU_DIAG_CAPTURE")
+            .unwrap_or_default()
+            .split(',')
+            .filter_map(|v| v.parse::<u32>().ok())
+        {
+            let rect = window_inventory()
+                .unwrap()
+                .windows
+                .iter()
+                .find(|w| w.id == id)
+                .map(|w| w.rect);
+            let Some(rect) = rect else {
+                println!("capture id={id} no on-screen rect");
+                continue;
+            };
+            match capturer.capture(pid, id, rect) {
+                Ok(capture) => {
+                    let path = format!("/tmp/rcu-diag-window-{id}.png");
+                    std::fs::write(&path, &capture.png).unwrap();
+                    println!("capture id={id} size={:?} path={path}", capture.size);
+                }
+                Err(e) => println!("capture id={id} error={}", e.code),
+            }
         }
     }
     #[test]

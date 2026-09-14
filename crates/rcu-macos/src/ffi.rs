@@ -16,6 +16,8 @@ unsafe extern "C" {
     pub fn AXUIElementCreateSystemWide() -> Ref;
     pub fn AXUIElementCopyAttributeValue(element: Ref, name: Ref, value: *mut Ref) -> i32;
     pub fn AXUIElementCopyElementAtPosition(element: Ref, x: f32, y: f32, value: *mut Ref) -> i32;
+    #[allow(dead_code)]
+    pub fn AXUIElementPerformAction(element: Ref, action: Ref) -> i32;
     pub fn AXUIElementGetPid(element: Ref, pid: *mut i32) -> i32;
     pub fn AXUIElementSetMessagingTimeout(element: Ref, timeout: f32) -> i32;
     pub fn AXUIElementIsAttributeSettable(element: Ref, name: Ref, settable: *mut u8) -> i32;

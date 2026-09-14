@@ -46,6 +46,18 @@ impl NativeMac {
         }
         Ok(())
     }
+    pub(super) fn window_is_main(&self) -> bool {
+        (|| -> Result<bool> {
+            let application =
+                unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
+            unsafe {
+                ffi::AXUIElementSetMessagingTimeout(application.0, 0.05);
+            }
+            let window = self.resolve_window_element(&application, self.window_frame()?)?;
+            Ok(window.attr("AXMain").ok().and_then(|v| v.boolean()) == Some(true))
+        })()
+        .unwrap_or(false)
+    }
     pub(super) fn foreground_pid(&self) -> Option<u32> {
         let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()).ok()? };
         system.attr("AXFocusedApplication").ok()?.pid().ok()
@@ -62,9 +74,17 @@ impl NativeMac {
                 )
             })
     }
-    pub(super) fn metadata_scene(&self, meta: Metadata, size: [u32; 2], png: Vec<u8>) -> Scene {
+    pub(super) fn metadata_scene(
+        &self,
+        meta: Metadata,
+        size: [u32; 2],
+        png: Vec<u8>,
+        content_sha: Option<&str>,
+    ) -> Scene {
         let mut binding = meta.binding;
-        if !png.is_empty() {
+        if let Some(content_sha) = content_sha {
+            binding.content = content_sha.to_owned();
+        } else if !png.is_empty() {
             binding.content = digest(&png);
         }
         Scene {identity:meta.identity,assurance:"native-attested".into(),binding:Some(binding),
@@ -140,21 +160,12 @@ impl NativeMac {
             ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
         }
         let elements = ax_tree(&focused, &system, window.rect, blocked)?;
-        let focused_element = application
-            .attr("AXFocusedUIElement")
-            .ok()
-            .and_then(|e| element_description(&e).ok());
-        let native_epoch = digest(
-            format!(
-                "{}|{:?}|{}|{:?}|{:?}",
-                self.process,
-                window.rect,
-                title,
-                modal,
-                focused_element.as_ref().map(|v| &v.element.id)
-            )
-            .as_bytes(),
-        );
+        // The application's internal focused element is not window identity: it
+        // changes whenever the user or activation chrome moves focus, including
+        // while the user works in other applications. Keyboard/text paths verify
+        // the exact focused target separately before dispatch.
+        let native_epoch =
+            digest(format!("{}|{:?}|{}|{:?}", self.process, window.rect, title, modal).as_bytes());
         let binding = Binding {
             mutation_context: None,
             scope: Scope {
