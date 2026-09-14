@@ -12,7 +12,7 @@
 | 3 | 可视化与操作通道分离 | capture_visual 已由重启后的真实 Host 加载并实测，不产生input frame；新版面积平均1024px预览保留本次细线，原生512px切片SHA升级前后相同。ROI source_region重验已实机画出第三个闭合菱形。公共语义 observe 仍需缩减全树遍历开销 |
 | 4 | 连贯多步操作 | withInput 已补同target多wrapper独占、单调调度预算、重复ID/dedup停止、在途读/输入与异常留证；真实三步工具按钮批次约6.54s，另已用一个Host原生MCP JS单元完成两笔640ms轨迹，整批约5.33s，原生512px切片确认两个闭合菱形。缩略细线已修且实测；菜单focus/pointer身份表示继续修正，不称效率完全达标 |
 | 5 | 完整真实验证与简洁交付 | 重启后真实Host已加载45ae版；agent重启后的首次查询自动单次重连成功，原操作记录未变。1200ms截止后的原生停止/一次租约清理成功，显式恢复仍保留不确定历史。最小化修订独立393默认/480全feature门禁通过并实测，无需再重启Host。原Paint PID2024已退出，新PID7372由GUI重开原图；文件与512px切片SHA均不变。另按新发现的窗口尺寸重绑，3次观察约712/591/616ms，只读截图约140ms，不算跨版本A/B。截图36步，历史失败全部保留 |
-| 6 | Mac 受控端 | 通用 agent 装配、无选窗身份、动态CG发现/绑定、AX/CG输入与取消/回调资源已实现，独立默认424/全feature511通过；实际无窗口身份预检通过。R1长文本/双击自身状态变化导致中断的问题已审出并修复。尚未全局部署或Host Mac GUI验收；Pointer/drag/ROI/capture_visual/lifecycle等仍未实现，详见本批验证文档 |
+| 6 | Mac 受控端 | 通用 agent 装配、无选窗身份、动态CG发现/绑定、AX/CG输入与取消/回调资源已实现，独立默认424/全feature511通过；实际无窗口身份预检通过。R1长文本/双击自身状态变化导致中断的问题已审出并修复。本机用户级开发版已部署：新私有配对（agent-mac-v1）、loopback mTLS 连通、运行进程 accessibility/screen_capture/post_event/listen_event 预检为真，证据见 work/macos-deployment-20260914/；Host 原生 GUI 验收待做；Pointer/drag/ROI/capture_visual/lifecycle等仍未实现，详见本批验证文档 |
 | 7 | 跨端和架构收尾 | agent_binding从1592行纯拆分至根222行/子模块≤310行，76函数体和12类型保持；继续剩余模块债务、生产feature、多端故障隔离与资源上界。已有离线通过不能替代未测真实平台 |
 
 ## 已有基础，不重复从零做
