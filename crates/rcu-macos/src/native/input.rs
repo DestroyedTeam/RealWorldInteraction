@@ -50,11 +50,13 @@ impl NativeMac {
             ));
         }
         if self.foreground_pid() != Some(self.pid)
+            && !self.window_is_main()
             && crate::background::activate_background_window(self.pid, self.window)
         {
             std::thread::sleep(std::time::Duration::from_millis(30));
             if pointer {
-                crate::background::primer_click(&delivery);
+                let alternate = self.dispatches.load(std::sync::atomic::Ordering::Acquire) % 2 == 1;
+                crate::background::primer_click(&delivery, alternate);
             }
         }
         match intent {

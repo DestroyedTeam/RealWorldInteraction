@@ -39,11 +39,13 @@ fn application_activated_event(window: isize) -> Option<CGEvent> {
 /// Consume the "first mouse activates, content does not receive it" behavior
 /// before the real action. The primer targets the title bar center so it does
 /// not trigger content; the window center is the fallback for chromeless windows.
-pub(crate) fn primer_click(delivery: &Delivery) {
-    let point = [
-        delivery.frame.x + delivery.frame.w / 2.0,
-        delivery.frame.y + 25.0_f64.min(delivery.frame.h / 2.0),
-    ];
+pub(crate) fn primer_click(delivery: &Delivery, alternate: bool) {
+    let x = if alternate {
+        delivery.frame.x + delivery.frame.w / 4.0
+    } else {
+        delivery.frame.x + delivery.frame.w / 2.0
+    };
+    let point = [x, delivery.frame.y + 25.0_f64.min(delivery.frame.h / 2.0)];
     let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) else {
         return;
     };
