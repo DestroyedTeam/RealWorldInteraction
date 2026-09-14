@@ -34,6 +34,12 @@
   ① 身份改用 boot 秒级（修复 kern.boottime 微秒漂移引发的全量 session_mismatch）；
   ② 窗口解析支持 AX 子级 sheet/对话框（修复模态面板 window_missing，使其可观察可操作）；
   ③ 窗口发现/绑定携带所属显示器（id/built_in/bounds）。
+- 授权显示器门槛（已实现+实测，提交随本轮）：macOS 平台策略新增可选
+  `platform.authorized_display={built_in,id?}`；绑定前校验窗口所属显示器，不匹配或无
+  唯一归属即拒绝 `unauthorized_display`（不绑定、不输入）。实测：扩展屏（built_in:false）
+  的 TextEdit 被拒；内建屏 Paint S 正常绑定。已部署（agent a7d6ee11，本机 agent.json 已开
+  启该策略）。窗口**移动/放置**原语仍需新的 MCP 工具面（工具清单为固定 19 项且带历史录
+  制校验），另列。
 - 显示器归属实测：Paint S 当前唯一文档窗口 display={id:1,built_in:true}（内建屏）。
   落点机制：macOS 主显示器=外接 IG27Q，未定位的新窗口由系统/应用放在主显示器
   （首启 Start 面板曾出现在扩展屏），随后应用会恢复其保存位置（Prefs 中
