@@ -29,11 +29,20 @@
   打开已有图片绕过。仿图未完成（paint-s-window-region.png）。
 - 对照 Paintbrush（非沙盒）同一路径已完成 29 笔仿图与形状版仿图 → 差别主要来自
   应用 UI 结构（AX 暴露度、瞬态面板、沙盒、模态窗口）。
-- 基础设施发现（待排期修复）：① macOS owner-chain 窗口切换未实现，同一 context 不能
-  改绑另一窗口；② 身份含 `kern.boottime` 微秒位，实测一次整体漂移导致全量
-  `session_mismatch`，只能重启 agent 换 context，建议改为秒级/容差比较；
-  ③ 瞬态面板会被 observe 的内部激活事件关闭，与内容校验叠加导致重试才偶发成功。
-- 本轮未完成：独立验证子会话、Mac 视觉反馈（AI 光标层）、正式验收文档与总提交。
+- 已修复并部署（本机 agent abd74948，离线门禁 fmt/clippy/test 全绿，提交 84bacf9/
+  2fb57b5/1aa6d74）：
+  ① 身份改用 boot 秒级（修复 kern.boottime 微秒漂移引发的全量 session_mismatch）；
+  ② 窗口解析支持 AX 子级 sheet/对话框（修复模态面板 window_missing，使其可观察可操作）；
+  ③ 窗口发现/绑定携带所属显示器（id/built_in/bounds）。
+- 显示器归属实测：Paint S 当前唯一文档窗口 display={id:1,built_in:true}（内建屏）。
+  落点机制：macOS 主显示器=外接 IG27Q，未定位的新窗口由系统/应用放在主显示器
+  （首启 Start 面板曾出现在扩展屏），随后应用会恢复其保存位置（Prefs 中
+  StartOpenPanel 保存的是内建屏坐标）。macOS 尚无启动/放置原语
+  （launch_application 未实现），Host `open -a` 只能接受系统落点。
+- 待实现（用户要求，高优先级）：受控的窗口移动/放置原语（将目标窗口强制放到授权
+  显示器），并把"仅授权显示器"作为默认可操作门槛；③ 的识别已就绪，可作为策略输入。
+- 本轮未完成：sheet 修复的端到端模态验证、独立验证子会话、Mac 视觉反馈（AI 光标层）、
+  正式验收文档与总提交。
 
 ## 已有基础，不重复从零做
 
