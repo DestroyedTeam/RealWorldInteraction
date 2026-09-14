@@ -635,21 +635,27 @@ mod tests {
         let want: String = std::env::var("RCU_DIAG_WINDOW").unwrap_or_else(|_| "Untitled 5".into());
         let application =
             unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32)).unwrap() };
-        let value = application.attr("AXWindows").unwrap();
-        let windows = unsafe { ffi::array(value.0, 64).unwrap() };
-        let mut target = None;
-        for w in &windows {
-            if w.attr("AXTitle")
-                .ok()
-                .and_then(|v| v.string().ok())
-                .as_deref()
-                == Some(want.as_str())
-            {
-                target = Some(w.retained());
+        let focused: bool = std::env::var("RCU_DIAG_FOCUSED").is_ok_and(|v| v == "1");
+        let button_title: String = std::env::var("RCU_DIAG_BUTTON").unwrap_or_else(|_| "OK".into());
+        let window = if focused {
+            application.attr("AXFocusedWindow").expect("focused window")
+        } else {
+            let value = application.attr("AXWindows").unwrap();
+            let windows = unsafe { ffi::array(value.0, 64).unwrap() };
+            let mut target = None;
+            for w in &windows {
+                if w.attr("AXTitle")
+                    .ok()
+                    .and_then(|v| v.string().ok())
+                    .as_deref()
+                    == Some(want.as_str())
+                {
+                    target = Some(w.retained());
+                }
             }
-        }
-        let window = target.expect("window not found");
-        fn find_button(node: &Cf, depth: usize) -> Option<Cf> {
+            target.expect("window not found")
+        };
+        fn find_button(node: &Cf, depth: usize, want: &str) -> Option<Cf> {
             if depth > 8 {
                 return None;
             }
@@ -657,18 +663,18 @@ mod tests {
             let title = node.attr("AXTitle").ok().and_then(|v| v.string().ok());
             let default = node.attr("AXDefaultButton").ok().and_then(|v| v.boolean());
             if role.as_deref() == Some("AXButton")
-                && (title.as_deref() == Some("OK") || default == Some(true))
+                && (title.as_deref() == Some(want) || default == Some(true))
             {
                 return Some(node.retained());
             }
             for child in node.children().unwrap_or_default() {
-                if let Some(found) = find_button(&child, depth + 1) {
+                if let Some(found) = find_button(&child, depth + 1, want) {
                     return Some(found);
                 }
             }
             None
         }
-        let button = find_button(&window, 0).expect("OK button not found");
+        let button = find_button(&window, 0, &button_title).expect("button not found");
         use core_foundation::base::TCFType;
         let action = core_foundation::string::CFString::new("AXPress");
         let code =
