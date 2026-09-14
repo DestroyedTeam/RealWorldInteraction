@@ -48,6 +48,13 @@
   已改为：未知模态仅当该窗口正是应用聚焦窗口（即交互面本身）才放行，否则保持 fail-closed。
   Cancel 点击的端到端复核未完成（面板在复核前已被关闭，重开采样窗口内未再出现）——下一轮
   首要项。
+- 续测（提交 4015873，agent 3ca5e720）：面板输入前置条件已全部放行——观察
+  `mutation_ready=true / blocked=false`，且 Cancel 点击两次均 `dispatch: returned`
+  （native_dispatch_entered=true，修复前是 window_missing/visibility_unknown/not ready）。
+  但点击后的**面板未被关闭**（延迟复查仍在，且期间 CGWindowID 13550→13725 变化一次）：
+  即"能派发、未生效"。已知事实：面板是应用 AXFocusedWindow、元素点/窗口局部坐标正确、
+  CGEventPostToPid 无 OS 回执。下一轮方向：确认应用是否处于 active/key 状态（必要时补
+  key-window 前置）、并评估用原生 AXPress 作为后台对话框按钮的回退动作。
 - 本轮未完成：sheet 修复的端到端模态验证、独立验证子会话、Mac 视觉反馈（AI 光标层）、
   正式验收文档与总提交。
 
