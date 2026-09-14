@@ -46,6 +46,22 @@ impl NativeMac {
         }
         Ok(())
     }
+    pub(super) fn foreground_pid(&self) -> Option<u32> {
+        let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()).ok()? };
+        system.attr("AXFocusedApplication").ok()?.pid().ok()
+    }
+    pub(super) fn window_frame(&self) -> Result<Rect> {
+        windows()?
+            .into_iter()
+            .find(|w| w.id == self.window && w.pid == self.pid)
+            .map(|w| w.rect)
+            .ok_or_else(|| {
+                fault(
+                    "window_missing",
+                    "Pinned on-screen window is absent; rebind explicitly.",
+                )
+            })
+    }
     pub(super) fn metadata_scene(&self, meta: Metadata, size: [u32; 2], png: Vec<u8>) -> Scene {
         let mut binding = meta.binding;
         if !png.is_empty() {
@@ -84,46 +100,45 @@ impl NativeMac {
                     "Exact pinned on-screen window/PID is absent.",
                 )
             })?;
-        let window = &all[index];
-        let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()) }?;
-        unsafe {
-            ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
-        }
-        let application = system.attr("AXFocusedApplication")?;
-        if application.pid()? != self.pid {
-            return Err(fault(
-                "focus_mismatch",
-                "Pinned application is not focused. Do not silently focus another app.",
-            ));
-        }
+        let window = &all[index].clone();
+        // Background observation: resolve the exact AX window from the target
+        // application itself. No focused-application or focused-window
+        // requirement; the pinned window does not need to be frontmost.
+        let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
         unsafe {
             ffi::AXUIElementSetMessagingTimeout(application.0, 0.05);
         }
-        let focused = application.attr("AXFocusedWindow")?;
+        let focused = self.resolve_window_element(&application, window.rect)?;
         let ax_rect = ax_rect(&focused)?;
-        if !window.rect.same(ax_rect)
-            || all
-                .iter()
-                .filter(|w| w.pid == self.pid && w.rect.same(ax_rect))
-                .count()
-                != 1
-        {
+        if !window.rect.same(ax_rect) {
             return Err(fault(
                 "window_binding_ambiguous",
-                "Focused AX window does not uniquely match the pinned CGWindowID/PID/bounds.",
+                &format!(
+                    "Resolved AX window rect (x={:.1},y={:.1},w={:.1},h={:.1}) does not match the pinned CGWindowID/PID/bounds (x={:.1},y={:.1},w={:.1},h={:.1}).",
+                    ax_rect.x,
+                    ax_rect.y,
+                    ax_rect.w,
+                    ax_rect.h,
+                    window.rect.x,
+                    window.rect.y,
+                    window.rect.w,
+                    window.rect.h
+                ),
             ));
         }
-        let title = focused.attr("AXTitle")?.string()?;
+        let title = focused
+            .attr("AXTitle")
+            .ok()
+            .and_then(|v| v.string().ok())
+            .or_else(|| window.title.clone())
+            .unwrap_or_default();
         let modal = focused.attr("AXModal").ok().and_then(|v| v.boolean());
-        let covered = all[..index]
-            .iter()
-            .any(|w| w.alpha > 0.01 && w.rect.overlaps(window.rect));
-        let blocked = if covered || modal == Some(true) {
-            Some(true)
-        } else {
-            modal.map(|_| false)
-        };
+        let blocked = modal;
         let (layout, mapping_ready) = display_layout(window.rect)?;
+        let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide())? };
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
+        }
         let elements = ax_tree(&focused, &system, window.rect, blocked)?;
         let focused_element = application
             .attr("AXFocusedUIElement")
@@ -168,5 +183,32 @@ impl NativeMac {
             blocked,
             mapping_ready,
         })
+    }
+    /// Exact private-SPI window match first; a strict geometry fallback only
+    /// when the private attribute is unavailable. Ambiguity always fails closed.
+    pub(super) fn resolve_window_element(&self, application: &Cf, expected: Rect) -> Result<Cf> {
+        let value = application.attr("AXWindows")?;
+        let windows = unsafe { ffi::array(value.0, 64)? };
+        let mut exact = Vec::new();
+        let mut geometric = Vec::new();
+        for window in windows {
+            if ffi::window_number_for_ax_element(&window) == Some(self.window) {
+                exact.push(window);
+            } else if ax_rect(&window).is_ok_and(|r| r.same(expected)) {
+                geometric.push(window);
+            }
+        }
+        match (exact.len(), geometric.len()) {
+            (1, _) => Ok(exact.pop().expect("one exact window")),
+            (0, 1) => Ok(geometric.pop().expect("one geometric window")),
+            (0, 0) => Err(fault(
+                "window_missing",
+                "Pinned CGWindowID/PID has no matching AX window; do not substitute another window.",
+            )),
+            _ => Err(fault(
+                "window_binding_ambiguous",
+                "Multiple AX windows match the pinned identity or bounds; rebind explicitly.",
+            )),
+        }
     }
 }

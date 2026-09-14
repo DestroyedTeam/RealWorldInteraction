@@ -12,6 +12,7 @@ unsafe extern "C" {
 #[link(name = "ApplicationServices", kind = "framework")]
 unsafe extern "C" {
     pub fn AXIsProcessTrusted() -> u8;
+    pub fn AXUIElementCreateApplication(pid: libc::pid_t) -> Ref;
     pub fn AXUIElementCreateSystemWide() -> Ref;
     pub fn AXUIElementCopyAttributeValue(element: Ref, name: Ref, value: *mut Ref) -> i32;
     pub fn AXUIElementCopyElementAtPosition(element: Ref, x: f32, y: f32, value: *mut Ref) -> i32;
@@ -55,6 +56,9 @@ unsafe extern "C" {
 }
 pub struct Cf(pub Ref);
 impl Cf {
+    pub fn retained(&self) -> Self {
+        Self(unsafe { CFRetain(self.0) })
+    }
     /// `value` is a nullable +1 CoreFoundation result from a Create/Copy API.
     pub unsafe fn owned(value: Ref) -> Result<Self> {
         if value.is_null() {
@@ -218,3 +222,64 @@ pub unsafe fn array(value: Ref, limit: usize) -> Result<Vec<Cf>> {
         .map(|i| unsafe { Cf::owned(CFRetain(CFArrayGetValueAtIndex(value, i))) })
         .collect()
 }
+/// Private SPI used only for exact window identity and window-local event
+/// addressing. Missing symbols fail closed; no substitution by title.
+mod private_spi {
+    use super::{Cf, Ref};
+    use core_graphics::geometry::CGPoint;
+    use std::sync::OnceLock;
+    type SetWindowLocationFn = unsafe extern "C" fn(Ref, CGPoint);
+    type GetAXWindowFn = unsafe extern "C" fn(Ref, *mut u32) -> i32;
+    fn symbol(framework: &std::ffi::CStr, name: &std::ffi::CStr) -> Option<*mut std::ffi::c_void> {
+        let handle = unsafe { libc::dlopen(framework.as_ptr(), libc::RTLD_LAZY) };
+        if handle.is_null() {
+            return None;
+        }
+        let found = unsafe { libc::dlsym(handle, name.as_ptr()) };
+        (!found.is_null()).then_some(found)
+    }
+    fn set_window_location_fn() -> &'static Option<SetWindowLocationFn> {
+        static RESOLVED: OnceLock<Option<SetWindowLocationFn>> = OnceLock::new();
+        RESOLVED.get_or_init(|| {
+            symbol(
+                c"/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight",
+                c"CGEventSetWindowLocation",
+            )
+            .map(|found| unsafe {
+                std::mem::transmute::<*mut std::ffi::c_void, SetWindowLocationFn>(found)
+            })
+        })
+    }
+    pub fn window_location_spi_available() -> bool {
+        set_window_location_fn().is_some()
+    }
+    pub fn set_window_location(event: Ref, point: CGPoint) -> bool {
+        let Some(function) = set_window_location_fn() else {
+            return false;
+        };
+        unsafe { function(event, point) };
+        true
+    }
+    pub fn window_number_for_ax_element(element: &Cf) -> Option<u32> {
+        static RESOLVED: OnceLock<Option<GetAXWindowFn>> = OnceLock::new();
+        let resolved = RESOLVED.get_or_init(|| {
+            symbol(
+                c"/System/Library/Frameworks/ApplicationServices.framework/Frameworks/HIServices.framework/HIServices",
+                c"_AXUIElementGetWindow",
+            )
+            .map(|found| unsafe {
+                std::mem::transmute::<*mut std::ffi::c_void, GetAXWindowFn>(found)
+            })
+        });
+        let function = resolved.as_ref()?;
+        let mut window = 0u32;
+        if unsafe { function(element.0, &mut window) } == 0 && window != 0 {
+            Some(window)
+        } else {
+            None
+        }
+    }
+}
+pub use private_spi::{
+    set_window_location, window_location_spi_available, window_number_for_ax_element,
+};

@@ -2,6 +2,21 @@
 use super::*;
 use continuation::{Facts, Kind};
 
+/// Grounding for one action point. A system-wide hit that lands in the pinned
+/// process is authoritative; otherwise the pinned window's own AX subtree is
+/// walked geometrically. Cross-window coverage never blocks background delivery.
+fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<Cf> {
+    let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide())? };
+    unsafe {
+        ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
+    }
+    if let Ok(hit) = hit_test(&system, point)
+        && hit.pid().ok() == Some(pid)
+    {
+        return Ok(hit);
+    }
+    Ok(element_at_point(window, point)?.unwrap_or_else(|| window.retained()))
+}
 pub(super) struct AxObject(Cf);
 impl PartialEq for AxObject {
     fn eq(&self, other: &Self) -> bool {
@@ -13,7 +28,7 @@ impl NativeMac {
     pub(super) fn input_anchor_facts(
         &self,
         target: &Resolved,
-        intent: &Intent,
+        kind: Kind,
     ) -> Result<Facts<AxObject>> {
         let _call = operation::native_call("macos_input_anchor_read")?;
         let permitted =
@@ -32,55 +47,33 @@ impl NativeMac {
                 "No more input in a replaced native context or process.",
             ));
         }
-        let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()) }?;
-        unsafe {
-            ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
-        }
-        let app = system.attr("AXFocusedApplication")?;
-        if app.pid()? != self.pid {
-            return Err(fault(
-                "focus_mismatch",
-                "The selected application is no longer foreground.",
-            ));
-        }
-        unsafe {
-            ffi::AXUIElementSetMessagingTimeout(app.0, 0.05);
-        }
-        let focused_window = app.attr("AXFocusedWindow")?;
-        let rect = ax_rect(&focused_window)?;
         let all = windows()?;
-        let index = all
+        let window = all
             .iter()
-            .position(|w| w.id == self.window && w.pid == self.pid && w.rect.same(rect))
+            .find(|w| w.id == self.window && w.pid == self.pid)
             .ok_or_else(|| {
                 fault(
                     "window_binding_changed",
-                    "The exact pinned CGWindowID/PID/AX window bounds changed.",
+                    "The pinned CGWindowID/PID is absent from the on-screen window list.",
                 )
             })?;
-        if all
-            .iter()
-            .filter(|w| w.pid == self.pid && w.rect.same(rect))
-            .count()
-            != 1
-        {
+        let rect = window.rect;
+        // Background operation: resolve the exact AX window from the target
+        // application; no focused-application or focused-window requirement.
+        let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(application.0, 0.05);
+        }
+        let window_element = self.resolve_window_element(&application, rect)?;
+        if !ax_rect(&window_element)?.same(rect) {
             return Err(fault(
-                "window_binding_ambiguous",
-                "AX window no longer uniquely maps to the pinned native CGWindowID.",
+                "window_binding_changed",
+                "The exact AX window no longer matches the pinned native bounds.",
             ));
         }
-        let hit = hit_test(&system, target.point)?;
-        if hit.pid()? != self.pid
-            || unsafe { ffi::CFEqual(hit.attr("AXWindow")?.0, focused_window.0) } == 0
-        {
-            return Err(fault(
-                "target_occluded",
-                "The original action point belongs to another native window or process.",
-            ));
-        }
+        let hit = point_element(&window_element, self.pid, target.point)?;
         let hit_description = element_description(&hit)?;
         require_nonsecure_input(&hit_description)?;
-        let kind = Kind::of(intent);
         if matches!(kind, Kind::Text | Kind::Keyboard) {
             require_keyboard_target(&hit_description, target.scope.element.as_deref())?;
             if matches!(kind, Kind::Text) {
@@ -88,13 +81,11 @@ impl NativeMac {
             }
         }
         let focused = if kind.needs_focus() {
-            let element = app.attr("AXFocusedUIElement")?;
-            if element.pid()? != self.pid
-                || unsafe { ffi::CFEqual(element.attr("AXWindow")?.0, focused_window.0) } == 0
-            {
+            let element = application.attr("AXFocusedUIElement")?;
+            if element.pid()? != self.pid {
                 return Err(fault(
                     "focus_changed",
-                    "The focused native element belongs to another window/context.",
+                    "The focused native element belongs to another process.",
                 ));
             }
             Some(AxObject(element))
@@ -114,13 +105,13 @@ impl NativeMac {
             layout,
             mapping_ready,
             permissions: true,
-            modal: focused_window
+            modal: window_element
                 .attr("AXModal")
                 .ok()
                 .and_then(|v| v.boolean()),
-            occluded: all[..index]
-                .iter()
-                .any(|w| w.alpha > 0.01 && w.rect.overlaps(rect)),
+            // Cross-window coverage does not block background delivery; input is
+            // addressed to the pinned window/PID directly.
+            occluded: false,
             enabled: hit.attr("AXEnabled").ok().and_then(|v| v.boolean()),
             writable: if matches!(kind, Kind::Text) {
                 Some(hit.attribute_settable("AXValue")?)
@@ -128,7 +119,7 @@ impl NativeMac {
                 None
             },
             class: hit_description.text_class,
-            window: AxObject(focused_window),
+            window: AxObject(window_element),
             hit: AxObject(hit),
         };
         if console_identity()? != facts.identity
@@ -141,5 +132,8 @@ impl NativeMac {
             ));
         }
         Ok(facts)
+    }
+    pub(super) fn drag_anchor_facts(&self, target: &Resolved) -> Result<Facts<AxObject>> {
+        self.input_anchor_facts(target, Kind::Pointer)
     }
 }

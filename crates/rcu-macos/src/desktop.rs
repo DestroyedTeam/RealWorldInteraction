@@ -70,12 +70,12 @@ pub(crate) fn native_capabilities(
         "window_discovery":{"implemented":true,"scope":"on_screen_only_same_native_user","max_native_rows":2048,"max_page_rows":8,"max_page_bytes":12288,"catalog_ttl_ms":10000},
         "binding_identity":"fresh CGWindowID + PID + process start + context + observed bounds/title fingerprint; no window creation-time or continuous lifetime attestation",
         "ax_tree":"bounded_partial","mapping":"single containing unrotated display only",
-        "pointer_drag":{"implemented":false},"pointer_feedback":{"implemented":false},
+        "pointer_drag":{"implemented":true,"button":"left","coordinate_space":"offset_from_grounded_reference_in_desktop_points","max_waypoints":rcu_core::trajectory::MAX_WAYPOINTS,"max_duration_ms":rcu_core::trajectory::MAX_DURATION_MS,"sample_interval_ms":crate::native::NATIVE_SAMPLE_INTERVAL_MS,"sampling_policy":"bounded interpolation; all requested vertices and times retained","max_lateness_ms":rcu_core::input_trajectory::MAX_LATENESS_MS,"scope":"pinned window; every sample must stay inside the observed frame; background postToPid delivery, no cursor movement"},"pointer_feedback":{"implemented":false},
         "capture_visual":{"implemented":false},"native_roi":{"implemented":false},
         "lifecycle":{"implemented":false},"recovery":"read-only HID + combined session resource state, requiring listen-event preflight and agent idle writer proof",
-        "unsupported":["activation","launch","native owner-chain transition","minimized/hidden window discovery","mixed-display windows","rotated displays","drag","Pointer feedback","capture_visual","native ROI","clipboard","unattended unlock","modal-window input while AXModal is true/unknown"],
+        "unsupported":["activation","launch","native owner-chain transition","minimized/hidden window discovery","mixed-display windows","rotated displays","Pointer feedback","capture_visual","native ROI","clipboard","unattended unlock","modal-window input while AXModal is true/unknown"],
         "text_input":"only the exact focused, explicitly classified non-secure AX text element; unknown classifications remain unavailable",
-        "foreground_constraint":"AX observation, verification and input require the explicitly selected window to be foreground; bind does not activate",
+        "background_operation":"observation resolves the exact AX window from the target application; input uses CGEventPostToPid with window addressing and window-local coordinates; the system cursor does not move and no application is activated or focused; the target window does not need to be frontmost",
         "interruption_coverage":"per-batch focus, hit-test, layout, session, permissions, lease and cancellation; not a complete global human-input observer",
         "lock_state":"unknown","live_acceptance":"pending",
         "atomicity":"pre/post validation; neither CGEventPost nor property equality proves the business goal"
@@ -180,7 +180,7 @@ impl Backend for NativeMacDesktop {
         self.check_identity()?;
         self.selected = Some(backend);
         Ok(
-            json!({"bound":selected,"relation":selection.relation,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"next":"Observe this exact foreground window. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
+            json!({"bound":selected,"relation":selection.relation,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"next":"Observe this exact window. Background observation and input are supported; the window does not need to be frontmost. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
         )
     }
     fn observe(&mut self) -> Result<Scene> {
@@ -239,8 +239,13 @@ mod tests {
         );
         assert_eq!(cap["window_discovery"]["implemented"], true);
         assert_eq!(cap["input_opt_in"], false);
+        assert_eq!(cap["pointer_drag"]["implemented"], true);
+        assert_eq!(cap["pointer_drag"]["button"], "left");
+        assert_eq!(
+            cap["pointer_drag"]["max_duration_ms"],
+            rcu_core::trajectory::MAX_DURATION_MS
+        );
         for key in [
-            "pointer_drag",
             "pointer_feedback",
             "capture_visual",
             "native_roi",

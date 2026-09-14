@@ -182,7 +182,9 @@ fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static s
         tool,
         "computer.observe" | "computer.act" | "computer.act_checked" | "computer.verify"
     ) {
-        return Some("selected_foreground_window_required");
+        // Background operation: the exact window must be discovered and bound
+        // first; it does not need to be frontmost.
+        return Some("selected_window_required");
     }
     None
 }

@@ -13,8 +13,9 @@ pub const MAX_SAMPLE_INTERVAL_MS: u64 = 64;
 pub struct Waypoint {
     /// Milliseconds since button-down. Strictly increasing, starting at zero.
     pub at_ms: u64,
-    /// Offset from the grounded reference in DEVICE physical desktop pixels.
-    /// These are not controller, preview or original-image coordinates.
+    /// Offset from the grounded reference in the DEVICE desktop coordinate
+    /// space (Windows: physical pixels; macOS: logical points). These are not
+    /// controller, preview or original-image coordinates.
     pub offset: [f64; 2],
 }
 

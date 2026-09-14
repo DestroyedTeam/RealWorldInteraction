@@ -1,5 +1,7 @@
 //! Native macOS backend, linked directly to Apple frameworks. No subprocess runtime.
 #[cfg(target_os = "macos")]
+mod background;
+#[cfg(target_os = "macos")]
 mod capture;
 #[cfg(target_os = "macos")]
 mod catalog;

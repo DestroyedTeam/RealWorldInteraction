@@ -1,4 +1,5 @@
 mod input;
+pub(crate) use input::NATIVE_SAMPLE_INTERVAL_MS;
 mod keyboard;
 mod metadata;
 use crate::{
@@ -9,10 +10,7 @@ use crate::{
 };
 use core_graphics::{
     display::CGDisplay,
-    event::{
-        CGEvent, CGEventFlags, CGEventTapLocation, CGEventType, CGMouseButton, EventField,
-        ScrollEventUnit,
-    },
+    event::{CGEvent, CGEventFlags, CGEventType, CGMouseButton, EventField, ScrollEventUnit},
     event_source::{CGEventSource, CGEventSourceStateID},
     geometry::{CGPoint, CGRect},
 };
@@ -115,6 +113,13 @@ impl Backend for NativeMac {
                 "screen_capture_permission_missing",
                 "Screen capture must already be permitted; no permission request is triggered.",
             ));
+        }
+        // Background observation: activate the target application internally first
+        // so its chrome/state is stable for this frame and later revalidation.
+        if self.foreground_pid() != Some(self.pid)
+            && crate::background::activate_background_window(self.pid, self.window)
+        {
+            std::thread::sleep(std::time::Duration::from_millis(30));
         }
         let before = self.metadata()?;
         let capture = self.capturer.capture(self.pid, self.window, before.rect)?;
@@ -423,6 +428,40 @@ fn element_description(el: &Cf) -> Result<AxElement> {
         value,
     })
 }
+fn element_at_point(root: &Cf, point: [f64; 2]) -> Result<Option<Cf>> {
+    let mut pending = VecDeque::new();
+    pending.push_back((root.retained(), 0usize));
+    let mut best: Option<(Cf, usize)> = None;
+    let start = Instant::now();
+    let mut nodes = 0;
+    while let Some((node, depth)) = pending.pop_front() {
+        operation::checkpoint("macos_point_element")?;
+        if nodes >= 128 || start.elapsed() > Duration::from_millis(750) {
+            break;
+        }
+        nodes += 1;
+        let contains = ax_rect(&node).is_ok_and(|rect| rect.contains(point));
+        let children = if depth < 8 {
+            node.children().unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        if contains
+            && best
+                .as_ref()
+                .is_none_or(|(_, best_depth)| *best_depth <= depth)
+        {
+            best = Some((node, depth));
+        }
+        for child in children {
+            if pending.len() >= 256 {
+                break;
+            }
+            pending.push_back((child, depth + 1));
+        }
+    }
+    Ok(best.map(|(node, _)| node))
+}
 fn hit_test(system: &Cf, point: [f64; 2]) -> Result<Cf> {
     let mut out = std::ptr::null();
     let error = unsafe {
@@ -482,6 +521,35 @@ fn ax_tree(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "Explicit live AX/CG window identity dump for one pid; read-only, no input"]
+    fn dump_ax_windows_for_pid_diagnostic() {
+        let pid: u32 = std::env::var("RCU_DIAG_PID")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(18858);
+        let application =
+            unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32)).unwrap() };
+        let value = application.attr("AXWindows").unwrap();
+        let windows = unsafe { ffi::array(value.0, 64).unwrap() };
+        for w in &windows {
+            let number = ffi::window_number_for_ax_element(w);
+            let rect = ax_rect(w).ok();
+            let title = w.attr("AXTitle").ok().and_then(|v| v.string().ok());
+            println!("AX window number={number:?} rect={rect:?} title={title:?}");
+        }
+        for w in window_inventory()
+            .unwrap()
+            .windows
+            .iter()
+            .filter(|w| w.pid == pid)
+        {
+            println!(
+                "CG window id={} rect=({},{},{},{}) title={:?} alpha={}",
+                w.id, w.rect.x, w.rect.y, w.rect.w, w.rect.h, w.title, w.alpha
+            );
+        }
+    }
     #[test]
     fn secure_text_subrole_is_rejected_for_description_readback_and_input() {
         let class = TextClass::classify("AXTextField", Some("AXSecureTextField"));

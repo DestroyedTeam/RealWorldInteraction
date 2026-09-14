@@ -1,6 +1,8 @@
 //! First-frame grounding and invocation-local native continuation guards.
 use super::*;
 mod anchor_native;
+pub(crate) mod drag;
+pub(crate) use drag::NATIVE_SAMPLE_INTERVAL_MS;
 mod continuation;
 mod dispatch;
 use anchor_native::AxObject;
@@ -26,16 +28,39 @@ impl NativeMac {
                 "Reference belongs to another native target.",
             ));
         }
-        if matches!(intent, Intent::Drag(_)) {
-            return Err(fault(
-                "capability_unavailable",
-                "Native drag is not implemented on this macOS backend; no input dispatched.",
-            ));
-        }
         let mut sequence = Sequence::new(intent);
         let counter = self.dispatches.clone();
+        let delivery = crate::background::Delivery {
+            pid: self.pid,
+            window: self.window,
+            frame: self.window_frame()?,
+        };
+        let pointer = matches!(
+            intent,
+            Intent::Click
+                | Intent::DoubleClick
+                | Intent::ContextMenu
+                | Intent::Scroll
+                | Intent::Drag(_)
+        );
+        if pointer && !crate::background::pointer_delivery_available() {
+            return Err(fault(
+                "background_delivery_unavailable",
+                "Window-local background event addressing is unavailable on this macOS build; no input dispatched.",
+            ));
+        }
+        if self.foreground_pid() != Some(self.pid)
+            && crate::background::activate_background_window(self.pid, self.window)
+        {
+            std::thread::sleep(std::time::Duration::from_millis(30));
+            if pointer {
+                crate::background::primer_click(&delivery);
+            }
+        }
         match intent {
-            Intent::Drag(_) => unreachable!("rejected before native reads"),
+            Intent::Drag(path) => {
+                self.dispatch_drag(expected, target, path)?;
+            }
             Intent::Click | Intent::DoubleClick | Intent::ContextMenu => {
                 let right = matches!(intent, Intent::ContextMenu);
                 let button = if right {
@@ -87,7 +112,7 @@ impl NativeMac {
                         &counter,
                         (press, release),
                         |first| self.read_input_batch(first, expected, target, intent),
-                        |e| e.post(CGEventTapLocation::HID),
+                        |e| crate::background::deliver_pointer(e, &delivery, target.point),
                     )?;
                 }
             }
@@ -103,7 +128,7 @@ impl NativeMac {
                         &counter,
                         (down, up),
                         |first| self.read_input_batch(first, expected, target, intent),
-                        |e| e.post(CGEventTapLocation::HID),
+                        |e| crate::background::deliver_key(e, &delivery),
                     )?;
                 }
             }
@@ -118,7 +143,7 @@ impl NativeMac {
                     &counter,
                     (down, up),
                     |first| self.read_input_batch(first, expected, target, intent),
-                    |e| e.post(CGEventTapLocation::HID),
+                    |e| crate::background::deliver_key(e, &delivery),
                 )?;
             }
             Intent::Scroll => {
@@ -150,7 +175,9 @@ impl NativeMac {
                 }
                 let facts = self.read_input_batch(true, expected, target, intent)?;
                 facts.validate(expected, target, Kind::Scroll)?;
-                dispatch::single(&counter, || event.post(CGEventTapLocation::HID))?;
+                dispatch::single(&counter, || {
+                    crate::background::deliver_pointer(&event, &delivery, target.point)
+                })?;
             }
         }
         // CGEventPost returns void: native dispatch is not an OS effect acknowledgement.
@@ -168,7 +195,7 @@ impl NativeMac {
             let now = self.revalidate(target)?;
             validate_batch_scene(&self.identity, expected, target, &now)?;
         }
-        self.input_anchor_facts(target, intent)
+        self.input_anchor_facts(target, Kind::of(intent))
     }
 }
 

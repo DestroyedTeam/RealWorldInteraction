@@ -34,11 +34,11 @@ fn macos_discovery_and_binding_do_not_require_tcc_or_selected_window() {
     );
 }
 #[test]
-fn macos_permissions_are_independent_and_listening_is_only_recovery_proof() {
+fn macos_permissions_are_independent_and_binding_replaces_the_foreground_gate() {
     let mut caps = json!({"permissions":{"accessibility":true,"post_event":true,"screen_capture":false,"screenshot_api":true,"listen_event":false}});
     assert_eq!(
         macos_prerequisite("computer.act", &caps),
-        Some("selected_foreground_window_required")
+        Some("selected_window_required")
     );
     assert_eq!(
         macos_prerequisite("computer.observe", &caps),
@@ -53,7 +53,7 @@ fn macos_permissions_are_independent_and_listening_is_only_recovery_proof() {
     assert_eq!(macos_prerequisite("computer.recover_input", &caps), None);
     assert_eq!(
         macos_prerequisite("computer.observe", &caps),
-        Some("selected_foreground_window_required")
+        Some("selected_window_required")
     );
     caps["permissions"]["post_event"] = json!(false);
     assert_eq!(
@@ -62,6 +62,6 @@ fn macos_permissions_are_independent_and_listening_is_only_recovery_proof() {
     );
     assert_eq!(
         macos_prerequisite("computer.verify", &caps),
-        Some("selected_foreground_window_required")
+        Some("selected_window_required")
     );
 }

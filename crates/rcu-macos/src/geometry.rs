@@ -27,14 +27,6 @@ impl Rect {
             && r.x + r.w <= self.x + self.w
             && r.y + r.h <= self.y + self.h
     }
-    pub fn overlaps(self, r: Self) -> bool {
-        self.valid()
-            && r.valid()
-            && self.x < r.x + r.w
-            && r.x < self.x + self.w
-            && self.y < r.y + r.h
-            && r.y < self.y + self.h
-    }
     pub fn same(self, r: Self) -> bool {
         [self.x - r.x, self.y - r.y, self.w - r.w, self.h - r.h]
             .iter()
@@ -88,14 +80,13 @@ mod tests {
         }));
     }
     #[test]
-    fn invalid_and_disjoint_rects() {
+    fn same_and_disjoint_rects() {
         let r = Rect {
             x: 0.0,
             y: 0.0,
             w: 10.0,
             h: 10.0,
         };
-        assert!(!r.overlaps(Rect { x: 10.0, ..r }));
         assert!(r.same(r));
         assert!(!r.same(Rect { x: 1.0, ..r }));
         assert_eq!(r.map([0, 1]), None);

@@ -307,8 +307,20 @@ fn changed_initial_revision_is_still_zero_posts_and_creates_no_continuation_auth
     assert!(sequence.anchor.is_none());
 }
 #[test]
+fn unknown_enabled_is_allowed_while_explicit_disabled_still_stops() {
+    let state = Rc::new(RefCell::new(Fake::new()));
+    let proposal = state.borrow().proposal();
+    let counter = AtomicU64::new(0);
+    let mut sequence = Sequence::new(&Intent::Text);
+    pair(&mut sequence, &state, &proposal, &counter, vec![65]).unwrap();
+    state.borrow_mut().mutate(18);
+    pair(&mut sequence, &state, &proposal, &counter, vec![66]).unwrap();
+    assert_eq!(state.borrow().value, "AB");
+    assert_eq!(state.borrow().posts, [true, false, true, false]);
+}
+#[test]
 fn each_native_boundary_change_stops_text_after_exactly_the_already_returned_pair() {
-    for case in 0..23 {
+    for case in (0..23).filter(|case| *case != 18) {
         let state = Rc::new(RefCell::new(Fake::new()));
         let proposal = state.borrow().proposal();
         let counter = AtomicU64::new(0);

@@ -49,20 +49,44 @@ impl Kind {
 
 impl<K: PartialEq> Facts<K> {
     pub(super) fn validate(&self, expected: &Binding, target: &Resolved, kind: Kind) -> Result<()> {
-        if self.scope != target.scope
-            || self.point != target.point
-            || self.layout != expected.layout
-            || !self.mapping_ready
-            || !self.window_rect.contains(self.point)
-            || !self.hit_rect.contains(self.point)
-            || !self.permissions
-            || self.modal != Some(false)
-            || self.occluded
-            || self.enabled != Some(true)
-        {
+        let mut changed = Vec::new();
+        if self.scope != target.scope {
+            changed.push("scope");
+        }
+        if self.point != target.point {
+            changed.push("point");
+        }
+        if self.layout != expected.layout {
+            changed.push("layout");
+        }
+        if !self.mapping_ready {
+            changed.push("mapping");
+        }
+        if !self.window_rect.contains(self.point) {
+            changed.push("window_rect");
+        }
+        if !self.hit_rect.contains(self.point) {
+            changed.push("hit_rect");
+        }
+        if !self.permissions {
+            changed.push("permissions");
+        }
+        if self.modal != Some(false) {
+            changed.push("modal");
+        }
+        if self.occluded {
+            changed.push("occluded");
+        }
+        if self.enabled == Some(false) {
+            changed.push("enabled_disabled");
+        }
+        if !changed.is_empty() {
             return Err(fault(
                 "input_boundary_changed",
-                "Native scope/layout/point/mapping/TCC/modal/occlusion/enabled facts are changed or unknown; stop remaining batches.",
+                &format!(
+                    "Native facts changed or unknown ({}); stop remaining batches.",
+                    changed.join(",")
+                ),
             ));
         }
         if !self.class.readable()

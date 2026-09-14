@@ -1,7 +1,7 @@
 //! A batch is cancellable before down, never between an allocated down/up pair.
 use rcu_core::{Result, operation};
 use std::sync::atomic::{AtomicU64, Ordering};
-fn count(counter: &AtomicU64) {
+pub(super) fn count(counter: &AtomicU64) {
     let _ = counter.fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
         Some(n.saturating_add(1))
     });
