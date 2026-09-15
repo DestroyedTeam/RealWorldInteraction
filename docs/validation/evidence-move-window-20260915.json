@@ -1,0 +1,200 @@
+{
+  "stages": {
+    "targets": {
+      "ok": true,
+      "detail": {
+        "target": "mac-host:fd50efb7-a501-4795-89e2-393bee4d6d9c:d89cc36b-8ade-4d8c-bff6-57eca5df95a7"
+      }
+    },
+    "paint-s.window": {
+      "ok": true,
+      "detail": {
+        "title": "white-canvas-2x.png",
+        "window": "cgwindow:15556",
+        "bounds": [
+          306.0,
+          1190.0,
+          1262.0,
+          551.0
+        ],
+        "display": {
+          "bounds": [
+            282.0,
+            1152.0,
+            1800.0,
+            1169.0
+          ],
+          "built_in": true,
+          "id": 1
+        }
+      }
+    },
+    "paint-s.precondition_built_in": {
+      "ok": true,
+      "detail": {}
+    },
+    "bind": {
+      "ok": true,
+      "detail": {
+        "placed": null
+      }
+    },
+    "scene.visibility": {
+      "ok": true,
+      "detail": {
+        "elements": 54,
+        "visible_unoccluded": 46,
+        "named_visible": [
+          "Reflection",
+          "Smooth",
+          "Line:",
+          "None",
+          "Shadow",
+          "Help"
+        ]
+      }
+    },
+    "resolve.window_locator": {
+      "ok": true,
+      "detail": {
+        "code": null
+      }
+    },
+    "claim": {
+      "ok": true,
+      "detail": {}
+    },
+    "negative.window_ref_not_for_input": {
+      "ok": true,
+      "detail": {
+        "code": "invalid_reference_class",
+        "dispatch": null
+      }
+    },
+    "negative.empty_display_target": {
+      "ok": true,
+      "detail": {
+        "out": "invalid_display_target"
+      }
+    },
+    "negative.unknown_reference": {
+      "ok": true,
+      "detail": {
+        "out": "unknown_reference"
+      }
+    },
+    "move.to_external.receipt": {
+      "ok": true,
+      "detail": {
+        "receipt_dispatch": "returned",
+        "placement": {
+          "bounds": [
+            24.0,
+            24.0,
+            1262.0,
+            551.0
+          ],
+          "input_sent": false,
+          "activated": false
+        },
+        "code": null
+      }
+    },
+    "move.to_external.readback": {
+      "ok": true,
+      "detail": {
+        "display": {
+          "bounds": [
+            0.0,
+            0.0,
+            2048.0,
+            1152.0
+          ],
+          "built_in": false,
+          "id": 3
+        },
+        "bounds": [
+          24.0,
+          24.0,
+          1262.0,
+          551.0
+        ]
+      }
+    },
+    "move.replay_never_redispatches": {
+      "ok": true,
+      "detail": {
+        "deduplicated": null,
+        "code": null,
+        "native_dispatch_entered": null,
+        "raw": "{\"automatic_replay\": false, \"correlation_id\": null, \"dispatched_again\": false, \"goal_verified\": false, \"operation\": {\"cancel_requested\": false, \"finish_requested\": true, \"native_call_depth\": 0, \"native_call_pending\": false, \"phase\": \"finished\", \"resource_release_uncertain\": false, \"resources_released\": true, \"stage\": \"finished\", \"strong_native_preemption\": false, \"terminal\": true}, \"operation_ref\""
+      }
+    },
+    "move.back.receipt": {
+      "ok": true,
+      "detail": {
+        "receipt_dispatch": "returned",
+        "placement": {
+          "bounds": [
+            306.0,
+            1190.0,
+            1262.0,
+            551.0
+          ],
+          "display": {
+            "bounds": [
+              282.0,
+              1152.0,
+              1800.0,
+              1169.0
+            ],
+            "built_in": true,
+            "id": 1
+          }
+        },
+        "code": null
+      }
+    },
+    "move.back.readback": {
+      "ok": true,
+      "detail": {
+        "display": {
+          "bounds": [
+            282.0,
+            1152.0,
+            1800.0,
+            1169.0
+          ],
+          "built_in": true,
+          "id": 1
+        },
+        "bounds": [
+          306.0,
+          1190.0,
+          1262.0,
+          551.0
+        ],
+        "original": [
+          306.0,
+          1190.0,
+          1262.0,
+          551.0
+        ]
+      }
+    },
+    "release": {
+      "ok": true,
+      "detail": {
+        "released": true
+      }
+    },
+    "frames.invalidated_after_move": {
+      "ok": true,
+      "detail": {
+        "note": "reference was invalidated by the move",
+        "probe": "unknown_reference"
+      }
+    }
+  },
+  "failures": []
+}
