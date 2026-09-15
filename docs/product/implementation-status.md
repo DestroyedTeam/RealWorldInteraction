@@ -210,3 +210,20 @@
   `dispatched_again=false` 重放证明 + 失败码负例），证据 `docs/validation/evidence-move-window-20260915.json`。
 - 提交：`3baeb67`（初版接线）、`4ca5fb9`（台账 + 窗口定位器 + 绑定语义）、`bedaa28`（验收归档）。
 - 运维注记：macOS 覆盖安装二进制需 `rm`+`cp`（原地 `cp` 会导致"同 sha 但静默不可执行"）。
+
+## #3b 完成记录：弹窗一等交付（2026-09-15）
+
+- 交付：`computer.observe` 新增 `popups` 清单（window/title/role/subrole/kind/bounds/display），
+  来源与绑定同一张 AX 面（AXWindows + 子 sheet/dialog + focused/main 接力），
+  覆盖非前台弹窗；用途不猜（kind=unknown、subrole=null 原样上报），AX 缺标题/几何时用
+  window server 的事实值补齐。
+- 结构：rcu-core `Popup` + `popup_kind`（纯函数 + 单测）、`Observation.popups`、
+  `Backend::popups` 默认空（Windows/fixture 显式不实现）；rcu-macos 盘点 + display 富化；
+  `Observed` 包装层转发。
+- 系统面板策略：#3a 的 bind 变更已解开"跨屏面板被拒"的死结（选择无副作用）；面板不可搬移时
+  move 回执如实报告实际 bounds/display（不以请求为准）。此点为文档级结论，未新增 fail-closed 检查，
+  避免过度严格重现陷阱。
+- 活体验收：`docs/validation/popup-acceptance.py` → 13/13 PASS（清单基线 → Add Image 开出面板 →
+  下一次 observe 即交付 `cgwindow:N` kind=unknown + 事实标题 "Open" → owned_popup 绑定 → Cancel 关闭），
+  证据 `docs/validation/evidence-popup-1789462163.json`。
+- 提交：`3b83a8b`（代码）、`50fa1c2`（验收）。

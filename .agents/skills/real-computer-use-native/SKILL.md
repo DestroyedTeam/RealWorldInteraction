@@ -290,3 +290,20 @@ platform capabilities remain unsupported until actually implemented and tested.
   binary in place with `cp` can leave it silently unexecutable (immediate silent
   exit, identical sha, no stderr). If a freshly deployed binary seems mute, `rm`
   it and copy again.
+
+## Popup delivery (computer.observe -> popups)
+
+- Every `computer.observe` result carries `popups`: the bound process's windows
+  from the same AX surface as binding — `{window, title, role, subrole, kind,
+  bounds, display}` with `kind` in
+  `standard | dialog | sheet | panel | alert | other | unknown`.
+- Non-foreground dialogs, sheets and sandboxed panels are listed as soon as they
+  exist; purposes are never guessed. A sandboxed open panel typically arrives as
+  `kind:"unknown", subrole:null` with the factual CG title (e.g. "Open").
+- Use it to deliver dialogs instead of polling pixels: after a click that should
+  open a dialog, observe again and match the new `window` id; then
+  `computer.discover` -> `bind_window` (relation `owned_popup`) -> act.
+- System panels may refuse to move (AXPosition has no effect). Placement is
+  always explicit: `bind_window` accepts them on any display and the
+  `move_window` receipt reports the window's **actual** bounds/display after the
+  call — judge from that readout rather than from the request.
