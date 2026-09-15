@@ -343,3 +343,21 @@ platform capabilities remain unsupported until actually implemented and tested.
   hotspot is the window center, so readback bounds are `point - 80` in points.
 - `computer.pointer_feedback` receipts report `dpi` and `material`, and every
   dispatched act re-shows the lens at the action point.
+
+## Cooperative yield and the operation journal
+
+- RCU yields while a person is driving the machine: if a real click or key
+  happened within the last ~1.2 s, every input dispatch fails closed with
+  `user_active` (message includes the observed seconds). Motion alone never
+  gates. Nothing is queued and nothing is replayed: re-observe and retry after
+  the person pauses (the receipt stays `uncertain` at the syscall layer, but
+  `native_dispatch_entered:false` proves no native effect).
+- Read `user_input_recent_seconds` from the target capabilities to know how long
+  the machine has been quiet; it is also shown for cross-platform parity.
+- Every act appends one JSON line to the per-principal `operations.jsonl`; the
+  bounded tail is delivered in `computer.targets` ->
+  `devices[].state.recent_operations` (newest first). It records what RCU
+  attempted (`dispatch`, `dispatch_error`, `intent`, `point`, `scope`,
+  `request_id`) and is never a claim that an action took effect.
+- Presence: `pointer_feedback` in the capabilities reports `{installed,
+  created, visible, point, dpi, material, last_error}` for the shared A1 lens.

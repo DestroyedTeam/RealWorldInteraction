@@ -253,3 +253,17 @@
 - 活体验收仍 7/7 PASS（窗口 [320,1220,160,160]、像素证据 55KB、act 自动跟随）；
   演示图存档 `docs/validation/demo-a1-cursor.png`（sprite）与 `demo-a1-context.png`（环境照）。
 - 提交：`acca9fd`（架构移动：抽 crate）、随后一条（mac 呈现 + 验收）。
+
+## #5 完成记录：接管/占用 UX（2026-09-15 晚）
+
+- 用户介入让位：macOS 输入派发前检查"真实点击/按键"的间隔（CGEventSource 组合会话态，
+  左/右/其它鼠标按下 + KeyDown；纯移动不设门），1.2s 内有人操作即 `user_active` fail-closed，
+  不排队、不重放；实机验证（用户正打字时 Add Image 被拒并留痕）。
+- 操作日志可达：每次 act 追加一行到按 principal 的 `operations.jsonl`，`computer.targets` →
+  `devices[].state.recent_operations` 交付有界尾部（尝试事实，非效果断言）。
+- 能力对齐：capabilities 增加 `pointer_feedback`（含 material/dpi/visible/point）与
+  `user_input_recent_seconds`（与 Win 版 `pointer_feedback.status()` 对齐）。
+- 设计取舍（如实记录）：不新增"RCU 正在接管"横幅窗——本产品是背景优先，存在感由 A1 透镜
+  （持久/自动跟随）+ 能力项 + 操作日志承担；gated 期间连"关面板"也会等用户停手（实测）。
+- 验收：`docs/validation/takeover-acceptance.py` → 7/7 PASS（证据 evidence-takeover-1789464892.json）。
+- 提交：行为提交 + 验收提交（见 git log）。
