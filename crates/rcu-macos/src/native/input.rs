@@ -205,9 +205,22 @@ impl NativeMac {
         }
         let value = application.attr("AXWindows")?;
         let windows = unsafe { ffi::array(value.0, 64)? };
-        Ok(!windows
+        if !windows
             .iter()
-            .any(|w| ffi::window_number_for_ax_element(w) == Some(self.window)))
+            .any(|w| ffi::window_number_for_ax_element(w) == Some(self.window))
+        {
+            return Ok(true);
+        }
+        // A window that is present in AXWindows can still be a sheet/panel that
+        // synthetic background clicks do not reach (observed live: an NSOpenPanel
+        // accepted the click with dispatch=returned and nothing happened). Any
+        // window that is not the application's main window therefore takes the
+        // native accessibility action instead.
+        let main = application
+            .attr("AXMainWindow")
+            .ok()
+            .and_then(|element| ffi::window_number_for_ax_element(&element));
+        Ok(main.is_some_and(|number| number != self.window))
     }
     fn dispatch_native_press(
         &mut self,
