@@ -60,3 +60,31 @@
 
 - JS 车道（`rcu_computer_js`）未放开 `computer.pointer_feedback`（返回 `js_unknown_capability`）
   → 应把 #3a/#4/#5 新增工具加入 JS 允许清单。
+
+## 6. 根因（2026-09-15 实测确证）：窗口图像含"非等比 chrome 带" → 线性映射失真
+
+- 实测同一窗口两次 observe：
+  * 图像 `3600×2156`、窗口 `1800×1078 pt` → 2.000× ✓ 纯缩放（换算正确）
+  * 图像 `3600×2262`、同窗口 → 2.098× ✗ **图像比 2× 多出 106px 带**
+- 现实现 `pixel_to_desktop = rect.map(image_size)`（逐轴线性）在第二种情况下
+  **整幅图像被拉伸到窗口 rect** → 图像内所有点的桌面换算产生纵向偏移
+  （106px 带被摊到全高 → 越靠下偏差越大）→ 一切"图像像素→点击"都会点偏。
+- 结论：**参考系不是"窗口 rect"，而是"该次捕获实际的区域"**。
+
+### 修复清单（按层）
+1. **rcu-macos（核心）**：捕获时记录并上报**捕获区域**（窗口内/全局 pt 的 rect，
+   含 chrome 带的实际偏移）；`pixel_to_desktop` 必须由该 rect 与图像尺寸推导，
+   而不是由窗口 rect 推导。若捕获含 chrome，则 chrome 带要么裁掉，要么在映射中体现。
+2. **rcu-core/工具面**：`Scene` 增加明确的捕获区域字段（如 `capture_region_pt`），
+   并在 `computer.observe` 回执中可见；`Locator::Pixel` 以图像像素为唯一输入，
+   换算全部由 RCU 完成（agent 不做任何全局换算）。
+3. **拓扑变化的显式化**：窗口记录的 `native_epoch` 摘要加入"所在显示器 + 当前活动
+   显示器集合（id/bounds/pixels/main）"；显示器热插拔后旧 frame/reference 一律失效
+   （fail-closed 并提示重新 observe），不依赖 agent 察觉。
+4. **JS 车道**：允许清单加入 #3a/#4/#5 新工具（pointer_feedback / move_window /
+   pointer 相关），使 JS 与 MCP 工具面一致。
+5. **测试**：为 1 与 3 增加离线单测（纯函数：给定 rect/图像/拓扑 → 期望映射与失效）。
+
+### iShot 复核（修复后由用户执行）
+- 用户在全屏截图（1:1）中标出鼠标位置；RCU 侧把同一"图像像素目标"映射出的
+  全局 pt 与该点比对，误差须 ≤1pt。
