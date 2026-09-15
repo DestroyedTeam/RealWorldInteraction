@@ -545,6 +545,25 @@ fn verify_value(el: &AxElement, expected: &str) -> Result<bool> {
         Ok(el.value.as_deref() == Some(expected))
     }
 }
+/// Bounded native action-name readback for one element (≤12 names).
+pub(crate) fn action_names(el: &Cf) -> Vec<String> {
+    unsafe {
+        let mut names: crate::ffi::Ref = std::ptr::null();
+        if ffi::AXUIElementCopyActionNames(el.0, &mut names) == 0 && !names.is_null() {
+            Cf::owned(names)
+                .ok()
+                .and_then(|array| ffi::array(array.0, 12).ok())
+                .map(|rows| {
+                    rows.iter()
+                        .filter_map(|row| row.string().ok())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    }
+}
 fn element_description(el: &Cf) -> Result<AxElement> {
     let role = el.attr("AXRole")?.string()?;
     let subrole = el.attr("AXSubrole").ok().and_then(|v| v.string().ok());
@@ -566,22 +585,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
     let value = read_classified_value(text_class, || {
         el.attr("AXValue").ok().and_then(|v| v.string().ok())
     });
-    let actions = unsafe {
-        let mut names: crate::ffi::Ref = std::ptr::null();
-        if ffi::AXUIElementCopyActionNames(el.0, &mut names) == 0 && !names.is_null() {
-            Cf::owned(names)
-                .ok()
-                .and_then(|array| ffi::array(array.0, 12).ok())
-                .map(|rows| {
-                    rows.iter()
-                        .filter_map(|row| row.string().ok())
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        }
-    };
+    let actions = action_names(el);
     Ok(AxElement {
         element: Element {
             id,
