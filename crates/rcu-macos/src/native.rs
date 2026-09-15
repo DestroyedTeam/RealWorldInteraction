@@ -23,6 +23,11 @@ use std::{
 };
 
 /// Opt-in native target. Construction only binds a PID/window; it never activates it.
+/// Advisory AX window inventory for one process; used by observe-time popup
+/// delivery. The list is bounded and never guesses a purpose.
+pub(crate) fn popups_for_pid(pid: u32) -> Vec<rcu_core::Popup> {
+    metadata::popup_inventory(pid)
+}
 pub struct NativeMac {
     pub(crate) pid: u32,
     window: u32,
@@ -180,6 +185,9 @@ impl Backend for NativeMac {
         Ok(self.metadata_scene(self.metadata()?, [0, 0], Vec::new(), None))
     }
 
+    fn popups(&mut self, _scope: &rcu_core::Scope) -> Result<Vec<rcu_core::Popup>> {
+        Ok(crate::native::popups_for_pid(self.pid))
+    }
     fn move_window(
         &mut self,
         reference: &Resolved,

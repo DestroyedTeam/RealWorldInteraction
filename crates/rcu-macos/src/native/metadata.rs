@@ -369,6 +369,77 @@ impl NativeMac {
 }
 
 /// Sheets and dialogs are native child windows of their parent AX window.
+/// Advisory per-process window inventory for popup delivery. Covers the same
+/// AX surface as binding (AXWindows plus child sheets/dialogs and the
+/// focused/main relays) and reports unknown purposes verbatim.
+pub(super) fn popup_inventory(pid: u32) -> Vec<rcu_core::Popup> {
+    let mut out: Vec<rcu_core::Popup> = Vec::new();
+    let push = |element: &Cf, out: &mut Vec<rcu_core::Popup>| {
+        if out.len() >= 16 {
+            return;
+        }
+        let subrole = element
+            .attr("AXSubrole")
+            .ok()
+            .and_then(|value| value.string().ok());
+        let role = element
+            .attr("AXRole")
+            .ok()
+            .and_then(|value| value.string().ok());
+        let title = element
+            .attr("AXTitle")
+            .ok()
+            .and_then(|value| value.string().ok())
+            .filter(|title| !title.is_empty());
+        let window =
+            ffi::window_number_for_ax_element(element).map(|number| format!("cgwindow:{number}"));
+        if out
+            .iter()
+            .any(|existing| existing.window.is_some() && existing.window == window)
+        {
+            return;
+        }
+        let kind = rcu_core::popup_kind(subrole.as_deref()).to_string();
+        out.push(rcu_core::Popup {
+            window,
+            title,
+            role,
+            subrole,
+            kind,
+            bounds: ax_rect(element).ok().map(|r| [r.x, r.y, r.w, r.h]),
+            display: None,
+        });
+    };
+    let Ok(application) = (unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32)) })
+    else {
+        return out;
+    };
+    unsafe {
+        ffi::AXUIElementSetMessagingTimeout(application.0, 0.25);
+    }
+    if let Ok(value) = application.attr("AXWindows")
+        && let Ok(windows) = unsafe { ffi::array(value.0, 64) }
+    {
+        for window in &windows {
+            push(window, &mut out);
+            if let Ok(children_value) = window.attr("AXChildren")
+                && let Ok(children) = unsafe { ffi::array(children_value.0, 32) }
+            {
+                for child in &children {
+                    if dialog_subrole(child) {
+                        push(child, &mut out);
+                    }
+                }
+            }
+        }
+    }
+    for key in ["AXFocusedWindow", "AXMainWindow"] {
+        if let Ok(element) = application.attr(key) {
+            push(&element, &mut out);
+        }
+    }
+    out
+}
 fn dialog_subrole(element: &Cf) -> bool {
     element
         .attr("AXSubrole")

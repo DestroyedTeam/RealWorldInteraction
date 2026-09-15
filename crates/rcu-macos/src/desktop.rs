@@ -115,6 +115,45 @@ impl Backend for NativeMacDesktop {
     fn runtime_status(&self) -> Value {
         session::process_status(self.uid)
     }
+    fn popups(&mut self, scope: &rcu_core::Scope) -> Result<Vec<rcu_core::Popup>> {
+        let mut rows = crate::native::popups_for_pid(scope.pid);
+        // Fill AX gaps with the window server's own title/geometry; never guess.
+        let native = windows().unwrap_or_default();
+        for row in &mut rows {
+            let Some(id) = row
+                .window
+                .as_deref()
+                .and_then(|w| w.strip_prefix("cgwindow:"))
+                .and_then(|n| n.parse::<u32>().ok())
+            else {
+                continue;
+            };
+            if let Some(window) = native.iter().find(|w| w.id == id && w.pid == scope.pid) {
+                if row.title.is_none() {
+                    row.title = window.title.clone();
+                }
+                if row.bounds.is_none() {
+                    row.bounds = Some([window.rect.x, window.rect.y, window.rect.w, window.rect.h]);
+                }
+            }
+        }
+        let displays = crate::native::displays().ok();
+        for row in &mut rows {
+            if let (Some(bounds), Some(list)) = (row.bounds, displays.as_ref()) {
+                let rect = crate::geometry::Rect {
+                    x: bounds[0],
+                    y: bounds[1],
+                    w: bounds[2],
+                    h: bounds[3],
+                };
+                row.display = crate::native::containing_display(list, rect).map(|display| {
+                    serde_json::to_value(crate::catalog::DisplayRecord::from_native(display))
+                        .unwrap_or(Value::Null)
+                });
+            }
+        }
+        Ok(rows)
+    }
     fn discover(&mut self) -> Result<Value> {
         self.discover_with(&DiscoveryQuery::default())
     }

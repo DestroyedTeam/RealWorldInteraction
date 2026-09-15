@@ -45,6 +45,9 @@ impl Backend for Observed {
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
         self.inner.inspect(s, p, e)
     }
+    fn popups(&mut self, scope: &Scope) -> Result<Vec<Popup>> {
+        self.inner.popups(scope)
+    }
     fn move_window(&mut self, r: &Resolved, d: &DisplayTarget) -> Result<serde_json::Value> {
         let before = self.inner.input_dispatch_count();
         self.entered.store(true, Ordering::Release);

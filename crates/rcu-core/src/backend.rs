@@ -54,6 +54,11 @@ pub trait Backend: Send {
             "Native window move is not implemented on this platform; nothing was moved.",
         ))
     }
+    /// Advisory per-process window inventory for popup delivery. Backends
+    /// without native window enumeration return nothing rather than guessing.
+    fn popups(&mut self, _scope: &crate::Scope) -> Result<Vec<crate::Popup>> {
+        Ok(Vec::new())
+    }
     fn observe(&mut self) -> Result<Scene>;
     fn capture_visual(&mut self, _: crate::VisualOptions) -> Result<crate::VisualCapture> {
         Err(fault(

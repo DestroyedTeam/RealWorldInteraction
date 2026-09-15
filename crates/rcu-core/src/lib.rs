@@ -355,12 +355,46 @@ struct Snapshot {
     artifact_id: Option<String>,
     source_region: Option<[u32; 4]>,
 }
+/// One window of the bound process as seen through the accessibility layer.
+/// Advisory inventory: unknown purposes are reported verbatim, never guessed.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct Popup {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subrole: Option<String>,
+    /// Coarse class derived from the AX subrole (standard/dialog/sheet/panel/alert/other/unknown).
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bounds: Option<[f64; 4]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<serde_json::Value>,
+}
+pub fn popup_kind(subrole: Option<&str>) -> &'static str {
+    match subrole {
+        Some("AXStandardWindow") | Some("AXDocumentWindow") => "standard",
+        Some("AXDialog") | Some("AXSystemDialog") => "dialog",
+        Some("AXSheet") => "sheet",
+        Some("AXFloatingWindow") => "panel",
+        Some("AXSystemAlert") => "alert",
+        Some(_) => "other",
+        None => "unknown",
+    }
+}
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Observation {
     pub frame: String,
     pub artifact_id: Option<String>,
     pub png_sha256: Option<String>,
     pub scene: Scene,
+    /// Windows of the bound process, including non-foreground dialogs, sheets and
+    /// panels, so a caller can deliver them without inferring from pixels.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub popups: Vec<Popup>,
     pub adapter_status: serde_json::Value,
 }
 struct Artifact {
@@ -648,11 +682,19 @@ impl Engine {
         while self.snapshots.len() > SNAPSHOT_LIMIT {
             self.snapshots.pop_front();
         }
+        let popups = match &scene.binding {
+            Some(binding) => self
+                .backend(target)?
+                .popups(&binding.scope)
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
         Ok(Observation {
             frame,
             artifact_id: artifact,
             png_sha256: hash,
             scene,
+            popups,
             adapter_status: self.backend(target)?.capabilities(),
         })
     }
@@ -1175,5 +1217,20 @@ impl Engine {
                     .min(Duration::from_millis(timeout_ms).saturating_sub(start.elapsed())),
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod popup_tests {
+    use super::popup_kind;
+    #[test]
+    fn popup_kinds_are_coarse_and_never_guess_a_purpose() {
+        assert_eq!(popup_kind(Some("AXSheet")), "sheet");
+        assert_eq!(popup_kind(Some("AXDialog")), "dialog");
+        assert_eq!(popup_kind(Some("AXSystemDialog")), "dialog");
+        assert_eq!(popup_kind(Some("AXFloatingWindow")), "panel");
+        assert_eq!(popup_kind(Some("AXStandardWindow")), "standard");
+        assert_eq!(popup_kind(Some("AXSomethingNew")), "other");
+        assert_eq!(popup_kind(None), "unknown");
     }
 }
