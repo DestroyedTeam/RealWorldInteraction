@@ -1,6 +1,10 @@
 //! Service-owned feedback, separate from input authority and grounding pixels.
-mod material;
-mod motion;
+#[allow(unused_imports)]
+pub(super) use rcu_pointer::{
+    Anchor, CENTER, HIGHLIGHT_MS, MAX_DPI, Phase, SIZE, normalize_dpi, raster_size, scale_for_dpi,
+};
+#[allow(unused_imports)]
+pub(super) use rcu_pointer::{material, motion};
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]
@@ -30,20 +34,6 @@ impl<T> Drop for ReleaseOnce<T> {
     }
 }
 
-pub(super) const SIZE: usize = 160;
-pub(super) const CENTER: usize = SIZE / 2;
-pub(super) const MAX_DPI: u32 = 288;
-pub(super) const HIGHLIGHT_MS: u64 = 800; // Activity validity, not idle lifetime.
-pub(super) fn normalize_dpi(dpi: u32) -> u32 {
-    if dpi == 0 { 96 } else { dpi.clamp(96, MAX_DPI) }
-}
-pub(super) fn scale_for_dpi(dpi: u32) -> f64 {
-    f64::from(normalize_dpi(dpi)) / 96.
-}
-pub(super) fn raster_size(dpi: u32) -> usize {
-    2 * (CENTER as f64 * scale_for_dpi(dpi)).ceil() as usize
-}
-
 /// An old renderer snapshot cannot acknowledge a newer capture suspension.
 #[derive(Default)]
 pub(super) struct CaptureGate {
@@ -71,26 +61,6 @@ impl CaptureGate {
     }
     pub fn capture_ready(&self, ticket: u64) -> bool {
         self.suspended > 0 && self.applied_revision >= ticket && !self.visible
-    }
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum Phase {
-    Idle,
-    Pointer,
-    Pressed,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
-pub(super) struct Anchor {
-    pub point: [i32; 2],
-    pub dpi: u32,
-}
-impl Anchor {
-    pub fn with_dpi(self, dpi: u32) -> Self {
-        Self {
-            dpi: normalize_dpi(dpi),
-            ..self
-        }
     }
 }
 

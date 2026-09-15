@@ -887,6 +887,7 @@ dependencies = [
  "objc2-foundation",
  "png",
  "rcu-core",
+ "rcu-pointer",
  "serde",
  "serde_json",
  "sha2",
@@ -938,11 +939,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcu-pointer"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "rcu-imaging",
+ "serde",
+]
+
+[[package]]
 name = "rcu-windows"
 version = "0.4.0-m3a.7"
 dependencies = [
  "rcu-core",
  "rcu-imaging",
+ "rcu-pointer",
  "serde",
  "serde_json",
  "sha2",

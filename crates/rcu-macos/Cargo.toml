@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 rcu-core = { path = "../rcu-core" }
+rcu-pointer = { path = "../rcu-pointer" }
 serde_json.workspace = true
 serde.workspace = true
 sha2.workspace = true
