@@ -227,3 +227,19 @@
   下一次 observe 即交付 `cgwindow:N` kind=unknown + 事实标题 "Open" → owned_popup 绑定 → Cancel 关闭），
   证据 `docs/validation/evidence-popup-1789462163.json`。
 - 提交：`3b83a8b`（代码）、`50fa1c2`（验收）。
+
+## #4 完成记录：AI 光标视觉反馈层（2026-09-15）
+
+- 交付：`computer.pointer_feedback {target, visible, point?}` + 每次成功 act 自动在动作点显示标记。
+  实现为无边框、点击穿透、永不夺焦的 AppKit 窗口（accessory 策略，level 1000，标题 `RCU AI Cursor`），
+  纯观感：不派发输入、不动真实光标、不改变前台。空闲约 45s 自动隐藏；回执同步
+  （created/visible/point/last_error 为应用后状态）。
+- 结构：rcu-macos `overlay`（命令通道 + 主线程泵 + 有界等待 ack；AppKit 只在进程主线程操作）
+  → agent 主线程改为运行 bounded CFRunLoop 泵、服务器移至独立线程（观察者随服务器退出）
+  → `Backend::feedback` 默认 fail-closed（Windows/fixture 不实现）→ 目录/执行/能力/MCP 全线注册。
+- 活体验收：`docs/validation/pointer-feedback-acceptance.py` → 7/7 PASS（同步回执、discover 精确回读
+  [387,1287,26,26] 内建屏、`screencapture -l` 像素证据 6395B、隐藏回读、残留模态清理、
+  自动跟随动作点 [1575,1511]），证据 `docs/validation/evidence-pointer-feedback-1789463676.json`。
+- 附带知识（已入 Skill）：模态弹窗开启时应用工具栏按钮 `enabled=false`，act 以
+  `input_boundary_changed (enabled_disabled)` 正确 fail-closed —— 先关模态再操作。
+- 提交：`ea6a819`（代码）、`75ad4d5`（验收）。

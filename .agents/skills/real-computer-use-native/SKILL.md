@@ -307,3 +307,28 @@ platform capabilities remain unsupported until actually implemented and tested.
   always explicit: `bind_window` accepts them on any display and the
   `move_window` receipt reports the window's **actual** bounds/display after the
   call — judge from that readout rather than from the request.
+
+## Visual pointer feedback (computer.pointer_feedback)
+
+- A borderless, click-through overlay window (title `RCU AI Cursor`) marks the
+  point of the last dispatched action or an explicit point. It is visual only:
+  no input, no real-cursor movement, no focus change, and it can never be
+  mistaken for a goal.
+- `{target, visible: bool, point?: [x, y]}` — `point` is required the first time
+  you show it; hide with `visible: false`. The receipt is synchronous
+  (`created/visible/point/last_error`), so it describes the state after the
+  call. The marker auto-hides after ~45 s idle.
+- Every dispatched act updates the marker automatically — after a click, expect
+  the overlay at the element's point (read it back with `computer.discover` by
+  title, or pixel-prove it locally with `screencapture -l <cgwindow>`).
+- Operational note: the overlay is a separate window owned by the agent
+  process; it does not occlude hit-testing for background delivery.
+
+## Modal leftovers block toolbar actions (correct fail-closed)
+
+- While a modal panel is open (e.g. the Paint S `Open` panel), the app's own
+  toolbar buttons report `enabled=false`, so `computer.act` refuses with
+  `input_boundary_changed` (`... (enabled_disabled); stop remaining batches.`).
+  That is correct: close the modal first (bind the panel, tap `Cancel`), then
+  the toolbar actions dispatch again. Never retry the same reference blindly —
+  re-observe after closing the modal.
