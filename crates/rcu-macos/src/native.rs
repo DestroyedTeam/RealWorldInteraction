@@ -385,6 +385,7 @@ pub(crate) fn placement_position(window: Rect, display: Rect) -> (f64, f64) {
 /// (`NSWorkspace.openApplicationAtURL:configuration:completionHandler:` with
 /// `activates=false`, `hides=true`): the current foreground app is untouched
 /// and the child is hidden as soon as it checks in. No synthetic input.
+#[allow(dead_code)] // Consumed by the macOS lifecycle driver (next increment).
 pub(crate) fn launch_background(path: &str) -> Result<()> {
     use objc2::msg_send;
     use objc2::runtime::{AnyClass, AnyObject};
