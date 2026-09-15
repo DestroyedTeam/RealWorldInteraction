@@ -132,6 +132,7 @@ impl Backend for Fixture {
                 .iter()
                 .enumerate()
                 .map(|(n, s)| Element {
+                    actions: vec![],
                     role: None,
                     id: s.to_string(),
                     name: s.to_string(),

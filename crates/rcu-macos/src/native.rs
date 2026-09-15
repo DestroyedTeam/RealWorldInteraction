@@ -566,11 +566,28 @@ fn element_description(el: &Cf) -> Result<AxElement> {
     let value = read_classified_value(text_class, || {
         el.attr("AXValue").ok().and_then(|v| v.string().ok())
     });
+    let actions = unsafe {
+        let mut names: crate::ffi::Ref = std::ptr::null();
+        if ffi::AXUIElementCopyActionNames(el.0, &mut names) == 0 && !names.is_null() {
+            Cf::owned(names)
+                .ok()
+                .and_then(|array| ffi::array(array.0, 12).ok())
+                .map(|rows| {
+                    rows.iter()
+                        .filter_map(|row| row.string().ok())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    };
     Ok(AxElement {
         element: Element {
             id,
             name,
             role: Some(role),
+            actions,
             point: [r.x + r.w / 2.0, r.y + r.h / 2.0],
             visible: None,
             occluded: None,
@@ -967,6 +984,7 @@ mod tests {
     fn classified(class: TextClass) -> AxElement {
         AxElement {
             element: Element {
+                actions: vec![],
                 role: None,
                 id: "id".into(),
                 name: "Input".into(),

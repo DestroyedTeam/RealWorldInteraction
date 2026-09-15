@@ -113,6 +113,10 @@ pub struct Element {
     /// semantics an agent needs to infer what a node does.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
+    /// Native actions this element advertises (e.g. AXPress, AXShowMenu):
+    /// what the control can do, for agent-side inference.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<String>,
     pub point: [f64; 2],
     pub visible: Option<bool>,
     pub occluded: Option<bool>,

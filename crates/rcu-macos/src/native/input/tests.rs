@@ -20,6 +20,7 @@ fn grounded() -> (Identity, Binding, Resolved, Scene) {
         mutation_context: None,
     };
     let element = Element {
+        actions: vec![],
         role: None,
         id: "exact-ax-element".into(),
         name: "Text".into(),
