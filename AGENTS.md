@@ -11,6 +11,9 @@
 - Benchmark scopes are explicit: fixture lifecycle, actual MCP process, offscreen native image conversion, and live native operations are distinct. Never infer performance superiority from implementation language.
 - Intermediate files belong in `work/`; deliverable documents/evidence belong in `docs/`, `reference/`, or `outputs/`. Keep generated binaries out of Git.
 
+- 卡壳/反复缠绕/准备判断"做不到"之前，先做一轮额外调研：互联网检索 + 复核用户提供的
+  全部参考材料（reference/、历史文章与参考项目、既有验收产物、work/ 下的历史记录）；
+  结论必须附出处（链接/文件/原文片段），不得凭记忆下结论。
 ## Approved multi-endpoint architecture
 
 - User clarification 2026-09-13: supplemental bug reports reprioritize the full
