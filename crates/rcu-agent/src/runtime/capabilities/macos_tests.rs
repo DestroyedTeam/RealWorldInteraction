@@ -8,6 +8,7 @@ fn macos_catalog_never_equates_one_driver_with_every_tool() {
         "computer.observe",
         "computer.act_checked",
         "computer.recover_input",
+        "computer.move_window",
     ] {
         assert!(macos_tool_implemented(tool));
     }

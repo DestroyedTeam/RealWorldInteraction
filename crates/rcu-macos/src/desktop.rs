@@ -271,6 +271,62 @@ impl Backend for NativeMacDesktop {
             json!({"bound":selected,"relation":selection.relation,"subrole":subrole,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"placed":placed_json,"next":"Observe this exact window. Background observation and input are supported; the window does not need to be frontmost. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
         )
     }
+    fn move_window(
+        &mut self,
+        reference: &Resolved,
+        display: &rcu_core::DisplayTarget,
+    ) -> Result<Value> {
+        self.check_identity()?;
+        let target = {
+            let native = self.selected()?;
+            if reference.scope.pid != native.pid || reference.scope.window != native.window_name() {
+                return Err(fault(
+                    "target_mismatch",
+                    "Reference belongs to another native window; observe this exact one.",
+                ));
+            }
+            crate::native::displays()?
+                .into_iter()
+                .find(|candidate| {
+                    display
+                        .built_in
+                        .is_none_or(|built_in| candidate.built_in == built_in)
+                        && display.id.is_none_or(|id| candidate.id == id)
+                })
+                .ok_or_else(|| {
+                    fault(
+                        "display_not_found",
+                        "No active display matches the requested target; nothing was moved.",
+                    )
+                })?
+        };
+        {
+            let native = self.selected()?;
+            native.place_window_on(&target)?;
+        }
+        self.check_identity()?;
+        let moved = windows()?
+            .into_iter()
+            .find(|w| format!("cgwindow:{}", w.id) == reference.scope.window)
+            .ok_or_else(|| {
+                fault(
+                    "window_missing",
+                    "The window disappeared during the explicit move.",
+                )
+            })?;
+        let placed_display = crate::native::displays()
+            .ok()
+            .and_then(|list| crate::native::containing_display(&list, moved.rect).cloned())
+            .map(|d| crate::catalog::DisplayRecord::from_native(&d));
+        Ok(json!({
+            "window": reference.scope.window,
+            "bounds": [moved.rect.x, moved.rect.y, moved.rect.w, moved.rect.h],
+            "display": placed_display,
+            "requested": display,
+            "input_sent": false,
+            "activated": false,
+        }))
+    }
     fn observe(&mut self) -> Result<Scene> {
         self.selected()?.observe()
     }

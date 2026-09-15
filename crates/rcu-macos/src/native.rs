@@ -24,7 +24,7 @@ use std::{
 
 /// Opt-in native target. Construction only binds a PID/window; it never activates it.
 pub struct NativeMac {
-    pid: u32,
+    pub(crate) pid: u32,
     window: u32,
     identity: Identity,
     process: String,

@@ -75,6 +75,15 @@ pub(super) struct ActArgs {
 }
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub(super) struct MoveWindowArgs {
+    pub(super) target: String,
+    pub(super) lease: String,
+    pub(super) reference: String,
+    pub(super) display: rcu_core::DisplayTarget,
+    pub(super) operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub(super) struct CheckedActArgs {
     pub(super) target: String,
     pub(super) frame: String,

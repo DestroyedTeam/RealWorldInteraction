@@ -55,6 +55,15 @@ pub fn definitions() -> Vec<ToolDefinition> {
             writes: true,
         },
         ToolDefinition {
+            name: "computer.move_window",
+            description: "Explicitly move the bound window onto a requested display (built_in and/or exact native id). Lease-scoped and idempotent: it never presses input, never focuses, never replays, and invalidates frames/references on this target. Unsupported platforms fail closed.",
+            input_schema: serde_json::to_value(schemars::schema_for!(
+                crate::device::api::MoveWindowArgs
+            ))
+            .unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
             name: "computer.act_checked",
             description: "Preferred model action: select one exact element ID from a <=120s observed frame, claim a lease, then dispatch once per request_id. The server checks the original window/document context and exact element against fresh native state immediately before single durable dispatch. No pixel/name locator, implicit focus, or replay; unknown/changed context fails closed. Does not relax legacy act's 10s TTL. Typed drag paths use the selected element as origin; inspect pointer_drag capability, keep the exact frame, and verify independently. Release; Text/KeyChord still require exact focused UIA.",
             input_schema: serde_json::to_value(schemars::schema_for!(CheckedActArgs)).unwrap(),
@@ -210,6 +219,10 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
         }
         "computer.bind_window" => {
             let _: BindArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.move_window" => {
+            let _: crate::device::api::MoveWindowArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.image" => {

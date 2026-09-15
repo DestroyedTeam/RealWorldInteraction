@@ -34,7 +34,7 @@ impl NativeMac {
             dispatches,
         })
     }
-    pub(super) fn window_name(&self) -> String {
+    pub(crate) fn window_name(&self) -> String {
         format!("cgwindow:{}", self.window)
     }
     pub(crate) fn require_discovered_process(&self, process: &str) -> Result<()> {

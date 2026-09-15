@@ -304,6 +304,29 @@ impl DiscoveryQuery {
         Ok(())
     }
 }
+/// Requested placement target for an explicit window move. At least one
+/// criterion is required; a bare value never matches anything by accident.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DisplayTarget {
+    /// Match the built-in panel when true (reject it when false).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub built_in: Option<bool>,
+    /// Exact native display id when the caller pinned one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<u32>,
+}
+impl DisplayTarget {
+    pub fn validate(&self) -> Result<()> {
+        if self.built_in.is_none() && self.id.is_none() {
+            return Err(fault(
+                "invalid_display_target",
+                "Provide built_in and/or an exact display id.",
+            ));
+        }
+        Ok(())
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum WindowRelation {
@@ -763,6 +786,49 @@ impl Engine {
         self.state
             .join("receipts")
             .join(digest(format!("{key}:{request}").as_bytes()) + ".jsonl")
+    }
+    /// Explicitly move the referenced window onto the requested display.
+    /// Same lease, freshness and fail-closed guarantees as an act; nothing
+    /// moves a window implicitly.
+    pub fn move_window(
+        &mut self,
+        target: &str,
+        lease: &str,
+        reference: &str,
+        display: &DisplayTarget,
+    ) -> Result<serde_json::Value> {
+        display.validate()?;
+        let key = self.identity(target)?.key();
+        let resolved = self
+            .refs
+            .iter()
+            .find(|r| r.reference == reference && r.target == target)
+            .cloned()
+            .ok_or_else(|| fault("unknown_reference", "Observe and resolve this target."))?;
+        let snapshot = self.snapshot(target, &resolved.frame)?;
+        if snapshot.at.elapsed() > Duration::from_secs(10) {
+            return Err(fault("stale_reference", "Reobserve; no move sent."));
+        }
+        let book = self.leases.shared();
+        let held = book
+            .lock()
+            .map_err(|_| fault("lease_error", "Restart observation session."))?;
+        held.check(lease, target, &key)?;
+        let display = display.clone();
+        let result = operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
+            self.backend(target)?.move_window(&resolved, &display)
+        });
+        drop(held);
+        // A moved window invalidates frames and references on this desktop.
+        let aliases = self
+            .targets
+            .iter()
+            .filter(|(_, t)| t.identity.key() == key)
+            .map(|(n, _)| n.clone())
+            .collect::<Vec<_>>();
+        self.snapshots.retain(|(_, s)| !aliases.contains(&s.target));
+        self.refs.retain(|r| !aliases.contains(&r.target));
+        result
     }
     pub fn act(
         &mut self,

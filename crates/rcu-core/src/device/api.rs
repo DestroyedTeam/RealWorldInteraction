@@ -61,6 +61,16 @@ pub struct ReleaseArgs {
     pub device_id: Option<String>,
     pub lease: String,
 }
+/// Explicit window move onto a requested display. Placement is idempotent:
+/// repeating the same move never presses any input again.
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MoveWindowArgs {
+    pub target: String,
+    pub lease: String,
+    pub reference: String,
+    pub display: crate::DisplayTarget,
+}
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ActArgs {

@@ -308,6 +308,17 @@ impl Server {
         .await
     }
     #[tool(
+        name = "computer.move_window",
+        description = "Explicitly move the bound window onto a requested display (built_in and/or exact id). Lease-scoped and idempotent: it never presses input, never focuses, never replays; invalidates frames/references on this target. Fails closed on unsupported platforms; verify independently afterward.",
+        annotations(read_only_hint = false, destructive_hint = true)
+    )]
+    async fn move_window(&self, Parameters(a): Parameters<MoveWindowArgs>) -> CallToolResult {
+        self.execute_operation(a.operation_id.clone(), move |e| {
+            value(e.move_window(&a.target, &a.lease, &a.reference, &a.display)?)
+        })
+        .await
+    }
+    #[tool(
         name = "computer.act_checked",
         description = "Preferred model action: select one exact element ID from a <=120s observed frame, claim a lease, then dispatch once per request_id. The server checks the original window/document context and exact element against fresh native state immediately before single durable dispatch. No pixel/name locator, implicit focus, or replay; unknown/changed context fails closed. Does not relax legacy act's 10s TTL. Do not loop reobserve after an error. Verify independently and release; Text/KeyChord still require exact focused UIA.",
         annotations(read_only_hint = false)

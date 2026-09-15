@@ -53,12 +53,13 @@ impl Runtime {
                         | "computer.lifecycle_receipt"
                 );
                 // Fixture is not an implementation of native window/lifecycle APIs.
+                let macos_only = matches!(tool.name, "computer.move_window");
                 let implemented = control
                     || implementation
                         && if platform == "macos" {
                             macos_tool_implemented(tool.name)
                         } else {
-                            !native_lifecycle || platform == "windows"
+                            !macos_only && (!native_lifecycle || platform == "windows")
                         };
                 let prerequisite = match tool.name {
                     _ if platform == "macos" => macos_prerequisite(tool.name, &native_capabilities),
@@ -149,6 +150,7 @@ fn macos_tool_implemented(tool: &str) -> bool {
             | "computer.image"
             | "computer.resolve_view"
             | "computer.recover_input"
+            | "computer.move_window"
     )
 }
 
@@ -158,7 +160,11 @@ fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static s
     let permissions = &caps["permissions"];
     if matches!(
         tool,
-        "computer.observe" | "computer.act" | "computer.act_checked" | "computer.verify"
+        "computer.observe"
+            | "computer.act"
+            | "computer.act_checked"
+            | "computer.verify"
+            | "computer.move_window"
     ) && permissions["accessibility"] != true
     {
         return Some("accessibility_permission_missing");
@@ -180,7 +186,11 @@ fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static s
     }
     if matches!(
         tool,
-        "computer.observe" | "computer.act" | "computer.act_checked" | "computer.verify"
+        "computer.observe"
+            | "computer.act"
+            | "computer.act_checked"
+            | "computer.verify"
+            | "computer.move_window"
     ) {
         // Background operation: the exact window must be discovered and bound
         // first; it does not need to be frontmost.

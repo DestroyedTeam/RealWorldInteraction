@@ -114,6 +114,13 @@ impl Executor {
                     a.value,
                 )?)
             }
+            "computer.move_window" => {
+                let a = args!(MoveWindowArgs);
+                value(
+                    self.engine
+                        .move_window(&a.target, &a.lease, &a.reference, &a.display)?,
+                )
+            }
             "computer.act_checked" => {
                 let a = args!(CheckedActArgs);
                 value(self.engine.act_checked(rcu_core::CheckedAction {

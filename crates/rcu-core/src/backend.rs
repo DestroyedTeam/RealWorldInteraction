@@ -42,6 +42,18 @@ pub trait Backend: Send {
             "This backend has no fresh native activation catalog.",
         ))
     }
+    /// Explicit window move onto a requested display. Backends without it
+    /// fail closed; the move itself must be native, bounded and audit-logged.
+    fn move_window(
+        &mut self,
+        _reference: &crate::Resolved,
+        _display: &crate::DisplayTarget,
+    ) -> Result<serde_json::Value> {
+        Err(fault(
+            "capability_unavailable",
+            "Native window move is not implemented on this platform; nothing was moved.",
+        ))
+    }
     fn observe(&mut self) -> Result<Scene>;
     fn capture_visual(&mut self, _: crate::VisualOptions) -> Result<crate::VisualCapture> {
         Err(fault(
