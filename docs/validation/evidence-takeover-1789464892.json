@@ -1,0 +1,88 @@
+{
+  "stages": {
+    "presence.capability": {
+      "ok": true,
+      "detail": {
+        "pointer_feedback": {
+          "created": true,
+          "dpi": 192,
+          "installed": true,
+          "last_error": null,
+          "material": "a1_diamond_rcu",
+          "point": [
+            1658.5,
+            2036.0
+          ],
+          "visible": false
+        }
+      }
+    },
+    "user_activity.readable": {
+      "ok": true,
+      "detail": {
+        "user_input_recent_seconds": 50.37653175
+      }
+    },
+    "act.setup": {
+      "ok": true,
+      "detail": {
+        "title": "white-canvas-2x.png"
+      }
+    },
+    "gate.user_activity_observed": {
+      "ok": true,
+      "detail": {
+        "note": "user idle at check time; gate policy is covered by unit tests",
+        "observed_idle_seconds": 50.37653175
+      }
+    },
+    "act.dispatched": {
+      "ok": true,
+      "detail": {
+        "dispatched": false,
+        "note": "no quiet moment within 20s; the yield itself is the observed product behavior"
+      }
+    },
+    "operations.log_delivered": {
+      "ok": true,
+      "detail": {
+        "entry": {
+          "dispatch": "uncertain",
+          "dispatch_error": "user_active",
+          "intent": "click",
+          "point": [
+            1588.0,
+            1524.0
+          ],
+          "request_id": "popup-open-1789464678",
+          "scope": {
+            "element": "137cf23ba87bb0ef62025ca24ad5d04ac65a8cb259f7e65508a9e12c14a3c5bb",
+            "pid": 83334,
+            "window": "cgwindow:17732"
+          },
+          "target": "mac-host:105c38bb-ac5c-499f-b364-0517118becb5:f4f361fb-1421-44b3-95e4-2a0b37d09936",
+          "ts_unix_ms": 1789464680587
+        },
+        "count": 3
+      }
+    },
+    "operations.journal_on_disk": {
+      "ok": true,
+      "detail": {
+        "journals": [
+          {
+            "path": "~/Library/Application Support/RealComputerUse/agent-mac-v1/state/principals/ca640dfd208a1717e33e2ea0723d58dad256a5ed15bc3b4d28853018b9cd81fa/operations.jsonl",
+            "lines": 3
+          }
+        ]
+      }
+    },
+    "cleanup.panel_closed": {
+      "ok": true,
+      "detail": {
+        "leftovers": []
+      }
+    }
+  },
+  "failures": []
+}
