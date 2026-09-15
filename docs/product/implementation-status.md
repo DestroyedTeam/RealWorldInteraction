@@ -146,6 +146,12 @@
 - 关键结论：**新增 MCP 工具不会破坏历史录制校验**——`startup_diagnostic.rs` 与
   `orchestration/mcp.rs` 的 `tools.len()!=19`/`schema_sha()` 校验读的是**历史 fixture 自身**
   （自洽校验），rcu-mcp 网关侧未发现对实时工具目录的数量/哈希断言。
+- **改动面（已勘定，比预想小）**：设备线协议是 **tool 泛型**（`Call::Prepare{tool,arguments}` /
+  `Call::Execute{operation_ref}` 按工具名路由，无 per-operation 枚举），所以不需要动
+  device.rs 的 Call/Reply；实现集中在：① rcu-mcp `#[tool]` 注册（args 结构 + 描述）；
+  ② agent 侧按工具名注册执行器（runtime/execution + operation Registry）；③ 引擎方法
+  （rcu-core）+ macOS 后端（复用 `place_window_on`，含尺寸预检与 fail-closed）；
+  ④ Windows 明确不支持；⑤ 验收脚本用例（跨屏往返 + 证据 JSON）。
 - 实现路径（跨 crate，一步一验）：① rcu-mcp 注册 `computer.move_window`
   （target/lease/request_id + 目标窗口引用 + 目标显示器 id 或 built_in + 可选 y/x 锚点）；
   ② 网关路由 → 设备线 Call 变体 → agent 分发；③ 引擎方法 + macOS 后端实现
