@@ -381,6 +381,42 @@ pub(crate) fn placement_position(window: Rect, display: Rect) -> (f64, f64) {
         (display.y + MARGIN).min(max_y.max(display.y)),
     )
 }
+/// Launch an application in the background through the supported AppKit path
+/// (`NSWorkspace.openApplicationAtURL:configuration:completionHandler:` with
+/// `activates=false`, `hides=true`): the current foreground app is untouched
+/// and the child is hidden as soon as it checks in. No synthetic input.
+pub(crate) fn launch_background(path: &str) -> Result<()> {
+    use objc2::msg_send;
+    use objc2::runtime::{AnyClass, AnyObject};
+    use objc2_foundation::NSString;
+    let workspace_class = AnyClass::get(c"NSWorkspace")
+        .ok_or_else(|| fault("launch_unavailable", "NSWorkspace is unavailable."))?;
+    let configuration_class = AnyClass::get(c"NSWorkspaceOpenConfiguration").ok_or_else(|| {
+        fault(
+            "launch_unavailable",
+            "NSWorkspaceOpenConfiguration is unavailable on this macOS.",
+        )
+    })?;
+    let url_class = AnyClass::get(c"NSURL")
+        .ok_or_else(|| fault("launch_unavailable", "NSURL is unavailable."))?;
+    let path_string = NSString::from_str(path);
+    unsafe {
+        let workspace: *mut AnyObject = msg_send![workspace_class, sharedWorkspace];
+        let configuration: *mut AnyObject = msg_send![configuration_class, new];
+        let url: *mut AnyObject = msg_send![url_class, fileURLWithPath: &*path_string];
+        let _: () = msg_send![configuration, setActivates: false];
+        let _: () = msg_send![configuration, setHides: true];
+        let _: () = msg_send![configuration, setAddsToRecentItems: false];
+        let handler: *mut AnyObject = std::ptr::null_mut();
+        let _: () = msg_send![
+            workspace,
+            openApplicationAtURL: url,
+            configuration: configuration,
+            completionHandler: handler
+        ];
+    }
+    Ok(())
+}
 fn display_layout(window: Rect) -> Result<(String, bool)> {
     let displays = displays()?;
     let mut text = String::new();
@@ -714,6 +750,17 @@ mod tests {
         let code =
             unsafe { ffi::AXUIElementPerformAction(button.0, action.as_concrete_TypeRef().cast()) };
         println!("AXPress code={code}");
+    }
+    #[test]
+    #[ignore = "Explicit live NSWorkspace background launch of RCU_DIAG_LAUNCH_PATH; setup only"]
+    fn launch_background_diagnostic() {
+        let path = std::env::var("RCU_DIAG_LAUNCH_PATH")
+            .unwrap_or_else(|_| "/System/Applications/Calculator.app".into());
+        match launch_background(&path) {
+            Ok(()) => println!("launch_background ok path={path}"),
+            Err(error) => println!("launch_background error code={} next={error}", error.code),
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1200));
     }
     #[test]
     #[ignore = "Explicit live AX/CG window identity dump for one pid; read-only, no input"]
