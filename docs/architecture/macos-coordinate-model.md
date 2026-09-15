@@ -40,3 +40,23 @@
   pt**上；用户在 iShot（微信截图）读该标记的真实坐标 → 两者必须一致（±1pt）。
 - 每类换算各验一次：屏幕尺寸/原点、窗口原点、窗口内像素、控件元素点。
 - 验证失败时先核对本文第 1 节的"谁在用哪个空间"，再看第 2 节是否用了运行时值。
+
+## 4. 实测记录（2026-09-15 全屏配置，Paint S 全屏于内建屏）
+
+- 显示：main id=3 (0,0,2048×1152) 1x；内建 id=1 (282,1152,1800×1169)，
+  CGDisplayPixelsWide 报 1x，**实际 backing 2x**（窗口图 3600px ÷ 窗口 1800pt = 2）。
+- Paint S 全屏窗口：`bounds [282,1243,1800,1078] pt`，observe 图像 `3600×2156 px`，scale=2 ✓。
+- 画布（文档）实测：**2144×728 px（与 Canvas Width/Height 一致，1:1 显示）**；
+  在 `screencapture -l` 图中位于 (894,836)；`-l` 图比 observe 图高 **104 px**
+  （差值来源未定论：阴影或标题带 🚧 待 iShot 复核），故画布在 observe 图中的原点
+  ∈ {(894,732), (894,836)}，**必须由外部真值确定**。
+- 换算（画布坐标 → 全局 pt，待原点确认后固定）：
+  `global_pt = window_origin + (canvas_origin_px + canvas_px) / 2`，
+  其中 window_origin=(282,1243) ✓。
+- 已确证的换算（无需原点）：`scale = image_size_px / window_size_pt`（逐轴，运行时求）
+  → global_pt = window_origin + image_px / scale ✓（例：图像 px(1200,700) → (882,1593)）。
+
+## 5. 产品缺口（本轮发现）
+
+- JS 车道（`rcu_computer_js`）未放开 `computer.pointer_feedback`（返回 `js_unknown_capability`）
+  → 应把 #3a/#4/#5 新增工具加入 JS 允许清单。
