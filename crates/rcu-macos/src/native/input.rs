@@ -22,11 +22,16 @@ impl NativeMac {
                 "Start an explicitly authorized candidate with --allow-input.",
             ));
         }
-        if let Some(seconds) = crate::activity::user_active(1.2) {
+        // Yield only for a real conflict: a person actively using *this* app.
+        // Background delivery to a non-frontmost window never races the person's
+        // typing in another app, which is exactly what background operation is.
+        if (self.foreground_pid() == Some(self.pid) || self.window_is_main())
+            && let Some(seconds) = crate::activity::user_active(1.2)
+        {
             return Err(fault(
                 "user_active",
                 &format!(
-                    "A person clicked or typed {seconds:.2}s ago; RCU yields and never queues input."
+                    "A person is using this window (clicked or typed {seconds:.2}s ago); RCU yields and never queues input."
                 ),
             ));
         }

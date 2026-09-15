@@ -346,12 +346,14 @@ platform capabilities remain unsupported until actually implemented and tested.
 
 ## Cooperative yield and the operation journal
 
-- RCU yields while a person is driving the machine: if a real click or key
-  happened within the last ~1.2 s, every input dispatch fails closed with
-  `user_active` (message includes the observed seconds). Motion alone never
-  gates. Nothing is queued and nothing is replayed: re-observe and retry after
-  the person pauses (the receipt stays `uncertain` at the syscall layer, but
-  `native_dispatch_entered:false` proves no native effect).
+- RCU yields only for a real conflict: when the *bound app itself* is
+  frontmost (or its window is main) and a person clicked or typed within the
+  last ~1.2 s, input dispatch fails closed with `user_active` (message includes
+  the observed seconds). Typing in another app never blocks background delivery
+  to a non-frontmost window — that is the product's whole point. Motion alone
+  never gates. Nothing is queued and nothing is replayed: re-observe and retry
+  after the person pauses (the receipt stays `uncertain` at the syscall layer,
+  but `native_dispatch_entered:false` proves no native effect).
 - Read `user_input_recent_seconds` from the target capabilities to know how long
   the machine has been quiet; it is also shown for cross-platform parity.
 - Every act appends one JSON line to the per-principal `operations.jsonl`; the
