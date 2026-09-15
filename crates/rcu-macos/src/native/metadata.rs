@@ -206,18 +206,22 @@ impl NativeMac {
     /// is by definition the current interaction surface (the dialog itself,
     /// not something it blocks); every other unknown state stays fail-closed.
     pub(super) fn modal_state(&self, application: &Cf, window_element: &Cf) -> Option<bool> {
+        let focused_here = application
+            .attr("AXFocusedWindow")
+            .ok()
+            .and_then(|element| ffi::window_number_for_ax_element(&element))
+            .is_some_and(|number| number == self.window);
         match window_element
             .attr("AXModal")
             .ok()
             .and_then(|value| value.boolean())
         {
+            // AppKit reports AXModal as "this window is modal", so the focused
+            // interaction surface must not be blocked by its own modality
+            // (observed live: the colour panel refused input to itself).
+            Some(true) if focused_here => Some(false),
             Some(value) => Some(value),
-            None => application
-                .attr("AXFocusedWindow")
-                .ok()
-                .and_then(|element| ffi::window_number_for_ax_element(&element))
-                .is_some_and(|number| number == self.window)
-                .then_some(false),
+            None => focused_here.then_some(false),
         }
     }
     /// Native placement: set the window's accessibility position so its
@@ -349,5 +353,10 @@ fn dialog_subrole(element: &Cf) -> bool {
         .attr("AXSubrole")
         .ok()
         .and_then(|value| value.string().ok())
-        .is_some_and(|subrole| subrole == "AXSheet" || subrole == "AXDialog")
+        .is_some_and(|subrole| {
+            matches!(
+                subrole.as_str(),
+                "AXSheet" | "AXDialog" | "AXSystemDialog" | "AXPopover"
+            )
+        })
 }
