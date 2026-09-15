@@ -49,6 +49,13 @@ impl NativeMac {
         // accessibility press action instead, with the same grounded element
         // validation and no synthetic primer.
         let native_press = matches!(intent, Intent::Click) && self.native_press_required(target)?;
+        // A click value that names an advertised native action performs that
+        // action instead of a synthetic click (the element's own action list
+        // is the whitelist, so no schema change is needed).
+        let explicit_action = match intent {
+            Intent::Click if target.scope.element.is_some() => value,
+            _ => None,
+        };
         if pointer && !crate::background::pointer_delivery_available() {
             return Err(fault(
                 "background_delivery_unavailable",
@@ -71,8 +78,11 @@ impl NativeMac {
                 self.dispatch_drag(expected, target, path)?;
             }
             Intent::Click | Intent::DoubleClick | Intent::ContextMenu => {
+                if let Some(action) = explicit_action {
+                    return self.dispatch_native_action(expected, target, action);
+                }
                 if native_press {
-                    return self.dispatch_native_press(expected, target);
+                    return self.dispatch_native_action(expected, target, "AXPress");
                 }
                 let right = matches!(intent, Intent::ContextMenu);
                 let button = if right {
@@ -222,25 +232,43 @@ impl NativeMac {
             .and_then(|element| ffi::window_number_for_ax_element(&element));
         Ok(main.is_some_and(|number| number != self.window))
     }
-    fn dispatch_native_press(
+    fn dispatch_native_action(
         &mut self,
         expected: &Binding,
         target: &Resolved,
+        action_name: &str,
     ) -> Result<Option<bool>> {
         let facts = self.drag_anchor_facts(target)?;
         facts.validate(expected, target, Kind::Pointer)?;
+        if !crate::native::action_names(facts.hit.native())
+            .iter()
+            .any(|name| name == action_name)
+        {
+            return Err(fault(
+                "unsupported_action",
+                "The exact element does not advertise this native action; nothing was dispatched.",
+            ));
+        }
         use core_foundation::base::TCFType;
-        let action = core_foundation::string::CFString::new("AXPress");
-        let _call = operation::native_call("macos_native_press")?;
+        let action = core_foundation::string::CFString::new(action_name);
+        let _call = operation::native_call("macos_native_action")?;
         dispatch::count(&self.dispatches);
         let code = unsafe {
             ffi::AXUIElementPerformAction(facts.hit.native().0, action.as_concrete_TypeRef().cast())
         };
         if code != 0 {
-            return Err(fault(
-                "native_press_rejected",
-                "The native accessibility press action was refused by the application; no synthetic input was sent.",
-            ));
+            let (code_name, message) = if action_name == "AXPress" {
+                (
+                    "native_press_rejected",
+                    "The native accessibility press action was refused by the application; no synthetic input was sent.",
+                )
+            } else {
+                (
+                    "native_action_rejected",
+                    "The native accessibility action was refused by the application; no synthetic input was sent.",
+                )
+            };
+            return Err(fault(code_name, message));
         }
         Ok(None)
     }
