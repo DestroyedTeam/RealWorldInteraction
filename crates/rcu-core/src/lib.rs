@@ -175,9 +175,19 @@ impl Intent {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Locator {
-    Semantic { name: String },
-    Element { id: String },
-    Pixel { x: f64, y: f64 },
+    Semantic {
+        name: String,
+    },
+    Element {
+        id: String,
+    },
+    /// Window-level reference for placement-class operations: no element and no
+    /// input-grade visibility requirement. Input intents cannot use it.
+    Window,
+    Pixel {
+        x: f64,
+        y: f64,
+    },
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -195,6 +205,10 @@ pub struct Resolved {
     pub point: [f64; 2],
     pub scope: Scope,
     pub element_revision: Option<String>,
+    /// Window-level placement references carry no element and must never be
+    /// used for input intents.
+    #[serde(default)]
+    pub placement_only: bool,
     /// Exact observed window-relative ROI, issued from the retained snapshot.
     /// Callers cannot supply this through an action's reference argument.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -703,6 +717,7 @@ impl Engine {
         })?;
         let mut scope = binding.scope.clone();
         let mut element_revision = None;
+        let placement_only = matches!(locator, Locator::Window);
         let point = match locator {
             locator @ (Locator::Semantic { .. } | Locator::Element { .. }) => {
                 let matches = scene
@@ -730,6 +745,20 @@ impl Engine {
                 scope.element = Some(e.id.clone());
                 element_revision = Some(e.revision());
                 e.point
+            }
+            Locator::Window => {
+                let [a, b, c, d, e, f] = scene.pixel_to_desktop.ok_or_else(|| {
+                    fault(
+                        "coordinate_mapping_unknown",
+                        "Do not assume scale=1 or host coordinates for a guest.",
+                    )
+                })?;
+                let (x, y) = (
+                    scene.image_size[0] as f64 / 2.0,
+                    scene.image_size[1] as f64 / 2.0,
+                );
+                scope.element = None;
+                [a * x + c * y + e, b * x + d * y + f]
             }
             Locator::Pixel { x, y } => {
                 if !x.is_finite()
@@ -767,6 +796,7 @@ impl Engine {
             point,
             scope,
             element_revision,
+            placement_only,
             source_region: snapshot.source_region,
         };
         self.refs.push_back(r.clone());
@@ -788,17 +818,47 @@ impl Engine {
             .join(digest(format!("{key}:{request}").as_bytes()) + ".jsonl")
     }
     /// Explicitly move the referenced window onto the requested display.
-    /// Same lease, freshness and fail-closed guarantees as an act; nothing
-    /// moves a window implicitly.
+    /// Same lease, freshness and durable no-replay guarantees as an act;
+    /// nothing moves a window implicitly.
     pub fn move_window(
         &mut self,
         target: &str,
         lease: &str,
         reference: &str,
+        request: &str,
         display: &DisplayTarget,
     ) -> Result<serde_json::Value> {
         display.validate()?;
+        if request.is_empty() || request.len() > 128 {
+            return Err(fault("invalid_arguments", "Bound request_id length."));
+        }
         let key = self.identity(target)?.key();
+        let path = self.journal_path(&key, request);
+        let fingerprint = digest(&serde_json::to_vec(&(target, reference, display)).unwrap());
+        if path.exists() {
+            let mut text = String::new();
+            File::open(&path)?.take(65536).read_to_string(&mut text)?;
+            let mut records = text
+                .split_inclusive('\n')
+                .filter(|s| s.ends_with('\n'))
+                .filter_map(|s| serde_json::from_str::<Journal>(s).ok());
+            let first = records.next().ok_or_else(|| {
+                fault(
+                    "uncertain_journal",
+                    "Interrupted reservation exists; do not replay.",
+                )
+            })?;
+            if first.fingerprint != fingerprint {
+                return Err(fault(
+                    "idempotency_conflict",
+                    "Do not reuse request_id for another move.",
+                ));
+            }
+            let mut receipt = records.next_back().unwrap_or(first).receipt;
+            receipt.deduplicated = true;
+            return Ok(serde_json::json!({"receipt": receipt, "deduplicated": true}));
+        }
+        operation::checkpoint("before_revalidation")?;
         let resolved = self
             .refs
             .iter()
@@ -814,10 +874,47 @@ impl Engine {
             .lock()
             .map_err(|_| fault("lease_error", "Restart observation session."))?;
         held.check(lease, target, &key)?;
-        let display = display.clone();
-        let result = operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
-            self.backend(target)?.move_window(&resolved, &display)
-        });
+        operation::checkpoint("before_durable_reservation")?;
+        let mut receipt = Receipt {
+            request_id: request.into(),
+            frame: resolved.frame.clone(),
+            scope: resolved.scope.clone(),
+            dispatch: "uncertain".into(),
+            dispatch_error: None,
+            system_accepted: None,
+            goal_verified: false,
+            replay: "forbidden".into(),
+            deduplicated: false,
+        };
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)?;
+        let write = |f: &mut File, r: &Receipt| -> Result<()> {
+            let data = serde_json::to_vec(&Journal {
+                fingerprint: fingerprint.clone(),
+                receipt: r.clone(),
+            })
+            .unwrap();
+            f.write_all(&data)?;
+            f.write_all(b"\n")?;
+            f.sync_all()?;
+            Ok(())
+        };
+        write(&mut file, &receipt)?;
+        #[cfg(unix)]
+        File::open(path.parent().unwrap())?.sync_all()?;
+        let mut placed = None;
+        match operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
+            self.backend(target)?.move_window(&resolved, display)
+        }) {
+            Ok(value) => {
+                receipt.dispatch = "returned".into();
+                placed = Some(value);
+            }
+            Err(error) => receipt.dispatch_error = Some(error),
+        }
+        write(&mut file, &receipt)?;
         drop(held);
         // A moved window invalidates frames and references on this desktop.
         let aliases = self
@@ -828,7 +925,10 @@ impl Engine {
             .collect::<Vec<_>>();
         self.snapshots.retain(|(_, s)| !aliases.contains(&s.target));
         self.refs.retain(|r| !aliases.contains(&r.target));
-        result
+        Ok(match placed {
+            Some(value) => serde_json::json!({"receipt": receipt, "placement": value}),
+            None => serde_json::json!({"receipt": receipt}),
+        })
     }
     pub fn act(
         &mut self,
@@ -897,6 +997,12 @@ impl Engine {
             .find(|r| r.reference == reference && r.target == target)
             .cloned()
             .ok_or_else(|| fault("unknown_reference", "Observe and resolve this target."))?;
+        if resolved.placement_only {
+            return Err(fault(
+                "invalid_reference_class",
+                "Window-level references are for placement only; resolve an element or pixel for input.",
+            ));
+        }
         let snapshot = self.snapshot(target, &resolved.frame)?;
         if snapshot.at.elapsed() > Duration::from_secs(10) {
             return Err(fault("stale_reference", "Reobserve; no input sent."));

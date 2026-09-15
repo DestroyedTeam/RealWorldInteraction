@@ -39,6 +39,7 @@ fn grounded() -> (Identity, Binding, Resolved, Scene) {
             ..binding.scope.clone()
         },
         point: element.point,
+        placement_only: false,
         element_revision: Some(element.revision()),
         source_region: None,
     };

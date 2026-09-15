@@ -38,7 +38,7 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.resolve",
-            description: "Bind one semantic element or original-image pixel to a specific frame, native window and PID. Ambiguous/unknown mappings are rejected.",
+            description: "Bind one semantic element, window-level placement locator (kind=window) or original-image pixel to a specific frame, native window and PID. Ambiguous/unknown mappings are rejected; kind=window yields a non-input reference for computer.move_window.",
             input_schema: serde_json::to_value(schemars::schema_for!(ResolveArgs)).unwrap(),
             writes: false,
         },

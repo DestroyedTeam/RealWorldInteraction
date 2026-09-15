@@ -45,6 +45,17 @@ impl Backend for Observed {
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
         self.inner.inspect(s, p, e)
     }
+    fn move_window(&mut self, r: &Resolved, d: &DisplayTarget) -> Result<serde_json::Value> {
+        let before = self.inner.input_dispatch_count();
+        self.entered.store(true, Ordering::Release);
+        let result = self.inner.move_window(r, d);
+        let after = self.inner.input_dispatch_count();
+        if before.is_some() && before == after {
+            // No native dispatch happened; keep the explicit pre-dispatch proof.
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
     fn lifecycle_grant(&self) -> Result<lifecycle::LifecycleGrant> {
         self.inner.lifecycle_grant()
     }

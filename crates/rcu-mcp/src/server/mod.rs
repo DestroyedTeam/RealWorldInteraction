@@ -314,7 +314,7 @@ impl Server {
     )]
     async fn move_window(&self, Parameters(a): Parameters<MoveWindowArgs>) -> CallToolResult {
         self.execute_operation(a.operation_id.clone(), move |e| {
-            value(e.move_window(&a.target, &a.lease, &a.reference, &a.display)?)
+            value(e.move_window(&a.target, &a.lease, &a.reference, &a.request_id, &a.display)?)
         })
         .await
     }

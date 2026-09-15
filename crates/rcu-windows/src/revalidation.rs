@@ -206,6 +206,7 @@ mod tests {
             target: "target".into(),
             frame: "frame".into(),
             point: [10., 10.],
+            placement_only: false,
             scope,
             element_revision: None,
             source_region: None,
@@ -267,6 +268,7 @@ mod tests {
             target: "t".into(),
             frame: "f".into(),
             point: element.point,
+            placement_only: false,
             scope: Scope {
                 element: Some(element.id.clone()),
                 ..scope

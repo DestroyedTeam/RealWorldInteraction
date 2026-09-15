@@ -184,6 +184,9 @@ impl Backend for NativeMacDesktop {
             display.as_ref(),
         )?)?;
         let mut placed = None;
+        // Selection itself never moves a window: with implicit placement off,
+        // binding a window that sits on another display succeeds without a
+        // native side effect, and an explicit move is what changes placement.
         if let Some(policy) = &self.authorized_display
             && !policy.allows(
                 display
@@ -191,13 +194,8 @@ impl Backend for NativeMacDesktop {
                     .map(crate::catalog::DisplayRecord::from_native)
                     .as_ref(),
             )
+            && policy.place_on_bind
         {
-            if !policy.place_on_bind {
-                return Err(fault(
-                    "unauthorized_display",
-                    "The window is not on the authorized display and implicit placement is disabled; place it explicitly first.",
-                ));
-            }
             let list = crate::native::displays()?;
             let target = list
                 .iter()

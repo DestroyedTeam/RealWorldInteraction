@@ -116,10 +116,13 @@ impl Executor {
             }
             "computer.move_window" => {
                 let a = args!(MoveWindowArgs);
-                value(
-                    self.engine
-                        .move_window(&a.target, &a.lease, &a.reference, &a.display)?,
-                )
+                value(self.engine.move_window(
+                    &a.target,
+                    &a.lease,
+                    &a.reference,
+                    &a.request_id,
+                    &a.display,
+                )?)
             }
             "computer.act_checked" => {
                 let a = args!(CheckedActArgs);

@@ -79,6 +79,7 @@ pub(super) struct MoveWindowArgs {
     pub(super) target: String,
     pub(super) lease: String,
     pub(super) reference: String,
+    pub(super) request_id: String,
     pub(super) display: rcu_core::DisplayTarget,
     pub(super) operation_id: Option<String>,
 }

@@ -122,6 +122,7 @@ impl Fake {
                 target: "target".into(),
                 frame: "original-frame".into(),
                 point: self.point,
+                placement_only: false,
                 scope: self.scope.clone(),
                 element_revision: self
                     .scope

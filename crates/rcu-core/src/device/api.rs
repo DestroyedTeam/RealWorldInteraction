@@ -69,6 +69,7 @@ pub struct MoveWindowArgs {
     pub target: String,
     pub lease: String,
     pub reference: String,
+    pub request_id: String,
     pub display: crate::DisplayTarget,
 }
 #[derive(Deserialize, Serialize, JsonSchema)]

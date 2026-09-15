@@ -180,6 +180,39 @@ impl Backend for NativeMac {
         Ok(self.metadata_scene(self.metadata()?, [0, 0], Vec::new(), None))
     }
 
+    fn move_window(
+        &mut self,
+        reference: &Resolved,
+        display: &rcu_core::DisplayTarget,
+    ) -> Result<serde_json::Value> {
+        if reference.scope.pid != self.pid || reference.scope.window != self.window_name() {
+            return Err(fault(
+                "target_mismatch",
+                "Reference belongs to another native window; observe this exact one.",
+            ));
+        }
+        let target = crate::native::displays()?
+            .into_iter()
+            .find(|candidate| {
+                display
+                    .built_in
+                    .is_none_or(|built_in| candidate.built_in == built_in)
+                    && display.id.is_none_or(|id| candidate.id == id)
+            })
+            .ok_or_else(|| {
+                fault(
+                    "display_not_found",
+                    "No active display matches the requested target; nothing was moved.",
+                )
+            })?;
+        self.place_window_on(&target)?;
+        Ok(serde_json::json!({
+            "window": self.window_name(),
+            "display": {"id": target.id, "built_in": target.built_in},
+            "input_sent": false,
+            "activated": false,
+        }))
+    }
     fn act(
         &mut self,
         expected: &Binding,
