@@ -386,7 +386,7 @@ pub(crate) fn placement_position(window: Rect, display: Rect) -> (f64, f64) {
 /// `activates=false`, `hides=true`): the current foreground app is untouched
 /// and the child is hidden as soon as it checks in. No synthetic input.
 #[allow(dead_code)] // Consumed by the macOS lifecycle driver (next increment).
-pub(crate) fn launch_background(path: &str) -> Result<()> {
+pub(crate) fn launch_background(path: &str, hide: bool) -> Result<()> {
     use objc2::msg_send;
     use objc2::runtime::{AnyClass, AnyObject};
     use objc2_foundation::NSString;
@@ -406,7 +406,10 @@ pub(crate) fn launch_background(path: &str) -> Result<()> {
         let configuration: *mut AnyObject = msg_send![configuration_class, new];
         let url: *mut AnyObject = msg_send![url_class, fileURLWithPath: &*path_string];
         let _: () = msg_send![configuration, setActivates: false];
-        let _: () = msg_send![configuration, setHides: true];
+        // A hidden launch never becomes an on-screen window, so the placement
+        // watcher (on-screen scope) could not find it; placement therefore
+        // starts visible-but-unfocused and hiding is a separate later step.
+        let _: () = msg_send![configuration, setHides: hide];
         let _: () = msg_send![configuration, setAddsToRecentItems: false];
         let handler: *mut AnyObject = std::ptr::null_mut();
         let _: () = msg_send![
@@ -417,6 +420,53 @@ pub(crate) fn launch_background(path: &str) -> Result<()> {
         ];
     }
     Ok(())
+}
+/// Launch an application in the background and place its first new window onto
+/// the authorized display as soon as it appears: 50ms watch cadence, 3s total
+/// budget, native placement and native bounds verification. No synthetic input.
+#[allow(dead_code)] // Consumed by the macOS lifecycle driver (next increment).
+pub(crate) fn launch_background_and_place(
+    path: &str,
+    display: &Display,
+) -> Result<serde_json::Value> {
+    let before = windows()?
+        .into_iter()
+        .map(|window| window.pid)
+        .collect::<std::collections::BTreeSet<_>>();
+    launch_background(path, false)?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(3000);
+    loop {
+        for window in windows()? {
+            if before.contains(&window.pid) {
+                continue;
+            }
+            let backend = NativeMac::with_shared_resources(
+                window.pid,
+                window.id,
+                false,
+                crate::capture::Capturer::default(),
+                std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            )?;
+            backend.place_window_on(display)?;
+            if let Some(moved) = windows()?
+                .into_iter()
+                .find(|candidate| candidate.id == window.id && candidate.pid == window.pid)
+            {
+                return Ok(serde_json::json!({
+                    "pid": window.pid,
+                    "window": format!("cgwindow:{}", window.id),
+                    "bounds": [moved.rect.x, moved.rect.y, moved.rect.w, moved.rect.h],
+                }));
+            }
+        }
+        if std::time::Instant::now() >= deadline {
+            return Err(fault(
+                "launch_window_timeout",
+                "No new window appeared within the placement budget.",
+            ));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
 }
 fn display_layout(window: Rect) -> Result<(String, bool)> {
     let displays = displays()?;
@@ -757,11 +807,27 @@ mod tests {
     fn launch_background_diagnostic() {
         let path = std::env::var("RCU_DIAG_LAUNCH_PATH")
             .unwrap_or_else(|_| "/System/Applications/Calculator.app".into());
-        match launch_background(&path) {
+        match launch_background(&path, true) {
             Ok(()) => println!("launch_background ok path={path}"),
             Err(error) => println!("launch_background error code={} next={error}", error.code),
         }
         std::thread::sleep(std::time::Duration::from_millis(1200));
+    }
+    #[test]
+    #[ignore = "Explicit live background launch + placement of RCU_DIAG_LAUNCH_PATH; setup only"]
+    fn launch_background_and_place_diagnostic() {
+        let path = std::env::var("RCU_DIAG_LAUNCH_PATH")
+            .unwrap_or_else(|_| "/System/Applications/Calculator.app".into());
+        let displays = displays().expect("displays");
+        let target = displays
+            .iter()
+            .find(|display| display.built_in)
+            .expect("built-in display");
+        println!("target display id={} rect={:?}", target.id, target.rect);
+        match launch_background_and_place(&path, target) {
+            Ok(value) => println!("launch_place ok {value}"),
+            Err(error) => println!("launch_place error code={} next={error}", error.code),
+        }
     }
     #[test]
     #[ignore = "Explicit live AX/CG window identity dump for one pid; read-only, no input"]
