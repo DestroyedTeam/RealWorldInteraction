@@ -51,6 +51,16 @@
   （首启 Start 面板曾出现在扩展屏），随后应用会恢复其保存位置（Prefs 中
   StartOpenPanel 保存的是内建屏坐标）。macOS 尚无启动/放置原语
   （launch_application 未实现），Host `open -a` 只能接受系统落点。
+- macOS 后台启动·实现方案（本轮调研+读码结论，下一步实施；不改 MCP 工具面）：工具已存在
+  （computer.launch_application/lifecycle_preflight/lifecycle_receipt，19 项不变）；rcu-core
+  的 lifecycle 为通用编排（Engine::launch_application → backend.lifecycle_grant/deadline/
+  driver + 共享 lifecycle::launch/preflight/receipt，含持久化预留与不重放），macOS 侧只需：
+  ① LifecycleDriver：`LSOpenApplication` + `kLSLaunchDontSwitch|kLSLaunchAndHide`（可选
+  `kLSLaunchNewInstance`）后台启动 + 原生 inventory（CGWindowList/进程）前后对比；
+  ② 启动后 50ms 轮询发现新窗口 → 复用已实测的 AXPosition 放置（授权屏）+ 原生复查；
+  ③ 不生效降级链标记：后台 → 独立屏/屏外 → 前台（disruptive 明示，体感输入化）。
+  出处：Apple LSOpenApplication/LSLaunchFlags 文档、NSWorkspace.OpenConfiguration
+  (activates=false/hides=true, silent.swift gist)、open -g/-j 对 Electron 类不生效的实测贴。
 - 待实现（用户要求，高优先级）：受控的窗口移动/放置原语（将目标窗口强制放到授权
   显示器），并把"仅授权显示器"作为默认可操作门槛；③ 的识别已就绪，可作为策略输入。
 - 弹窗/对话框实测（2026-09-14 续，提交 98a37fd）：Paint S 的 "Open" 面板（模态 sheet，
