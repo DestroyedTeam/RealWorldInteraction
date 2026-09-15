@@ -101,6 +101,20 @@
 - 本轮未完成：sheet 修复的端到端模态验证、独立验证子会话、Mac 视觉反馈（AI 光标层）、
   正式验收文档与总提交。
 
+## PUA Loop 验收（2026-09-15，Oracle 通过）
+
+- 验收命令（冻结于 .claude/pua-loop-state.md）：`bash work/pua-loop/verify-mac-apps.sh`
+  → **ORACLE_OK / exit 0**；证据：`work/pua-loop/evidence-*.json` 与 history.jsonl（8 轮）。
+- 覆盖（其他应用不纳入）：Paint S → 后台启动/落授权屏/绑定/观察(77 元素)/点击 Add Image →
+  面板出现并可观察(Cancel/Open/Where…) → Cancel 关闭（原生动作）；Freeform → 板窗口绑定/
+  观察(Insert Shape 等) → 点击 Insert Shape → 弹层打开(Draw with Pen) → 画布点击关闭。
+- 过程中修复的产品缺陷（提交 b30827e）：
+  ① 恢复死锁：combined-session 陈旧键(118)不再阻断恢复（硬件源/按钮/修饰键仍 fail-closed）；
+  ② 非主窗口点击一律走原生 AXPress（合成点击对 sheet/panel "能派发不生效"）；
+  ③ 输入域 fence 跨会话/重启持久的问题随之解开（配合 recover_input）。
+- 明确未纳入：Freeform 画笔（Draw with Pen）点击与自由绘制仍受瞬态弹层可见性限制；
+  Paint S 画笔/样式可见性；均记录为后续项，不冒充已完成。
+
 ## 已有基础，不重复从零做
 
 - 独立 headless Rust Windows agent、设备 mTLS、全局 MCP；当前通用 Skill 为源码/项目镜像，旧 Plugin 包仅属历史验收，不冒充全局 Plugin/Skill 安装。
