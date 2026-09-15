@@ -141,6 +141,20 @@
 - 缺陷 3（可用性）：缺少显式的"把窗口移到指定屏 X"原语；用户/agent 无法主动纠正窗口位置。
 - 修复顺序：缺陷 2（预检，小）→ 缺陷 1（显式化放置，中）→ 缺陷 3（显式移动原语，中）。
 
+## #3a 显式窗口移动原语 · 可行性判定（2026-09-15）
+
+- 关键结论：**新增 MCP 工具不会破坏历史录制校验**——`startup_diagnostic.rs` 与
+  `orchestration/mcp.rs` 的 `tools.len()!=19`/`schema_sha()` 校验读的是**历史 fixture 自身**
+  （自洽校验），rcu-mcp 网关侧未发现对实时工具目录的数量/哈希断言。
+- 实现路径（跨 crate，一步一验）：① rcu-mcp 注册 `computer.move_window`
+  （target/lease/request_id + 目标窗口引用 + 目标显示器 id 或 built_in + 可选 y/x 锚点）；
+  ② 网关路由 → 设备线 Call 变体 → agent 分发；③ 引擎方法 + macOS 后端实现
+  （复用已实测的 AX `AXPosition` 放置：`place_window_on` + 尺寸预检，失败 fail-closed、
+  台账留证、不重放）；④ Windows 后端 fail-closed 明示不支持；⑤ 验收脚本加用例
+  （把测试窗口在授权屏与非授权屏之间往返一次，证据 JSON 落盘）。
+- 过渡方案（已可用，operator 级显式）：`authorized_display.place_on_bind=true` 仅在对
+  "绑定即归位"有明确意图时开启；默认关闭（事故修复 3cc47e7）。
+
 ## 已有基础，不重复从零做
 
 - 独立 headless Rust Windows agent、设备 mTLS、全局 MCP；当前通用 Skill 为源码/项目镜像，旧 Plugin 包仅属历史验收，不冒充全局 Plugin/Skill 安装。
