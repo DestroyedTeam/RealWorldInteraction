@@ -54,6 +54,14 @@ pub trait Backend: Send {
             "Native window move is not implemented on this platform; nothing was moved.",
         ))
     }
+    /// Visual-only pointer feedback for the user, driven by the native overlay.
+    /// It is never input and backends without an overlay fail closed.
+    fn feedback(&mut self, _visible: bool, _point: Option<[f64; 2]>) -> Result<serde_json::Value> {
+        Err(fault(
+            "capability_unavailable",
+            "No native pointer-feedback overlay on this platform; nothing was drawn.",
+        ))
+    }
     /// Advisory per-process window inventory for popup delivery. Backends
     /// without native window enumeration return nothing rather than guessing.
     fn popups(&mut self, _scope: &crate::Scope) -> Result<Vec<crate::Popup>> {

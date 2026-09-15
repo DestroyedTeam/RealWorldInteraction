@@ -131,15 +131,32 @@ async fn run() -> io::Result<()> {
     result
 }
 fn main() {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(4)
-        .enable_all()
-        .build()
-        .unwrap();
-    let result = runtime.block_on(run());
-    runtime.shutdown_timeout(std::time::Duration::from_secs(2));
-    if let Err(e) = result {
-        eprintln!("rcu-agent: {e}");
-        std::process::exit(1);
+    #[cfg(target_os = "macos")]
+    rcu_macos::overlay::install();
+    let server = std::thread::Builder::new()
+        .name("rcu-agent-server".into())
+        .spawn(|| {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(4)
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = runtime.block_on(run());
+            runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+            if let Err(e) = result {
+                eprintln!("rcu-agent: {e}");
+                return 1;
+            }
+            0
+        })
+        .expect("spawn rcu-agent-server thread");
+    #[cfg(target_os = "macos")]
+    {
+        // AppKit overlay ownership: the main thread pumps commands while a
+        // watcher exits the process once the server stops.
+        std::thread::spawn(move || std::process::exit(server.join().unwrap_or(1)));
+        rcu_macos::overlay::pump_forever();
     }
+    #[cfg(not(target_os = "macos"))]
+    std::process::exit(server.join().unwrap_or(1));
 }

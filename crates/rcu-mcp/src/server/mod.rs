@@ -308,6 +308,20 @@ impl Server {
         .await
     }
     #[tool(
+        name = "computer.pointer_feedback",
+        description = "Visual-only overlay marker for the user: show or hide at a desktop point. Never input, never the real cursor, never focus; acts also update it automatically.",
+        annotations(read_only_hint = false)
+    )]
+    async fn pointer_feedback(
+        &self,
+        Parameters(a): Parameters<PointerFeedbackArgs>,
+    ) -> CallToolResult {
+        self.execute_operation(a.operation_id.clone(), move |e| {
+            value(e.feedback(&a.target, a.visible, a.point)?)
+        })
+        .await
+    }
+    #[tool(
         name = "computer.move_window",
         description = "Explicitly move the bound window onto a requested display (built_in and/or exact id). Lease-scoped and idempotent: it never presses input, never focuses, never replays; invalidates frames/references on this target. Fails closed on unsupported platforms; verify independently afterward.",
         annotations(read_only_hint = false, destructive_hint = true)

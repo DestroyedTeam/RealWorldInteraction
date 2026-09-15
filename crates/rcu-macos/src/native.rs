@@ -185,6 +185,26 @@ impl Backend for NativeMac {
         Ok(self.metadata_scene(self.metadata()?, [0, 0], Vec::new(), None))
     }
 
+    fn feedback(&mut self, visible: bool, point: Option<[f64; 2]>) -> Result<serde_json::Value> {
+        if visible {
+            let point = match point {
+                Some(point) => point,
+                None => crate::overlay::last_point().ok_or_else(|| {
+                    fault(
+                        "invalid_arguments",
+                        "Provide point on the first visible request.",
+                    )
+                })?,
+            };
+            if point.iter().any(|v| !v.is_finite()) {
+                return Err(fault("invalid_arguments", "Point must be finite."));
+            }
+            crate::overlay::show_at(point);
+        } else {
+            crate::overlay::hide();
+        }
+        Ok(crate::overlay::status_json())
+    }
     fn popups(&mut self, _scope: &rcu_core::Scope) -> Result<Vec<rcu_core::Popup>> {
         Ok(crate::native::popups_for_pid(self.pid))
     }
@@ -228,7 +248,13 @@ impl Backend for NativeMac {
         intent: &Intent,
         value: Option<&str>,
     ) -> Result<Option<bool>> {
-        self.dispatch_input(expected, target, intent, value)
+        let result = self.dispatch_input(expected, target, intent, value);
+        if result.is_ok() {
+            // Purely visual feedback for the user; never input and never the
+            // real cursor. Failure to draw is not an input failure.
+            crate::overlay::show_at(target.point);
+        }
+        result
     }
     fn inspect(&mut self, scope: &Scope, predicate: &Predicate, expected: &str) -> Result<Oracle> {
         if scope.pid != self.pid || scope.window != self.window_name() {

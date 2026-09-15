@@ -55,6 +55,15 @@ pub fn definitions() -> Vec<ToolDefinition> {
             writes: true,
         },
         ToolDefinition {
+            name: "computer.pointer_feedback",
+            description: "Visual-only overlay marker for the user: show or hide at a desktop point. It never dispatches input, never moves the real cursor, never focuses a window and cannot be mistaken for a goal; acts also update it automatically.",
+            input_schema: serde_json::to_value(schemars::schema_for!(
+                crate::device::api::PointerFeedbackArgs
+            ))
+            .unwrap(),
+            writes: false,
+        },
+        ToolDefinition {
             name: "computer.move_window",
             description: "Explicitly move the bound window onto a requested display (built_in and/or exact native id). Lease-scoped and idempotent: it never presses input, never focuses, never replays, and invalidates frames/references on this target. Unsupported platforms fail closed.",
             input_schema: serde_json::to_value(schemars::schema_for!(
@@ -219,6 +228,10 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
         }
         "computer.bind_window" => {
             let _: BindArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.pointer_feedback" => {
+            let _: crate::device::api::PointerFeedbackArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.move_window" => {

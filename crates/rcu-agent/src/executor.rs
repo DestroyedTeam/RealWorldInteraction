@@ -114,6 +114,10 @@ impl Executor {
                     a.value,
                 )?)
             }
+            "computer.pointer_feedback" => {
+                let a = args!(PointerFeedbackArgs);
+                value(self.engine.feedback(&a.target, a.visible, a.point)?)
+            }
             "computer.move_window" => {
                 let a = args!(MoveWindowArgs);
                 value(self.engine.move_window(

@@ -115,6 +115,9 @@ impl Backend for NativeMacDesktop {
     fn runtime_status(&self) -> Value {
         session::process_status(self.uid)
     }
+    fn feedback(&mut self, visible: bool, point: Option<[f64; 2]>) -> Result<Value> {
+        feedback_overlay(visible, point)
+    }
     fn popups(&mut self, scope: &rcu_core::Scope) -> Result<Vec<rcu_core::Popup>> {
         let mut rows = crate::native::popups_for_pid(scope.pid);
         // Fill AX gaps with the window server's own title/geometry; never guess.
@@ -382,6 +385,27 @@ impl Backend for NativeMacDesktop {
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
         self.selected()?.inspect(s, p, e)
     }
+}
+
+fn feedback_overlay(visible: bool, point: Option<[f64; 2]>) -> Result<Value> {
+    if visible {
+        let point = match point {
+            Some(point) => point,
+            None => crate::overlay::last_point().ok_or_else(|| {
+                fault(
+                    "invalid_arguments",
+                    "Provide point on the first visible request.",
+                )
+            })?,
+        };
+        if point.iter().any(|v| !v.is_finite()) {
+            return Err(fault("invalid_arguments", "Point must be finite."));
+        }
+        crate::overlay::show_at(point);
+    } else {
+        crate::overlay::hide();
+    }
+    Ok(crate::overlay::status_json())
 }
 
 #[cfg(test)]

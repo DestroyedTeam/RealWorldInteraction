@@ -151,6 +151,7 @@ fn macos_tool_implemented(tool: &str) -> bool {
             | "computer.resolve_view"
             | "computer.recover_input"
             | "computer.move_window"
+            | "computer.pointer_feedback"
     )
 }
 

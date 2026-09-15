@@ -859,6 +859,17 @@ impl Engine {
             .join("receipts")
             .join(digest(format!("{key}:{request}").as_bytes()) + ".jsonl")
     }
+    /// Visual-only pointer feedback: show or hide the native overlay marker at
+    /// a desktop point. Never input, never focus, never the real cursor.
+    pub fn feedback(
+        &mut self,
+        target: &str,
+        visible: bool,
+        point: Option<[f64; 2]>,
+    ) -> Result<serde_json::Value> {
+        let _ = self.identity(target)?.key();
+        self.backend(target)?.feedback(visible, point)
+    }
     /// Explicitly move the referenced window onto the requested display.
     /// Same lease, freshness and durable no-replay guarantees as an act;
     /// nothing moves a window implicitly.

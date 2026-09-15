@@ -61,6 +61,15 @@ pub struct ReleaseArgs {
     pub device_id: Option<String>,
     pub lease: String,
 }
+/// Visual-only pointer feedback request.
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PointerFeedbackArgs {
+    pub target: String,
+    pub visible: bool,
+    #[serde(default)]
+    pub point: Option<[f64; 2]>,
+}
 /// Explicit window move onto a requested display. Placement is idempotent:
 /// repeating the same move never presses any input again.
 #[derive(serde::Deserialize, schemars::JsonSchema)]

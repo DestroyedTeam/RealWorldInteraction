@@ -13,6 +13,7 @@ mod ffi;
 mod geometry;
 #[cfg(target_os = "macos")]
 mod native;
+pub mod overlay;
 #[cfg(target_os = "macos")]
 mod recovery;
 #[cfg(target_os = "macos")]

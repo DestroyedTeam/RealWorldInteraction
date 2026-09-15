@@ -75,6 +75,15 @@ pub(super) struct ActArgs {
 }
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub(super) struct PointerFeedbackArgs {
+    pub(super) target: String,
+    pub(super) visible: bool,
+    #[serde(default)]
+    pub(super) point: Option<[f64; 2]>,
+    pub(super) operation_id: Option<String>,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub(super) struct MoveWindowArgs {
     pub(super) target: String,
     pub(super) lease: String,

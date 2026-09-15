@@ -45,6 +45,9 @@ impl Backend for Observed {
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
         self.inner.inspect(s, p, e)
     }
+    fn feedback(&mut self, visible: bool, point: Option<[f64; 2]>) -> Result<serde_json::Value> {
+        self.inner.feedback(visible, point)
+    }
     fn popups(&mut self, scope: &Scope) -> Result<Vec<Popup>> {
         self.inner.popups(scope)
     }
