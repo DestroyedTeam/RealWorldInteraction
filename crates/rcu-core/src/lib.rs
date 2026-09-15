@@ -109,6 +109,10 @@ pub struct MutationContext {
 pub struct Element {
     pub id: String,
     pub name: String,
+    /// Native role string (e.g. "AXButton", "AXTextField"): the control
+    /// semantics an agent needs to infer what a node does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
     pub point: [f64; 2],
     pub visible: Option<bool>,
     pub occluded: Option<bool>,

@@ -239,6 +239,7 @@ mod tests {
     fn exact_target_still_binds_revision_identity_point_visibility_and_native_context() {
         use rcu_core::{Binding, Element, Identity, Resolved, Scene, Scope, grounding_matches};
         let element = Element {
+            role: None,
             id: "original".into(),
             name: "same label".into(),
             point: [10., 20.],

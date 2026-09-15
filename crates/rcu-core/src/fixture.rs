@@ -132,6 +132,7 @@ impl Backend for Fixture {
                 .iter()
                 .enumerate()
                 .map(|(n, s)| Element {
+                    role: None,
                     id: s.to_string(),
                     name: s.to_string(),
                     point: [100.0, 50.0 + 50.0 * n as f64],

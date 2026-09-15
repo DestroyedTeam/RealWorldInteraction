@@ -570,6 +570,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
         element: Element {
             id,
             name,
+            role: Some(role),
             point: [r.x + r.w / 2.0, r.y + r.h / 2.0],
             visible: None,
             occluded: None,
@@ -966,6 +967,7 @@ mod tests {
     fn classified(class: TextClass) -> AxElement {
         AxElement {
             element: Element {
+                role: None,
                 id: "id".into(),
                 name: "Input".into(),
                 point: [0.0, 0.0],
