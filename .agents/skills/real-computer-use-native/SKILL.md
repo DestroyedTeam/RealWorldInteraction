@@ -248,3 +248,45 @@ platform capabilities remain unsupported until actually implemented and tested.
   `unauthorized_display`、`placement_impossible`（窗口大于屏）、`visibility_unknown`
   （元素可见性未知，元素路径拒；可试像素路径）、`ax_attribute_unavailable`（AX 瞬时不可用）、
   `window_missing`（sheet/panel/独立进程窗口的解析回退链已覆盖常见情形）。
+
+## Explicit window placement (computer.move_window)
+
+- Purpose: move the **bound** window onto a requested display without ever
+  pressing input or touching the real cursor. Placement is idempotent; a
+  repeated request with the same `request_id` is deduplicated or answered as
+  `dispatched_again=false`; reusing a `request_id` with different arguments
+  fails closed (`operation_payload_conflict` / `idempotency_conflict`).
+- Required arguments: `target`, `lease` (claim first), `request_id` (writes are
+  always refused without a stable id; bound to 1..128 chars), `display`
+  (`{built_in?: bool, id?: u32}`; at least one criterion, `{}` is rejected with
+  `invalid_display_target`), `reference`.
+- Reference choice: `computer.resolve` with locator `{kind:"window"}` yields a
+  **placement-only** reference that needs no visibility/occlusion state, so a
+  covered or off-screen window can still be parked on another display. Feeding
+  that reference to `computer.act`/`act_checked` fails closed with
+  `invalid_reference_class` — resolve an element or pixel for input.
+- After a successful move every frame/reference on that desktop is invalidated
+  (`unknown_reference`); re-observe before the next step. The receipt's
+  `placement` reports the native bounds and the display actually containing the
+  window; verify with a fresh `computer.discover` readback.
+- Unknown display target → `display_not_found`; window vanished mid-move →
+  `window_missing`; oversized window for the target display → the pre-check
+  reports `placement_impossible` and nothing is moved.
+
+## Binding semantics (updated 2026-09-15)
+
+- `bind_window` is a pure selection: with implicit placement off it never moves
+  a window and now also **accepts windows that sit on a non-authorized
+  display** (previously refused with `unauthorized_display`). The refusal made
+  explicit placement a one-way trap: once a window was moved elsewhere, it could
+  not be bound, observed, or moved back (occlusion also blocks element
+  references). Placement changes only through `computer.move_window`.
+- With `authorized_display.place_on_bind=true` the old placement-on-bind
+  behavior still applies and reports `placed` in the binding receipt.
+
+## macOS deployment gotcha (found live)
+
+- Replace an installed executable with `rm` + `cp` (fresh inode). Overwriting a
+  binary in place with `cp` can leave it silently unexecutable (immediate silent
+  exit, identical sha, no stderr). If a freshly deployed binary seems mute, `rm`
+  it and copy again.

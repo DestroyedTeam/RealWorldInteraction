@@ -194,3 +194,19 @@
   截图不提交 Git，不将旧截图标为本轮新验证。
 
 **整体仍在实施中。** 本文件是持续状态表，不是缩小范围后的完成声明。
+
+## #3a 完成记录：显式窗口移动原语（2026-09-15）
+
+- 交付：`computer.move_window`（lease + request_id + 持久台账；幂等放置；不按键、不夺焦、
+  不重放）→ `Engine::move_window`（先写 uncertain 预留、指纹冲突 `idempotency_conflict`）
+  → `Backend::move_window`（默认 fail-closed，Windows/fixture 显式不支持）
+  → macOS `NativeMacDesktop`/`NativeMac` 经 `place_window_on` 预检 + 原生回读。
+- 新增窗口级定位器：`computer.resolve {kind:"window"}` → `placement_only` 引用（无需可见/未遮挡），
+  输入路径拒绝之（`invalid_reference_class`）——防止窗口中心被误派发点击。
+- 行为变更（已披露）：`place_on_bind=false` 时 `bind_window` 不再拒绝非授权屏窗口，也不再隐式移动；
+  选择本身无原生副作用。此变更修掉活体发现的**单向陷阱**：窗口被显式移到外接屏后，原先
+  无法再绑定/观察/移回（遮挡还会让元素引用永久不可解析）。
+- 活体验收：`docs/validation/move-window-acceptance.py` → 16/16 PASS（跨屏往返 + discover 回读 +
+  `dispatched_again=false` 重放证明 + 失败码负例），证据 `docs/validation/evidence-move-window-20260915.json`。
+- 提交：`3baeb67`（初版接线）、`4ca5fb9`（台账 + 窗口定位器 + 绑定语义）、`bedaa28`（验收归档）。
+- 运维注记：macOS 覆盖安装二进制需 `rm`+`cp`（原地 `cp` 会导致"同 sha 但静默不可执行"）。
