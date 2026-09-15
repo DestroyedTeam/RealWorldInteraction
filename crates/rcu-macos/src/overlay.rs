@@ -1,10 +1,16 @@
-//! AI pointer overlay: a purely visual, click-through marker for the last
-//! dispatched point. It never dispatches input, never moves the real cursor and
+//! AI pointer overlay: the shared A1 lens rendered by the native presenter.
+//! Purely visual: it never dispatches input, never moves the real cursor and
 //! never takes focus.
 //!
-//! AppKit window creation is confined to the process main thread, which pumps
-//! [`pump_forever`]; every other thread only sends bounded commands.
+//! AppKit work is confined to the process main thread, which pumps commands and
+//! animation frames; every other thread only sends bounded commands.
 use core_foundation::runloop::{CFRunLoop, kCFRunLoopDefaultMode};
+use core_graphics::{
+    color_space::CGColorSpace,
+    context::CGContext,
+    image::{CGImageAlphaInfo, CGImageByteOrderInfo},
+};
+use foreign_types::ForeignType;
 use objc2::{
     msg_send,
     rc::autoreleasepool,
@@ -20,8 +26,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-const SPRITE: f64 = 26.0;
+const SIZE_PT: f64 = rcu_pointer::SIZE as f64;
+const HOTSPOT_PT: f64 = rcu_pointer::CENTER as f64;
 const IDLE: Duration = Duration::from_secs(45);
+const TICK: Duration = Duration::from_millis(16);
 
 enum Action {
     Show([f64; 2]),
@@ -40,6 +48,7 @@ struct Status {
     created: bool,
     visible: bool,
     point: Option<[f64; 2]>,
+    dpi: Option<u32>,
     last_error: Option<String>,
 }
 
@@ -112,35 +121,97 @@ pub fn last_point() -> Option<[f64; 2]> {
 
 pub fn status_json() -> serde_json::Value {
     let snapshot = status().lock().ok();
-    let (created, visible, point, last_error) = snapshot
+    let (created, visible, point, dpi, last_error) = snapshot
         .as_ref()
-        .map(|s| (s.created, s.visible, s.point, s.last_error.clone()))
-        .unwrap_or((false, false, None, None));
+        .map(|s| (s.created, s.visible, s.point, s.dpi, s.last_error.clone()))
+        .unwrap_or((false, false, None, None, None));
     json!({
         "installed": SENDER.get().is_some(),
         "created": created,
         "visible": visible,
         "point": point,
+        "dpi": dpi,
+        "material": "a1_diamond_rcu",
         "last_error": last_error,
     })
 }
 
 fn sprite_rect() -> NSRect {
-    NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(SPRITE, SPRITE))
+    NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(SIZE_PT, SIZE_PT))
 }
 
-/// Convert a global top-left desktop point into a Cocoa frame origin for the
-/// sprite. Returns None when the primary display height is unknown.
+/// Effective dpi from the window's actual screen backing scale. Read after the
+/// window is ordered onto the target display so Retina rasters stay 1:1.
+unsafe fn window_dpi(window: *mut AnyObject) -> u32 {
+    let scale: f64 = unsafe { msg_send![window, backingScaleFactor] };
+    let scale = if scale.is_finite() && scale > 0.0 {
+        scale
+    } else {
+        1.0
+    };
+    (96.0 * scale)
+        .round()
+        .clamp(96.0, f64::from(rcu_pointer::MAX_DPI)) as u32
+}
+
+/// Convert a global top-left desktop point into a Cocoa frame origin so the
+/// fixed lens hotspot lands exactly on the point.
 fn cocoa_origin(point: [f64; 2]) -> Option<[f64; 2]> {
     let primary = core_graphics::display::CGDisplay::main().bounds();
     let height = primary.size.height;
     if !height.is_finite() || height <= 0.0 {
         return None;
     }
-    Some([point[0] - SPRITE / 2.0, height - point[1] - SPRITE / 2.0])
+    Some([point[0] - HOTSPOT_PT, height - point[1] - HOTSPOT_PT])
 }
 
-unsafe fn create_window() -> std::result::Result<*mut AnyObject, String> {
+/// Rasterize one material frame into the layer contents. The lens hotspot is
+/// the raster center; the RCU label sits below it inside the same raster.
+unsafe fn present(
+    layer: *mut AnyObject,
+    dpi: u32,
+    frame: rcu_pointer::motion::Frame,
+) -> std::result::Result<(), String> {
+    unsafe {
+        let material = rcu_pointer::material::Material::new(
+            dpi,
+            rcu_pointer::material::Style::default(),
+            rcu_pointer::material::Label::fallback(dpi),
+        );
+        let scale = rcu_pointer::scale_for_dpi(dpi);
+        let raster = rcu_pointer::raster_size(dpi);
+        let label = rcu_pointer::material::Label::fallback(dpi);
+        let label_offset = [
+            HOTSPOT_PT * scale - label.width as f64 / 2.0,
+            HOTSPOT_PT * scale + 21.0 * scale + label.padding * scale,
+        ];
+        let bgra = material.raster(frame, label_offset);
+        if bgra.len() != raster * raster * 4 {
+            return Err("material raster size mismatch".into());
+        }
+        let color = CGColorSpace::create_device_rgb();
+        let mut context = CGContext::create_bitmap_context(
+            None,
+            raster,
+            raster,
+            8,
+            raster * 4,
+            &color,
+            CGImageAlphaInfo::CGImageAlphaPremultipliedFirst as u32
+                | CGImageByteOrderInfo::CGImageByteOrder32Little as u32,
+        );
+        std::ptr::copy_nonoverlapping(bgra.as_ptr(), context.data().as_mut_ptr(), bgra.len());
+        let image = context
+            .create_image()
+            .ok_or("CGImage unavailable for the material raster")?;
+        let contents = image.as_ptr() as *mut AnyObject;
+        let _: () = msg_send![layer, setContentsScale: f64::from(dpi) / 96.0];
+        let _: () = msg_send![layer, setContents: contents];
+        Ok(())
+    }
+}
+
+unsafe fn create_window(dpi: u32) -> std::result::Result<(*mut AnyObject, *mut AnyObject), String> {
     unsafe {
         let window_class = AnyClass::get(c"NSWindow").ok_or("NSWindow unavailable")?;
         let view_class = AnyClass::get(c"NSView").ok_or("NSView unavailable")?;
@@ -176,33 +247,14 @@ unsafe fn create_window() -> std::result::Result<*mut AnyObject, String> {
         if layer.is_null() {
             return Err("content view has no layer".into());
         }
-        let fill: *mut AnyObject = msg_send![
-            color_class,
-            colorWithRed: 1.0f64,
-            green: 0.35f64,
-            blue: 0.12f64,
-            alpha: 0.30f64
-        ];
-        let stroke: *mut AnyObject = msg_send![
-            color_class,
-            colorWithRed: 1.0f64,
-            green: 0.48f64,
-            blue: 0.16f64,
-            alpha: 0.95f64
-        ];
-        let fill_cg: *mut AnyObject = msg_send![fill, CGColor];
-        let stroke_cg: *mut AnyObject = msg_send![stroke, CGColor];
-        let _: () = msg_send![layer, setBackgroundColor: fill_cg];
-        let _: () = msg_send![layer, setBorderColor: stroke_cg];
-        let _: () = msg_send![layer, setBorderWidth: 2.0f64];
-        let _: () = msg_send![layer, setCornerRadius: SPRITE / 2.0];
+        present(layer, dpi, rcu_pointer::motion::Frame::idle())?;
         let _: () = msg_send![window, setContentView: view];
-        Ok(window)
+        Ok((window, layer))
     }
 }
 
-/// Main thread: create/show/hide the marker on demand until the process ends.
-/// Never returns; call this after `install()` on the main thread.
+/// Main thread: create/show/hide the marker and animate its highlight until the
+/// process ends. Never returns; call this after `install()`.
 pub fn pump_forever() -> ! {
     let receiver = RECEIVER
         .get()
@@ -212,9 +264,14 @@ pub fn pump_forever() -> ! {
             std::thread::sleep(Duration::from_secs(3600));
         }
     };
+    let start = Instant::now();
     let mut window: Option<*mut AnyObject> = None;
+    let mut layer: Option<*mut AnyObject> = None;
+    let mut dpi = 192u32;
     let mut visible = false;
     let mut last_show = Instant::now();
+    let mut motion = rcu_pointer::motion::Motion::default();
+    let mut animating_until: Option<Instant> = None;
     loop {
         loop {
             match receiver.try_recv() {
@@ -224,9 +281,10 @@ pub fn pump_forever() -> ! {
                 }) => {
                     autoreleasepool(|_| {
                         if window.is_none() {
-                            match unsafe { create_window() } {
-                                Ok(created) => {
+                            match unsafe { create_window(dpi) } {
+                                Ok((created, view_layer)) => {
                                     window = Some(created);
+                                    layer = Some(view_layer);
                                     set_status(|s| s.created = true);
                                 }
                                 Err(error) => {
@@ -236,7 +294,7 @@ pub fn pump_forever() -> ! {
                                 }
                             }
                         }
-                        let Some(target) = window else {
+                        let (Some(created), Some(view_layer)) = (window, layer) else {
                             let _ = ack.send(());
                             return;
                         };
@@ -245,20 +303,35 @@ pub fn pump_forever() -> ! {
                             let _ = ack.send(());
                             return;
                         };
-                        if let Some(created) = window {
-                            unsafe {
-                                let _: () = msg_send![created, setFrameOrigin: NSPoint::new(origin[0], origin[1])];
-                                let _: () = msg_send![created, orderFrontRegardless];
+                        // Order onto the target display first, then read its real
+                        // backing scale so the Retina raster stays 1:1.
+                        unsafe {
+                            let _: () = msg_send![created, setFrameOrigin: NSPoint::new(origin[0], origin[1])];
+                            let _: () = msg_send![created, orderFrontRegardless];
+                        }
+                        let wanted = unsafe { window_dpi(created) };
+                        if wanted != dpi {
+                            dpi = wanted;
+                        }
+                        let now = start.elapsed().as_secs_f64();
+                        motion.sample(point, dpi, false, now);
+                        motion.click(now);
+                        match unsafe { present(view_layer, dpi, motion.frame(now, true)) } {
+                            Ok(()) => {
+                                set_status(|s| s.last_error = None);
                             }
+                            Err(error) => set_status(|s| s.last_error = Some(error)),
                         }
                         visible = true;
                         last_show = Instant::now();
+                        animating_until = Some(
+                            Instant::now() + Duration::from_millis(rcu_pointer::HIGHLIGHT_MS + 300),
+                        );
                         set_status(|s| {
                             s.visible = true;
                             s.point = Some(point);
-                            s.last_error = None;
+                            s.dpi = Some(dpi);
                         });
-                        let _ = target;
                     });
                     let _ = ack.send(());
                 }
@@ -280,6 +353,19 @@ pub fn pump_forever() -> ! {
                 Err(TryRecvError::Disconnected) => break,
             }
         }
+        // Animate the highlight while it is active, then settle to idle.
+        if let Some(until) = animating_until {
+            if let Some(view_layer) = layer {
+                let now = start.elapsed().as_secs_f64();
+                let frame = motion.frame(now, true);
+                if Instant::now() >= until && !frame.animating {
+                    animating_until = None;
+                }
+                let _ = unsafe { present(view_layer, dpi, frame) };
+            } else {
+                animating_until = None;
+            }
+        }
         if visible && last_show.elapsed() > IDLE {
             if let Some(created) = window {
                 unsafe {
@@ -292,7 +378,7 @@ pub fn pump_forever() -> ! {
         // Pump the main run loop so AppKit can service its own sources: a
         // borderless window is only ordered on screen while the loop runs.
         unsafe {
-            let _ = CFRunLoop::run_in_mode(kCFRunLoopDefaultMode, Duration::from_millis(50), true);
+            let _ = CFRunLoop::run_in_mode(kCFRunLoopDefaultMode, TICK, true);
         }
     }
 }

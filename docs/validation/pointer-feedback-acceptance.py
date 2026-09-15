@@ -95,9 +95,9 @@ def main():
         time.sleep(0.6)
         rows = overlay_rows(mcp, target)
         row = rows[0] if rows else None
-        expected = [POINT[0] - 13.0, POINT[1] - 13.0, 26.0, 26.0]
+        expected = [POINT[0] - 80.0, POINT[1] - 80.0, 160.0, 160.0]
         near = row is not None and all(abs(row["bounds"][i] - expected[i]) <= 2.0 for i in range(2)) \
-            and abs(row["bounds"][2] - 26.0) <= 2.0 and abs(row["bounds"][3] - 26.0) <= 2.0
+            and abs(row["bounds"][2] - 160.0) <= 2.0 and abs(row["bounds"][3] - 160.0) <= 2.0
         record("feedback.native_window_readback", near,
                {"row": row and {"window": row["window"], "bounds": row["bounds"], "display": row.get("display")}, "expected": expected})
         shot = "/tmp/rcu-overlay-shot.png"
