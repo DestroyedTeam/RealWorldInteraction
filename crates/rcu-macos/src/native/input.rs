@@ -25,7 +25,9 @@ impl NativeMac {
         // Yield only for a real conflict: a person actively using *this* app.
         // Background delivery to a non-frontmost window never races the person's
         // typing in another app, which is exactly what background operation is.
-        if (self.foreground_pid() == Some(self.pid) || self.window_is_main())
+        // The bound app being frontmost means the person's clicks/keys can reach
+        // this window; AXMainWindow is an app-internal notion and never gates.
+        if self.foreground_pid() == Some(self.pid)
             && let Some(seconds) = crate::activity::user_active(1.2)
         {
             return Err(fault(
