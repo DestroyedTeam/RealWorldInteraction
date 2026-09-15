@@ -61,6 +61,10 @@
   ③ 不生效降级链标记：后台 → 独立屏/屏外 → 前台（disruptive 明示，体感输入化）。
   出处：Apple LSOpenApplication/LSLaunchFlags 文档、NSWorkspace.OpenConfiguration
   (activates=false/hides=true, silent.swift gist)、open -g/-j 对 Electron 类不生效的实测贴。
+  **实测修正**：弃用 Carbon 路线 `LSOpenApplication` 在本机 SIGSEGV（已回退并留档）；已改用
+  objc2（依赖树已有）调 AppKit `NSWorkspace.openApplicationAtURL:configuration:`（
+  activates=false/hides=true）——实机验证：Calculator 后台启动成功、`lsappinfo front`
+  未变（不抢前台）、应用状态 `(hidden)` ✓（提交见本轮）。
 - 待实现（用户要求，高优先级）：受控的窗口移动/放置原语（将目标窗口强制放到授权
   显示器），并把"仅授权显示器"作为默认可操作门槛；③ 的识别已就绪，可作为策略输入。
 - 弹窗/对话框实测（2026-09-14 续，提交 98a37fd）：Paint S 的 "Open" 面板（模态 sheet，
