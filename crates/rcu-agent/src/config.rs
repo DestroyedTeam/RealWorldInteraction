@@ -26,6 +26,10 @@ pub struct DisplayPolicy {
     pub built_in: bool,
     #[serde(default)]
     pub id: Option<u32>,
+    /// Off by default: implicit placement on bind is a side effect and must
+    /// be opted in explicitly (incident 2026-09-15).
+    #[serde(default)]
+    pub place_on_bind: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]

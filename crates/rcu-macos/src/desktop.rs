@@ -192,6 +192,12 @@ impl Backend for NativeMacDesktop {
                     .as_ref(),
             )
         {
+            if !policy.place_on_bind {
+                return Err(fault(
+                    "unauthorized_display",
+                    "The window is not on the authorized display and implicit placement is disabled; place it explicitly first.",
+                ));
+            }
             let list = crate::native::displays()?;
             let target = list
                 .iter()

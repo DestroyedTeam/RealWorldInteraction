@@ -37,6 +37,10 @@ pub(crate) struct DisplayRecord {
 pub struct AuthorizedDisplay {
     pub built_in: bool,
     pub id: Option<u32>,
+    /// Whether binding may implicitly move a window onto the authorized
+    /// display. Off by default: placement is a side effect and must be
+    /// requested explicitly (incident 2026-09-15).
+    pub place_on_bind: bool,
 }
 impl AuthorizedDisplay {
     pub(crate) fn allows(&self, display: Option<&DisplayRecord>) -> bool {

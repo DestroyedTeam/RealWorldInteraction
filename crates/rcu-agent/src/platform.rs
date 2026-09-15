@@ -36,6 +36,7 @@ pub fn backend(config: &Config, policy: &Principal, context: &str) -> Result<Box
                 .map(|display| rcu_macos::AuthorizedDisplay {
                     built_in: display.built_in,
                     id: display.id,
+                    place_on_bind: display.place_on_bind,
                 }),
         )?)),
         #[cfg(windows)]

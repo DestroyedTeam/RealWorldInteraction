@@ -138,6 +138,7 @@ fn authorized_display_requires_an_unambiguous_matching_display() {
         bounds: [0.0, 0.0, 2048.0, 1152.0],
     };
     let policy = AuthorizedDisplay {
+        place_on_bind: false,
         built_in: true,
         id: None,
     };
@@ -146,6 +147,7 @@ fn authorized_display_requires_an_unambiguous_matching_display() {
     assert!(!policy.allows(None));
     assert!(
         AuthorizedDisplay {
+            place_on_bind: false,
             built_in: true,
             id: Some(1)
         }
@@ -153,6 +155,7 @@ fn authorized_display_requires_an_unambiguous_matching_display() {
     );
     assert!(
         !AuthorizedDisplay {
+            place_on_bind: false,
             built_in: true,
             id: Some(2)
         }

@@ -248,7 +248,14 @@ impl NativeMac {
             ffi::AXUIElementSetMessagingTimeout(application.0, 1.0);
         }
         let window = self.resolve_window_element(&application, self.window_frame()?)?;
-        let (x, y) = crate::native::placement_position(ax_rect(&window)?, display.rect);
+        let window_rect = ax_rect(&window)?;
+        if window_rect.w > display.rect.w || window_rect.h > display.rect.h {
+            return Err(fault(
+                "placement_impossible",
+                "The window is larger than the authorized display; it was not moved.",
+            ));
+        }
+        let (x, y) = crate::native::placement_position(window_rect, display.rect);
         let point = core_graphics::geometry::CGPoint::new(x, y);
         let value = unsafe {
             ffi::AXValueCreate(
