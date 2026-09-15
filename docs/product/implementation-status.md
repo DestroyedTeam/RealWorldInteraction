@@ -243,3 +243,13 @@
 - 附带知识（已入 Skill）：模态弹窗开启时应用工具栏按钮 `enabled=false`，act 以
   `input_boundary_changed (enabled_disabled)` 正确 fail-closed —— 先关模态再操作。
 - 提交：`ea6a819`（代码）、`75ad4d5`（验收）。
+
+## #4 追加：跨平台同源材质（2026-09-15 晚）
+
+- 用户要求"结合 win 版光标，不得平台割裂"→ 把 Win 版 `pointer_feedback` 的
+  `material.rs`/`motion.rs` 抽为共享 crate **`rcu-pointer`**（93 个原测试随迁全绿，
+  Win 侧原位重导出、呈现端零改动）；mac 端 overlay 改用同一材质渲染为 CALayer
+  contents，DPI 由窗体的 `backingScaleFactor` 决定（Retina=192，1:1 锐利）。
+- 活体验收仍 7/7 PASS（窗口 [320,1220,160,160]、像素证据 55KB、act 自动跟随）；
+  演示图存档 `docs/validation/demo-a1-cursor.png`（sprite）与 `demo-a1-context.png`（环境照）。
+- 提交：`acca9fd`（架构移动：抽 crate）、随后一条（mac 呈现 + 验收）。

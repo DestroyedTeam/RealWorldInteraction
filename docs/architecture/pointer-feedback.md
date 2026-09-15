@@ -106,3 +106,24 @@ Portable tests cover bounded DPI/raster allocation, premultiplied pixels, distin
 idle/pressed visuals, idle-without-task/after-action behavior, and suspension acknowledgement/nesting. Windows cross-build and
 native smoke tests remain separate gates. The integration must preserve native
 identity, focused-window checks, UIA point guards, leases and the operation ledger.
+
+## macOS presenter (same material, separate host)
+
+The A1 material and motion expression live in the shared `rcu-pointer` crate;
+`rcu-windows/src/pointer_feedback` re-exports them at its original paths so its
+presenter is unchanged. The macOS presenter renders the identical material
+inside a borderless, click-through AppKit window (`RCU AI Cursor`, accessory
+policy, level 1000) owned by the device agent:
+
+- AppKit work is confined to the process main thread, which pumps a bounded
+  CFRunLoop; the serving agent runs on its own thread and exits with it.
+- The raster dpi comes from the window's `backingScaleFactor` after it is
+  ordered onto the target display (Retina 1:1), clamped to `MAX_DPI`.
+- Short-horizon differences from Windows: no WS_EX_TRANSPARENT equivalent is
+  needed (`setIgnoresMouseEvents`), per-monitor work-area clamping is not
+  implemented (the hotspot follows the requested point exactly), and capture
+  suspension is unnecessary because `computer.observe` captures the bound
+  window, which never contains the overlay window.
+- The idle lens auto-hides after ~45 s; every dispatched act re-shows it at the
+  action point. It never writes to the pasted clipboard, never injects input and
+  is not a goal-verification signal.

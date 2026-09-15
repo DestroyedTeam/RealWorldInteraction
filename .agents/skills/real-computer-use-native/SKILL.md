@@ -332,3 +332,14 @@ platform capabilities remain unsupported until actually implemented and tested.
   That is correct: close the modal first (bind the panel, tap `Cancel`), then
   the toolbar actions dispatch again. Never retry the same reference blindly —
   re-observe after closing the modal.
+
+## Shared pointer material (rcu-pointer)
+
+- The AI marker is the A1 atmospheric lens rendered by the shared `rcu-pointer`
+  crate (diamond + rim + `RCU` label + animated highlight). Windows and macOS
+  use the same material; do not re-implement the visuals per platform.
+- macOS specifics: the overlay window title is `RCU AI Cursor`; its raster dpi
+  follows the window's `backingScaleFactor` (192 on Retina, 96 on 1x); the lens
+  hotspot is the window center, so readback bounds are `point - 80` in points.
+- `computer.pointer_feedback` receipts report `dpi` and `material`, and every
+  dispatched act re-shows the lens at the action point.
