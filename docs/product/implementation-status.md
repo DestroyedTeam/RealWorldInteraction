@@ -115,6 +115,19 @@
 - 明确未纳入：Freeform 画笔（Draw with Pen）点击与自由绘制仍受瞬态弹层可见性限制；
   Paint S 画笔/样式可见性；均记录为后续项，不冒充已完成。
 
+## 弹窗一等交付实测（2026-09-15，#3）
+
+- 场景：用户在 Paint S 里打开了系统文件选择面板（Finder 选文件弹窗）。
+- 实测：该弹窗是**独立进程窗口**（CG 层可发现，owner pid ≠ 宿主应用）；绑定它时触发
+  `unauthorized_display: Native placement did not move the window onto the authorized
+  display; not bound.` —— 面板落在非授权屏且 **AXPosition 对系统面板不生效（不可搬移）**，
+  已实测的授权屏策略因此 fail-closed 拒绝绑定（不绑定、不输入）。
+- 结论与待决：① 授权屏策略按预期保护了"只在 MacBook 屏操作"的要求；② 暴露真实限制：
+  系统面板可能不可搬移 → 需要设计"系统面板例外/显式豁免"策略（配置项或一次性授权），
+  或由用户在正确屏幕上重开；③ 已在授权屏上的面板路径（bind+observe+AXPress）此前已实测可用。
+- 伴随：`role`/`actions`/`enabled`/`subrole` 四项交付已上线（67/67、37/57、34/40、AXStandardWindow
+  实测），动作白名单与派发路径均有活体回执。
+
 ## 已有基础，不重复从零做
 
 - 独立 headless Rust Windows agent、设备 mTLS、全局 MCP；当前通用 Skill 为源码/项目镜像，旧 Plugin 包仅属历史验收，不冒充全局 Plugin/Skill 安装。
