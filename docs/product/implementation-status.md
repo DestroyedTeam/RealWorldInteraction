@@ -62,9 +62,12 @@
   出处：Apple LSOpenApplication/LSLaunchFlags 文档、NSWorkspace.OpenConfiguration
   (activates=false/hides=true, silent.swift gist)、open -g/-j 对 Electron 类不生效的实测贴。
   **实测修正**：弃用 Carbon 路线 `LSOpenApplication` 在本机 SIGSEGV（已回退并留档）；已改用
-  objc2（依赖树已有）调 AppKit `NSWorkspace.openApplicationAtURL:configuration:`（
-  activates=false/hides=true）——实机验证：Calculator 后台启动成功、`lsappinfo front`
-  未变（不抢前台）、应用状态 `(hidden)` ✓（提交见本轮）。
+  objc2（依赖树已有）调 AppKit `NSWorkspace.openApplicationAtURL:configuration:`——
+  实测①（hides=true）：Calculator 后台启动、`lsappinfo front` 未变、状态 `(hidden)` ✓；
+  实测②（hides=false + 快归位流水线）：后台启动 → 50ms watcher 捕获首个新窗口 →
+  AXPosition 归位到内建屏 → 原生复查 bounds=(306,1190,230,408)、前台仍未变、全程 2.32s ✓。
+  **已知约束**：hidden 启动的窗口不在 on-screen 发现范围（watcher 找不到），故流水线以
+  "可见但不抢焦点"启动、隐藏作为后续独立步骤。
 - 待实现（用户要求，高优先级）：受控的窗口移动/放置原语（将目标窗口强制放到授权
   显示器），并把"仅授权显示器"作为默认可操作门槛；③ 的识别已就绪，可作为策略输入。
 - 弹窗/对话框实测（2026-09-14 续，提交 98a37fd）：Paint S 的 "Open" 面板（模态 sheet，
