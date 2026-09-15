@@ -146,6 +146,20 @@
 - 关键结论：**新增 MCP 工具不会破坏历史录制校验**——`startup_diagnostic.rs` 与
   `orchestration/mcp.rs` 的 `tools.len()!=19`/`schema_sha()` 校验读的是**历史 fixture 自身**
   （自洽校验），rcu-mcp 网关侧未发现对实时工具目录的数量/哈希断言。
+- **施工清单（按序照单执行，每步一编译）**：
+  1) `crates/rcu-core/src/lib.rs`：新增引擎方法 `move_window(target, lease, reference, display)` ——
+     参数借 `Resolved`（元素/像素接地引用）+ 目标显示器（`built_in` 或 `id`）；语义=原生移动，
+     含尺寸预检、失败 fail-closed、持久台账（复用 act 的 journal 路径与 request_id 去重）。
+  2) `crates/rcu-macos/src/native/metadata.rs`：已具 `place_window_on`（含 `placement_impossible`
+     预检）→ 仅需暴露一个"按显示器 id/内置判定"的包装与 `Display` 查找。
+  3) `crates/rcu-windows/src/...`：同名后端方法返回显式不支持（fail-closed，不静默）。
+  4) `crates/rcu-agent/src/runtime`：在工具目录（`catalog::executable/validate`）注册
+     `computer.move_window`（write 工具，需 input 授权与租约），并加入 `capabilities.rs`
+     的工具清单；执行分支调用引擎方法。
+  5) `crates/rcu-mcp/src/server/mod.rs`：注册 `#[tool] computer.move_window`（args：
+     target/lease/request_id + reference + display 选择），走既有 Prepare/Execute。
+  6) 验收：`work/pua-loop/live-acceptance.sh` 增用例——把测试窗口在授权屏↔非授权屏往返一次，
+     证据 JSON 落盘；Windows 侧仅断言"显式不支持"。
 - **改动面（已勘定，比预想小）**：设备线协议是 **tool 泛型**（`Call::Prepare{tool,arguments}` /
   `Call::Execute{operation_ref}` 按工具名路由，无 per-operation 枚举），所以不需要动
   device.rs 的 Call/Reply；实现集中在：① rcu-mcp `#[tool]` 注册（args 结构 + 描述）；
