@@ -110,6 +110,11 @@ impl Backend for NativeMac {
             serde_json::json!("pinned foreground PID + CGWindowID + process start");
         // The legacy pinned constructor does not gain dynamic catalog operations.
         caps["window_discovery"]["implemented"] = serde_json::json!(false);
+        caps["pointer_feedback"] = crate::overlay::status_json();
+        caps["user_input_recent_seconds"] = match crate::activity::seconds_since_user_input() {
+            Some(seconds) => serde_json::json!(seconds),
+            None => serde_json::Value::Null,
+        };
         caps
     }
     fn observe(&mut self) -> Result<Scene> {

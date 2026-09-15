@@ -374,6 +374,17 @@ pub struct Popup {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display: Option<serde_json::Value>,
 }
+fn intent_kind(intent: &Intent) -> &'static str {
+    match intent {
+        Intent::Click => "click",
+        Intent::DoubleClick => "double_click",
+        Intent::ContextMenu => "context_menu",
+        Intent::Text => "text",
+        Intent::KeyChord => "key_chord",
+        Intent::Scroll => "scroll",
+        Intent::Drag(_) => "drag",
+    }
+}
 pub fn popup_kind(subrole: Option<&str>) -> &'static str {
     match subrole {
         Some("AXStandardWindow") | Some("AXDocumentWindow") => "standard",
@@ -854,6 +865,55 @@ impl Engine {
     pub fn release(&mut self, token: &str) -> Result<()> {
         self.leases.release(token)
     }
+    fn operations_path(&self) -> PathBuf {
+        self.state.join("operations.jsonl")
+    }
+    /// Best-effort user-facing operation journal: one bounded JSON line per
+    /// dispatched action. It records what was attempted, never that it took
+    /// effect, and it is never replayed.
+    fn log_operation(&self, receipt: &Receipt, target: &str, intent: &Intent, resolved: &Resolved) {
+        let entry = serde_json::json!({
+            "ts_unix_ms": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0),
+            "target": target,
+            "request_id": receipt.request_id,
+            "intent": intent_kind(intent),
+            "point": resolved.point,
+            "scope": resolved.scope,
+            "dispatch": receipt.dispatch,
+            "dispatch_error": receipt.dispatch_error.as_ref().map(|e| e.code.clone()),
+        });
+        let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.operations_path())
+        else {
+            return;
+        };
+        let mut line = serde_json::to_vec(&entry).unwrap_or_default();
+        line.push(b'\n');
+        let _ = file.write_all(&line);
+    }
+    /// Bounded tail of the operation journal, newest last.
+    pub fn recent_operations(&self, limit: usize) -> Vec<serde_json::Value> {
+        let mut text = String::new();
+        let Ok(file) = File::open(self.operations_path()) else {
+            return Vec::new();
+        };
+        if file.take(65536).read_to_string(&mut text).is_err() {
+            return Vec::new();
+        }
+        let mut rows = text
+            .lines()
+            .rev()
+            .take(limit.min(20))
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .collect::<Vec<_>>();
+        rows.reverse();
+        rows
+    }
     fn journal_path(&self, key: &str, request: &str) -> PathBuf {
         self.state
             .join("receipts")
@@ -1146,6 +1206,7 @@ impl Engine {
             .map(|(name, _)| name.clone())
             .collect::<Vec<_>>();
         self.refs.retain(|r| !aliases.contains(&r.target));
+        self.log_operation(&receipt, target, &intent, &resolved);
         Ok(receipt)
     }
     pub fn verify(&mut self, verification: Verification<'_>) -> Result<serde_json::Value> {

@@ -22,6 +22,14 @@ impl NativeMac {
                 "Start an explicitly authorized candidate with --allow-input.",
             ));
         }
+        if let Some(seconds) = crate::activity::user_active(1.2) {
+            return Err(fault(
+                "user_active",
+                &format!(
+                    "A person clicked or typed {seconds:.2}s ago; RCU yields and never queues input."
+                ),
+            ));
+        }
         if target.scope.pid != self.pid || target.scope.window != self.window_name() {
             return Err(fault(
                 "target_mismatch",

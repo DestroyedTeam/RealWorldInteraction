@@ -119,6 +119,7 @@ impl Runtime {
         result.data["input_domain_fenced"] =
             json!(domain.as_deref().is_some_and(|key| self.is_fenced(key)));
         result.data["resource_domain"] = json!(domain);
+        result.data["recent_operations"] = json!(recent_operations(&self.config.state_root, 5));
         result.data["runtime_status"] = json!(runtime_status);
         // Diagnostic process facts remain available when desktop construction is
         // unavailable. They do not turn service health into GUI/input authority.
@@ -153,6 +154,35 @@ fn macos_tool_implemented(tool: &str) -> bool {
             | "computer.move_window"
             | "computer.pointer_feedback"
     )
+}
+
+/// Bounded user-facing tail of the per-principal operation journals. It reports
+/// what RCU attempted, never that an action took effect.
+fn recent_operations(state_root: &std::path::Path, limit: usize) -> Vec<serde_json::Value> {
+    let Ok(entries) = std::fs::read_dir(state_root.join("principals")) else {
+        return Vec::new();
+    };
+    let mut rows: Vec<serde_json::Value> = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path().join("operations.jsonl");
+        let mut text = String::new();
+        let Ok(file) = std::fs::File::open(&path) else {
+            continue;
+        };
+        use std::io::Read;
+        if file.take(65536).read_to_string(&mut text).is_err() {
+            continue;
+        }
+        rows.extend(
+            text.lines()
+                .rev()
+                .take(limit.min(20))
+                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok()),
+        );
+    }
+    rows.sort_by_key(|row| std::cmp::Reverse(row["ts_unix_ms"].as_u64().unwrap_or(0)));
+    rows.truncate(limit.min(20));
+    rows
 }
 
 #[cfg(test)]

@@ -30,7 +30,10 @@ impl Executor {
             };
         }
         match tool {
-            "computer.targets" => value(json!({"targets":self.engine.targets()})),
+            "computer.targets" => value(json!({
+                "targets": self.engine.targets(),
+                "recent_operations": self.engine.recent_operations(5),
+            })),
             "computer.observe" => {
                 let a = args!(ObserveArgs);
                 let observation = self.engine.observe_with_region(&a.target, a.region)?;
