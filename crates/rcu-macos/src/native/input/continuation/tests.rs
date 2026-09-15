@@ -96,6 +96,7 @@ impl Fake {
             image_size: [0, 0],
             pixel_to_desktop: None,
             elements: vec![Element {
+                enabled: None,
                 actions: vec![],
                 role: None,
                 id: self.hit_id.clone(),

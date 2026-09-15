@@ -117,6 +117,10 @@ pub struct Element {
     /// what the control can do, for agent-side inference.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<String>,
+    /// Native enabled state when reported: whether the control can be
+    /// operated at all right now (a disabled control fails closed).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
     pub point: [f64; 2],
     pub visible: Option<bool>,
     pub occluded: Option<bool>,

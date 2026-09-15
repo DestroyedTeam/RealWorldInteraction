@@ -586,21 +586,19 @@ fn element_description(el: &Cf) -> Result<AxElement> {
         el.attr("AXValue").ok().and_then(|v| v.string().ok())
     });
     let actions = action_names(el);
+    let enabled = el.attr("AXEnabled").ok().and_then(|v| v.boolean());
     Ok(AxElement {
         element: Element {
             id,
             name,
             role: Some(role),
             actions,
+            enabled,
             point: [r.x + r.w / 2.0, r.y + r.h / 2.0],
             visible: None,
             occluded: None,
             state_revision: Some(digest(
-                format!(
-                    "{text_class:?}:{value:?}:{:?}",
-                    el.attr("AXEnabled").ok().and_then(|v| v.boolean())
-                )
-                .as_bytes(),
+                format!("{text_class:?}:{value:?}:{enabled:?}").as_bytes(),
             )),
         },
         text_class,
@@ -988,6 +986,7 @@ mod tests {
     fn classified(class: TextClass) -> AxElement {
         AxElement {
             element: Element {
+                enabled: None,
                 actions: vec![],
                 role: None,
                 id: "id".into(),
