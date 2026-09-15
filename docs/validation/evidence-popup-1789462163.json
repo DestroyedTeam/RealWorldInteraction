@@ -1,0 +1,118 @@
+{
+  "stages": {
+    "targets": {
+      "ok": true,
+      "detail": {
+        "target": "mac-host:2ce2fb59-6413-47fc-b855-fe84eaf942bf:a4a9c5fb-d056-4102-9b6b-812948d782e6"
+      }
+    },
+    "paint-s.window_with_toolbar": {
+      "ok": true,
+      "detail": {
+        "window": "cgwindow:15556",
+        "title": "white-canvas-2x.png",
+        "display": true
+      }
+    },
+    "observe.popups_delivered": {
+      "ok": true,
+      "detail": {
+        "rows": [
+          {
+            "window": "cgwindow:15556",
+            "kind": "standard",
+            "subrole": "AXStandardWindow",
+            "title": "white-canvas-2x.png"
+          }
+        ]
+      }
+    },
+    "observe.kinds_coarse_only": {
+      "ok": true,
+      "detail": {
+        "kinds": [
+          "standard"
+        ]
+      }
+    },
+    "observe.bound_window_listed": {
+      "ok": true,
+      "detail": {
+        "bound": "cgwindow:15556",
+        "listed": [
+          "cgwindow:15556"
+        ]
+      }
+    },
+    "paint-s.add_image_visible": {
+      "ok": true,
+      "detail": {
+        "element": "c48f0c6da8cc6caefd65dbd502f4fd3152fced596e9db7b98d7e957c1b03481a"
+      }
+    },
+    "act.add_image": {
+      "ok": true,
+      "detail": {
+        "dispatch": "returned",
+        "code": null
+      }
+    },
+    "popup.delivered": {
+      "ok": true,
+      "detail": {
+        "row": {
+          "window": "cgwindow:17677",
+          "kind": "unknown",
+          "subrole": null,
+          "title": "Open",
+          "bounds": [
+            580.0,
+            1448.0,
+            880.0,
+            448.0
+          ]
+        },
+        "rows": [
+          {
+            "window": "cgwindow:15556",
+            "kind": "standard",
+            "title": "white-canvas-2x.png"
+          },
+          {
+            "window": "cgwindow:17677",
+            "kind": "unknown",
+            "title": "Open"
+          }
+        ]
+      }
+    },
+    "popup.discoverable": {
+      "ok": true,
+      "detail": {
+        "window": "cgwindow:17677"
+      }
+    },
+    "popup.bound": {
+      "ok": true,
+      "detail": {
+        "relation_receipt": "owned_popup_or_initial"
+      }
+    },
+    "popup.cancel_visible": {
+      "ok": true,
+      "detail": {}
+    },
+    "popup.closed": {
+      "ok": true,
+      "detail": {
+        "dispatch": "returned",
+        "code": null
+      }
+    },
+    "release": {
+      "ok": true,
+      "detail": {}
+    }
+  },
+  "failures": []
+}
