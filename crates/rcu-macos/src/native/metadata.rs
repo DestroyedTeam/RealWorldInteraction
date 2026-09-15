@@ -228,6 +228,20 @@ impl NativeMac {
     /// top-left lands on the authorized display. No activation, no synthetic
     /// input; the exact window element is re-resolved first and failures stay
     /// fail-closed.
+    /// Native subrole of the resolved pinned window (AXStandardWindow, AXSheet,
+    /// AXDialog, AXPopover, ...): dialog awareness for the caller without
+    /// classifying by title. Read-only; no activation and no input.
+    pub(crate) fn window_subrole(&self) -> Result<Option<String>> {
+        let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
+        unsafe {
+            ffi::AXUIElementSetMessagingTimeout(application.0, 0.25);
+        }
+        let window = self.resolve_window_element(&application, self.window_frame()?)?;
+        Ok(window
+            .attr("AXSubrole")
+            .ok()
+            .and_then(|value| value.string().ok()))
+    }
     pub(crate) fn place_window_on(&self, display: &crate::native::Display) -> Result<()> {
         let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
         unsafe {

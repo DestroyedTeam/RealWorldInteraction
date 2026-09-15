@@ -256,12 +256,13 @@ impl Backend for NativeMacDesktop {
             ));
         }
         self.check_identity()?;
+        let subrole = backend.window_subrole().ok().flatten();
         self.selected = Some(backend);
         let placed_json = placed.map(|rect| {
             json!({"bounds":[rect.x,rect.y,rect.w,rect.h],"display":display.as_ref().map(crate::catalog::DisplayRecord::from_native)})
         });
         Ok(
-            json!({"bound":selected,"relation":selection.relation,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"placed":placed_json,"next":"Observe this exact window. Background observation and input are supported; the window does not need to be frontmost. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
+            json!({"bound":selected,"relation":selection.relation,"subrole":subrole,"input_authorized":self.allow_input,"input_sent":false,"activated":false,"placed":placed_json,"next":"Observe this exact window. Background observation and input are supported; the window does not need to be frontmost. Engine invalidates all prior frames/references; unsupported owner relations are not inferred."}),
         )
     }
     fn observe(&mut self) -> Result<Scene> {
