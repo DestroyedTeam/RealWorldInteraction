@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let pixels = (display.pixels_wide(), display.pixels_high());
         let display_scale = pixels.0 as f64 / bounds.size.width.max(1.0);
         println!(
-            "display id={} built_in={} origin_pt=({:.1},{:.1}) size_pt=({:.1},{:.1}) pixels={}x{} scale={:.4}",
+            "display id={} main={} origin_pt=({:.1},{:.1}) size_pt=({:.1},{:.1}) pixels={}x{} scale={:.4} (CG scale is NOT the backing scale under HiDPI)",
             id,
             id == CGDisplay::main().id,
             bounds.origin.x,

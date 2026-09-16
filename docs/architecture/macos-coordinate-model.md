@@ -166,3 +166,23 @@
 2. ink probe：act 前后各 observe，返回像素差异包围盒（标定与落笔验收自动化）。
 3. §6 捕获区域贯通 + §10 拓扑指纹失效 + JS 车道放行新工具 + 离线单测。
 4. 以上完成后：三点探针 → 仿射拟合 → 全图绘制 → ink probe 自检 → 用户 iShot/微信坐标复核。
+
+## 13. 待实现规范：ink probe（自动标定/落笔验收）
+
+**目标**：一次 act 前后各取一帧，返回**像素差异包围盒**（图像 px），使标定与"是否落笔"
+完全自动化，不再依赖人工看图/读数。
+
+**接口（拟）**：`computer.ink_delta {target, lease, before: {frame, artifact}, after: {frame, artifact}, region?}`
+→ `{changed: bool, bbox_px: [x0,y0,x1,y1], changed_ratio, region}`（两帧须同 target/同尺寸）。
+
+**实现落点**
+- rcu-imaging：复用现有 PNG 解码（`view()` 已解码并缩放）→ 新增 `diff_bbox(a, b) -> Option<[u32;4]>`
+  （逐像素比较，容差可配；只返回包围盒与比例，不回传像素）。
+- rcu-core：`Engine::ink_delta(...)`（校验两 artifact 属于同 target/frame 系，字节上限沿用 budget）。
+- rcu-agent：executor 分支 + 目录/能力注册（writes: false，纯读取）。
+- rcu-mcp：`#[tool] computer.ink_delta` + 参数；JS 车道同步放行。
+- 测试：rcu-imaging 纯函数单测（构造两张小图 → 期望 bbox）；离线可跑。
+- 用途：探针标定（3 点 → 仿射拟合）、逐批落笔自检、最终"复刻是否有落笔"的机器验收。
+
+**配合项**：act/drag 回执增加 `press_point_pt` 与 `anchor_element`（原生实测），
+用于解释并修复当前 ≈(−100,−47)pt 的按下点偏移。
