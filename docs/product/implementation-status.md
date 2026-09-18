@@ -362,3 +362,16 @@ win11-vm 侧为 `device_connect_timeout`（VM 未启动，属预期）。
 - 附带：给 codegraph 补 `"timeout": 30000`（rcu 本来就有 `timeout: 15000`，这也是三者差异之一 ✓）；
   `codegraph serve --mcp` 能正常启动（stdio 静默等待握手 ✓）。
 - 备份：`~/.config/opencode/opencode.json.bak-<ts>`；如需恢复 proxyman，把它改回 `true` 并重启 omp。
+
+## 设计原则：按钮字典是"缓存"，不是"使用前置条件"（2026-09-18）
+
+- 用户提问：是否每个应用都要先做按钮/功能字典才能使用？
+- **答复：不需要 ✗。** AX 本身就是通用字典：`computer.observe` 应给出
+  role / name / actions / enabled / selected / value / point，让 agent 零前置知识即可操作任意应用 ✓。
+  字典仅作**带来源与版本的缓存**（"实测学习所得"），绝不作为门槛 ✓。
+- 本次之所以需要实证：Paint S 的**工具按钮匿名**（无 AXTitle ✗）——属该应用的无障碍缺口，
+  不是通用情形 ✓。**产品修复（本日已实现）**：对**无名字**的元素补读 AXDescription/AXHelp
+  （图标按钮通常在此提供功能名 ✓），且只对匿名元素读取以避免吃掉有界遍历预算 ✓；
+  Element 新增 `description` 字段 ✓。
+- 用户判断修正：我提出的"工具栏样式会切换"**很可能不成立** ✗；
+  更可能是**文档/窗口状态陈旧**（检查器 Width 从 2144 变 1820 ✓）→ 便宜验证：关闭重开该文档后再 observe ✓。
