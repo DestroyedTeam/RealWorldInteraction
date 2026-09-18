@@ -294,3 +294,19 @@ Edit 菜单第 1 项即撤销（名字会变："Undo Delete"/"Undo Add Line" ✓
 - 当前仍未完成：旧 v2 的 8 个纠正形状删除、其对应 8 个 v3 correct 几何、底部其余图标、颜色与文本。
 
 **当前证据对比**：`docs/validation/replica-v4-comparison-20260918.png`（原图目标 | 当前画布）、`replica-v4-current-20260918.png`、`replica-v4-overlay-20260918.png`。
+ 
+## 19. 腾讯图标单文件导入收口（2026-09-18）
+ 
+Open 面板批量导入的失败根因已验证：面板按最近文件排序，固定 `group 1` 不一定是请求文件；面板保持 modal 后，后续 RCU 输入全部 `native_dispatch_entered=false`。修正为：
+1. 删除本轮临时 `~/Documents/icon-tdesign-*.png`；
+2. 每次只复制一个目标 PNG；
+3. Add Image → AXOpen `group 1` → radio 19 → `act_checked` 移动 → 回读状态栏；
+4. 下一枚前重复清理。
+
+按此 SOP 已完成输入栏 5 枚腾讯 TDesign MIT 图标：
+- `folder`: `(880.8,460.5)` → 状态栏 `X=881,Y=460`；
+- `image`: `(932.1,460.8)`；`mail`: `(974.5,460.8)`；`microphone`: `(1016.6,460.8)`；`time`: `(1527.2,460.8)`。
+目标/偏移及 RCU request receipt：`work/replica-verify-20260915/run5/bottom-icon-isolated-results.json`；整窗证据：`run5/bottom-icons-isolated-final.png`、`run5/icon-fill-final.png`。
+更新对比：`docs/validation/replica-v5-icon-fill-{current,comparison,overlay}-20260918.png`。
+
+当前图标已填：头部电话、videocam、TDesign share、TDesign add；输入栏 folder、image、mail、microphone、time；剩余 header grid/chevron/more、底栏 smiley/scissors/people/screen/robot、星标等待后续，文本与颜色仍未填。
