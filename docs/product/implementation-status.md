@@ -350,3 +350,15 @@ win11-vm 侧为 `device_connect_timeout`（VM 未启动，属预期）。
 
 **运维改进项**：配对有效期偏短（~3 天）→ 需“到期提醒/续签脚本/更长有效期”其一，
 避免每次静默失效；另可加“证书将过期”能力项提示。
+
+## MCP 配置事故：项目级"缺 type 覆盖"让 proxyman 一直 connecting（2026-09-18）
+
+- 症状：omp/opencode 里 `proxyman`、`codegraph` 长时间 "still connecting"，只有 rcu 正常。
+- 根因（proxyman）：此前为省上下文在**项目级** `opencode.json` 写了
+  `{"mcp":{"proxyman":{"enabled":false}}}`（**没有 `type`**）。更新后的 omp 会把这类条目
+  当成一个不完整/无法启动的服务器 → 一直 connecting ✗。
+- 处置：删除项目级 `opencode.json`；改为在**全局**配置的 proxyman 条目上设 `"enabled": false`
+  （保留完整 `type`/`command`，schema 合法）→ 期望显示为"已禁用"而非"连接中" ✓。
+- 附带：给 codegraph 补 `"timeout": 30000`（rcu 本来就有 `timeout: 15000`，这也是三者差异之一 ✓）；
+  `codegraph serve --mcp` 能正常启动（stdio 静默等待握手 ✓）。
+- 备份：`~/.config/opencode/opencode.json.bak-<ts>`；如需恢复 proxyman，把它改回 `true` 并重启 omp。
