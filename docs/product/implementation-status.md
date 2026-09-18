@@ -329,3 +329,24 @@
   - **窗口级键盘路径**：允许把 Escape/方向键等投递给"绑定窗口"而非要求精确聚焦元素 ✓。
   - **面板跟随归属**（已在列）：RCU 引发的面板落到别的显示器 → 显式移回 owner 所在显示器 ✓。
   - 事件读侧：布局变化后元素的 AX 位置可能滞后 → 以"回读裁剪"为准（操作规范已记录 ✓）。
+
+## 事故：MCP 连不上（2026-09-17/18）——配对证书过期
+
+**现象**：`computer.targets` 返回 `device_connection_failed: certificate expired
+(verification time 1789694878, not valid after 1789618537)`；随后（重签后）变为 `BadSignature`。
+win11-vm 侧为 `device_connect_timeout`（VM 未启动，属预期）。
+
+**根因**：9/15 配对的证书有效期仅约 43h（3 天窗口），到期后适配器→agent 的 TLS 校验失败。
+**处置（已完成）**：
+1. `rcu-link-provision --profile-dir <AP>/agent-mac-v1/pairing-20260917` 重新签发（新 CA/三身份 ✓，
+   有效期至 1789954110 ≈ 3 天）。
+2. `agent.json`：`identity.*` → `pairing-20260917/agent/*`；`principals[0]`(input) = 新 **model** 证书 pin
+   `e3397cc2…`、`principals[1]`(observe) = 新 **controller** 证书 pin `caf7998f…`（旧配置已备份 `.bak-<ts>`）。
+3. `client-v1/profile.json`：`devices[mac_host].identity.*` → `pairing-20260917/model/*`；
+   `agent_pin` = 新 agent 证书 pin `efd82456…`。
+4. 重启 rcu-agent ✓（实例 189417ab，监听正常）。
+**剩余一步（需用户操作）**：**重启 omp/opencode** —— 正在运行的适配器进程仍持有旧 profile（内存），
+必须重启后才会用新证书，否则一直 `BadSignature`。
+
+**运维改进项**：配对有效期偏短（~3 天）→ 需“到期提醒/续签脚本/更长有效期”其一，
+避免每次静默失效；另可加“证书将过期”能力项提示。
