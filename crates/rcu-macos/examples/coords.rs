@@ -50,16 +50,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Cursor position: global display points, top-left origin (never moves it).
     if let Ok(source) = core_graphics::event_source::CGEventSource::new(
         core_graphics::event_source::CGEventSourceStateID::CombinedSessionState,
-    ) {
-        if let Ok(event) = core_graphics::event::CGEvent::new(source) {
-            let p = event.location();
-            println!("cursor_pt=({:.2},{:.2})", p.x, p.y);
-            println!(
-                "cursor_in_cocoa=(x={:.2}, y={:.2})  [primary_height - cg_y]",
-                p.x,
-                main_bounds.size.height - p.y
-            );
-        }
+    ) && let Ok(event) = core_graphics::event::CGEvent::new(source)
+    {
+        let p = event.location();
+        println!("cursor_pt=({:.2},{:.2})", p.x, p.y);
+        println!(
+            "cursor_in_cocoa=(x={:.2}, y={:.2})  [primary_height - cg_y]",
+            p.x,
+            main_bounds.size.height - p.y
+        );
     }
 
     // Worked example: the Paint S window observed as 1262x551 pt with a

@@ -145,6 +145,9 @@ impl Backend for Fixture {
                     } else {
                         s.as_bytes()
                     })),
+                    selected: None,
+                    value: None,
+                    value_truncated: false,
                 })
                 .collect(),
             captured_unix_ms: 0,

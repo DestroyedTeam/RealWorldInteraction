@@ -659,6 +659,25 @@ fn element_description(el: &Cf) -> Result<AxElement> {
     });
     let actions = action_names(el);
     let enabled = el.attr("AXEnabled").ok().and_then(|v| v.boolean());
+    // Selection state is read only for roles that can carry it: an extra AX
+    // round-trip per element would blow the bounded walk's time budget and
+    // truncate later nodes (the toolbar row). The value reuses the classified
+    // text value above rather than asking AXValue a second time.
+    let ax_selected = if matches!(
+        role.as_str(),
+        "AXRadioButton" | "AXCheckBox" | "AXTab" | "AXMenuItem" | "AXRow" | "AXButton"
+    ) {
+        el.attr("AXSelected").ok().and_then(|v| v.boolean())
+    } else {
+        None
+    };
+    let (ax_value, ax_value_truncated) = match &value {
+        Some(text) if !text.is_empty() => {
+            let truncated = text.chars().count() > 64;
+            (Some(text.chars().take(64).collect::<String>()), truncated)
+        }
+        _ => (None, false),
+    };
     Ok(AxElement {
         element: Element {
             id,
@@ -672,6 +691,9 @@ fn element_description(el: &Cf) -> Result<AxElement> {
             state_revision: Some(digest(
                 format!("{text_class:?}:{value:?}:{enabled:?}").as_bytes(),
             )),
+            selected: ax_selected,
+            value: ax_value,
+            value_truncated: ax_value_truncated,
         },
         text_class,
         value,
@@ -685,7 +707,7 @@ fn element_at_point(root: &Cf, point: [f64; 2]) -> Result<Option<Cf>> {
     let mut nodes = 0;
     while let Some((node, depth)) = pending.pop_front() {
         operation::checkpoint("macos_point_element")?;
-        if nodes >= 128 || start.elapsed() > Duration::from_millis(750) {
+        if nodes >= 128 || start.elapsed() > Duration::from_millis(3000) {
             break;
         }
         nodes += 1;
@@ -739,7 +761,7 @@ fn ax_tree(
     let mut out = Vec::new();
     while let Some((node, depth)) = pending.pop_front() {
         operation::checkpoint("macos_ax_tree")?;
-        if nodes >= 128 || start.elapsed() > Duration::from_millis(1500) {
+        if nodes >= 128 || start.elapsed() > Duration::from_millis(3000) {
             break;
         }
         nodes += 1;
@@ -1067,6 +1089,9 @@ mod tests {
                 visible: Some(true),
                 occluded: Some(false),
                 state_revision: None,
+                selected: None,
+                value: None,
+                value_truncated: false,
             },
             text_class: class,
             value: Some("secret".into()),

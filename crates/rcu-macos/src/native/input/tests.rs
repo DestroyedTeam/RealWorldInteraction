@@ -29,6 +29,9 @@ fn grounded() -> (Identity, Binding, Resolved, Scene) {
         visible: Some(true),
         occluded: Some(false),
         state_revision: Some("classified-value-revision".into()),
+        selected: None,
+        value: None,
+        value_truncated: false,
     };
     let reference = Resolved {
         reference: "ref".into(),

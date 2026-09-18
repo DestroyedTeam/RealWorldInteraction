@@ -249,6 +249,9 @@ mod tests {
             visible: Some(true),
             occluded: Some(false),
             state_revision: Some("known-state".into()),
+            selected: None,
+            value: None,
+            value_truncated: false,
         };
         let scope = Scope {
             window: "window".into(),

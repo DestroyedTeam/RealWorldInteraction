@@ -121,6 +121,18 @@ pub struct Element {
     /// operated at all right now (a disabled control fails closed).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
+    /// Native selection state when reported (AXSelected): whether this control
+    /// is the app's current selection (e.g. the pressed tool button, or a
+    /// selected shape). Lets a caller verify state before acting.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected: Option<bool>,
+    /// Bounded native value (AXValue) for controls that report one, e.g. a
+    /// radio button's "1"/"0". Never raw document text: truncated to 64 chars.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    /// True when `value` was truncated for transport.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub value_truncated: bool,
     pub point: [f64; 2],
     pub visible: Option<bool>,
     pub occluded: Option<bool>,
