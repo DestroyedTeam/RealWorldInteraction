@@ -729,7 +729,7 @@ fn element_at_point(root: &Cf, point: [f64; 2]) -> Result<Option<Cf>> {
         }
         nodes += 1;
         let contains = ax_rect(&node).is_ok_and(|rect| rect.contains(point));
-        let children = if depth < 8 {
+        let children = if depth < 16 {
             node.children().unwrap_or_default()
         } else {
             Vec::new()
@@ -794,7 +794,7 @@ fn ax_tree(
             e.element.occluded = Some(!visible);
             out.push(e);
         }
-        if depth < 8 {
+        if depth < 16 {
             for child in node.children().unwrap_or_default() {
                 if pending.len() >= 256 {
                     break;
