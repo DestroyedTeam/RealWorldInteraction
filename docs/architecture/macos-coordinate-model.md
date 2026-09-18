@@ -274,3 +274,23 @@ Edit 菜单第 1 项即撤销（名字会变："Undo Delete"/"Undo Add Line" ✓
 
 **⑧ 截图通道注意** ✗：`screencapture -x -o -l 26019` 可能在窗口头图标区**贴旧 tile** ✗；
 `-x -o -D 2` 的显示器级捕获才是可信视觉验收通道 ✓。
+ 
+## 18. 复刻 v4 当前进度与填充证据（2026-09-18）
+ 
+**已验证完成**
+- 左侧测试层：先用内缩框选 `(canvas 10,10)→(390,670)`，确认层面板仅高亮 5 个 `Line` 测试层，再执行删除；显示器级回读确认左侧墨迹归零，复刻框未被删。证据：`work/replica-verify-20260915/run5/left-cleaned-final.png`、`evidence-current.png`。
+- 聊天区新增骨架：v3 plan 中 `op=add` 的 **20/20** 个形状已落笔（8 个修正形状暂未删除旧层，避免相交框选误删）；执行记录 `run5/pane-additions.json`，整窗证据 `run5/pane-additions-final.png`。
+- 截图头像资产沿用 ReplicaFill 已验证结果：`assets/avatar-row1-place48.png`，已在列表第一行落位。
+- 头部图标：电话（截图切图）与 videocam（Material Icons，Apache-2.0）落位；腾讯 TDesign `share`、`add` 两枚也已落位。目标状态栏回读：电话 `X=1311,Y=78`，摄像头 `X=1351,Y=78`；TDesign 目标中心分别 `(1396.2,78.2)`、`(1489.9,78.5)` canvas px。证据：`run5/phone-header-corrected.png`、`header-icons-placed.png`、`tdesign-all-header-icons.png`。
+- 底部图标行已验证第一枚 TDesign `folder` 落位：状态栏 `X=881,Y=460`，目标 `(880.8,460.5)` canvas px；证据 `run5/folder-placed.png`。
+
+**来源与许可**
+- Tencent TDesign icons：`https://github.com/Tencent/tdesign-icons`，仓库 `LICENSE` 为 MIT；本轮使用 `share.svg`、`add.svg`、`folder.svg`、`image.svg`、`mail.svg`、`microphone.svg`、`time.svg`。
+- 截图私有素材只使用本地截图切图；没有把网络图片冒充头像。
+
+**本轮踩坑与边界**
+- Add Image 的图像移动方向必须使用 `0.75 × (target_center - (1000,339.3))`；头部图标目标在画布中心右侧，之前旧 procedure 的负号会把电话移到左侧，已撤销并以状态栏 `X=1311` 重新落位。
+- 底部图标批量导入曾被 macOS `Open` 面板卡住；后续 4 次调用均 `native_dispatch_entered=false`，没有重放。面板已安全关闭，输入域已 `recover_input`，当前画布无未确认的误动作。后续必须逐枚：打开→绑定/选文件→关闭面板→重新 observe→移动→整窗验证。
+- 当前仍未完成：旧 v2 的 8 个纠正形状删除、其对应 8 个 v3 correct 几何、底部其余图标、颜色与文本。
+
+**当前证据对比**：`docs/validation/replica-v4-comparison-20260918.png`（原图目标 | 当前画布）、`replica-v4-current-20260918.png`、`replica-v4-overlay-20260918.png`。
