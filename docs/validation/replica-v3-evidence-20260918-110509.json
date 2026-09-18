@@ -1,0 +1,92 @@
+{
+  "schema": "rcu.replica-v3-evidence/v1",
+  "ts": "20260918-110509",
+  "window": {
+    "id": "cgwindow:26019",
+    "pid": 83334,
+    "rect_pt": [
+      282,
+      1190,
+      1800,
+      1131
+    ],
+    "capture_px": [
+      3600,
+      2262
+    ]
+  },
+  "canvas": {
+    "size_px": [
+      2000,
+      679
+    ],
+    "zoom_percent": 150,
+    "origin_image_px": [
+      466,
+      692
+    ],
+    "plan_box_canvas_px": [
+      400,
+      0,
+      1169,
+      679
+    ]
+  },
+  "mapping": "desktop_pt = (515,1536) + canvas_px*0.75 ; image_px = (desktop_pt-(282,1190))*2",
+  "tools_verified_by_effect": {
+    "line": 1135,
+    "rectangle": 1246,
+    "round_rect": 1283,
+    "ellipse": 1320,
+    "undo": 2003
+  },
+  "shapes_planned": 118,
+  "shapes_dispatched_ok": 118,
+  "shapes_with_ink_coverage_ge_0.85": 117,
+  "per_kind": {
+    "round_rect": {
+      "planned": 17,
+      "drawn_ge_0.85": 17,
+      "partial": []
+    },
+    "circle": {
+      "planned": 43,
+      "drawn_ge_0.85": 42,
+      "partial": [
+        [
+          59,
+          0.6
+        ]
+      ]
+    },
+    "line": {
+      "planned": 58,
+      "drawn_ge_0.85": 58,
+      "partial": []
+    }
+  },
+  "accuracy": {
+    "sample_points": 5010,
+    "mean_dist_image_px": 1.07,
+    "mean_dist_canvas_px": 0.71,
+    "within_1px_pct": 97,
+    "within_3px_pct": 99,
+    "best_grid_shift_image_px": [
+      0,
+      -1
+    ],
+    "coverage_at_zero_shift": 0.9936
+  },
+  "app_behaviour_notes": [
+    "bare click with a shape tool creates a default 201x201 shape centred at the click (source of pre-existing strays)",
+    "same-tool drag while a same-kind shape is selected edits that shape instead of creating a new layer",
+    "re-pressing the tool AXRadioButton deselects without drawing; next drag creates a new layer",
+    "round-rect corner radius fixed at 40 (AX text field refused: secure_or_unknown_text_field)",
+    "act with an expired lease returns uncertain and fences the input domain until computer.recover_input"
+  ],
+  "images": [
+    "docs/validation/replica-v3-final-20260918-110509.png",
+    "docs/validation/replica-v3-comparison-20260918-110509.png",
+    "docs/validation/replica-v3-overlay-20260918-110509.png"
+  ]
+}
