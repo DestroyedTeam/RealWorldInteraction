@@ -244,3 +244,33 @@
 
 **执行纪律（沿用本会话已验证项）**：后台执行、不动真实光标、不抢焦点、每次 act 前重新 claim 60s 租约、
 形状工具单击会生成 201×201 默认形状（去选须重按工具 radio）、验证一律**整窗回读**。
+
+## 17. 输入语义实测修正（2026-09-18，run4）——**推翻 §15/§16 中的错误说法** ✗
+
+**① `computer.resolve` 的 `kind=pixel` 取的是「原始窗口图像像素」，不是桌面 pt** ✓✓（此前 ticket 写反了 ✗，
+导致多轮 click/marquee **静默打在空白画布上** ✗）。实测：请求 img(496,842) → 返回 point [530,1611]（桌面 pt）。
+坐标链（三者数值互证 ✓）：`image_px = (466,692)+canvas_px*1.5`；`desktop = (515,1536)+canvas_px*0.75`（Zoom 150%）。
+
+**② 画布上存在「动态选区（蚂蚁线）」时，普通 `computer.act` 会失效（内容哈希持续变化）** ✗。
+必须先删除该选区对象；删除后连续两次捕获 **0 px 变化** ✓，普通 act 恢复一次成功 ✓。
+`act_checked` 免疫内容哈希检查 ✓，但**只能作用于所引用元素自身的点** ✓（画布 AXScrollArea = 桌面 (1265,1790.5) = canvas (1000,339.3)，
+且拖拽首 waypoint 必须 [0,0]）✗ 因此它到不了任意画布点。
+
+**③ `act` 拖拽语义** ✓：首个 waypoint `[0,0]`（= resolve 出的点）；其后 offset 单位为**桌面 pt** ✓。
+实测：canvas (20,340) + offset(150,80)pt → 墨迹落在 canvas (12.7,333)–(226.7,454)（214×121 canvas px，圆帽每端膨胀 ~2px ✓）；
+canvas y=480/520/560 + offset(60,0)pt → 长度**精确 80.0 canvas px** ✓。
+
+**④ 工具切换走 Host AX 通道** ✓（**不动光标、不改焦点** ✓✓）：`perform action "AXPress"` on
+`radio button N of radio group 1 of group 1 of toolbar 1 of window 1`（N：5=Line · 8=Rectangle · 9=Round Rectangle
+· 10=Ellipse · 19=Select and Move）；press 后 ~0.5s 再回读（读回有延迟 ✓）。
+**它同时用于「去选」** ✓（避免"单击生成 201×201 默认形状" ✗）；同 kind 形状被选中时同 kind 拖拽=编辑它而非新建 ✗。
+
+**⑤ 框选语义 = 相交即选（INTERSECTING），不是包含** ✗✓：实测 canvas (973,190)-(995,230) 的框**顺带删掉了右边线在 997.84 的卡片框** ✓。
+
+**⑥ 删除/撤销走 Host AX 菜单** ✓：`menu item "Delete" of menu 1 of menu bar item "Edit"` 删除当前选区；
+Edit 菜单第 1 项即撤销（名字会变："Undo Delete"/"Undo Add Line" ✓）且能完整恢复墨迹 ✓。
+
+**⑦ 编辑 oracle** ✓：`work/replica-verify-20260915/run4/delta.py` 逐 20 canvas px 比对两次捕获的墨迹增量 ✓。
+
+**⑧ 截图通道注意** ✗：`screencapture -x -o -l 26019` 可能在窗口头图标区**贴旧 tile** ✗；
+`-x -o -D 2` 的显示器级捕获才是可信视觉验收通道 ✓。
