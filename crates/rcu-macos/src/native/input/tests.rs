@@ -32,6 +32,7 @@ fn grounded() -> (Identity, Binding, Resolved, Scene) {
         selected: None,
         value: None,
         value_truncated: false,
+        description: None,
     };
     let reference = Resolved {
         reference: "ref".into(),

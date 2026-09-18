@@ -663,6 +663,22 @@ fn element_description(el: &Cf) -> Result<AxElement> {
     // round-trip per element would blow the bounded walk's time budget and
     // truncate later nodes (the toolbar row). The value reuses the classified
     // text value above rather than asking AXValue a second time.
+    // Only anonymous elements pay for this read: icon-only buttons usually
+    // expose their function through AXDescription/AXHelp, while named controls
+    // already have a name and must not cost an extra AX round-trip.
+    let ax_description = if name.trim().is_empty() {
+        ["AXDescription", "AXHelp"]
+            .iter()
+            .find_map(|key| {
+                el.attr(key)
+                    .ok()
+                    .and_then(|v| v.string().ok())
+                    .filter(|text| !text.trim().is_empty())
+            })
+            .map(|text| text.chars().take(64).collect::<String>())
+    } else {
+        None
+    };
     let ax_selected = if matches!(
         role.as_str(),
         "AXRadioButton" | "AXCheckBox" | "AXTab" | "AXMenuItem" | "AXRow" | "AXButton"
@@ -692,6 +708,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
                 format!("{text_class:?}:{value:?}:{enabled:?}").as_bytes(),
             )),
             selected: ax_selected,
+            description: ax_description,
             value: ax_value,
             value_truncated: ax_value_truncated,
         },
@@ -1089,6 +1106,7 @@ mod tests {
                 visible: Some(true),
                 occluded: Some(false),
                 state_revision: None,
+                description: None,
                 selected: None,
                 value: None,
                 value_truncated: false,

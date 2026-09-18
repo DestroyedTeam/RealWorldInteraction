@@ -108,6 +108,7 @@ impl Fake {
                 selected: None,
                 value: None,
                 value_truncated: false,
+                description: None,
             }],
             captured_unix_ms: 1,
             atomicity: "stateful fake".into(),

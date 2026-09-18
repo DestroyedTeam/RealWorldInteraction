@@ -151,6 +151,7 @@ impl<'a> Reader<'a> {
                     selected: None,
                     value: None,
                     value_truncated: false,
+                    description: None,
                 });
             }
             self.details.push(serde_json::json!({"element_id":id,"value_revision":value_revision,"classification_error":classification_error,"runtime_id":rid,"provider_pid":ep,"scope_source":"bounded control-view tree plus prioritized exact focus proven under HWND root; provider PID need not equal HWND owner PID; re-prove ancestry on input/value use","control_type":control,"automation_id":automation_id,"rect_physical":bounds,"enabled":enabled,"offscreen":offscreen,"password":pass,"keyboard_focus":focus,"cached_keyboard_focus":cached_focus,"focus_source":"GetFocusedElementBuildCache + runtime ID + native root ancestry; cached flags are diagnostic only","depth":depth,"occlusion_scope":"center WindowFromPoint plus UIA ElementFromPoint and at most 8 native ancestor comparisons; no whole-surface claim"}));

@@ -126,6 +126,11 @@ pub struct Element {
     /// selected shape). Lets a caller verify state before acting.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selected: Option<bool>,
+    /// Native accessibility description/help (AXDescription/AXHelp), read only
+    /// for elements that report no name: icon-only buttons usually carry their
+    /// function here. Bounded to 64 chars.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// Bounded native value (AXValue) for controls that report one, e.g. a
     /// radio button's "1"/"0". Never raw document text: truncated to 64 chars.
     #[serde(default, skip_serializing_if = "Option::is_none")]

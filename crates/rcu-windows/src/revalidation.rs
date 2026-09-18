@@ -252,6 +252,7 @@ mod tests {
             selected: None,
             value: None,
             value_truncated: false,
+            description: None,
         };
         let scope = Scope {
             window: "window".into(),

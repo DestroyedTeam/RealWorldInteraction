@@ -148,6 +148,7 @@ impl Backend for Fixture {
                     selected: None,
                     value: None,
                     value_truncated: false,
+                    description: None,
                 })
                 .collect(),
             captured_unix_ms: 0,
