@@ -14,7 +14,7 @@ use objc2::{
     rc::{Allocated, Retained, autoreleasepool},
     runtime::{AnyClass, AnyObject, Bool},
 };
-use objc2_foundation::{NSPoint, NSRect, NSSize};
+use objc2_foundation::NSRect;
 use rwi_core::{MAX_FRAME_BYTES, Result, fault};
 use std::{
     ffi::c_void,
@@ -242,7 +242,7 @@ impl Capturer {
 /// Older systems retain their existing SCStreamConfiguration capture path.
 unsafe fn screenshot_configuration_for(
     class: &AnyClass,
-    rect: Rect,
+    _rect: Rect,
     width: usize,
     height: usize,
     modern: bool,
@@ -253,8 +253,10 @@ unsafe fn screenshot_configuration_for(
         let _: () = msg_send![&*config, setHeight:height as isize];
         let _: () = msg_send![&*config, setShowsCursor:Bool::NO];
         if modern {
-            let source = NSRect::new(NSPoint::new(rect.x, rect.y), NSSize::new(rect.w, rect.h));
-            let _: () = msg_send![&*config, setSourceRect:source];
+            // The filter already selects the complete window. A display-space
+            // crop here can crop the window a second time (observed on macOS 27).
+            // Leave sourceRect at its native full-frame default.
+
             let _: () = msg_send![&*config, setIgnoreShadows:Bool::YES];
             let _: () = msg_send![&*config, setIncludeChildWindows:Bool::NO];
             let _: () = msg_send![&*config, setDynamicRange:0isize];
@@ -367,7 +369,7 @@ fn encode_rgba(w: usize, h: usize, pixels: &[u8]) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
     #[test]
-    fn modern_screenshot_configuration_pins_global_rect_and_excludes_children() {
+    fn modern_full_window_capture_keeps_native_source_default() {
         let Some(class) = AnyClass::get(c"SCScreenshotConfiguration") else {
             return;
         };
@@ -380,10 +382,9 @@ mod tests {
             };
             let config = screenshot_configuration_for(class, rect, 1760, 896, true);
             let source: NSRect = msg_send![&*config, sourceRect];
-            assert_eq!(source.origin.x, rect.x);
-            assert_eq!(source.origin.y, rect.y);
-            assert_eq!(source.size.width, rect.w);
-            assert_eq!(source.size.height, rect.h);
+            let defaults: Retained<AnyObject> = msg_send![class, new];
+            let default_source: NSRect = msg_send![&*defaults, sourceRect];
+            assert_eq!(source, default_source);
             let width: isize = msg_send![&*config, width];
             let height: isize = msg_send![&*config, height];
             let children: Bool = msg_send![&*config, includeChildWindows];

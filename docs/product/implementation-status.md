@@ -577,3 +577,7 @@ Plugin与RWI Agent使用同一生成式空间轨道/指针logo。Plugin重装成
 - 新Rust Agent已重编译、固定证书重签并部署；PID21909四项权限仍true，无再次授权。这次覆盖真实二进制更新，不只是应用包版本号变化。
 - `v14-import-open-signed-20260919-02`普通click投递1492ms；独立discover证实Open cgwindow:5429出现，未重放。随后绑定13.6ms、观察543.6ms。
 - 新Open面板当前仍hidden/occluded，主窗口工具栏已修复；说明应用范围命中不足以覆盖sandboxed panel代理。下一步诊断面板代理身份与窗口局部命中，不直接放宽检查。截图偏移/头像独立层仍待完成，未宣告v14通过。
+
+### 2026-09-19 v14 全窗口截图边界修正
+
+已部署保留native full-frame默认sourceRect的修正。真实Plugin截图确认Open面板顶部/底部完整；旧版重复裁剪导致的白带消失。重新打开面板的异步出现已独立只读复核，不重发输入。文件面板AX命中仍需诊断，头像导入尚未完成。详见2026-09-19-paint-v14-capture-candidate.md。

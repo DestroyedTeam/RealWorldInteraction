@@ -15,3 +15,15 @@
 重新添加控制权限与输入监控并由 LaunchAgent 有序重启后，Plugin `computer.targets` 实测 accessibility=true、listen_event=true、post_event=true；screen_capture=false。屏幕录制页面存在两个无唯一标识的 Add 控件，CUA AX 引用重新解析报告歧义；坐标点击未打开添加面板，未执行任何所选其他应用的删除或开关操作。需要用户点击上方屏幕录制列表下的加号后接续。Paint S 文档未修改，捕获候选尚未完成实时验收。
 
 依据：[Apple 定向重置授权说明](https://developer.apple.com/documentation/xcode/resetting-access-to-protected-resources-in-macos)。
+
+## 2026-09-19 全窗口裁剪修正现场结果
+
+在macOS27，desktopIndependentWindow过滤器已经限定单窗口；再将屏幕全局窗口rect传入SCScreenshotConfiguration.sourceRect导致再次裁剪。现改为保留native默认sourceRect（Apple文档：未设置则完整捕获输入帧），仍校验PID、窗口边界、过滤器尺寸、输出像素尺寸，排除子窗口/阴影。
+
+重新编译、固定证书签名并部署后，Plugin绑定新Open cgwindow:5573，完整面板预览可见顶部导航、底部Cancel/Open，无旧版顶部裁切/底部白带；观察845.5ms、预览37.3ms。此次为面板图像边界的目视验证，不宣告所有显示器/窗口几何校准通过。控件AX命中仍hidden/occluded，不能据图像正常推断输入正常。
+
+本次用户关掉旧面板后，使用新观察发出`v14-open-after-user-close-20260919-01`，普通click回执487.1ms；紧随discover尚无Open，下一次只读discover确认面板出现。没有重复点击，证明异步UI不能用第一次空结果断言失败。新JS回执逻辑未再把system_accepted=null伪造为operation_failed。
+
+fmt、438 Rust tests passed /10 ignored、全目标全特性Clippy通过。候选更新备份在work/v14-capture-full-frame/previous-bundle。
+
+参考：https://developer.apple.com/documentation/screencapturekit/scscreenshotconfiguration/sourcerect
