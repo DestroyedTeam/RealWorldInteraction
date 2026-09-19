@@ -524,3 +524,17 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 ### 本机 Agent 运行态更名完成，原生权限待用户确认
 
 2026-09-19：旧rcu-agent已正常停止；新RWI Agent.app内rwi-agent由用户launchd运行，配置/日志命名同步。127.0.0.1:45129监听与原配对TLS握手通过，配置/身份/状态连续。独立进程尚无辅助功能、屏幕录制、输入监控权限；需要用户在系统设置授权RWI Agent.app，授权后再验证GUI能力，不能以mac-host available替代。详见 docs/validation/2026-09-19-rwi-agent-cutover.md。
+
+### RWI Agent 权限与本任务原生工具恢复（2026-09-19）
+
+用户已开辅助功能，并明确请求通过电脑界面开启另外两项权限。本轮在系统设置实际添加RWI Agent.app，确认输入监控与屏幕录制开关开启；随后SIGINT正常停止并用launchctl重新启动同一服务。新进程报告 accessibility/listen_event/post_event/screen_capture/screenshot_api 全部true。当前任务的26个Plugin MCP工具已出现，并通过其 computer.js → rwi.targets / computer.discover 实际调用验证。下一步按当前发现的Paint S窗口继续v14，不再要求另开会话。
+
+### Paint v14 实景复核与捕获候选修正（2026-09-19）
+
+- 经当前Plugin实际observe确认，Paint S `canvas-text-filled-20260919.png` 有两个Image层，但底图仍含一份卡片内容，与独立卡片重复；第1–6行头像未独立分层。不得继承v13历史报告作为现状。
+- 背景控件受visibility_unknown阻挡，宿主Finder打开Paint S激活后，RWI重新观察确认Add Image可见。原生AXPress返回native_press_rejected，但发现已出现Open面板；未重放，随后通过computer.recover_input验证空闲并解除fence。
+- Open面板需要fresh initial selection（当前macOS未实现owned_popup关系）；成功observe后发现截图混入主窗口且像素映射不可信，控件仍标记不可见。
+- 实现macOS26 SCScreenshotConfiguration候选：显式display-logical sourceRect，includeChildWindows=false，SDR输出；旧系统保留旧接口。依据Apple sourceRect文档及本机SDK SCScreenshotManager.h。
+- 436 Rust测试通过、10 ignored；fmt和全特性clippy通过。新候选已部署并保留旧Bundle备份，但**实时捕获修正尚未验收**。
+- ad-hoc签名的DR包含cdhash，更新二进制后TCC旧权限不匹配；通过系统设置重新关联时，系统弹Touch ID/密码确认，等待用户亲自完成。未改TCC数据库或降低权限检查。
+- 当前RWI候选服务在线，但辅助功能/屏幕录制/输入监控尚需重授；Paint仍停留于Open面板，未导入新头像、未修改画布。后续先恢复权限并验证候选截图，再解决面板命中；随后修复底图重复内容、完成独立头像层与v14验收。

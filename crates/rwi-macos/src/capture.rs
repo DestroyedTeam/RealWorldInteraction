@@ -14,7 +14,7 @@ use objc2::{
     rc::{Allocated, Retained, autoreleasepool},
     runtime::{AnyClass, AnyObject, Bool},
 };
-use objc2_foundation::NSRect;
+use objc2_foundation::{NSPoint, NSRect, NSSize};
 use rwi_core::{MAX_FRAME_BYTES, Result, fault};
 use std::{
     ffi::c_void,
@@ -77,7 +77,12 @@ impl Capturer {
         let start = (|| -> Result<()> {
             let share = class(c"SCShareableContent")?;
             let filter_class = class(c"SCContentFilter")?;
-            let configuration_class = class(c"SCStreamConfiguration")?;
+            let screenshot_configuration = AnyClass::get(c"SCScreenshotConfiguration");
+            let modern = screenshot_configuration.is_some();
+            let configuration_class = match screenshot_configuration {
+                Some(class) => class,
+                None => class(c"SCStreamConfiguration")?,
+            };
             let screenshot_class = class(c"SCScreenshotManager")?;
             let callback = RcBlock::new(move |content: *mut AnyObject, error: *mut AnyObject| {
                 let _keep_native_scope = &callback_pending;
@@ -152,22 +157,21 @@ impl Capturer {
                             let width = (rect.w * scale as f64).round() as usize;
                             let height = (rect.h * scale as f64).round() as usize;
                             validate_pixels(width, height)?;
-                            let configuration: Retained<AnyObject> =
-                                msg_send![configuration_class, new];
-                            let _: () = msg_send![&*configuration,setWidth:width];
-                            let _: () = msg_send![&*configuration,setHeight:height];
-                            let _: () = msg_send![&*configuration,setShowsCursor:Bool::NO];
-                            let _: () =
-                                msg_send![&*configuration,setIgnoreShadowsSingleWindow:Bool::YES];
-                            let _: () = msg_send![&*configuration,setScalesToFit:Bool::NO];
+                            let configuration = screenshot_configuration_for(
+                                configuration_class,
+                                rect,
+                                width,
+                                height,
+                                modern,
+                            );
                             let tx = tx.clone();
                             let completed = callback_pending.clone();
                             let keep_filter = filter.clone();
                             let keep_configuration = configuration.clone();
                             let completion = RcBlock::new(
-                                move |image: *const c_void, error: *mut AnyObject| {
+                                move |output: *const c_void, error: *mut AnyObject| {
                                     let _ = (&keep_filter, &keep_configuration, &completed);
-                                    let result = if image.is_null() || !error.is_null() {
+                                    let result = if output.is_null() || !error.is_null() {
                                         Err(fault(
                                             "capture_failed",
                                             "Native screenshot callback failed; no synthetic substitute was used.",
@@ -175,6 +179,17 @@ impl Capturer {
                                     } else {
                                         callback_result(|| {
                                             completed.require_active()?;
+                                            let image: *const c_void = if modern {
+                                                msg_send![output.cast::<AnyObject>(), sdrImage]
+                                            } else {
+                                                output
+                                            };
+                                            if image.is_null() {
+                                                return Err(fault(
+                                                    "capture_failed",
+                                                    "Native screenshot has no SDR image.",
+                                                ));
+                                            }
                                             encode_native_image(image, width, height)
                                         })
                                     };
@@ -182,7 +197,11 @@ impl Capturer {
                                 },
                             );
                             callback_pending.require_active()?;
-                            let _: () = msg_send![screenshot_class,captureImageWithFilter:&*filter,configuration:&*configuration,completionHandler:&*completion];
+                            if modern {
+                                let _: () = msg_send![screenshot_class,captureScreenshotWithFilter:&*filter,configuration:&*configuration,completionHandler:&*completion];
+                            } else {
+                                let _: () = msg_send![screenshot_class,captureImageWithFilter:&*filter,configuration:&*configuration,completionHandler:&*completion];
+                            }
                         }
                         Ok(())
                     });
@@ -216,6 +235,34 @@ impl Capturer {
                 }
             }
         }
+    }
+}
+/// macOS 26 screenshot configuration uses an explicit display-logical source
+/// rectangle. A sheet must not inherit a parent/window-group capture extent.
+/// Older systems retain their existing SCStreamConfiguration capture path.
+unsafe fn screenshot_configuration_for(
+    class: &AnyClass,
+    rect: Rect,
+    width: usize,
+    height: usize,
+    modern: bool,
+) -> Retained<AnyObject> {
+    unsafe {
+        let config: Retained<AnyObject> = msg_send![class, new];
+        let _: () = msg_send![&*config, setWidth:width as isize];
+        let _: () = msg_send![&*config, setHeight:height as isize];
+        let _: () = msg_send![&*config, setShowsCursor:Bool::NO];
+        if modern {
+            let source = NSRect::new(NSPoint::new(rect.x, rect.y), NSSize::new(rect.w, rect.h));
+            let _: () = msg_send![&*config, setSourceRect:source];
+            let _: () = msg_send![&*config, setIgnoreShadows:Bool::YES];
+            let _: () = msg_send![&*config, setIncludeChildWindows:Bool::NO];
+            let _: () = msg_send![&*config, setDynamicRange:0isize];
+        } else {
+            let _: () = msg_send![&*config, setIgnoreShadowsSingleWindow:Bool::YES];
+            let _: () = msg_send![&*config, setScalesToFit:Bool::NO];
+        }
+        config
     }
 }
 fn callback_result<T>(operation: impl FnOnce() -> Result<T>) -> Result<T> {
@@ -319,6 +366,33 @@ fn encode_rgba(w: usize, h: usize, pixels: &[u8]) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn modern_screenshot_configuration_pins_global_rect_and_excludes_children() {
+        let Some(class) = AnyClass::get(c"SCScreenshotConfiguration") else {
+            return;
+        };
+        unsafe {
+            let rect = Rect {
+                x: -1200.0,
+                y: 283.0,
+                w: 880.0,
+                h: 448.0,
+            };
+            let config = screenshot_configuration_for(class, rect, 1760, 896, true);
+            let source: NSRect = msg_send![&*config, sourceRect];
+            assert_eq!(source.origin.x, rect.x);
+            assert_eq!(source.origin.y, rect.y);
+            assert_eq!(source.size.width, rect.w);
+            assert_eq!(source.size.height, rect.h);
+            let width: isize = msg_send![&*config, width];
+            let height: isize = msg_send![&*config, height];
+            let children: Bool = msg_send![&*config, includeChildWindows];
+            let cursor: Bool = msg_send![&*config, showsCursor];
+            assert_eq!((width, height), (1760, 896));
+            assert!(!children.as_bool());
+            assert!(!cursor.as_bool());
+        }
+    }
     #[test]
     fn callback_panic_is_contained_before_foreign_boundary() {
         let result: Result<()> = callback_result(|| panic!("synthetic callback failure"));
