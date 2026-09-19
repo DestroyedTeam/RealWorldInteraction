@@ -31,6 +31,7 @@ impl NativeMac {
             process: process_epoch(pid)?,
             allow_input,
             capturer,
+            hit_diagnostics: std::sync::Mutex::new(Vec::new()),
             dispatches,
         })
     }
@@ -159,7 +160,17 @@ impl NativeMac {
         // would turn another app covering it into a false foreground requirement.
         // Application-scoped AX hit testing still respects that app's window
         // z-order; equality with each exact tree node preserves window identity.
-        let elements = ax_tree(&focused, &application, window.rect, blocked)?;
+        let mut diagnostics = Vec::new();
+        let elements = ax_tree(
+            &focused,
+            &application,
+            window.rect,
+            blocked,
+            &mut diagnostics,
+        )?;
+        if let Ok(mut saved) = self.hit_diagnostics.lock() {
+            *saved = diagnostics;
+        }
         // The application's internal focused element is not window identity: it
         // changes whenever the user or activation chrome moves focus, including
         // while the user works in other applications. Keyboard/text paths verify

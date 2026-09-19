@@ -35,6 +35,7 @@ pub struct NativeMac {
     process: String,
     allow_input: bool,
     capturer: Capturer,
+    pub(crate) hit_diagnostics: std::sync::Mutex<Vec<serde_json::Value>>,
     dispatches: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 #[derive(Clone)]
@@ -785,6 +786,7 @@ fn ax_tree(
     application: &Cf,
     bounds: Rect,
     blocked: Option<bool>,
+    diagnostics: &mut Vec<serde_json::Value>,
 ) -> Result<Vec<AxElement>> {
     let start = Instant::now();
     let mut pending = VecDeque::new();
@@ -803,9 +805,24 @@ fn ax_tree(
             let point = e.element.point;
             let inside = bounds.contains(point);
             let matches = if inside && blocked == Some(false) {
-                hit_test(application, point)
-                    .ok()
-                    .map(|hit| unsafe { ffi::CFEqual(hit.0, node.0) } != 0)
+                let hit = hit_test(application, point).ok();
+                let matches = hit
+                    .as_ref()
+                    .map(|h| unsafe { ffi::CFEqual(h.0, node.0) } != 0);
+                if matches != Some(true) && !e.element.actions.is_empty() && diagnostics.len() < 8 {
+                    let rect_json = |v: &Cf| ax_rect(v).ok().map(|r| [r.x, r.y, r.w, r.h]);
+                    diagnostics.push(serde_json::json!({
+                        "element": e.element.id, "role": e.element.role, "point": point,
+                        "node_pid": node.pid().ok(), "node_rect": rect_json(&node),
+                        "node_window": ffi::window_number_for_ax_element(&node),
+                        "hit_pid": hit.as_ref().and_then(|h| h.pid().ok()),
+                        "hit_rect": hit.as_ref().and_then(rect_json),
+                        "hit_role": hit.as_ref().and_then(|h| h.attr("AXRole").ok()).and_then(|r| r.string().ok()),
+                        "hit_window": hit.as_ref().and_then(ffi::window_number_for_ax_element),
+                        "equal": matches
+                    }));
+                }
+                matches
             } else {
                 None
             };

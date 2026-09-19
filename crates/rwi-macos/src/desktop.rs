@@ -110,6 +110,12 @@ impl Backend for NativeMacDesktop {
         caps["target_scope"] =
             json!("configured UID + current native graphical security session, no initial window");
         caps["window_selected"] = json!(self.selected.is_some());
+        if let Some(selected) = &self.selected
+            && let Ok(rows) = selected.hit_diagnostics.lock()
+        {
+            caps["ax_hit_diagnostics"] =
+                json!({"scope":"last_metadata_read", "limit":8,"mismatches":*rows});
+        }
         caps["pointer_feedback"] = crate::overlay::status_json();
         caps["user_input_recent_seconds"] = match crate::activity::seconds_since_user_input() {
             Some(seconds) => json!(seconds),

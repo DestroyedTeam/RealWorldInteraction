@@ -111,6 +111,7 @@ fn unsupported_source_region_is_rejected_before_any_native_read_or_capture() {
         process: "synthetic".into(),
         allow_input: true,
         capturer: Capturer::default(),
+        hit_diagnostics: std::sync::Mutex::new(Vec::new()),
         dispatches: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
     };
     reference.source_region = Some([1, 2, 3, 4]);
