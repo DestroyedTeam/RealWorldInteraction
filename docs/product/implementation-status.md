@@ -538,3 +538,15 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 - 436 Rust测试通过、10 ignored；fmt和全特性clippy通过。新候选已部署并保留旧Bundle备份，但**实时捕获修正尚未验收**。
 - ad-hoc签名的DR包含cdhash，更新二进制后TCC旧权限不匹配；通过系统设置重新关联时，系统弹Touch ID/密码确认，等待用户亲自完成。未改TCC数据库或降低权限检查。
 - 当前RWI候选服务在线，但辅助功能/屏幕录制/输入监控尚需重授；Paint仍停留于Open面板，未导入新头像、未修改画布。后续先恢复权限并验证候选截图，再解决面板命中；随后修复底图重复内容、完成独立头像层与v14验收。
+
+### 2026-09-19 Paint v14 权限恢复接续
+
+- 当前 Agent 控制/输入权限经 Plugin 原生查询已恢复（accessibility/listen_event/post_event=true）。
+- 旧临时签名授权已按 RWI bundle ID 定向重置；屏幕录制还需通过设置上方列表加号重新加入当前应用包，CUA 的两个同名 Add 控件引用歧义，待用户打开该文件面板。
+- Paint v14 头像独立层及截图修正现场验收尚未完成，未新增画布修改。详见 `docs/validation/2026-09-19-paint-v14-capture-candidate.md`。
+
+### 2026-09-19 Paint S 后台行为对照
+
+- 用户补齐授权并重启后，四项原生权限全部 true。
+- CUA 成功取消 Open、切换 Line；RWI 能后台截图但控件全被观察层的 system-wide hit-test 标记遮挡。已提交应用范围命中测试候选，437测试通过，尚未部署/现场验收。
+- 截图顶部裁切/底部空白仍需修复；设备聚合查询约5秒受离线Windows影响。完整时序、证据边界及接续项见 `docs/validation/2026-09-19-paint-background-comparison.md`。

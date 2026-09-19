@@ -763,9 +763,26 @@ fn hit_test(system: &Cf, point: [f64; 2]) -> Result<Cf> {
     }
     unsafe { Cf::owned(out) }
 }
+// Visibility is relative to the selected application's native z-order, not
+// the desktop foreground. Failed/unsupported hit tests remain unknown rather
+// than fabricating an occlusion; they never positively authorize a control.
+fn scoped_visibility(
+    inside: bool,
+    blocked: Option<bool>,
+    exact_hit: Option<bool>,
+) -> (Option<bool>, Option<bool>) {
+    if !inside || blocked == Some(true) {
+        return (Some(false), Some(true));
+    }
+    if blocked.is_none() {
+        return (None, None);
+    }
+    (exact_hit, exact_hit.map(|hit| !hit))
+}
+
 fn ax_tree(
     window: &Cf,
-    system: &Cf,
+    application: &Cf,
     bounds: Rect,
     blocked: Option<bool>,
 ) -> Result<Vec<AxElement>> {
@@ -784,14 +801,17 @@ fn ax_tree(
         nodes += 1;
         if let Ok(mut e) = element_description(&node) {
             let point = e.element.point;
-            let hit = if bounds.contains(point) && blocked == Some(false) {
-                hit_test(system, point).ok()
+            let inside = bounds.contains(point);
+            let matches = if inside && blocked == Some(false) {
+                hit_test(application, point)
+                    .ok()
+                    .map(|hit| unsafe { ffi::CFEqual(hit.0, node.0) } != 0)
             } else {
                 None
             };
-            let visible = hit.is_some_and(|h| unsafe { ffi::CFEqual(h.0, node.0) } != 0);
-            e.element.visible = Some(visible);
-            e.element.occluded = Some(!visible);
+            let (visible, occluded) = scoped_visibility(inside, blocked, matches);
+            e.element.visible = visible;
+            e.element.occluded = occluded;
             out.push(e);
         }
         if depth < 16 {
@@ -809,6 +829,27 @@ fn ax_tree(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn scoped_visibility_requires_an_exact_native_hit() {
+        assert_eq!(
+            scoped_visibility(true, Some(false), Some(true)),
+            (Some(true), Some(false))
+        );
+        assert_eq!(
+            scoped_visibility(true, Some(false), Some(false)),
+            (Some(false), Some(true))
+        );
+        assert_eq!(scoped_visibility(true, Some(false), None), (None, None));
+        assert_eq!(scoped_visibility(true, None, Some(true)), (None, None));
+        assert_eq!(
+            scoped_visibility(false, Some(false), Some(true)),
+            (Some(false), Some(true))
+        );
+        assert_eq!(
+            scoped_visibility(true, Some(true), Some(true)),
+            (Some(false), Some(true))
+        );
+    }
     fn display(id: u32, built_in: bool, x: f64, y: f64, w: f64, h: f64) -> Display {
         Display {
             id,

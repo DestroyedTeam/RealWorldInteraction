@@ -155,11 +155,11 @@ impl NativeMac {
         let modal = focused.attr("AXModal").ok().and_then(|v| v.boolean());
         let blocked = self.modal_state(&application, &focused);
         let (layout, mapping_ready) = display_layout(window.rect)?;
-        let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide())? };
-        unsafe {
-            ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
-        }
-        let elements = ax_tree(&focused, &system, window.rect, blocked)?;
+        // This tree belongs to the pinned application. A system-wide hit test
+        // would turn another app covering it into a false foreground requirement.
+        // Application-scoped AX hit testing still respects that app's window
+        // z-order; equality with each exact tree node preserves window identity.
+        let elements = ax_tree(&focused, &application, window.rect, blocked)?;
         // The application's internal focused element is not window identity: it
         // changes whenever the user or activation chrome moves focus, including
         // while the user works in other applications. Keyboard/text paths verify
