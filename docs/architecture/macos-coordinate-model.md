@@ -361,3 +361,37 @@ Zoom 150% —— 与重启前逐项一致，说明"由画布元素点反推原�
 
 **进程稳定性**：hub 托管的 `rcu-agent-mac-host` 今日 **exit=1 两次**（日志仅一行启动记录，无 stderr）。
 处置：`hub ps` 查状态 → `hub start ... --config agent.json`（ready 条件 port 45129）→ `computer.targets` 复核。产品侧应加崩溃诊断输出。
+
+## 22. 2026-09-19 恢复画布上的图标签：实测落点表与验收口径
+
+**方法**：单文件隔离 → Add Image（Host AXOpen）→ `act_checked` 在画布元素上拖拽
+`offset = target_desktop − canvasElement.point`（`target_desktop = origin_pt + 0.75×target_canvas`）→ **File>Save → 读回 PNG 量质心**。
+本窗口 `origin_pt = (515,1656)`（= `(282,1190) + (466,932)/2`）、`pt_per_canvas_px = 0.75`（Zoom 150%）。
+
+**结果（11 枚，读回 PNG 质心 vs 目标，单位 canvas px）**
+| 槽位 | 目标 | 实测 | 误差 |
+|---|---|---|---|
+| hdr_screenshare | (1396.2,78.5) | (1395.4,78.5) | −0.8, 0.0 |
+| hdr_grid | (1438.3,78.5) | (1438.1,77.5) | −0.2, −1.0 |
+| hdr_plus | (1489.9,78.5) | (1489.3,78.5) | −0.6, 0.0 |
+| bar_smiley | (795.9,460.8) | (795.6,460.6) | −0.3, −0.2 |
+| bar_scissors | (833.8,461.1) | (833.6,461.6) | −0.2, +0.5 |
+| bar_people | (1058.8,460.4) | (1058.6,460.6) | −0.2, +0.2 |
+| bar_screen | (1101.2,461.1) | (1100.4,460.8) | −0.8, −0.3 |
+| bar_robot | (1143.7,460.8) | (1143.5,460.7) | −0.2, −0.1 |
+| bar_clock | (1527.2,460.8) | (1524.9,458.9) | −2.3, −1.9 |
+| star | (985.4,302.5) | (982.3,302.3) | −3.1, −0.2 |
+| pill_chevron | (1454.1,135.5) | 不可测（窗口内混入既有胶囊描边） | — |
+
+**来源/许可**：腾讯 TDesign（`github.com/Tencent/tdesign-icons`，MIT）用于 screenshare/grid/plus/people/screen/robot/clock/star；
+MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-happy-outline）与 scissors（content-cut）；
+头像与卡片内容为本地截图切图。
+
+**已知遗留（如实记录）**
+1. 基础位图里仍有**计划阶段的占位圆**（bar_* 槽位）与部分描边，新贴图标与之**叠加**，底栏看起来是"圆 + 淡描边"混合 ✗；
+2. `pill_chevron` 位置本就有一条描边箭头，贴图属**重复** ✗；
+3. 颜色与文本尚未填；水印（`Created by Paint S`/`Free Trial`，应用叠加层）仍在位图内 ✗；
+4. 图像导入后**画布元素点=导入落点**这一前提在本窗口成立（否则 11 枚不会全部 ±1 px 命中）✓。
+
+**验收产物**：`docs/validation/replica-v6-icons-filled-comparison-20260919.png`（原图目标 | 当前画布）、
+`...-overlay-...png`（50% 叠加）；明细 `work/replica-verify-20260915/run6/icon-fill-{plan,results}.json`。
