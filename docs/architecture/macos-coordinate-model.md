@@ -563,3 +563,23 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 当时看到的是过期窗口列表快照）。之后在面板内执行 `AXOpen` **面板会关闭**，但**并不保证已导入** ✗：
 本轮 `File > Save` 后与底图逐像素比对 **changed px = 0**，即**没有导入成功**（被取消或点到的不是目标文件）。
 → 结论：**导入成功与否必须用"保存→读回 PNG 差异"判定** ✓；面板关闭 ✗ 不能作为成功证据。
+
+## 30. 2026-09-19 收尾：图层导入未完成的原因与可靠做法（接手必读）
+
+**结论**：本轮**未完成**图层导入；失败的根因是**工具调用延迟 > 帧有效期(≈10s)**：
+直连面把一条链拆成多次模型调用（`discover→bind→observe→resolve→claim→act` 每次调用 ~5s，合计 >10s），
+中途 `act` 报 `stale_reference`（"Reobserve; no input sent"）✗。此前**只有 JS 单格**能在一次执行里跑完整条链 ✓，
+但本会话 JS 车道的 `rcu.targets()` 恒返回空（`js_reset` 无效 ✗，而直连同时正常 ✓）→ 判定为**适配器/worker 侧故障**。
+
+**可靠做法（下次照做）**
+1. 在一个**新的 omp 会话**里（或 `task` 子代理中）用 `xd://mcp__rcu_computer_js` **单格**完成整条链：
+   `targets → discover → bind → observe → resolve(pixel 到 Add Image 按钮) → claim → act(click)`，
+   面板出现后再 `host AXOpen` 打开 `~/Documents/card-content-layer-166x191.png`，
+   然后同格内 `observe → act_checked(drag, offset = 0.75 × (target_canvas − 画布元素点换算的 canvas 坐标))`
+   （本窗口 zoom 150%、`pt_per_canvas_px = 0.75`；画布 AXScrollArea 元素点本轮实测 = 桌面 (839,542)）；
+   最后 `File > Save` → **读回 PNG** 验证 `changed px > 0` 且落点 bbox ≈ (830,109)-(996,300) ✓。
+2. 若 JS 车道仍空：**重开会话**（适配器重新建连）再试；不要用直连面拼长链（会撞帧过期 ✗）。
+3. `Add Image` 按钮定位：宿主 `whose description is "Add Image"` ✓（其 `name` 为空 ✗）；像素路径点位 ≈ 桌面 (1237.5,58)。
+
+**当前产物状态**：底图 `canvas-base-layered-20260919.png`（卡片照片/正文留白）+ 图层素材
+`assets/card-content-layer-166x191.png` + 目标落点中心 canvas (913.5,204.6) —— 就差"导入并拖到位"这一步 ✓。
