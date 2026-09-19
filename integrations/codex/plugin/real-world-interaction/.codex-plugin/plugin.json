@@ -13,7 +13,11 @@
     "developerName": "DestroyedTeam",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Use Real World Interaction to inspect the available devices, select my intended device and verify the result of the requested action."
+    "defaultPrompt": "Use Real World Interaction to inspect the available devices, select my intended device and verify the result of the requested action.",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo.png",
+    "brandColor": "#46DCD5"
   },
   "mcpServers": "./.mcp.json"
 }

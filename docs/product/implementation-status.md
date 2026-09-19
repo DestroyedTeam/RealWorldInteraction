@@ -550,3 +550,15 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 - 用户补齐授权并重启后，四项原生权限全部 true。
 - CUA 成功取消 Open、切换 Line；RWI 能后台截图但控件全被观察层的 system-wide hit-test 标记遮挡。已提交应用范围命中测试候选，437测试通过，尚未部署/现场验收。
 - 截图顶部裁切/底部空白仍需修复；设备聚合查询约5秒受离线Windows影响。完整时序、证据边界及接续项见 `docs/validation/2026-09-19-paint-background-comparison.md`。
+
+### 2026-09-19 dac087b 已部署，等待系统认证
+
+- release rwi-agent 编译成功，替换当前应用包可执行文件并验证签名，通过用户 LaunchAgent 启动。旧包备份 `work/deploy-dac087b/previous-bundle`；配置、配对、防重放状态未变。
+- 原生查询 PID13929 / instance16a5fa6c-1f5d-4735-8e2f-fdd4cd9eb8c6：四项权限 false。当前 ad-hoc 签名 DR 绑定 cdhash，本机 `security find-identity -v -p codesigning` 返回0个有效签名身份。
+- 按 bundle ID 定向重置三项旧权限；CUA 重连成功，打开控制权限 Add 后出现 Touch ID / 密码认证，等待用户确认。没有改动其他应用授权。
+- 早上 OMP broker 托管旧 rcu-agent 与当前独立 launchd 启动路径不同；历史运行时 TCC attribution chain 尚无证据，不断言为模型差异或确定继承。
+- 依据 Apple TN3127：ad-hoc DR绑定特定代码版本，稳定签名身份才是跨更新维持代码身份的正确方向。普通应用不能以自身调用静默批准TCC；可辅助系统设置流程，用户完成系统认证。
+
+### 2026-09-19 统一图标与本地证书签名已安装
+
+Plugin与RWI Agent使用同一生成式空间轨道/指针logo。Plugin重装成功，Agent通过新建RWI Local Development证书签名并部署；版本修改后仍通过旧DR验证。首次证书身份TCC授权及授权后跨更新实测待完成。详见 `docs/product/rwi-brand-and-local-signing.md`。
