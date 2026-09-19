@@ -583,3 +583,27 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 
 **当前产物状态**：底图 `canvas-base-layered-20260919.png`（卡片照片/正文留白）+ 图层素材
 `assets/card-content-layer-166x191.png` + 目标落点中心 canvas (913.5,204.6) —— 就差"导入并拖到位"这一步 ✓。
+
+## 31. 图层导入完成 + 三条更优操作法（2026-09-19，子代理实测）
+
+**结果**：`card-content-layer-166x191.png` 已作为**独立 Image 图层**导入 `canvas-text-filled-20260919.png` ✓
+- 落位 bbox = **x 831..996, y 110..300**（目标 (830,109)-(996,300)，最大偏差 **1 px**）✓
+- 内容一致性 Pearson **r = 0.996**，最佳位移搜索命中 (0,0)（残差为 Paint S 色彩空间渲染，mean|Δ| 8.7/channel）✓
+- **不透明盒 = 166×191 恰好等于 changed px 31706** ✓（= 精确落位，无缩放）
+- 图层面板出现 **两行 `Image`**（上层为已选中的新层，缩略图为导入内容）✓ → 满足"贴图必须保留图层"
+- 证据：`docs/validation/replica-v13-layers-panel-20260919.png`（AX 不暴露侧栏 ✗，只能截图）、
+  `docs/validation/canvas-layered-v13-20260919.png`、`replica-v13-layered-{comparison,overlay}-20260919.png`
+
+**三条更优操作法（今后优先使用）**
+1. **`Object > Transform…` 可以数值化定位对象** ✓✓：弹出 `Transform` 浮动窗，含 `Position` 组
+   （Top/Bottom/Left/Right + 单位下拉）；**聚焦字段后发送真实按键**（`831` + `key code 36`）即可，
+   应用会自动重算对边（实测 Left=831/Top=110 → Right=1003/Bottom=378）。
+   → 这条**绕开了"帧 10s 有效期 vs 拖拽多步"的死结**，落位精度 1 px，优于像素拖拽。
+2. **优先用 `act_checked`（元素级）而不是 legacy `act`（像素级）** ✓：本轮 `act_checked` 点 `Add Image`
+   一次成功（`scope.element` 有值），而像素 `act` 因帧过期失败。
+3. **JS 车道在"新上下文"里是好的** ✓（子代理 `rcu.targets()` 正常返回）：父会话线程里 JS 车道空 ✗
+   → 遇到该症状应**新开会话/交给子代理**，而不是改走长链直连 ✗。
+   补充：`io.elementsPage(offset)` 是**位置参数**（传 `{offset:n}` 会报 `invalid type: map`）；
+   `io.snapshot()` 只暴露前 47 个 ref（e0..e46），更后面的元素必须翻页后才能 `io.act`。
+
+**其他**：`File > Save` 会弹试用版水印对话框 → 需点 **"Save Anyway"**（既有管线一致，差分中可抵消）。
