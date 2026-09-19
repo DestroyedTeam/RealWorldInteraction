@@ -386,3 +386,38 @@ win11-vm 侧为 `device_connect_timeout`（VM 未启动，属预期）。
   `crates/rcu-macos/src/native.rs` 的 observe 遍历（产品实现 ✓），与 omp 配置无关 ✓。
 - 产品含义：`computer.observe` 的**覆盖度必须自述**（本次遍历是否截断/元素是否可能缺失 ✓），
   并建议在"树明显不全"时以**截屏回读**为准（SKILL 已含该操作规范 ✓）。
+
+## Paint S 微信窗口复刻（2026-09-19，本轮阶段交付）
+
+**背景**：本机重启（boot/security session 变更）后，原先用于复刻的临时文档 `/private/tmp/white-canvas-2x.png`
+被清空且**不可恢复**（无 Time Machine、无 APFS 快照、无 autosave 副本，检索清单见 §21）；仓库内的
+计划（118 形状 + 28 形状）与全部素材仍在，故改用**位图恢复 + 许可证素材填充**路线。
+
+**已交付（均在 `docs/validation/`）**
+| 产物 | 说明 |
+|---|---|
+| `recovered-canvas-aligned-20260919.png` | 由重启前最后的整窗截图重建的画布（2000×679）；用**画作外框几何**定标，重裁后外框 bbox = 400..1568 / 0..678（与计划框差 ≤1px）✓ |
+| `user-reference-latest-canvas-20260919.png` | 用户提供的"丢失前最新"参考图（归档） |
+| `replica-v6-vs-user-reference-{comparison,overlay}-20260919.png` | 与参考图比对：2px 容差下双向吻合 91.3% / 84.4% ✓ |
+| `replica-v6-icons-filled-{comparison,overlay}-20260919.png` | 图标填充后 |
+| `replica-v7-colour-demo-comparison-20260919.png` | 颜色演示（GUI 设色被证据否定后的替代路线） |
+| `canvas-coloured-20260919.png` / `replica-v8-coloured-{comparison,overlay}` | 颜色填充成品：6 区域**精确色匹配率 1.0000**（一处 0.9525 系被选中行覆盖）；**墨迹零改动** ✓ |
+| `canvas-text-filled-20260919.png` / `replica-v9-text-{comparison,overlay}` | 文本填充成品：擦占位线 + 回贴源文字带（左栏标题/8 行文字列/右栏标题），与源 mean\|Δ\| = 2.6/5.0/5.3 ✓ |
+
+**素材与许可**：腾讯 TDesign icons（`github.com/Tencent/tdesign-icons`，MIT）与 MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，
+Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（非公开素材未外部下载）。
+
+**关键环境与规则（接手必读）**
+- 本机 MCP agent 部署在 `~/Library/Application Support/RealComputerUse/agent-mac-v1/`；
+  重启方式：`hub start rcu-agent-mac-host --config agent.json`（ready 端口 45129）。今日 `rcu-agent` 曾 **exit=1 两次**（无 stderr）。
+- 显示环境会变：外接屏断开 → 内建屏变主屏且分辨率/窗口尺寸改变 → **每次操作前重新发现窗口并重量映射**，
+  原点是"文档矩形/画作外框几何"，不是画布元素点（视图滚动时后者失效，见 §21）。
+- 颜色 GUI 路线已被证据否定：色板（NSColorPanel）bind 成功但 observe `window_missing`（不在进程 AX 窗口表）✗；
+  仅 **Pen/画笔类工具**激活时颜色井 enabled ✓。GUI 精确设色若要可行，需另找入口（Paint S 设置里有 "Autosave documents" 选项，未验证）。
+- 绘制/导入细节、失败码、工具索引随窗口宽度变化等，见 `docs/architecture/macos-coordinate-model.md` §15–§28。
+
+**尚未完成（后续接手项）**
+1. 第 2–8 行头像仍为骨架圆圈（仅第 1 行为截图切图）——本轮已切图但未并入最终画布的验收截图；
+2. 底栏占位圆的清理（用户已授权，需在图层面板/选区链路上可靠执行）；
+3. 应用水印（`Created by Paint S`/`Free Trial`，屏幕叠加层）仍在位图内；
+4. 文本目前是"源图文字带回贴"（位图），非可编辑文本；如需可编辑需另设计（Text 工具 + 可写非敏感 AX 元素，本机未验证）。
