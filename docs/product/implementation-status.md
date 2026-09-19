@@ -512,3 +512,15 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 - 不持久化、不开模型回合的 Codex app-server 测试上下文报告 `pluginId=real-world-interaction@personal`、26 工具、`toolsError=null`，证明来自 Plugin 而非独立注册。证据：`docs/validation/2026-09-19-plugin-acceptance.json`。
 - 当前任务刷新后已看到3个Plugin Skill，但本轮 callable tools 仍无其 MCP；需新的任务工具上下文才能继续 GUI。Skill 要求通过 Host 的插件原生入口进行验收，因此未改走 shell MCP 或其他 GUI 通道。
 - v14 接续清单在 `docs/product/paint-v14-resume.md`；待 fresh discovery 验证当前文档，再处理第1–6行独立头像层。
+
+### 接续任务 MCP 启动失败根因（2026-09-19）
+
+- 新任务 `01a0b8fc-631c-7cc0-bbeb-c8681babfabf` 的所有外部 MCP 同时报 `No such file or directory`；默认 shell 不指定 workdir 也启动失败。
+- 实查旧任务 cwd `/Users/vincentadamnemessis/AI Projects/Real Computer Use` 不存在；已恢复它到 `Real World Interaction` 的兼容符号链接。新任务并不能修复继承的不存在 cwd。
+- 本机旧 `rcu-agent` PID24303 正常监听127.0.0.1:45129，由OMP broker托管。新 `rwi-mcp` 通过当前profile实际握手并得到 `mac-host available`、`input_domain_fenced=false`；旧名称不是当前通信失败原因，未无依据重启Agent。
+- 重应用Plugin安装成功，但当前任务仍持有启动失败的工具清单；需要桌面Host刷新MCP连接或重新启动后复核，不再重复创建任务。
+- 本輪是进程/传输诊断，尚未执行Paint v14 GUI。
+
+### 本机 Agent 运行态更名完成，原生权限待用户确认
+
+2026-09-19：旧rcu-agent已正常停止；新RWI Agent.app内rwi-agent由用户launchd运行，配置/日志命名同步。127.0.0.1:45129监听与原配对TLS握手通过，配置/身份/状态连续。独立进程尚无辅助功能、屏幕录制、输入监控权限；需要用户在系统设置授权RWI Agent.app，授权后再验证GUI能力，不能以mac-host available替代。详见 docs/validation/2026-09-19-rwi-agent-cutover.md。
