@@ -532,3 +532,28 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 
 **遗留（明确，不隐藏）**：第 2–8 行头像仍是骨架圆圈（仅第 1 行为截图切图）；应用水印
 （`Created by Paint S`/`Free Trial`，屏幕叠加层）仍在位图内；底栏占位圆未清理（等用户授权）。
+
+## 29. 2026-09-19 晚：RCU 链路与 Add Image 的操作坑（实测，接手必读）
+
+**① JS worker 与直连工具面会不一致** ✗
+现象：`computer.targets` **直连工具**返回 1 个可用设备 ✓，但同一时刻经由 `computer.js` 的
+`rcu.call('computer.targets')` 返回 `targets: []`，且 `devices: []`；`computer.js_reset` 之后仍然如此 ✗。
+处置：**改用直连工具**（`computer.discover` / `bind_window` / `observe` / `resolve` / `claim` / `act` / `release`）逐调用执行；
+不要因为 JS 车道异常就判定"设备不可用"。若要长期使用 JS 车道，需要产品侧修复 worker 的客户端身份/池。
+
+**② `discover` 目录 TTL = 10s**，超时后 `bind_window` 报 `catalog_expired`（"Discover again before selecting"）✗
+→ **discover 与 bind 必须背靠背**；中间不要插入人机等待（如宿主 osascript 往返）。
+
+**③ 工具栏按钮靠 `description` 而非 `name`**：本窗口 `Add Image` 按钮 `name` 为空、`description="Add Image"` ✓
+（`click button "Add Image" of toolbar 1` 会 -1728 失败 ✗；应按 `whose description is "Add Image"`）。
+
+**④ `Add Image` 必须"真实像素点击"**：宿主 `AXPress` 派发成功但**不会打开文件面板** ✗；
+只有 RCU 的像素路径（`resolve{kind:pixel}` + `claim` + `act` click）才会弹出 `Open` 面板 ✓（此前 ReplicaFill 亦独立观察到同一结论）。
+
+**⑤ 图层导入的既定序列（链路恢复后照做）**
+1. `discover`（同一调用内立刻 `bind_window`）→ `observe` → 取 `AXButton(description="Add Image")` 的 `point`；
+2. `resolve{kind:pixel}` 到该点 → `claim` → `act` click → 面板出现（`discover` 应见标题 `Open` 的新窗口）；
+3. 宿主 `AXOpen` 打开 `~/Documents/card-content-layer-166x191.png` ✓（面板内 RCU 输入不可用 ✗，宿主 AX 可用 ✓）；
+4. 再次 discover+bind 文档 → `observe` → 取画布 `AXScrollArea` 元素点 → `resolve` → `claim` →
+   `act_checked` drag，`offset = pt_per_canvas_px × (target_canvas − 画布元素点换算的 canvas 坐标)`；
+5. `File > Save` → 读回 PNG 确认卡片内容出现且**图层面板新增 `Image` 行**（= 图层保留 ✓）。
