@@ -469,3 +469,23 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 
 **工具索引注意**：窗口宽度变化会改变工具栏 radio 数量/顺序（本轮 `radio button 22` 已不存在 ✗）→
 工具定位必须**先 observe 读取当前 radio 列表与 description**，不要沿用旧索引。
+
+## 26. 颜色填充：GUI 精确设色在本机被证据否定 → 离线合成演示（2026-09-19）
+
+**打通与否定（实测）**
+1. **颜色井只在"Pen/画笔类工具激活"时才 enabled** ✓（工具栏 radio 13 = Pen；描述变为
+   "Click to choose a color"，值 `rgb 0.5 0 0.272727 1`）；形状工具下它是 "Click to choose a border color" 且 disabled ✗。
+2. 点击该色井 → 系统色板（NSColorPanel）以**独立窗口**出现（本机 `cgwindow:3538`，263×331，标题为空）✓；
+   但 **bind 成功、observe 直接 `window_missing`**（"Pinned CGWindowID/PID has no matching AX window"）✗
+   → 该面板不在此进程 AX 窗口表内，**无法用 RCU 读写其 RGB 控件** ✗。
+   （替代键盘输入需把面板置前台 ✗ 与"后台操作"原则冲突。）
+3. 结论：**GUI 精确设色路线在本机不可用**（与用户提醒的"独立弹窗"一致，但那个弹窗不可寻址）。
+
+**已交付的替代演示（离线合成，不覆盖原文件）**
+`work/replica-verify-20260915/run6/canvas-restored-coloured-demo.png`：
+对"近白像素"按区域替换为源图采样色（左列表底 217,217,218 · 右聊天区底 242,242,242 ·
+海报暗带 33,33,32 · 标题栏 222,225,225），**墨迹像素零改动**（39636 → 39636 ✓）。
+对比图：`docs/validation/replica-v7-colour-demo-comparison-20260919.png`（左源图 / 右上色演示）。
+
+**待用户裁决**：GUI 设色不可行时，颜色是走"离线合成"（快、可复算、可像素验收）还是继续寻找
+其它 GUI 颜色入口（如开启 "Autosaving Documents" 后画布背景色井、或使用系统取色器从屏上取样 ✗ 均未验证）。
