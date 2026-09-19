@@ -59,7 +59,8 @@ fn private_windows_bundle_can_be_validated_offline_on_mac_without_install_or_key
     let profile = temp.path().canonicalize().unwrap().join("profiles");
     let provision = rcu_link_trust::provision(&profile).unwrap();
     let a = plan::notepad(seed()).unwrap();
-    let root = PathBuf::from("C:\\Users\\Fixture\\AppData\\Local\\RealComputerUse\\native-link-r1");
+    let root =
+        PathBuf::from("C:\\Users\\Fixture\\AppData\\Local\\RealWorldInteraction\\native-link-r1");
     let join = |suffix: &str| PathBuf::from(format!("{}\\{}", root.display(), suffix));
     let agent = b"offline fixture image, never executed";
     let worker = b"offline fixture worker, never executed";

@@ -1,9 +1,9 @@
 ---
-name: real-computer-use-native
-description: Use the Real Computer Use native MCP tools to observe and operate an explicitly allocated Windows target through the authenticated Rust relay. Use for native window inspection, grounded mouse and keyboard actions, and independent result verification; not for shell-based automation or uncontrolled desktop discovery.
+name: real-world-interaction
+description: Use the Real World Interaction native MCP tools to observe and operate an explicitly allocated Windows target through the authenticated Rust relay. Use for native window inspection, grounded mouse and keyboard actions, and independent result verification; not for shell-based automation or uncontrolled desktop discovery.
 ---
 
-# Real Computer Use native MCP
+# Real World Interaction native MCP
 
 ## Entry and scope
 

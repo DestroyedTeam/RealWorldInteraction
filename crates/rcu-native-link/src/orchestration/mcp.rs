@@ -242,7 +242,7 @@ impl Ledger {
         let result = &v["result"];
         let d = &result["structuredContent"];
         if p.method == "initialize" {
-            if result["serverInfo"]["name"] != "real-computer-use"
+            if result["serverInfo"]["name"] != "real-world-interaction"
                 || result["serverInfo"]["version"] != VERSION
                 || result["instructions"] != INSTRUCTIONS.trim_end()
                 || INSTRUCTIONS.trim_end().len() > 512

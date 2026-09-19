@@ -322,7 +322,7 @@ fn mcp_result(mut result: DeviceResult) -> CallToolResult {
 }
 impl ServerHandler for Gateway {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_server_info(Implementation::new("real-computer-use",env!("CARGO_PKG_VERSION"))).with_instructions("Generic multi-device RCU. Select computer.targets. Never replay uncertain input. GUI and terminal are complementary; report each channel's evidence separately.")
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_server_info(Implementation::new("real-world-interaction",env!("CARGO_PKG_VERSION"))).with_instructions("Generic multi-device RCU. Select computer.targets. Never replay uncertain input. GUI and terminal are complementary; report each channel's evidence separately.")
     }
     async fn list_tools(
         &self,

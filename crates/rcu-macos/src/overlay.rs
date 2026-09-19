@@ -228,7 +228,7 @@ unsafe fn create_window(dpi: u32) -> std::result::Result<(*mut AnyObject, *mut A
         if window.is_null() {
             return Err("NSWindow init returned null".into());
         }
-        let title = NSString::from_str("RCU AI Cursor");
+        let title = NSString::from_str("Real World Interaction AI Cursor");
         let _: () = msg_send![window, setTitle: &*title];
         let _: () = msg_send![window, setOpaque: false];
         let _: () = msg_send![window, setHasShadow: false];

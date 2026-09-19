@@ -1,4 +1,4 @@
-# Real Computer Use
+# Real World Interaction
 
 Rust-native, identity-bound computer control through MCP. **Development candidate,
 not a cross-platform release.** The root workspace is the single editable product

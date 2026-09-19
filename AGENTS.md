@@ -1,4 +1,4 @@
-# Real Computer Use development
+# Real World Interaction development
 
 - Product backend and MCP runtime are Rust. Native OS FFI is allowed; Python/.NET/PowerShell/AppleScript are not backend implementations or hidden subprocess bridges.
 - The old CrossMacro fork remains an external, frozen reference. Do not overwrite installed bridges, NemessixPaste, UI OS, Codex settings or VM launchers.

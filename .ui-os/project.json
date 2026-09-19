@@ -1,8 +1,8 @@
 {
   "schema_version": "uios.project/v0.2",
   "product": {
-    "id": "real-computer-use",
-    "name": "Real Computer Use \u2014 Windows Pointer",
+    "id": "real-world-interaction",
+    "name": "Real World Interaction \u2014 Windows Pointer",
     "primary_users": [
       "agent-operator"
     ],

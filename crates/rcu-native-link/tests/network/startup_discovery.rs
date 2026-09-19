@@ -66,7 +66,7 @@ async fn check_rejected_start(rejection: u8) {
     let response: Value = serde_json::from_slice(&response).unwrap();
     assert_eq!(
         response["result"]["serverInfo"]["name"],
-        "real-computer-use-native-link"
+        "real-world-interaction"
     );
     assert!(
         response["result"]["instructions"]

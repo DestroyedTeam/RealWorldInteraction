@@ -179,11 +179,11 @@ async fn run() -> io::Result<()> {
         let config = host
             .request("config/read", json!({"cwd":args[1],"includeLayers":true}))
             .await?;
-        let server = &config["config"]["mcp_servers"]["real_computer_use_native_link"];
+        let server = &config["config"]["mcp_servers"]["real_world_interaction"];
         println!(
             "{}",
             json!({"real_user_project_probe":true,"native_server_config":server,
-            "skill_discovered":skills.to_string().contains("real-computer-use-native"),
+            "skill_discovered":skills.to_string().contains("real-world-interaction"),
             "config_response":host.evidence.child(&format!("response-{:04}.json",host.sequence))?,
             "native_model_connection_started":false})
         );
@@ -196,7 +196,7 @@ async fn run() -> io::Result<()> {
         }
         return Ok(());
     }
-    if !skills.to_string().contains("real-computer-use-native") {
+    if !skills.to_string().contains("real-world-interaction") {
         return Err(invalid("real native Skill not discovered"));
     }
     let mut thread_params =
@@ -210,7 +210,7 @@ async fn run() -> io::Result<()> {
             .ok_or_else(|| invalid("effective MCP config missing"))?
             .clone();
         if servers
-            .get("real_computer_use_native_link")
+            .get("real_world_interaction")
             .is_none_or(|s| s["enabled"] != true)
         {
             return Err(invalid("effective native entry not enabled"));
@@ -221,7 +221,7 @@ async fn run() -> io::Result<()> {
             if let Some(fields) = server.as_object_mut() {
                 fields.retain(|_, value| !value.is_null());
             }
-            if name != "real_computer_use_native_link" {
+            if name != "real_world_interaction" {
                 server["enabled"] = json!(false);
             }
         }
@@ -267,7 +267,7 @@ async fn run() -> io::Result<()> {
         if !tool.starts_with("computer.") {
             return Err(invalid("only RCU computer tools in this test"));
         }
-        let result = host.request("mcpServer/tool/call",json!({"threadId":thread,"server":"real_computer_use_native_link","tool":tool,"arguments":command["arguments"]})).await?;
+        let result = host.request("mcpServer/tool/call",json!({"threadId":thread,"server":"real_world_interaction","tool":tool,"arguments":command["arguments"]})).await?;
         host.display(&result)?;
     }
     drop(host.input.take());

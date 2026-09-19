@@ -53,7 +53,7 @@ impl Unavailable {
 impl ServerHandler for Unavailable {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("real-computer-use-native-link",env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new("real-world-interaction",env!("CARGO_PKG_VERSION")))
             .with_instructions("DIAGNOSTIC ONLY: native session startup failed. Recorded computer tool schemas are visible, but all calls fail closed and no native action is possible. Tool discovery is not native readiness. Read computer.targets for the failure; prepare a fresh scoped task, never replay HOLD or fall back to shell input.")
     }
     async fn list_tools(

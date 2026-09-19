@@ -41,10 +41,10 @@ async fn actual_codex_plugin_skill_and_mcp_call_over_rust_tls() {
         expect(rcu_native_link::plugin::export(rcu_native_link::plugin::Export {entry:case.entry.clone(),output:output.clone()}).is_err(), "existing plugin must not be overwritten")?;
         let agents = Directory::create(&market.path().join(".agents"))?;
         let manifests = Directory::create(&agents.path().join("plugins"))?;
-        manifests.create_new("marketplace.json", &serde_json::to_vec(&json!({"name":"rcu-isolated-validation","interface":{"displayName":"RCU isolated validation"},"plugins":[{"name":rcu_native_link::plugin::NAME,"source":{"source":"local","path":"./plugins/real-computer-use-native"},"policy":{"installation":"AVAILABLE","authentication":"ON_USE"},"category":"Productivity"}]}))?,65536)?;
+        manifests.create_new("marketplace.json", &serde_json::to_vec(&json!({"name":"rcu-isolated-validation","interface":{"displayName":"RCU isolated validation"},"plugins":[{"name":rcu_native_link::plugin::NAME,"source":{"source":"local","path":"./plugins/real-world-interaction"},"policy":{"installation":"AVAILABLE","authentication":"ON_USE"},"category":"Productivity"}]}))?,65536)?;
         let home = Directory::create(&root.join("isolated-home"))?;
         let codex_home = Directory::create(&home.path().join(".codex"))?;
-        for args in [vec!["plugin","marketplace","add",market.path().to_str().unwrap()],vec!["plugin","add","real-computer-use-native@rcu-isolated-validation"]] {
+        for args in [vec!["plugin","marketplace","add",market.path().to_str().unwrap()],vec!["plugin","add","real-world-interaction@rcu-isolated-validation"]] {
             let result = tokio::time::timeout(Duration::from_secs(30),Command::new(&codex).args(args).env("HOME",home.path()).env("CODEX_HOME",codex_home.path()).current_dir(home.path()).kill_on_drop(true).output()).await??;
             transcript.push(json!({"isolated_cli":{"exit":result.status.code(),"stdout":String::from_utf8_lossy(&result.stdout),"stderr":String::from_utf8_lossy(&result.stderr)}}));
             expect(result.status.success(), "isolated native plugin CLI installation failed")?;
@@ -58,13 +58,13 @@ async fn actual_codex_plugin_skill_and_mcp_call_over_rust_tls() {
             request(&mut rpc,"initialize",json!({"clientInfo":{"name":"rcu_native_host_test","version":"0.1.0"},"capabilities":{"experimentalApi":true}})).await?;
             rpc.send(json!({"jsonrpc":"2.0","method":"initialized"})).await?;
             let skills = request(&mut rpc,"skills/list",json!({"cwds":[home.path()],"forceReload":true})).await?;
-            expect(skills.to_string().contains("real-computer-use-native"),"installed skill not discovered by Codex")?;
+            expect(skills.to_string().contains("real-world-interaction"),"installed skill not discovered by Codex")?;
             let thread = request(&mut rpc,"thread/start",json!({"cwd":home.path(),"ephemeral":true,"approvalPolicy":"never","sandbox":"read-only"})).await?;
             let thread_id = thread["thread"]["id"].as_str().ok_or_else(|| invalid("ephemeral test thread id missing"))?;
-            let result = request(&mut rpc,"mcpServer/tool/call",json!({"threadId":thread_id,"server":"real_computer_use_native_link","tool":"computer.targets","arguments":{}})).await?;
+            let result = request(&mut rpc,"mcpServer/tool/call",json!({"threadId":thread_id,"server":"real_world_interaction","tool":"computer.targets","arguments":{}})).await?;
             expect(result.to_string().contains("synthetic-only"),"real Codex tool call did not reach the explicit Rust fixture worker")?;
             expect(result.to_string().contains("rcu.model-output.compact.v1"),"native relay compact projection not active")?;
-            let observation = request(&mut rpc,"mcpServer/tool/call",json!({"threadId":thread_id,"server":"real_computer_use_native_link","tool":"computer.observe","arguments":{"target":"synthetic-only","inline_image":false}})).await?;
+            let observation = request(&mut rpc,"mcpServer/tool/call",json!({"threadId":thread_id,"server":"real_world_interaction","tool":"computer.observe","arguments":{"target":"synthetic-only","inline_image":false}})).await?;
             expect(observation["isError"] != true,"Codex observe returned an MCP error")?;
             expect(observation["structuredContent"]["frame"].is_string(),"Codex observe did not expose the actual frame")?;
             expect(observation["structuredContent"]["observation_view"].is_object(),"compact native observation missing")?;
@@ -80,7 +80,7 @@ async fn actual_codex_plugin_skill_and_mcp_call_over_rust_tls() {
                 let saved = saved?;
                 std::fs::copy(saved.path(), evidence.join("model-output").join(saved.file_name()))?;
             }
-            for relative in [".codex-plugin/plugin.json", ".mcp.json", "skills/real-computer-use-native/SKILL.md", "README.md"] {
+            for relative in [".codex-plugin/plugin.json", ".mcp.json", "skills/real-world-interaction/SKILL.md", "README.md"] {
                 let destination = evidence.join("exported-plugin").join(relative);
                 std::fs::create_dir_all(destination.parent().unwrap())?;
                 std::fs::copy(output.join(relative), destination)?;

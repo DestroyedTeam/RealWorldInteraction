@@ -27,7 +27,7 @@ development fixtures, not the normal product installation.
 
 Install the binary, profile and paired **client** identity under a stable private
 user-owned directory outside the source checkout. On macOS the current layout is
-`~/Library/Application Support/RealComputerUse/client-v1/`, with `bin/rcu-mcp`,
+`~/Library/Application Support/RealWorldInteraction/client-v1/`, with `bin/rcu-mcp`,
 `profile.json` and `identity/`. Profile identity paths must resolve inside that
 installation, not to `.rcu/`, `work/` or a validation manifest in a checkout.
 Use private directory permissions (0700) and identity/profile permissions (0600).
@@ -37,9 +37,9 @@ authorization; do not generate a new principal or copy device/CA private keys.
 After explicitly authorizing user-level installation, use the official CLI:
 
 ```sh
-codex mcp add real_computer_use_native_link -- \
-  "$HOME/Library/Application Support/RealComputerUse/client-v1/bin/rcu-mcp" \
-  --profile "$HOME/Library/Application Support/RealComputerUse/client-v1/profile.json"
+codex mcp add real_world_interaction -- \
+  "$HOME/Library/Application Support/RealWorldInteraction/client-v1/bin/rcu-mcp" \
+  --profile "$HOME/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
 ```
 
 Keep the entry enabled, with `startup_timeout_sec = 30`,
@@ -57,7 +57,7 @@ tasks may retain their old tool catalog after registration changes; do not
 interpret that cached result as a device transport failure, or claim that
 restarting the Host creates a missing registration. Retain before/after results.
 
-The maintained Skill is [real-computer-use-native](skills/real-computer-use-native/SKILL.md).
+The maintained Skill is [real-world-interaction](skills/real-world-interaction/SKILL.md).
 Global MCP registration, local generated plugin packaging, Skill discovery and
 a registered ChatGPT App are distinct facts. This installation does not claim
 that a plugin or global Skill was installed, and no App ID is invented.
@@ -79,7 +79,7 @@ omitted/default mode remains `full` for existing transport clients.
 After a valid task-bound entry exists, `rcu-native-setup --make-plugin` takes:
 
 ```json
-{"entry":"/absolute/private/model/.mcp.json","output":"/absolute/new/real-computer-use-native"}
+{"entry":"/absolute/private/model/.mcp.json","output":"/absolute/new/real-world-interaction"}
 ```
 
 Export validates the original entry, exact relay image and task binding. It writes

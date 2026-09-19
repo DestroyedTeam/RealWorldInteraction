@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use std::{collections::BTreeMap, io, path::Path};
 
-pub const SERVER_KEY: &str = "real_computer_use_native_link";
+pub const SERVER_KEY: &str = "real_world_interaction";
 pub const IMAGE_CAP: usize = 64 * 1024 * 1024;
 #[cfg(not(windows))]
 pub const RELAY_BASENAME: &str = "rcu-native-relay";

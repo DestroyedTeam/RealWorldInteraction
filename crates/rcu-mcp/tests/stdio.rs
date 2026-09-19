@@ -84,7 +84,10 @@ impl Drop for Client {
 fn sdk_initialize_discovery_zero_targets_unknown_target_and_disconnect() {
     let mut c = Client::start();
     let init = c.init();
-    assert_eq!(init["result"]["serverInfo"]["name"], "real-computer-use");
+    assert_eq!(
+        init["result"]["serverInfo"]["name"],
+        "real-world-interaction"
+    );
     assert!(init["result"]["instructions"].as_str().unwrap().len() <= 512);
     c.send(json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}));
     let tools = c.receive();

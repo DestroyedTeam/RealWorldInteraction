@@ -477,3 +477,13 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 **本轮受阻（如实）**：执行导入时 RCU 适配器链路退化（`computer.targets` 先返回空数组，随后 `devices: []`）——
 本机 `rcu-agent` 进程仍在监听 45129，但适配器已无法描述设备；**这不是"导入成功"**。
 下一步：链路恢复后重试导入（预期：文档中新出现名为 `Image` 的图层，且卡片照片/正文出现在 (830,109)-(996,300)）。
+
+## Real World Interaction 更名（2026-09-19）
+
+- 产品显示名：Real World Interaction；MCP 注册键：`real_world_interaction`；Skill/Plugin：`real-world-interaction`。
+- GitHub 私有仓库已更名为 `DestroyedTeam/RealWorldInteraction`，origin 已更新。
+- 本机源码根改为 `/Users/vincentadamnemessis/AI Projects/Real World Interaction`；运行目录改为 `~/Library/Application Support/RealWorldInteraction/`。旧目录为兼容符号链接，指向同一份源码/配对/防重放状态。
+- Codex/OMP/OpenCode 注册改用新键与 `client-v1/bin/rwi-mcp`。新进程 initialize 自报 `real-world-interaction`，发现 26 个工具；只读 `computer.targets` 确认 mac-host available。
+- 当前项目三个 Codex 任务标题已加 Real World Interaction 前缀；桌面项目显示名/根关联仍待处理（GUI 工具拒绝访问 Codex；CLI 项目库查无桌面项目 ID）。
+- 第一批名称变更：fmt、workspace locked offline test（433 passed，10 ignored）、全特性 clippy 均通过。原始会话、迁移档案及历史验收结论保持原样；本轮未重新验收 Paint S v13。
+- 下一批：Rust 包/二进制/JS 帮助器简称统一为 RWI；持久协议身份、证书 DNS 与历史状态路径保留兼容。
