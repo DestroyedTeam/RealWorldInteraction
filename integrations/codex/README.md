@@ -1,3 +1,9 @@
+# Codex Plugin integration
+
+The production entry is now the **Real World Interaction Plugin**, bundling the MCP gateway and three Skills. Canonical source: [plugin/real-world-interaction](plugin/real-world-interaction/README.md). Package it with `tools/package_rwi_plugin.py`, register its local marketplace entry and install `real-world-interaction@personal`.
+
+Codex should enable the plugin and disable the duplicate standalone `real_world_interaction` registration. Other agents may keep their direct registration and load the same `plugin/real-world-interaction/skills` directory. The former project-local `.agents/skills/real-world-interaction` was moved into the plugin workflow reference to avoid duplicate Codex discovery. Older copies below are historical integration material, not the current production entry.
+
 # Codex native MCP / plugin / Skill
 
 The production path is `AI Host → rwi-mcp → authenticated device RPC → rwi-agent → native OS driver`.

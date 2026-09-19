@@ -1,0 +1,19 @@
+{
+  "name": "real-world-interaction",
+  "version": "0.2.0",
+  "description": "Native multi-device interaction with a Rust MCP gateway and platform-specific skills.",
+  "author": {
+    "name": "DestroyedTeam"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Real World Interaction",
+    "shortDescription": "Use Real World Interaction in Codex.",
+    "longDescription": "Operate explicitly selected macOS and Windows devices through independent Rust agents. Device identity, runtime capability checks and native leases remain authoritative.",
+    "developerName": "DestroyedTeam",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use Real World Interaction to inspect the available devices, select my intended device and verify the result of the requested action."
+  },
+  "mcpServers": "./.mcp.json"
+}

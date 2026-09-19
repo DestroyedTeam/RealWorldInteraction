@@ -87,3 +87,7 @@ wire schemas/ALPN, legacy environment variables and durable state/lock identitie
 Renaming these would require a coordinated protocol/state migration, not a label
 change. Never reset a journal or create a second input domain during renaming.
 Historical evidence and raw session archives keep their original names and hashes.
+
+## Codex Plugin
+
+Use the [Real World Interaction Plugin](integrations/codex/plugin/real-world-interaction/README.md) to manage MCP and platform Skills together. Direct MCP integration remains available for other Hosts.

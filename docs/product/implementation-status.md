@@ -496,3 +496,19 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 - **Windows 部署仍未完成**：只读设备发现返回 `device_connection_failed / device_connect_timeout`；未唤醒 VM，未更改其运行态。
 - 旧文件夹兼容链接、既有 TLS DNS/ALPN、schema 字符串、环境变量和持久锁/日志路径有意保留。它们确保旧进程与新进程仍使用同一配对和输入域，不是第二份产品源码。
 - 本轮主要推进统一命名与兼容迁移；Paint S v14 头像独立图层任务未执行，v13 历史业务证据未重新验收。
+
+## 正式 Plugin 聚合（2026-09-19）
+
+- 用户确认更名结果 OK；下一步交付为正式 Codex Plugin，然后继续 Paint S v14。
+- 已创建并安装 `real-world-interaction@personal`：一个 Rust MCP 网关 + 通用路由/macOS/Windows 三个 Skill。规范源在 `integrations/codex/plugin/real-world-interaction/`。
+- 主机打包仅渲染外部已安装二进制/profile 路径，不复制密钥/状态；生产入口不使用旧 task-bound exporter。
+- Codex 独立 MCP 注册已关闭，Plugin 启用；OMP/OpenCode 仍独立注册 MCP，并加载同一套规范 Skill。旧项目内自动发现 Skill 已迁到 Plugin 引用资料，避免 Codex 重复发现。
+- 新增跨设备输入句柄/显式 device_id 冲突与同平台多设备 artifact 碰撞回归；435 Rust 测试通过，10 ignored；全特性 clippy 通过；打包4项测试及3个Skill/Plugin校验通过。
+- 当前任务未暴露安装后的 Plugin MCP 工具；正在核验宿主发现。v14 需要该原生工具入口后才能执行，未以旁路 GUI 或离线合成冒充 Plugin 操作。
+
+### Plugin 宿主发现闭环
+
+- 单独设置旧服务器 `enabled=false` 仍遮住同名 Plugin 服务器；已移除该 Codex 独立服务器表（私有原配置保存在 work/，未提交）。其他 Host 注册保留。
+- 不持久化、不开模型回合的 Codex app-server 测试上下文报告 `pluginId=real-world-interaction@personal`、26 工具、`toolsError=null`，证明来自 Plugin 而非独立注册。证据：`docs/validation/2026-09-19-plugin-acceptance.json`。
+- 当前任务刷新后已看到3个Plugin Skill，但本轮 callable tools 仍无其 MCP；需新的任务工具上下文才能继续 GUI。Skill 要求通过 Host 的插件原生入口进行验收，因此未改走 shell MCP 或其他 GUI 通道。
+- v14 接续清单在 `docs/product/paint-v14-resume.md`；待 fresh discovery 验证当前文档，再处理第1–6行独立头像层。
