@@ -411,3 +411,26 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 → 结论：恢复画布与"丢失前最新状态"**一致**，可据此继续后续填充。
 
 产物：`docs/validation/replica-v6-vs-user-reference-20260919.png`（并排）、`...-overlay-...png`（50% 叠加）。
+
+## 24. 颜色填充路线勘察（2026-09-19，未完成，含阻塞点）
+
+**目标**：把源图采样色（标题栏 222,225,225 · 海报暗带 33,33,32 · 角标 231,85,118 · 列表底 217,217,218 ·
+右栏/输入栏 242,242,242）填到对应区域。采样脚本与坐标换算已就绪（源 px → 画布：`(400+(x-36)/1928*1169, (y-36)/1120*679)`）。
+
+**已查明的机制与阻塞**
+1. 检查器的 **Line/Background 色井只有"存在选中形状"时才 enabled** ✗；
+   无选中时只有 `Image background color`（画布背景）可用 —— 实测点击它会弹出应用告警
+   **"To use this feature, you need to turn on the Autosaving Documents…"**（已按 OK 关闭）✗。
+2. **用"点描边"选中 2px 粗的轮廓不可靠**：实测在 canvas (890,456)（暗带上边缘附近）连点两次都未选中，
+   色井仍 disabled → 可靠选中路径应为**图层面板行点击**或**框选**（框选=相交即选 ✓ 已验证）。
+3. 一旦形成选中，**蚂蚁线动画会让普通 `computer.act` 持续 `stale_reference`** ✗；
+   对策：`act_checked`（元素级）免疫 ✓，或先 `File > Revert to Saved` 清选择态（本窗口已验证可用，
+   且能同时丢弃未保存改动 —— 注意这会丢失未保存的填充，需先 Save）。
+
+**下一步（可直接照做）**
+1. 点击图层面板目标行选中形状 → `computer.observe` 确认两个形状色井变为 enabled ✓；
+2. 勾选 `Fill:` 复选框（AXCheckBox）→ 点形状的 Background 色井 → 绑定系统色板窗口（标题为空，按
+   `discover` 里"非本文档窗口"识别）→ 用其 AX 控件设 RGB → 关闭；
+3. `File > Save` → **读回 PNG 量该区域均色**，与目标色比对（阈值 ±6）作为验收；
+4. 文本填充同理：Text 工具（radio 1505 一带）+ 文本输入需聚焦的可写非敏感 AX 元素（本机此前实测
+   文本路径在部分应用不可用，需先确认 Paint S 的文本工具是否提供可写元素）。
