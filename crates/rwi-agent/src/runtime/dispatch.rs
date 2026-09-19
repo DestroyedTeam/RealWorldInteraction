@@ -4,6 +4,29 @@ use super::*;
 use serde_json::Value;
 
 struct Finish(Operation);
+fn fault_result(error: rwi_core::Fault) -> DeviceResult {
+    let mut result = DeviceResult::error(&error.code, &error.next_step);
+    if let Some(diagnostic) = error.diagnostic {
+        result.data["diagnostic"] = *diagnostic;
+    }
+    result
+}
+#[cfg(test)]
+#[test]
+fn native_fault_diagnostic_survives_dispatch_transport() {
+    let mut error = rwi_core::fault("stale_reference", "Reobserve.");
+    error.diagnostic = Some(Box::new(json!({"content_changed": true})));
+    let result = fault_result(error);
+    assert!(result.is_error);
+    assert_eq!(result.data["code"], "stale_reference");
+    assert_eq!(result.data["diagnostic"]["content_changed"], true);
+    assert!(
+        fault_result(rwi_core::fault("unknown", "Inspect."))
+            .data
+            .get("diagnostic")
+            .is_none()
+    );
+}
 fn needs_input_fence(
     writes: bool,
     entered: bool,
@@ -196,7 +219,7 @@ impl Runtime {
                 worker_context.executor.lock().map_err(|_|rwi_core::fault("executor_unavailable","Native context failed; other contexts remain available."))?
                     .invoke(&worker_entry.tool,worker_entry.arguments.clone())
             });
-            let mut result=match result {Ok(r)=>r,Err(e)=>DeviceResult::error(&e.code,&e.next_step)};
+            let mut result=match result {Ok(r)=>r,Err(e)=>fault_result(e)};
             drop(finish);
             result=worker_entry.envelope(result);
             result.data["operation"]=worker_entry.status().data;
@@ -271,7 +294,7 @@ impl Runtime {
         };
         let mut result = match executor.invoke(&tool, arguments) {
             Ok(r) => r,
-            Err(e) => DeviceResult::error(&e.code, &e.next_step),
+            Err(e) => fault_result(e),
         };
         result.data["result_kind"] = json!("cached_read");
         result.data["native_execution"] = json!(false);

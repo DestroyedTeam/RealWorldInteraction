@@ -606,3 +606,9 @@ Plugin与RWI Agent使用同一生成式空间轨道/指针logo。Plugin重装成
 - 元素身份加入真实owner进程出生，动作前再次校验provider。普通指针路径不扩大，其他provider未验证时保留显式发现/绑定或用户确认流程。
 - 固定证书签名部署成功；440测试passed/10ignored，fmt/clippy通过。通过真实Plugin先进入AI Projects再进入Real World Interaction，Where值分别独立确认。AXOpen仍返回-25205但目录已改变，保留uncertain并查原操作/恢复输入域，从未重放。
 - 当前停在项目根的Open面板。work目录可在截图中看到，但其控件位于当前128节点观察预算外，需要改善大目录的原生树预算/分页或位置导航；不能借坐标绕过。头像尚未导入，v14未验收。
+
+### 2026-09-19 v14 首个头像独立层实际导入
+
+已通过 RWI Plugin 导入 48×48 头像，截图确认第三个 Image 图层。文件面板滚动使用 CUA 对照辅助（578 ms 单次），不能算纯 RWI 闭环；RWI AXOpen 返回不确定后通过窗口消失与主画布独立观察确认导入，未重放。定位拖动仍被 stale_reference 在投递前拒绝，正在补充具体 grounding 诊断并修复错误封装丢字段。详见 docs/validation/2026-09-19-paint-v14-avatar-import.md。v14 尚未完成。
+
+后续：grounding 诊断与 Agent 透传已部署，441 tests passed / 10 ignored、fmt/clippy通过，四项权限仍true。新 RWI 拖动返回但未观察到位移；CUA 单次对照也未确认位移，继续定位映射/对象交互问题，不宣称已修复。

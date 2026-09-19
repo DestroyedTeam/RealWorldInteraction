@@ -1183,10 +1183,26 @@ impl Engine {
             .as_ref()
             .is_some_and(|binding| grounding_matches(binding, &current, &resolved))
         {
-            return Err(fault(
+            let mut error = fault(
                 "stale_reference",
                 "Focus/layout/content changed; reobserve.",
-            ));
+            );
+            // Report which grounding dimensions changed, without exposing
+            // document text, image data or an instruction to replay input.
+            error.diagnostic = Some(Box::new(match (&before.binding, &current.binding) {
+                (Some(expected), Some(now)) => serde_json::json!({
+                    "scope_changed": expected.scope != now.scope,
+                    "focus_changed": expected.focus_window != now.focus_window,
+                    "layout_changed": expected.layout != now.layout,
+                    "native_epoch_changed": expected.native_epoch != now.native_epoch,
+                    "mutation_context_changed": expected.mutation_context != now.mutation_context,
+                    "content_changed": expected.content != now.content,
+                    "reference_kind": if resolved.scope.element.is_some() { "element" } else { "pixel" },
+                    "native_input_dispatched": false
+                }),
+                _ => serde_json::json!({"binding_missing": true, "native_input_dispatched": false}),
+            }));
+            return Err(error);
         }
         if current.blocked != Some(false) {
             return Err(fault("target_blocked", "Inspect modal/occlusion state."));

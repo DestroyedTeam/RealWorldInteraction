@@ -327,13 +327,17 @@ fn semantic_target_tolerates_caret_or_unrelated_pixel_changes_but_pixel_referenc
         .resolve("fixture", &s.frame, Locator::Pixel { x: 200.0, y: 100.0 })
         .unwrap();
     h.app.0.lock().unwrap().pixel_epoch += 1;
-    assert_eq!(
-        h.engine
-            .act("fixture", &r.reference, &l, "pixel", Intent::Click, None)
-            .unwrap_err()
-            .code,
-        "stale_reference"
-    );
+    let error = h
+        .engine
+        .act("fixture", &r.reference, &l, "pixel", Intent::Click, None)
+        .unwrap_err();
+    assert_eq!(error.code, "stale_reference");
+    let diagnostic = error.diagnostic.unwrap();
+    assert_eq!(diagnostic["content_changed"], true);
+    assert_eq!(diagnostic["layout_changed"], false);
+    assert_eq!(diagnostic["scope_changed"], false);
+    assert_eq!(diagnostic["reference_kind"], "pixel");
+    assert_eq!(diagnostic["native_input_dispatched"], false);
 }
 #[test]
 fn semantic_revalidation_keeps_element_identity_position_focus_modal_and_layout_guards() {
