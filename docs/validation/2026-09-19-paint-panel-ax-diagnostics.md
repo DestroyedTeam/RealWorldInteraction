@@ -37,3 +37,11 @@ AI Projects图标进一步触发semantic_target_ambiguous且native_dispatch_ente
 结论：按钮和侧栏部分节点由宿主代理，实际文件图标由系统XPC进程提供。当前停在Home，尚未导入头像。后续委托归属验证须保留绑定子树来源、同用户/进程出生、系统服务身份和原生对象检查，并验证生命周期变化；不能只凭不同PID或服务名字放行，也不能按全局文件名搜索另一个进程对象。
 
 本轮439测试通过，fmt/clippy通过。
+
+## 已实现系统托管provider证明
+
+原生Rust调用SecCodeCopyGuestWithAttributes(PID)和SecCodeCheckValidity，requirement为`anchor apple and identifier "com.apple.appkit.xpc.openAndSavePanelService"`。前提仍是候选对象从当前精确窗口AXChildren树找到，且进程属于同UID；元素ID绑定provider进程出生，提交前再检查。单凭路径、名字或“是系统进程”均不授权。当前provider实现不声称覆盖字体/颜色/其他第三方窗口。
+
+现场：`v14-signed-delegate-projects-20260919-01`进入AI Projects；`v14-delegate-repo-20260919-01`进入Real World Interaction。两次AXOpen返回-25205，但后续Where原生值和项目目录截图证明导航变化；无重放，分别查询原操作并恢复输入域。当前work图标可见，但元数据输出在128原生节点预算截断，后续需补大目录支持。
+
+参考：[SecCodeCopyGuestWithAttributes](https://developer.apple.com/documentation/security/seccodecopyguestwithattributes(_:_:_:_:))、[SecCodeCheckValidity](https://developer.apple.com/documentation/security/seccodecheckvalidity(_:_:_:))。

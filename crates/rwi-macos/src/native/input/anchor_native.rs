@@ -175,14 +175,7 @@ fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
             && description.element.id == id
         {
             let actual_pid = node.pid()?;
-            if actual_pid != pid {
-                return Err(fault(
-                    "semantic_target_process_mismatch",
-                    &format!(
-                        "Observed native object PID {actual_pid} differs from bound PID {pid}; inspect delegated ownership before input."
-                    ),
-                ));
-            }
+            super::super::delegation::validate_hosted_descendant(pid, actual_pid)?;
             if let Some(previous) = &selected {
                 if unsafe { ffi::CFEqual(previous.0, node.0) } == 0 {
                     return Err(fault(

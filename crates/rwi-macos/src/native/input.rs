@@ -275,6 +275,14 @@ impl NativeMac {
         }
         use core_foundation::base::TCFType;
         let action = core_foundation::string::CFString::new(action_name);
+        let actual_pid = facts.hit.native().pid()?;
+        let owner_epoch = super::delegation::validate_hosted_descendant(self.pid, actual_pid)?;
+        if process_epoch(actual_pid)? != owner_epoch {
+            return Err(fault(
+                "delegate_process_changed",
+                "Native action provider changed before dispatch.",
+            ));
+        }
         let _call = operation::native_call("macos_native_action")?;
         dispatch::count(&self.dispatches);
         let code = unsafe {

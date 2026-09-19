@@ -597,3 +597,12 @@ Plugin与RWI Agent使用同一生成式空间轨道/指针logo。Plugin重装成
 - RWI已把文件面板导航到Home，Where值和截图均确认；AXOpen非零返回未被重放。
 - AI Projects图标属于Apple openAndSavePanelService PID46633，而外层Paint PID2578，当前同PID限制在原生投递前正确停止。已拆分诊断错误并部署；未删除进程边界。
 - 下一步实现绑定面板的受限XPC委托归属证明。画布未新增图像，v14仍未完成。
+
+### 2026-09-19 授权交互流程的跨进程支持
+
+用户澄清：文件面板、取色板、字体面板、权限弹窗和第三方集成可能由其他进程承载；不得把最初应用PID当作完整任务边界。关联托管UI与独立授权窗口分别处理，敏感系统确认仍需用户参与。
+
+- 首个已实现托管provider：来自精确绑定AX子树的Apple openAndSavePanelService对象，验证同UID、真实进程出生，以及Security框架对运行中代码的anchor apple + identifier校验。没有shell签名验证桥、没有全局搜索后放行整个helper。
+- 元素身份加入真实owner进程出生，动作前再次校验provider。普通指针路径不扩大，其他provider未验证时保留显式发现/绑定或用户确认流程。
+- 固定证书签名部署成功；440测试passed/10ignored，fmt/clippy通过。通过真实Plugin先进入AI Projects再进入Real World Interaction，Where值分别独立确认。AXOpen仍返回-25205但目录已改变，保留uncertain并查原操作/恢复输入域，从未重放。
+- 当前停在项目根的Open面板。work目录可在截图中看到，但其控件位于当前128节点观察预算外，需要改善大目录的原生树预算/分页或位置导航；不能借坐标绕过。头像尚未导入，v14未验收。

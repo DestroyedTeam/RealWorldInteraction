@@ -1,3 +1,4 @@
+mod delegation;
 mod input;
 pub(crate) use input::NATIVE_SAMPLE_INTERVAL_MS;
 mod keyboard;
@@ -654,7 +655,9 @@ fn element_description(el: &Cf) -> Result<AxElement> {
         .filter(|s| !s.is_empty())
         .or_else(|| el.attr("AXDescription").ok().and_then(|v| v.string().ok()))
         .unwrap_or_default();
-    let id = digest(format!("{}:{native_id}:{role}:{subrole:?}:{r:?}", el.pid()?).as_bytes());
+    // Bind native object identity to its real process birth, including hosted views.
+    let owner_epoch = process_epoch(el.pid()?)?;
+    let id = digest(format!("{owner_epoch}:{native_id}:{role}:{subrole:?}:{r:?}").as_bytes());
     let value = read_classified_value(text_class, || {
         el.attr("AXValue").ok().and_then(|v| v.string().ok())
     });
