@@ -29,6 +29,8 @@ use std::{
 pub(crate) fn popups_for_pid(pid: u32) -> Vec<rwi_core::Popup> {
     metadata::popup_inventory(pid)
 }
+pub(crate) const AX_TREE_MAX_NODES: usize = 512;
+pub(crate) const AX_TREE_MAX_QUEUE: usize = 1024;
 pub struct NativeMac {
     pub(crate) pid: u32,
     window: u32,
@@ -800,7 +802,7 @@ fn ax_tree(
     let mut out = Vec::new();
     while let Some((node, depth)) = pending.pop_front() {
         operation::checkpoint("macos_ax_tree")?;
-        if nodes >= 128 || start.elapsed() > Duration::from_millis(3000) {
+        if nodes >= AX_TREE_MAX_NODES || start.elapsed() > Duration::from_millis(3000) {
             break;
         }
         nodes += 1;
@@ -836,7 +838,7 @@ fn ax_tree(
         }
         if depth < 16 {
             for child in node.children().unwrap_or_default() {
-                if pending.len() >= 256 {
+                if pending.len() >= AX_TREE_MAX_QUEUE {
                     break;
                 }
                 pending.push_back((child, depth + 1));

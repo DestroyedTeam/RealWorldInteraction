@@ -161,7 +161,7 @@ fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
     let mut count = 0;
     while let Some((node, depth)) = pending.pop_front() {
         operation::checkpoint("macos_semantic_lookup")?;
-        if count >= 128 || start.elapsed() > Duration::from_millis(3000) {
+        if count >= AX_TREE_MAX_NODES || start.elapsed() > Duration::from_millis(3000) {
             return Err(fault(
                 "semantic_walk_incomplete",
                 "Cannot prove unique native target within the bounded subtree.",
@@ -197,7 +197,7 @@ fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
         for child in children {
             pending.push_back((child, depth + 1));
         }
-        if pending.len() > 256 {
+        if pending.len() > AX_TREE_MAX_QUEUE {
             return Err(fault(
                 "semantic_walk_incomplete",
                 "Native subtree exceeds queue budget.",
