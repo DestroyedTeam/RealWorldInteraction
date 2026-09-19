@@ -557,3 +557,9 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 4. 再次 discover+bind 文档 → `observe` → 取画布 `AXScrollArea` 元素点 → `resolve` → `claim` →
    `act_checked` drag，`offset = pt_per_canvas_px × (target_canvas − 画布元素点换算的 canvas 坐标)`；
 5. `File > Save` → 读回 PNG 确认卡片内容出现且**图层面板新增 `Image` 行**（= 图层保留 ✓）。
+
+**⑥ 更正 §29 ④**：宿主通道按 `Add Image`（`whose description is "Add Image"`）**确实会打开文件面板** ✓
+（本轮实测：面板 `Open` 以 `cgwindow:3627`、880×448 出现在 (316,283)；此前"AXPress 不触发面板"的判断 ✗ 是错的——
+当时看到的是过期窗口列表快照）。之后在面板内执行 `AXOpen` **面板会关闭**，但**并不保证已导入** ✗：
+本轮 `File > Save` 后与底图逐像素比对 **changed px = 0**，即**没有导入成功**（被取消或点到的不是目标文件）。
+→ 结论：**导入成功与否必须用"保存→读回 PNG 差异"判定** ✓；面板关闭 ✗ 不能作为成功证据。
