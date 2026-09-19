@@ -27,3 +27,13 @@
 通过Plugin对原Open面板发出`v14-semantic-cancel-20260919-01`，AXPress returned，1361.6ms，随后独立discover确认Open列表为空。再以`v14-semantic-addimage-20260919-01`点击Add Image，818.0ms，独立discover/observe确认新面板及控件出现。两次均没有fallback或重放。
 
 当前已跨过“面板按钮无法操作”的阻塞，但文件导航、头像导入/定位和最终图层验收尚未完成。画布无新增图像。
+
+## 导航到Home后的跨进程证据
+
+`v14-panel-home-20260919-01` 对侧栏Home单次AXOpen返回-25205；独立截图和Where值确认已经到vincentadamnemessis主目录，没有重放，查询终态并恢复输入域。
+
+AI Projects图标进一步触发semantic_target_ambiguous且native_dispatch_entered=false。将错误分成原生对象冲突和进程不匹配，并允许CFEqual为真的同一对象重复出现（不同对象仍拒绝）；固定签名部署后，新鲜观察下新请求`v14-projects-after-identity-fix-20260919-01`精确返回semantic_target_process_mismatch：控件PID46633，绑定PID2578；native_dispatch_entered=false。独立ps验证46633的UID501，路径为/System/Library/Frameworks/AppKit.framework/Versions/C/XPCServices/com.apple.appkit.xpc.openAndSavePanelService.xpc/Contents/MacOS/com.apple.appkit.xpc.openAndSavePanelService。旧请求均不可重放，已查询终态并恢复输入域。
+
+结论：按钮和侧栏部分节点由宿主代理，实际文件图标由系统XPC进程提供。当前停在Home，尚未导入头像。后续委托归属验证须保留绑定子树来源、同用户/进程出生、系统服务身份和原生对象检查，并验证生命周期变化；不能只凭不同PID或服务名字放行，也不能按全局文件名搜索另一个进程对象。
+
+本轮439测试通过，fmt/clippy通过。

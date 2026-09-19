@@ -156,7 +156,7 @@ impl NativeMac {
 // never a point hit or a global name search. Ambiguity and walk limits fail closed.
 fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
     let mut pending = VecDeque::from([(window.retained(), 0usize)]);
-    let mut selected = None;
+    let mut selected: Option<Cf> = None;
     let start = Instant::now();
     let mut count = 0;
     while let Some((node, depth)) = pending.pop_front() {
@@ -174,13 +174,25 @@ fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
         if let Ok(description) = element_description(&node)
             && description.element.id == id
         {
-            if selected.is_some() || node.pid()? != pid {
+            let actual_pid = node.pid()?;
+            if actual_pid != pid {
                 return Err(fault(
-                    "semantic_target_ambiguous",
-                    "Native target is duplicated or belongs to another process.",
+                    "semantic_target_process_mismatch",
+                    &format!(
+                        "Observed native object PID {actual_pid} differs from bound PID {pid}; inspect delegated ownership before input."
+                    ),
                 ));
             }
-            selected = Some(node.retained());
+            if let Some(previous) = &selected {
+                if unsafe { ffi::CFEqual(previous.0, node.0) } == 0 {
+                    return Err(fault(
+                        "semantic_target_ambiguous",
+                        "Distinct native objects share the observed identity; nothing dispatched.",
+                    ));
+                }
+            } else {
+                selected = Some(node.retained());
+            }
         }
         let children = node.children().unwrap_or_default();
         if depth >= 16 && !children.is_empty() {

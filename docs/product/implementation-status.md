@@ -591,3 +591,9 @@ Plugin与RWI Agent使用同一生成式空间轨道/指针logo。Plugin重装成
 - 原生语义动作与指针引用分离；普通点击门禁保持。439测试通过，新增后端能力/禁用/状态变化/动作改变/去重负向覆盖。
 - 已固定证书签名部署；Plugin AXPress真实取消旧Open并重新打开新Open，两步均独立观察确认，无重放。
 - 面板按钮路径已打通。当前继续文件位置导航，尚未导入头像；不将Cancel/Add Image成功等同v14通过。
+
+### 2026-09-19 v14 文件导航推进与XPC归属
+
+- RWI已把文件面板导航到Home，Where值和截图均确认；AXOpen非零返回未被重放。
+- AI Projects图标属于Apple openAndSavePanelService PID46633，而外层Paint PID2578，当前同PID限制在原生投递前正确停止。已拆分诊断错误并部署；未删除进程边界。
+- 下一步实现绑定面板的受限XPC委托归属证明。画布未新增图像，v14仍未完成。
