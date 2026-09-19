@@ -26,3 +26,9 @@ Prompt: Use case: logo-brand. A square app icon for Real World Interaction, a cr
 - 已把带统一图标的证书签名应用部署到原安装路径并启动，备份在work/rwi-brand/previous-agent-bundle。应用CFBundleIconFile=RWI.icns，安装图标与仓库资源字节一致。
 - Plugin已验证并重装为0.2.0+codex.20260919112651，安装缓存logo与仓库资产字节一致；图标界面缓存刷新尚未目视验证。
 - 新Agent PID16839实测四项TCC权限false。临时签名到证书签名的首次迁移尚需授权，后续跨更新保留权限仍待现场验证，不作已完成承诺。
+
+## 授权后更新保留实测
+
+用户完成系统认证后，通过设置重新加入应用包的控制权限与输入监控，用户手动补齐屏幕录制；重启后四项原生preflight均true。随后复制应用包、将CFBundleVersion从2改为3、使用同一证书重签、验证旧DR、有序替换和重启。整个更新过程中没有更改TCC。新进程PID20295的Plugin原生查询再次返回accessibility/listen_event/post_event/screen_capture全部true。
+
+这是同一二进制下应用包内容及签名更新的权限保留实测，不等同于所有未来代码变更/系统升级都不会要求确认。下一次实际Rust二进制更新仍需检查。备份在 `work/signed-update-retention/previous-bundle`。

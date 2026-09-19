@@ -29,3 +29,11 @@
 - 原生输入点命中逻辑与观察命中逻辑仍需统一验证；不移除身份、模态、未知状态、lease/no-replay 防护。
 - 完整 A/B 需记录真实前台 PID、同一可逆动作、AX动作和事件动作分开、多次计时，之后再验收拖动和键盘。
 - v14 第1–6行独立头像图层及底图重复卡片修复未完成，本次仅关闭 Open、选择 Line，没有新增画布内容。
+
+## 证书签名版本现场验证
+
+- 四项权限恢复后，部署的application-scoped命中修正返回Paint S工具栏各AXRadioButton visible=true/occluded=false；不再全体误报遮挡。
+- `signed-bg-select-move-20260919-01` 通过Plugin发送单次AXPress，返回native_press_rejected/uncertain/native_dispatch_entered=true（约1065ms）。后续独立观察显示Line配置栏与图层选框消失，画面状态发生变化；不将错误等同于没有作用，也不单凭此确认具体工具选中。未重放。
+- 原请求终态查询后，recover_input独立验证无按键/按钮按下、native writers idle，解除资源围栏，旧请求仍不可重放。
+- `native/input.rs` dispatch_native_action当前把所有非零AX错误统一写成“应用拒绝”，且丢失原生数值；后续需增加真实错误码、区分通信/超时与明确不支持，继续保留不确定结果，不能通过自动补发CGEvent修复。
+- 截图偏移及Paint v14图层内容仍待修正。
