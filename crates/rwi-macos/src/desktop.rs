@@ -75,6 +75,7 @@ pub(crate) fn native_capabilities(
     json!({
         "adapter":"rust-macos-native","capture":"ScreenCaptureKit.SCScreenshotManager",
         "input":"CoreGraphics.CGEvent","oracle":"Accessibility.AXUIElement",
+        "native_semantic_actions":["AXPress","AXOpen","AXConfirm"],
         "checked_context_policy":"native_element","input_opt_in":allow_input,
         "permissions":permissions,"permission_prompts":false,
         "evidence":"native_api_observed","hardware_attestation":false,

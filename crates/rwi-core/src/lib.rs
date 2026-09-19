@@ -216,6 +216,9 @@ pub enum Predicate {
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Resolved {
+    /// Service-issued exact native action; never a pointer reference.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_action: Option<String>,
     pub reference: String,
     pub target: String,
     pub frame: String,
@@ -252,8 +255,10 @@ pub fn grounding_matches(expected: &Binding, current: &Scene, target: &Resolved)
             .find(|e| &e.id == id)
             .is_some_and(|e| {
                 e.point == target.point
-                    && e.visible == Some(true)
-                    && e.occluded == Some(false)
+                    && match &target.native_action {
+                        Some(action) => e.enabled != Some(false) && e.actions.contains(action),
+                        None => e.visible == Some(true) && e.occluded == Some(false),
+                    }
                     && target.element_revision.as_ref() == Some(&e.revision())
             }),
         None => now.content == expected.content,
@@ -777,6 +782,15 @@ impl Engine {
             .ok_or_else(|| fault("unknown_frame", "Observe this exact target again."))
     }
     pub fn resolve(&mut self, target: &str, frame: &str, locator: Locator) -> Result<Resolved> {
+        self.resolve_action(target, frame, locator, None)
+    }
+    fn resolve_action(
+        &mut self,
+        target: &str,
+        frame: &str,
+        locator: Locator,
+        native_action: Option<&str>,
+    ) -> Result<Resolved> {
         let snapshot = self.snapshot(target, frame)?;
         let scene = &snapshot.scene;
         let binding = scene.binding.as_ref().ok_or_else(|| {
@@ -806,7 +820,11 @@ impl Engine {
                     ));
                 }
                 let e = matches[0];
-                if e.visible != Some(true) || e.occluded != Some(false) {
+                if if let Some(action) = native_action {
+                    e.enabled == Some(false) || !e.actions.iter().any(|a| a == action)
+                } else {
+                    e.visible != Some(true) || e.occluded != Some(false)
+                } {
                     return Err(fault(
                         "visibility_unknown",
                         "Resolve occlusion before input.",
@@ -860,6 +878,7 @@ impl Engine {
             ));
         }
         let r = Resolved {
+            native_action: native_action.map(str::to_owned),
             reference: id(),
             target: target.into(),
             frame: frame.into(),
@@ -1127,6 +1146,14 @@ impl Engine {
             .find(|r| r.reference == reference && r.target == target)
             .cloned()
             .ok_or_else(|| fault("unknown_reference", "Observe and resolve this target."))?;
+        if let Some(action) = &resolved.native_action
+            && (!matches!(intent, Intent::Click) || value.as_ref() != Some(action))
+        {
+            return Err(fault(
+                "native_action_mismatch",
+                "Native-action references cannot dispatch pointer, text, or a different action.",
+            ));
+        }
         if resolved.placement_only {
             return Err(fault(
                 "invalid_reference_class",

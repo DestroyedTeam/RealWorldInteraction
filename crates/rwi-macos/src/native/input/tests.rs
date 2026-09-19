@@ -35,6 +35,7 @@ fn grounded() -> (Identity, Binding, Resolved, Scene) {
         description: None,
     };
     let reference = Resolved {
+        native_action: None,
         reference: "ref".into(),
         target: "target".into(),
         frame: "frame".into(),

@@ -106,7 +106,23 @@ impl Engine {
                 },
             ));
         }
-        let old = self.resolve(target, frame, Locator::Element { id: element.into() })?;
+        let native_action = if matches!(intent, Intent::Click) {
+            value.as_deref().filter(|action| {
+                self.backend(target).is_ok_and(|b| {
+                    b.capabilities()["native_semantic_actions"]
+                        .as_array()
+                        .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(action)))
+                })
+            })
+        } else {
+            None
+        };
+        let old = self.resolve_action(
+            target,
+            frame,
+            Locator::Element { id: element.into() },
+            native_action,
+        )?;
         let mut current = self.backend(target)?.revalidate(&old)?;
         if current.identity != self.identity(target)? || current.identity != before.identity {
             return Err(fault(
@@ -155,7 +171,12 @@ impl Engine {
         while self.snapshots.len() > SNAPSHOT_LIMIT {
             self.snapshots.pop_front();
         }
-        let resolved = self.resolve(target, &fresh, Locator::Element { id: element.into() })?;
+        let resolved = self.resolve_action(
+            target,
+            &fresh,
+            Locator::Element { id: element.into() },
+            native_action,
+        )?;
         // The unchanged dispatch path still revalidates, holds the lease, writes
         // its durable no-replay reservation and invokes exactly one native act.
         self.act_inner(
@@ -463,5 +484,121 @@ mod tests {
             "checked_precondition_changed"
         );
         assert_eq!(f.0.lock().unwrap().calls, 0);
+    }
+}
+
+#[cfg(test)]
+mod native_action_tests {
+    use super::*;
+    use crate::fixture::Fixture;
+    struct SemanticFixture {
+        base: Fixture,
+        advertised: bool,
+        disabled: bool,
+        changed: bool,
+        reads: usize,
+    }
+    impl Backend for SemanticFixture {
+        fn identity(&self) -> Identity {
+            self.base.identity()
+        }
+        fn capabilities(&self) -> serde_json::Value {
+            serde_json::json!({"checked_context_policy":"native_element", "native_semantic_actions":if self.advertised {vec!["AXPress"]} else {vec![]}})
+        }
+        fn observe(&mut self) -> Result<Scene> {
+            self.reads += 1;
+            let mut s = self.base.observe()?;
+            for e in &mut s.elements {
+                e.visible = Some(false);
+                e.occluded = Some(true);
+                e.actions = vec!["AXPress".into()];
+                e.enabled = Some(!self.disabled);
+                if self.changed && self.reads > 1 {
+                    e.state_revision = Some("changed".into());
+                }
+            }
+            Ok(s)
+        }
+        fn act(
+            &mut self,
+            b: &Binding,
+            r: &Resolved,
+            i: &Intent,
+            v: Option<&str>,
+        ) -> Result<Option<bool>> {
+            assert_eq!(r.native_action.as_deref(), Some("AXPress"));
+            self.base.act(b, r, i, v)
+        }
+        fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
+            self.base.inspect(s, p, e)
+        }
+    }
+    #[test]
+    fn native_actions_are_explicit_capability_gated_and_never_pointer_references() {
+        for (advertised, disabled, changed, value, pass) in [
+            (true, false, false, Some("AXPress"), true),
+            (false, false, false, Some("AXPress"), false),
+            (true, true, false, Some("AXPress"), false),
+            (true, false, true, Some("AXPress"), false),
+            (true, false, false, None, false),
+            (true, false, false, Some("AXUnknown"), false),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let mut engine = Engine::new(dir.path().into()).unwrap();
+            let f = Fixture::default();
+            engine
+                .register(
+                    "t".into(),
+                    Box::new(SemanticFixture {
+                        base: f.clone(),
+                        advertised,
+                        disabled,
+                        changed,
+                        reads: 0,
+                    }),
+                )
+                .unwrap();
+            let frame = engine.observe("t").unwrap().frame;
+            assert!(
+                engine
+                    .resolve("t", &frame, Locator::Element { id: "Input".into() })
+                    .is_err()
+            );
+            let lease = engine.claim("t", 60000).unwrap();
+            let call = |e: &mut Engine| {
+                e.act_checked(CheckedAction {
+                    target: "t",
+                    frame: &frame,
+                    element: "Input",
+                    lease: &lease,
+                    request: "one",
+                    intent: Intent::Click,
+                    value: value.map(str::to_owned),
+                })
+            };
+            let result = call(&mut engine);
+            assert_eq!(result.is_ok(), pass);
+            assert_eq!(f.0.lock().unwrap().calls, u64::from(pass));
+            if pass {
+                assert!(call(&mut engine).unwrap().deduplicated);
+                assert_eq!(f.0.lock().unwrap().calls, 1);
+                let latest = engine.observe("t").unwrap().frame;
+                let r = engine
+                    .resolve_action(
+                        "t",
+                        &latest,
+                        Locator::Element { id: "Input".into() },
+                        Some("AXPress"),
+                    )
+                    .unwrap();
+                assert_eq!(
+                    engine
+                        .act("t", &r.reference, &lease, "pointer", Intent::Click, None)
+                        .unwrap_err()
+                        .code,
+                    "native_action_mismatch"
+                );
+            }
+        }
     }
 }

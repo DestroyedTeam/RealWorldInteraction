@@ -202,6 +202,7 @@ mod tests {
             png: vec![],
         };
         let target = Resolved {
+            native_action: None,
             reference: "reference".into(),
             target: "target".into(),
             frame: "frame".into(),
@@ -268,6 +269,7 @@ mod tests {
             mutation_context: None,
         };
         let target = Resolved {
+            native_action: None,
             reference: "r".into(),
             target: "t".into(),
             frame: "f".into(),

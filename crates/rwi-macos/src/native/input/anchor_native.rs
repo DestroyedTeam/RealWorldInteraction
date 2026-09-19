@@ -78,7 +78,17 @@ impl NativeMac {
                 "The exact AX window no longer matches the pinned native bounds.",
             ));
         }
-        let hit = point_element(&window_element, self.pid, target.point)?;
+        let hit = if target.native_action.is_some() {
+            exact_action_element(
+                &window_element,
+                self.pid,
+                target.scope.element.as_deref().ok_or_else(|| {
+                    fault("native_action_target_missing", "Exact element required.")
+                })?,
+            )?
+        } else {
+            point_element(&window_element, self.pid, target.point)?
+        };
         let hit_description = element_description(&hit)?;
         require_nonsecure_input(&hit_description)?;
         if matches!(kind, Kind::Text | Kind::Keyboard) {
@@ -140,4 +150,59 @@ impl NativeMac {
     pub(super) fn drag_anchor_facts(&self, target: &Resolved) -> Result<Facts<AxObject>> {
         self.input_anchor_facts(target, Kind::Pointer)
     }
+}
+
+// Semantic actions resolve the actual native object in the exact bound subtree,
+// never a point hit or a global name search. Ambiguity and walk limits fail closed.
+fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
+    let mut pending = VecDeque::from([(window.retained(), 0usize)]);
+    let mut selected = None;
+    let start = Instant::now();
+    let mut count = 0;
+    while let Some((node, depth)) = pending.pop_front() {
+        operation::checkpoint("macos_semantic_lookup")?;
+        if count >= 128 || start.elapsed() > Duration::from_millis(3000) {
+            return Err(fault(
+                "semantic_walk_incomplete",
+                "Cannot prove unique native target within the bounded subtree.",
+            ));
+        }
+        count += 1;
+        if node.attr("AXHidden").ok().and_then(|v| v.boolean()) == Some(true) {
+            continue;
+        }
+        if let Ok(description) = element_description(&node)
+            && description.element.id == id
+        {
+            if selected.is_some() || node.pid()? != pid {
+                return Err(fault(
+                    "semantic_target_ambiguous",
+                    "Native target is duplicated or belongs to another process.",
+                ));
+            }
+            selected = Some(node.retained());
+        }
+        let children = node.children().unwrap_or_default();
+        if depth >= 16 && !children.is_empty() {
+            return Err(fault(
+                "semantic_walk_incomplete",
+                "Native subtree exceeds depth budget.",
+            ));
+        }
+        for child in children {
+            pending.push_back((child, depth + 1));
+        }
+        if pending.len() > 256 {
+            return Err(fault(
+                "semantic_walk_incomplete",
+                "Native subtree exceeds queue budget.",
+            ));
+        }
+    }
+    selected.ok_or_else(|| {
+        fault(
+            "semantic_target_missing",
+            "Exact observed native object no longer exists in this window.",
+        )
+    })
 }

@@ -17,3 +17,13 @@
 同轮重新检查全部3张参考附件，实际目标是attach-3-bkkRer32.png。该图第7行有完整头像、第8行有部分头像，旧接续记录无头像说法已修正。
 
 参考：[Apple AXUIElementCopyElementAtPosition](https://developer.apple.com/documentation/applicationservices/1462077-axuielementcopyelementatposition)。
+
+## 精确原生语义动作实现与现场验证
+
+后端显式公布支持的AXPress/AXOpen/AXConfirm。act_checked仅在Click+明确动作、后端支持且控件公布该动作时签发service-only native_action引用；普通resolve/pixel/点击不获得此权限。语义引用不能改发其他动作、鼠标、文本。原生层在绑定窗口内按观察ID重新遍历唯一对象，重复/缺失/隐藏子树/深度节点队列时间超限拒绝；沿用过程会话、框架状态revision、窗口范围、非安全控件、模态、lease与durable no-replay检查。不用点命中代替原生对象，也不执行前置primer点击。
+
+新增核心测试覆盖后端不支持、禁用、revision变化、未指定动作、未公布动作、重复请求去重及禁止转为指针动作。439 Rust tests passed /10 ignored，fmt、全目标全特性clippy通过。
+
+通过Plugin对原Open面板发出`v14-semantic-cancel-20260919-01`，AXPress returned，1361.6ms，随后独立discover确认Open列表为空。再以`v14-semantic-addimage-20260919-01`点击Add Image，818.0ms，独立discover/observe确认新面板及控件出现。两次均没有fallback或重放。
+
+当前已跨过“面板按钮无法操作”的阻塞，但文件导航、头像导入/定位和最终图层验收尚未完成。画布无新增图像。

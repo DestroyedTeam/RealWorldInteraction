@@ -122,6 +122,7 @@ impl Fake {
             self.identity.clone(),
             scene.binding.clone().unwrap(),
             Resolved {
+                native_action: None,
                 reference: "original-ref".into(),
                 target: "target".into(),
                 frame: "original-frame".into(),

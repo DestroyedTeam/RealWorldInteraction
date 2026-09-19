@@ -71,6 +71,15 @@ impl NativeMac {
             Intent::Click if target.scope.element.is_some() => value,
             _ => None,
         };
+        if let Some(action) = &target.native_action {
+            if !matches!(intent, Intent::Click) || value != Some(action.as_str()) {
+                return Err(fault(
+                    "native_action_mismatch",
+                    "Exact native action required; no input sent.",
+                ));
+            }
+            return self.dispatch_native_action(expected, target, action);
+        }
         if pointer && !crate::background::pointer_delivery_available() {
             return Err(fault(
                 "background_delivery_unavailable",
