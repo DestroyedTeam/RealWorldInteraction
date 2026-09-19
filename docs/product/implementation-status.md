@@ -567,3 +567,13 @@ Plugin与RWI Agent使用同一生成式空间轨道/指针logo。Plugin重装成
 
 - 四项权限全部恢复；同证书签名包build2→3替换重启后仍全部true，没有重复授权。范围为包元数据/签名更新，非新Rust二进制。
 - 后台观察命中修正已现场验证工具栏visible=true。AXPress仍出现非零返回但观察到界面变化，未重放，已查询终态并安全恢复输入域；继续诊断错误分类/实际输入验证。Paint v14仍未完成。
+
+### 2026-09-19 v14 实际导入驱动的输出与回执修正
+
+- 精简JS摘要补齐macOS role、description后备名称、disabled、selected、value、AX actions，保留帧绑定与未知状态；不再输出空名工具并迫使模型反复取原始元数据。当前真实面板输出已观察到新字段。
+- Rust AX非零返回保留错误码与effect unknown，不再一概称应用拒绝；无自动重发/CGEvent补发。
+- JS对于dispatch=returned且无dispatch_error但system_accepted=null的macOS回执，保留未验证结果，不再伪造operation_failed；后续动作仍必须重新观察。
+- fmt、438 Rust tests passed / 10 ignored、全目标全特性clippy通过；43 JS tests通过。
+- 新Rust Agent已重编译、固定证书重签并部署；PID21909四项权限仍true，无再次授权。这次覆盖真实二进制更新，不只是应用包版本号变化。
+- `v14-import-open-signed-20260919-02`普通click投递1492ms；独立discover证实Open cgwindow:5429出现，未重放。随后绑定13.6ms、观察543.6ms。
+- 新Open面板当前仍hidden/occluded，主窗口工具栏已修复；说明应用范围命中不足以覆盖sandboxed panel代理。下一步诊断面板代理身份与窗口局部命中，不直接放宽检查。截图偏移/头像独立层仍待完成，未宣告v14通过。

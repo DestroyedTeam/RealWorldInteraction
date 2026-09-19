@@ -521,3 +521,19 @@ test('local concurrency rejection cannot hide the later native read cleanup fail
     finish();try{await read;}catch{}
   }),e=>/Concurrent/.test(e.message)&&e.pendingError.data.operation_ref.execution_nonce==='pending-native-read'&&e.actionResults.length===0);
 });
+
+test('macOS compact controls retain actionable semantics without native identifiers', async () => {
+  const client = new RwiClient(async () => ({structuredContent:{frame:'mac',scene:{blocked:false,mutation_ready:true,elements:[{id:'native',name:'',description:'Select and Move',role:'AXRadioButton',enabled:false,selected:false,value:'0',value_truncated:true,actions:['AXPress','Name:Remove from toolbar'],visible:null,occluded:null}]}}}));
+  const {data}=await client.window('mac-host').snapshot();
+  assert.deepEqual(data.elements,[{ref:'e0',name:'Select and Move',role:'AXRadioButton',disabled:true,selected:false,value:'0',value_truncated:true,actions:['AXPress'],unconfirmed:true}]);
+  assert.equal(data.frame,'mac');
+});
+
+test('returned dispatch without OS acceptance stays unverified and requires readback', async () => {
+  const client=new RwiClient(async name=>({structuredContent:name==='computer.observe'?{frame:'f',scene:{blocked:false,mutation_ready:true,elements:[{id:'e'}]}}:name==='computer.claim'?{lease:'l'}:name==='computer.act_checked'?{dispatch:'returned',dispatch_error:null,system_accepted:null,goal_verified:false}:{released:true}}));
+  const w=client.window('mac');await w.observe();
+  const result=await w.withInput(i=>i.act({element:'e',intent:'click',requestId:'once'}));
+  assert.equal(result.value.data.system_accepted,null);
+  assert.equal(result.value.data.goal_verified,false);
+  assert.throws(()=>w.summary(),/Observe/);
+});

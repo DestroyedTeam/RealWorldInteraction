@@ -195,8 +195,15 @@ class RwiWindow {
     const coverageReason = o.adapter_status?.native_details?.uia?.walk?.truncation ?? o.adapter_status?.native_details?.uia?.error?.code;
     const elements = rows.slice(offset, offset + limit).map(([ref, id]) => {
       const e = this.#elements.get(id);
-      const row = { ref, name: e.name ?? '' };
-      if (e.control_type !== undefined) row.role = controlRole(e.control_type);
+      const row = { ref, name: e.name || e.description || '' };
+      if (typeof e.role === 'string') row.role = e.role;
+      else if (e.control_type !== undefined) row.role = controlRole(e.control_type);
+      if (e.enabled === false) row.disabled = true;
+      if (typeof e.selected === 'boolean') row.selected = e.selected;
+      if (typeof e.value === 'string') row.value = e.value;
+      if (e.value_truncated === true) row.value_truncated = true;
+      const actions = e.actions?.filter(a => typeof a === 'string' && a.startsWith('AX'));
+      if (actions?.length) row.actions = actions;
       if (e.keyboard_focus === true) row.focused = true;
       if (e.visible === false) row.hidden = true;
       if (e.occluded === true) row.occluded = true;
@@ -313,7 +320,10 @@ class RwiWindow {
         record.reply = result;
         if (result.data.deduplicated === true) throw new RwiToolError('computer.act_checked', { structuredContent: { ...result.data, code: 'deduplicated_batch_stop', message: 'An existing receipt is not a new sequence step; inspect the original request, never continue implicitly' }, isError: true });
         checkBudget();
-        if (result.data.system_accepted !== true) throw new RwiToolError('computer.act_checked', { structuredContent: result.data, isError: true });
+        // A returned native dispatch can have no OS acceptance attestation (macOS).
+        // Expose that uncertainty without inventing either success or failure;
+        // the observation was already invalidated, so another action needs readback.
+        if (result.data.system_accepted !== true && !(result.data.system_accepted == null && result.data.dispatch === 'returned' && result.data.dispatch_error == null)) throw new RwiToolError('computer.act_checked', { structuredContent: result.data, isError: true });
         return result;
       };
       const act = args => {

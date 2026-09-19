@@ -132,3 +132,15 @@ fn unsupported_source_region_is_rejected_before_any_native_read_or_capture() {
         "window_epoch_changed"
     );
 }
+
+#[test]
+fn action_error_retains_native_status_without_claiming_no_effect() {
+    for status in [-25204, -25206, -25205, -1] {
+        let error = native_action_failure("AXPress", status);
+        assert_eq!(error.code, "native_action_unconfirmed");
+        let d = error.diagnostic.unwrap();
+        assert_eq!(d["native_status"], status);
+        assert_eq!(d["replay_allowed"], false);
+        assert_eq!(d["effect"], "unknown");
+    }
+}

@@ -272,18 +272,7 @@ impl NativeMac {
             ffi::AXUIElementPerformAction(facts.hit.native().0, action.as_concrete_TypeRef().cast())
         };
         if code != 0 {
-            let (code_name, message) = if action_name == "AXPress" {
-                (
-                    "native_press_rejected",
-                    "The native accessibility press action was refused by the application; no synthetic input was sent.",
-                )
-            } else {
-                (
-                    "native_action_rejected",
-                    "The native accessibility action was refused by the application; no synthetic input was sent.",
-                )
-            };
-            return Err(fault(code_name, message));
+            return Err(native_action_failure(action_name, code));
         }
         Ok(None)
     }
@@ -324,3 +313,18 @@ fn validate_batch_scene(
 
 #[cfg(test)]
 mod tests;
+
+// A nonzero AX status is not proof that the application made no change.
+fn native_action_failure(action: &str, status: i32) -> rwi_core::Fault {
+    let mut error = fault(
+        "native_action_unconfirmed",
+        &format!(
+            "{action} returned AXError {status}; effect unknown. Inspect the original operation and fresh state; never replay or send fallback input."
+        ),
+    );
+    error.diagnostic = Some(Box::new(serde_json::json!({
+        "api": "AXUIElementPerformAction", "action": action,
+        "native_status": status, "effect": "unknown", "replay_allowed": false
+    })));
+    error
+}
