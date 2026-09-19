@@ -310,3 +310,27 @@ Open 面板批量导入的失败根因已验证：面板按最近文件排序，
 更新对比：`docs/validation/replica-v5-icon-fill-{current,comparison,overlay}-20260918.png`。
 
 当前图标已填：头部电话、videocam、TDesign share、TDesign add；输入栏 folder、image、mail、microphone、time；剩余 header grid/chevron/more、底栏 smiley/scissors/people/screen/robot、星标等待后续，文本与颜色仍未填。
+
+## 20. 2026-09-19 重启后的画布重建与坐标自证
+
+**事实**：本机重启（`security session 100002 → 100003`、boot 时间戳变化、Paint S 83334 → 2578，rcu-agent 进程随之退出）。原文档
+`white-canvas-2x.png` 是夹具文件且未保存，磁盘与窗口列表均已不存在 → 当日复刻画布丢失；仓库内的全部计划（118/28 形状）、
+素材（头像、卡片内容、10 枚图标）与 SOP 未受影响。
+
+**恢复步骤（已实测，全部走既有授权通道）**
+1. `pgrep -fl rcu-agent` 无进程、`agent.pid` 记录 50652、端口 45129 未监听 → 用 `hub start` 以 `--config agent.json` 重启部署件，ready 条件 `port 45129 + log listening`；
+2. 用 PIL 重建 `work/replica-verify-20260915/run6/white-canvas-2x.png`（2000×679 白底），`open -g -a "Paint S" <file>` 后台打开（不抢前台）；
+3. Host AX 恢复窗口几何：`set size to {1800,1131}`、`set position to {282,1190}`（内建屏，实测报 1776×1131，与适配器读回 1800×1131 有 ≤24pt 差异，映射不依赖该值）；
+4. Host AX 设缩放：`combo box 1 of window 1` → `set value to "150"` → `perform action "AXConfirm"`（从 100 → 150 已验证）；
+5. 重新标定：画布 AXScrollArea 元素点桌面 `(1265,1790.5)` = canvas `(1000,339.5)` → `origin_pt=(515,1535.875)`、`origin_img=(466,691.75)`。
+
+**自证**：重建后的窗口 `[282,1190,1800,1131]`、图像 `3600×2262`、画布锚点 `(1265,1790.5)`、origin_img `(466,692)`、
+Zoom 150% —— 与重启前逐项一致，说明"由画布元素点反推原点"的方法是稳定的，不依赖记忆常量。
+
+**证据差异（必须按新读回判定）**：`computer.move_window {display:{built_in:true}}` 的回执返回
+`bounds=[443,179,1220,527]`、`display={built_in:false,id:2}`（即"未移动"），但紧接着的 `discover`+`bind_window` 读回为
+`bounds=[306,1190,1220,527]`、`display={built_in:true,id:1}` —— **窗口实际已移动到内建屏**。结论：放置结果以移动后的
+新鲜读回为准，回执可能是移动前的快照；不要因回执而重发同一次放置。
+
+**遗留改进项（产品侧，待办）**：文档未落盘会导致重启即丢画布；应在每个阶段后用 Host 通道保存文档（或在验收脚本中加
+"保存→重开→读回"节点），把"工作产物持久性"纳入验收，而不是只验证墨迹。
