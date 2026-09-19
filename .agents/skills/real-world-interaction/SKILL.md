@@ -13,7 +13,7 @@ business result. A window closing does not invalidate the installation.
 ## Preserve the requested Host entry
 
 For native MCP/plugin/skill acceptance, GUI actions must originate from the
-Host's currently loaded RCU tools. Do not substitute a shell-launched Python,
+Host's currently loaded RWI tools. Do not substitute a shell-launched Python,
 Node, stdio or HTTP test client, even when it talks to the real Rust MCP server.
 Such clients can test transport/integration when requested, but cannot prove the
 Host's native entry works. If the loaded entry cannot carry an advertised action,
@@ -31,7 +31,7 @@ file export and file reopening as separate acceptance nodes.
   machine; use an already authorized SSH/remote connector for another device.
   A local command is not a guest command. Confirm the remote host identity and
   effective user; GUI and SSH may belong to different OS sessions.
-- RCU does not currently provide an SSH tool. Do not invent one, install a remote
+- RWI does not currently provide an SSH tool. Do not invent one, install a remote
   shell service, or expand network access just because this skill is loaded.
 - Respect explicitly requested GUI-only tasks and native MCP acceptance tests.
   Terminal work is not evidence that native input/capture works. A rejected GUI
@@ -333,10 +333,10 @@ platform capabilities remain unsupported until actually implemented and tested.
   the toolbar actions dispatch again. Never retry the same reference blindly —
   re-observe after closing the modal.
 
-## Shared pointer material (rcu-pointer)
+## Shared pointer material (rwi-pointer)
 
-- The AI marker is the A1 atmospheric lens rendered by the shared `rcu-pointer`
-  crate (diamond + rim + `RCU` label + animated highlight). Windows and macOS
+- The AI marker is the A1 atmospheric lens rendered by the shared `rwi-pointer`
+  crate (diamond + rim + `RWI` label + animated highlight). Windows and macOS
   use the same material; do not re-implement the visuals per platform.
 - macOS specifics: the overlay window title is `Real World Interaction AI Cursor`; its raster dpi
   follows the window's `backingScaleFactor` (192 on Retina, 96 on 1x); the lens
@@ -346,7 +346,7 @@ platform capabilities remain unsupported until actually implemented and tested.
 
 ## Cooperative yield and the operation journal
 
-- RCU yields only for a real conflict: when the *bound app itself* is
+- RWI yields only for a real conflict: when the *bound app itself* is
   frontmost (or its window is main) and a person clicked or typed within the
   last ~1.2 s, input dispatch fails closed with `user_active` (message includes
   the observed seconds). Typing in another app never blocks background delivery
@@ -358,7 +358,7 @@ platform capabilities remain unsupported until actually implemented and tested.
   the machine has been quiet; it is also shown for cross-platform parity.
 - Every act appends one JSON line to the per-principal `operations.jsonl`; the
   bounded tail is delivered in `computer.targets` ->
-  `devices[].state.recent_operations` (newest first). It records what RCU
+  `devices[].state.recent_operations` (newest first). It records what RWI
   attempted (`dispatch`, `dispatch_error`, `intent`, `point`, `scope`,
   `request_id`) and is never a claim that an action took effect.
 - Presence: `pointer_feedback` in the capabilities reports `{installed,

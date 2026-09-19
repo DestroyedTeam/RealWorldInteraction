@@ -1,33 +1,33 @@
 # Codex native MCP / plugin / Skill
 
-The production path is `AI Host → rcu-mcp → authenticated device RPC → rcu-agent → native OS driver`.
+The production path is `AI Host → rwi-mcp → authenticated device RPC → rwi-agent → native OS driver`.
 No Python or shell process implements native input/capture. ADR 0002 governs the
 entire implementation, not a temporary first-phase topology.
 
 ## Stable adapter entry
 
-Build `rcu-mcp` with default features (no `legacy-local` or `native-agent-worker`).
+Build `rwi-mcp` with default features (no `legacy-local` or `native-agent-worker`).
 Run it with `--profile ABS_PRIVATE_PROFILE`, or without arguments for a healthy
 zero-device catalog. The profile contains paired device endpoints and private
 identity **paths**, not business tasks, windows, stages or expected output.
 
-The independent device service runs `rcu-agent --config ABS_PRIVATE_CONFIG`.
+The independent device service runs `rwi-agent --config ABS_PRIVATE_CONFIG`.
 An agent can be offline or lack native permissions without hiding adapter tools.
 Reconnect creates/refreshes only the authenticated context; it never retries an
 uncertain mutation. Device-specific status remains distinct from MCP startup.
 
 ## User-level installation, not project activation
 
-RCU is general Host infrastructure. Register the production adapter once in the
+RWI is general Host infrastructure. Register the production adapter once in the
 user's Codex configuration (`~/.codex/config.toml`) or through an actually
 installed user-level plugin. New projects and worktrees must not need their own
-RCU configuration, binary, copied credentials, or a prepared business task.
+RWI configuration, binary, copied credentials, or a prepared business task.
 Project-scoped registrations are only appropriate for deliberately isolated
 development fixtures, not the normal product installation.
 
 Install the binary, profile and paired **client** identity under a stable private
 user-owned directory outside the source checkout. On macOS the current layout is
-`~/Library/Application Support/RealWorldInteraction/client-v1/`, with `bin/rcu-mcp`,
+`~/Library/Application Support/RealWorldInteraction/client-v1/`, with `bin/rwi-mcp`,
 `profile.json` and `identity/`. Profile identity paths must resolve inside that
 installation, not to `.rcu/`, `work/` or a validation manifest in a checkout.
 Use private directory permissions (0700) and identity/profile permissions (0600).
@@ -38,7 +38,7 @@ After explicitly authorizing user-level installation, use the official CLI:
 
 ```sh
 codex mcp add real_world_interaction -- \
-  "$HOME/Library/Application Support/RealWorldInteraction/client-v1/bin/rcu-mcp" \
+  "$HOME/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp" \
   --profile "$HOME/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
 ```
 
@@ -46,7 +46,7 @@ Keep the entry enabled, with `startup_timeout_sec = 30`,
 `tool_timeout_sec = 120` and `required = false`. The latter avoids making an
 adapter startup failure fatal to unrelated Host work; device unavailability is
 already represented by the adapter without hiding its tool catalog. Preserve
-all unrelated Codex settings. Remove an obsolete project RCU override only after
+all unrelated Codex settings. Remove an obsolete project RWI override only after
 the user entry is valid, so the source checkout also uses the installed client.
 Use one registration, not competing direct MCP and plugin entries.
 
@@ -65,18 +65,18 @@ that a plugin or global Skill was installed, and no App ID is invented.
 Tests `gateway_stdio` and `gateway_transport` exercise a real production MCP
 process, zero-device startup, multi-device collisions, authenticated cancellation,
 Host EOF and a bounded parallel cleanup budget. Synthetic peers are not native
-Windows acceptance. `rcu-agent/tests/service.rs` tests service state separately.
+Windows acceptance. `rwi-agent/tests/service.rs` tests service state separately.
 
 ## Historical evaluation entry (not production)
 
 The commands below require `legacy-workflow` and document old evidence only.
 They must not be used as a startup prerequisite for the production adapter.
 
-`rcu-native-setup --make-client-entry` takes the explicit private `ClientConfig`
+`rwi-native-setup --make-client-entry` takes the explicit private `ClientConfig`
 on stdin. Select `"model_output":"compact_v1"` for the native plugin. The legacy
 omitted/default mode remains `full` for existing transport clients.
 
-After a valid task-bound entry exists, `rcu-native-setup --make-plugin` takes:
+After a valid task-bound entry exists, `rwi-native-setup --make-plugin` takes:
 
 ```json
 {"entry":"/absolute/private/model/.mcp.json","output":"/absolute/new/real-world-interaction"}

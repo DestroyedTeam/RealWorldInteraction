@@ -27,3 +27,6 @@
 **/*.exe
 
 /.rcu/
+
+# Current product bundle names; legacy exclusions above remain compatible.
+/plugins/real-world-interaction/bin/

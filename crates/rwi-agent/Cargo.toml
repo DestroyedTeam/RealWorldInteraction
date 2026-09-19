@@ -1,0 +1,29 @@
+[package]
+name = "rwi-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+fixture = ["rwi-core/fixture"]
+
+[dependencies]
+rwi-core = { path = "../rwi-core" }
+rwi-native-link = { path = "../rwi-native-link" }
+rwi-link-trust = { path = "../rwi-link-trust" }
+rwi-imaging = { path = "../rwi-imaging" }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+base64 = "=0.22.1"
+zeroize = "=1.9.0"
+tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+
+[target.'cfg(windows)'.dependencies]
+rwi-windows = { path = "../rwi-windows" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+rwi-macos = { path = "../rwi-macos" }
+
+[dev-dependencies]
+tempfile.workspace = true

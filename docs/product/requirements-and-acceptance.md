@@ -1,4 +1,4 @@
-# RCU：用户要求与可替代性验收清单
+# RWI：用户要求与可替代性验收清单
 
 更新：2026-09-13；依据本任务用户输入、已批准 ADR 0002，以及 Windows 本机
 Computer Use 两轮绘图和 Mac 原生应用记录。不是只按最近一条消息重新定义产品。
@@ -15,7 +15,7 @@ Computer Use 两轮绘图和 Mac 原生应用记录。不是只按最近一条�
 | R06 | Mac 本机受控能力、Linux/Android/iOS 后续能力 | 实现与平台限制分别列明；不把架构预留当成实现；不为未来 IoT 堆空框架 |
 | R07 | Codex 原生 MCP/plugin/skill，用户/Host 全局配置 | 安装件与身份放 checkout 外；新任务不依赖项目配置；旧 Host/catalog 不匹配必须显式修复 |
 | R08 | GUI、SSH/terminal 并列互补 | 允许同流交叉执行与验证；分别证明通道身份与权限。终端部署/取证不算原生 GUI 输入 |
-| R09 | 不再用 Python 客户端冒充原生 MCP 验收 | GUI 验收仅认 Host 实际加载的 RCU 工具；Rust 为生产后端，无隐形 Shell/.NET 桥 |
+| R09 | 不再用 Python 客户端冒充原生 MCP 验收 | GUI 验收仅认 Host 实际加载的 RWI 工具；Rust 为生产后端，无隐形 Shell/.NET 桥 |
 | R10 | 参考成熟实现，而非闭门写业务补丁 | 保留 CrossMacro 源码对照；结合 Codex Mac/Windows 的真实接口、行为和故障，不臆测 Cloud 实现 |
 | R11 | Rust 模块架构及工程治理 | 根 workspace 为唯一可编辑源码；模块职责明确；行为与搬迁分开提交；功能分支、明确文件暂存 |
 | R12 | Git、工作目录和交付物可协作 | 可提交/推送 DestroyedTeam；不 force push/release；不提交凭据、二进制、原始截图和本地设置；不在 work 创建开发副本 |
@@ -29,7 +29,7 @@ Computer Use 两轮绘图和 Mac 原生应用记录。不是只按最近一条�
 | R15 | 连贯绘制，不是每点一次模型往返 | 比较“一次按住多点轨迹”和“多个有界笔画批量执行”；两者分别记账。2026-09-13 新 Host 原生 MCP 在 Paint 完成一次 640ms 请求/698ms 实际闭合笔画，用户确认 Pointer 跟随/停留；Windows 64ms 开发插值节拍，所有必经顶点保留。高帧率、多笔编排及整体耗时仍未达标；不把此测试当完整图标或全量可替代性验收 |
 | R16 | 用真实安装的应用测试 | Windows Paint、Mac 原生绘图软件；浏览器 JS Paint 只计探索，不代替原生应用对照 |
 | R17 | 绘制 Nemessix 图标 | 独立全局 MCP 任务 01a096c8-7e2b-7fc3-8008-7d9886c4e051 已用 Paint 完整手绘并 GUI 保存，23 条多点轨迹全部成功，用户认可效果；重开未通过。保留不导入原图/脚本改画布约束，不把成图等同效率达标 |
-| R18 | 分开验证 Mac/Windows Codex | 已确认实际入口不同；Windows 本机 `node_repl + @oai/sky`，Mac 统一 `cua`。不将 Mac→RCU 冒充 Windows 本机 CUA |
+| R18 | 分开验证 Mac/Windows Codex | 已确认实际入口不同；Windows 本机 `node_repl + @oai/sky`，Mac 统一 `cua`。不将 Mac→RWI 冒充 Windows 本机 CUA |
 | R19 | 更精简的 MCP JSON、合适截图质量 | 常规只给相关变化与必要凭据，完整诊断按引用获取；保留错误/覆盖；不改用户分辨率 |
 | R20 | 同时统计工具耗时与返回后的间隔 | 整轮墙钟、GUI 阶段、调用次数/大小、设备执行分层；混合模型/调度/编排时间不叫纯思考 |
 | R21 | 查清“流式”、连接复用及稳定性 | MCP 外层、模型连接、本机 IPC、跨设备传输、原生输入节拍分别举证；不从 socket 名称推断视频流或双向模型流 |
@@ -48,11 +48,11 @@ Computer Use 两轮绘图和 Mac 原生应用记录。不是只按最近一条�
    服务停止清理；不显示用户键入内容。必须处理
    反馈像素对截图 grounding 的污染，不能删除整个内容哈希/焦点校验来换流畅。
 2. **观察用途分离。** 原生输入 grounding、只读图像观察和 UIA 语义查询不应
-   总是捆绑。此次 RCU 观察中位数约 1.44 s，UIA 扫描属于需剥离的开销；纯图像
+   总是捆绑。此次 RWI 观察中位数约 1.44 s，UIA 扫描属于需剥离的开销；纯图像
    观察返回不能直接当成获得任意输入授权的 frame。
 3. **动作编排与资源边界。** 在设备节拍的单笔轨迹之外，支持有界、已确定的
    多笔操作序列；按动作校验目标/焦点/敏感元素，变化立即停止，不自动补播。
-   不能简单复制对照任务“循环复用旧截图”的写法，跳过 RCU 的有效性约束。
+   不能简单复制对照任务“循环复用旧截图”的写法，跳过 RWI 的有效性约束。
 4. **模型接口与输出。** 减少重复截图/全树/分页无关数据；操作对象、预览坐标、
    回执与后续细节引用统一；补原生 Host 新任务验收，避免旧 adapter 掩盖新能力。
 5. **运行态复查。** 在明确分配的真实应用中做指针、连笔、Stop、窗口变化、
@@ -67,7 +67,7 @@ Computer Use 两轮绘图和 Mac 原生应用记录。不是只按最近一条�
 ## 证据入口
 
 - `docs/adr/0002-headless-control-infrastructure-review.md`：正式架构基线。
-- `docs/analysis/2026-09-12-cua-rcu-drawing-comparison.md`：Mac/旧 RCU 对照与限制。
+- `docs/analysis/2026-09-12-cua-rcu-drawing-comparison.md`：Mac/旧 RWI 对照与限制。
 - `docs/analysis/2026-09-12-windows-macos-cua-native-entry.md`：已安装入口与 SDK 核对。
 - `outputs/windows-cua-observer-20260912-125725/`：本机原始预览、时间线与 Windows
   输出文件；截图不进 Git。Windows 任务 `01a095a7-811e-77e3-8da3-f71a072f56e7`，

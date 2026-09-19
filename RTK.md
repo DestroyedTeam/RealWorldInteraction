@@ -8,7 +8,7 @@ Examples:
 
 ```sh
 rtk git status
-rtk proxy rg -n 'symbol' crates/rcu-core/src
+rtk proxy rg -n 'symbol' crates/rwi-core/src
 rtk cargo fmt --all -- --check
 rtk cargo test --workspace --locked --offline
 rtk cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings

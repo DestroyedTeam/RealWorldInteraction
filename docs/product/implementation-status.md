@@ -52,7 +52,7 @@
   StartOpenPanel 保存的是内建屏坐标）。macOS 尚无启动/放置原语
   （launch_application 未实现），Host `open -a` 只能接受系统落点。
 - macOS 后台启动·实现方案（本轮调研+读码结论，下一步实施；不改 MCP 工具面）：工具已存在
-  （computer.launch_application/lifecycle_preflight/lifecycle_receipt，19 项不变）；rcu-core
+  （computer.launch_application/lifecycle_preflight/lifecycle_receipt，19 项不变）；rwi-core
   的 lifecycle 为通用编排（Engine::launch_application → backend.lifecycle_grant/deadline/
   driver + 共享 lifecycle::launch/preflight/receipt，含持久化预留与不重放），macOS 侧只需：
   ① LifecycleDriver：`LSOpenApplication` + `kLSLaunchDontSwitch|kLSLaunchAndHide`（可选
@@ -145,28 +145,28 @@
 
 - 关键结论：**新增 MCP 工具不会破坏历史录制校验**——`startup_diagnostic.rs` 与
   `orchestration/mcp.rs` 的 `tools.len()!=19`/`schema_sha()` 校验读的是**历史 fixture 自身**
-  （自洽校验），rcu-mcp 网关侧未发现对实时工具目录的数量/哈希断言。
+  （自洽校验），rwi-mcp 网关侧未发现对实时工具目录的数量/哈希断言。
 - **施工清单（按序照单执行，每步一编译）**：
-  1) `crates/rcu-core/src/lib.rs`：新增引擎方法 `move_window(target, lease, reference, display)` ——
+  1) `crates/rwi-core/src/lib.rs`：新增引擎方法 `move_window(target, lease, reference, display)` ——
      参数借 `Resolved`（元素/像素接地引用）+ 目标显示器（`built_in` 或 `id`）；语义=原生移动，
      含尺寸预检、失败 fail-closed、持久台账（复用 act 的 journal 路径与 request_id 去重）。
-  2) `crates/rcu-macos/src/native/metadata.rs`：已具 `place_window_on`（含 `placement_impossible`
+  2) `crates/rwi-macos/src/native/metadata.rs`：已具 `place_window_on`（含 `placement_impossible`
      预检）→ 仅需暴露一个"按显示器 id/内置判定"的包装与 `Display` 查找。
-  3) `crates/rcu-windows/src/...`：同名后端方法返回显式不支持（fail-closed，不静默）。
-  4) `crates/rcu-agent/src/runtime`：在工具目录（`catalog::executable/validate`）注册
+  3) `crates/rwi-windows/src/...`：同名后端方法返回显式不支持（fail-closed，不静默）。
+  4) `crates/rwi-agent/src/runtime`：在工具目录（`catalog::executable/validate`）注册
      `computer.move_window`（write 工具，需 input 授权与租约），并加入 `capabilities.rs`
      的工具清单；执行分支调用引擎方法。
-  5) `crates/rcu-mcp/src/server/mod.rs`：注册 `#[tool] computer.move_window`（args：
+  5) `crates/rwi-mcp/src/server/mod.rs`：注册 `#[tool] computer.move_window`（args：
      target/lease/request_id + reference + display 选择），走既有 Prepare/Execute。
   6) 验收：`work/pua-loop/live-acceptance.sh` 增用例——把测试窗口在授权屏↔非授权屏往返一次，
      证据 JSON 落盘；Windows 侧仅断言"显式不支持"。
 - **改动面（已勘定，比预想小）**：设备线协议是 **tool 泛型**（`Call::Prepare{tool,arguments}` /
   `Call::Execute{operation_ref}` 按工具名路由，无 per-operation 枚举），所以不需要动
-  device.rs 的 Call/Reply；实现集中在：① rcu-mcp `#[tool]` 注册（args 结构 + 描述）；
+  device.rs 的 Call/Reply；实现集中在：① rwi-mcp `#[tool]` 注册（args 结构 + 描述）；
   ② agent 侧按工具名注册执行器（runtime/execution + operation Registry）；③ 引擎方法
-  （rcu-core）+ macOS 后端（复用 `place_window_on`，含尺寸预检与 fail-closed）；
+  （rwi-core）+ macOS 后端（复用 `place_window_on`，含尺寸预检与 fail-closed）；
   ④ Windows 明确不支持；⑤ 验收脚本用例（跨屏往返 + 证据 JSON）。
-- 实现路径（跨 crate，一步一验）：① rcu-mcp 注册 `computer.move_window`
+- 实现路径（跨 crate，一步一验）：① rwi-mcp 注册 `computer.move_window`
   （target/lease/request_id + 目标窗口引用 + 目标显示器 id 或 built_in + 可选 y/x 锚点）；
   ② 网关路由 → 设备线 Call 变体 → agent 分发；③ 引擎方法 + macOS 后端实现
   （复用已实测的 AX `AXPosition` 放置：`place_window_on` + 尺寸预检，失败 fail-closed、
@@ -217,8 +217,8 @@
   来源与绑定同一张 AX 面（AXWindows + 子 sheet/dialog + focused/main 接力），
   覆盖非前台弹窗；用途不猜（kind=unknown、subrole=null 原样上报），AX 缺标题/几何时用
   window server 的事实值补齐。
-- 结构：rcu-core `Popup` + `popup_kind`（纯函数 + 单测）、`Observation.popups`、
-  `Backend::popups` 默认空（Windows/fixture 显式不实现）；rcu-macos 盘点 + display 富化；
+- 结构：rwi-core `Popup` + `popup_kind`（纯函数 + 单测）、`Observation.popups`、
+  `Backend::popups` 默认空（Windows/fixture 显式不实现）；rwi-macos 盘点 + display 富化；
   `Observed` 包装层转发。
 - 系统面板策略：#3a 的 bind 变更已解开"跨屏面板被拒"的死结（选择无副作用）；面板不可搬移时
   move 回执如实报告实际 bounds/display（不以请求为准）。此点为文档级结论，未新增 fail-closed 检查，
@@ -231,10 +231,10 @@
 ## #4 完成记录：AI 光标视觉反馈层（2026-09-15）
 
 - 交付：`computer.pointer_feedback {target, visible, point?}` + 每次成功 act 自动在动作点显示标记。
-  实现为无边框、点击穿透、永不夺焦的 AppKit 窗口（accessory 策略，level 1000，标题 `RCU AI Cursor`），
+  实现为无边框、点击穿透、永不夺焦的 AppKit 窗口（accessory 策略，level 1000，标题 `RWI AI Cursor`），
   纯观感：不派发输入、不动真实光标、不改变前台。空闲约 45s 自动隐藏；回执同步
   （created/visible/point/last_error 为应用后状态）。
-- 结构：rcu-macos `overlay`（命令通道 + 主线程泵 + 有界等待 ack；AppKit 只在进程主线程操作）
+- 结构：rwi-macos `overlay`（命令通道 + 主线程泵 + 有界等待 ack；AppKit 只在进程主线程操作）
   → agent 主线程改为运行 bounded CFRunLoop 泵、服务器移至独立线程（观察者随服务器退出）
   → `Backend::feedback` 默认 fail-closed（Windows/fixture 不实现）→ 目录/执行/能力/MCP 全线注册。
 - 活体验收：`docs/validation/pointer-feedback-acceptance.py` → 7/7 PASS（同步回执、discover 精确回读
@@ -247,7 +247,7 @@
 ## #4 追加：跨平台同源材质（2026-09-15 晚）
 
 - 用户要求"结合 win 版光标，不得平台割裂"→ 把 Win 版 `pointer_feedback` 的
-  `material.rs`/`motion.rs` 抽为共享 crate **`rcu-pointer`**（93 个原测试随迁全绿，
+  `material.rs`/`motion.rs` 抽为共享 crate **`rwi-pointer`**（93 个原测试随迁全绿，
   Win 侧原位重导出、呈现端零改动）；mac 端 overlay 改用同一材质渲染为 CALayer
   contents，DPI 由窗体的 `backingScaleFactor` 决定（Retina=192，1:1 锐利）。
 - 活体验收仍 7/7 PASS（窗口 [320,1220,160,160]、像素证据 55KB、act 自动跟随）；
@@ -263,7 +263,7 @@
   `devices[].state.recent_operations` 交付有界尾部（尝试事实，非效果断言）。
 - 能力对齐：capabilities 增加 `pointer_feedback`（含 material/dpi/visible/point）与
   `user_input_recent_seconds`（与 Win 版 `pointer_feedback.status()` 对齐）。
-- 设计取舍（如实记录）：不新增"RCU 正在接管"横幅窗——本产品是背景优先，存在感由 A1 透镜
+- 设计取舍（如实记录）：不新增"RWI 正在接管"横幅窗——本产品是背景优先，存在感由 A1 透镜
   （持久/自动跟随）+ 能力项 + 操作日志承担；gated 期间连"关面板"也会等用户停手（实测）。
 - 验收：`docs/validation/takeover-acceptance.py` → 7/7 PASS（证据 evidence-takeover-1789464892.json）。
 - 提交：行为提交 + 验收提交（见 git log）。
@@ -272,7 +272,7 @@
 
 **已确认（可依赖）**
 - 采用**微信截图坐标系**（目标显示器左上原点、y 朝下、pt）；用户实测屏幕左上角=(0,0)。
-- 画布局部(0,0) ↔ 全局 pt (729.31,1610.95)（用户读 Paint S 状态栏 + RCU 光标探针一次配对，
+- 画布局部(0,0) ↔ 全局 pt (729.31,1610.95)（用户读 Paint S 状态栏 + RWI 光标探针一次配对，
   与 PIL 独立推导 (729,1609) 吻合）；换算 `global = (729.31,1610.95) + canvas_px×0.5`。
 - 窗口图像 scale=2.000；`pixel_to_desktop` 由当次"窗口 rect + 图像尺寸"推导（无硬编码）。
 - 控件点击坐标正确：用场景元素 `point`（全局 pt）直接点，实测命中各自按钮
@@ -302,16 +302,16 @@
 **子代理越界/误判**（不采纳）
 - 其"后台输入未被投递、只有 act_checked 可用"的结论与我们已验证事实矛盾 ✗
   （吸管采样与深红落笔都在后台成功改变像素 ✓）；其失败实为"工具被重置/框选"所致 ✓。
-- 它不应点评/设计 RCU 实现 ✗ —— 子代理职责 = **按工具面与工具描述操作**，报告现象而非改架构。
+- 它不应点评/设计 RWI 实现 ✗ —— 子代理职责 = **按工具面与工具描述操作**，报告现象而非改架构。
   → 后续子代理任务模板加入硬规则：禁止分析或提议实现改动，只操作 + 报告观察。
 
 **用户新要求（待实现）**
 - **颜色选择器（第一个按钮）弹窗总是落在主屏**，应"及时移回 App 主窗口所在显示器"。
   设计：面板类窗口（owned_popup）的归属策略——当面板所在显示器 ≠ 其 owner 主窗口显示器时，
-  由 RCU 在**显式**流程内将其移回（等价 `computer.move_window`，但由实现检测而非依赖 agent 察觉）；
-  与"隐式放置默认关闭"的既有原则一致：仅对**由 RCU 操作引发的面板**生效，并在回执中留痕。
+  由 RWI 在**显式**流程内将其移回（等价 `computer.move_window`，但由实现检测而非依赖 agent 察觉）；
+  与"隐式放置默认关闭"的既有原则一致：仅对**由 RWI 操作引发的面板**生效，并在回执中留痕。
 
-## 复刻 v2（量测版）结果：低保真 + 根因全部指向 RCU 实现缺陷（2026-09-16）
+## 复刻 v2（量测版）结果：低保真 + 根因全部指向 RWI 实现缺陷（2026-09-16）
 
 - 产出（**诊断证据，不是验收交付**）：`docs/validation/replica-v2-{final,comparison,overlay}-20260916-194418.png`；
   118 图元全部派发（ack=returned），但**仅 18/118** 落在计划位置 3px 内 ✗（mean coverage 0.339）。
@@ -319,7 +319,7 @@
   1. **选中态无法可靠清除** ✗：`act_checked` 点画布元素、Arrow/空点、Escape 全部失败
      （Escape 报 `keyboard_target_not_focused` —— 键盘路径要求"精确聚焦元素"，对窗口级动作不适用）。
   2. **工具态不可见** ✗：Paint S 失焦会把工具重置为 Arrow → 下一次 drag 变成"移动选区"，
-     已画好的形状整组被搬走（实测位移 ≈(+163,+200) canvas px）；RCU 侧没有任何"当前工具"事实可查。
+     已画好的形状整组被搬走（实测位移 ≈(+163,+200) canvas px）；RWI 侧没有任何"当前工具"事实可查。
   3. **选项行漂移** ✗：启用/禁用项会让行内容重排（~150–250 image px），按旧场景点会打到邻居控件。
   4. **同 pid 的 `Picked Color` 面板静默吞掉主窗口输入** ✗（窗口不重绘、pixel act 全 stale）。
   5. `native_press_rejected`（对已激活的 radio / 已勾选的 checkbox 再 AXPress）→ 输入域被 fence ✗。
@@ -327,7 +327,7 @@
   - **场景元素增补 `selected` / `value`（AXSelected / AXValue）**：让"当前工具是哪个"与
     "现在是否有选区"成为可读事实 → 模型可在每次落笔前校验工具、在落笔前后确认选区状态 ✓✓。
   - **窗口级键盘路径**：允许把 Escape/方向键等投递给"绑定窗口"而非要求精确聚焦元素 ✓。
-  - **面板跟随归属**（已在列）：RCU 引发的面板落到别的显示器 → 显式移回 owner 所在显示器 ✓。
+  - **面板跟随归属**（已在列）：RWI 引发的面板落到别的显示器 → 显式移回 owner 所在显示器 ✓。
   - 事件读侧：布局变化后元素的 AX 位置可能滞后 → 以"回读裁剪"为准（操作规范已记录 ✓）。
 
 ## 事故：MCP 连不上（2026-09-17/18）——配对证书过期
@@ -338,13 +338,13 @@ win11-vm 侧为 `device_connect_timeout`（VM 未启动，属预期）。
 
 **根因**：9/15 配对的证书有效期仅约 43h（3 天窗口），到期后适配器→agent 的 TLS 校验失败。
 **处置（已完成）**：
-1. `rcu-link-provision --profile-dir <AP>/agent-mac-v1/pairing-20260917` 重新签发（新 CA/三身份 ✓，
+1. `rwi-link-provision --profile-dir <AP>/agent-mac-v1/pairing-20260917` 重新签发（新 CA/三身份 ✓，
    有效期至 1789954110 ≈ 3 天）。
 2. `agent.json`：`identity.*` → `pairing-20260917/agent/*`；`principals[0]`(input) = 新 **model** 证书 pin
    `e3397cc2…`、`principals[1]`(observe) = 新 **controller** 证书 pin `caf7998f…`（旧配置已备份 `.bak-<ts>`）。
 3. `client-v1/profile.json`：`devices[mac_host].identity.*` → `pairing-20260917/model/*`；
    `agent_pin` = 新 agent 证书 pin `efd82456…`。
-4. 重启 rcu-agent ✓（实例 189417ab，监听正常）。
+4. 重启 rwi-agent ✓（实例 189417ab，监听正常）。
 **剩余一步（需用户操作）**：**重启 omp/opencode** —— 正在运行的适配器进程仍持有旧 profile（内存），
 必须重启后才会用新证书，否则一直 `BadSignature`。
 
@@ -383,7 +383,7 @@ win11-vm 侧为 `device_connect_timeout`（VM 未启动，属预期）。
 - 排除项（均已实测）：遍历**时间预算** 750/1500→1500/3000ms ✗ 无效；遍历**深度上限** 8→16 ✗ 无效；
   **关闭重开文档** ✗ 无效（工具栏属窗口级 UI，不随文档复位 ✓）。
 - 结论：这是**应用自身的呈现差异**（非我们的遍历限制、非 omp/MCP 配置 ✓）。深度上限位于
-  `crates/rcu-macos/src/native.rs` 的 observe 遍历（产品实现 ✓），与 omp 配置无关 ✓。
+  `crates/rwi-macos/src/native.rs` 的 observe 遍历（产品实现 ✓），与 omp 配置无关 ✓。
 - 产品含义：`computer.observe` 的**覆盖度必须自述**（本次遍历是否截断/元素是否可能缺失 ✓），
   并建议在"树明显不全"时以**截屏回读**为准（SKILL 已含该操作规范 ✓）。
 
@@ -409,7 +409,7 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 
 **关键环境与规则（接手必读）**
 - 本机 MCP agent 部署在 `~/Library/Application Support/RealComputerUse/agent-mac-v1/`；
-  重启方式：`hub start rcu-agent-mac-host --config agent.json`（ready 端口 45129）。今日 `rcu-agent` 曾 **exit=1 两次**（无 stderr）。
+  重启方式：`hub start rwi-agent-mac-host --config agent.json`（ready 端口 45129）。今日 `rwi-agent` 曾 **exit=1 两次**（无 stderr）。
 - 显示环境会变：外接屏断开 → 内建屏变主屏且分辨率/窗口尺寸改变 → **每次操作前重新发现窗口并重量映射**，
   原点是"文档矩形/画作外框几何"，不是画布元素点（视图滚动时后者失效，见 §21）。
 - 颜色 GUI 路线已被证据否定：色板（NSColorPanel）bind 成功但 observe `window_missing`（不在进程 AX 窗口表）✗；
@@ -474,8 +474,8 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
    导入方式沿用已验证的 Add Image 单文件流程 + `act_checked` 拖拽（`offset = pt_per_canvas_px × (target − 导入落点)`，
    导入落点 = 画布 AXScrollArea 元素点）。
 
-**本轮受阻（如实）**：执行导入时 RCU 适配器链路退化（`computer.targets` 先返回空数组，随后 `devices: []`）——
-本机 `rcu-agent` 进程仍在监听 45129，但适配器已无法描述设备；**这不是"导入成功"**。
+**本轮受阻（如实）**：执行导入时 RWI 适配器链路退化（`computer.targets` 先返回空数组，随后 `devices: []`）——
+本机 `rwi-agent` 进程仍在监听 45129，但适配器已无法描述设备；**这不是"导入成功"**。
 下一步：链路恢复后重试导入（预期：文档中新出现名为 `Image` 的图层，且卡片照片/正文出现在 (830,109)-(996,300)）。
 
 ## Real World Interaction 更名（2026-09-19）
@@ -487,3 +487,12 @@ Apache-2.0）；头像/卡片内容/文字带均取自**本地截图切图**（�
 - 当前项目三个 Codex 任务标题已加 Real World Interaction 前缀；桌面项目显示名/根关联仍待处理（GUI 工具拒绝访问 Codex；CLI 项目库查无桌面项目 ID）。
 - 第一批名称变更：fmt、workspace locked offline test（433 passed，10 ignored）、全特性 clippy 均通过。原始会话、迁移档案及历史验收结论保持原样；本轮未重新验收 Paint S v13。
 - 下一批：Rust 包/二进制/JS 帮助器简称统一为 RWI；持久协议身份、证书 DNS 与历史状态路径保留兼容。
+
+### 更名收尾状态（同日，覆盖上节未完成项）
+
+- 10 个 Cargo 包/源码目录及二进制已统一为 `rwi-*`；JS 客户端文件及导出类统一为 `rwi-client.mjs` / `RwiClient`，worker 新全局 `rwi` 与兼容 `rcu` 指向同一对象。
+- 共享与 Windows 回退字形已从 RCU 改为 RWI，macOS/Windows 窗口显示标题同步更新；尚未重启本机旧 agent，所以当前运行进程不据此宣称已切换视觉。
+- **Codex 桌面项目名仍未完成**：本机应用用缓存覆盖了磁盘元数据修改；读取项目清单仍为旧名。任务标题已更名，关联项目 ID 保留。退出应用后可运行 `outputs/rename-20260919/finish-codex-project-rename.py`，再重新打开核验；脚本在应用仍运行时拒绝修改。
+- **Windows 部署仍未完成**：只读设备发现返回 `device_connection_failed / device_connect_timeout`；未唤醒 VM，未更改其运行态。
+- 旧文件夹兼容链接、既有 TLS DNS/ALPN、schema 字符串、环境变量和持久锁/日志路径有意保留。它们确保旧进程与新进程仍使用同一配对和输入域，不是第二份产品源码。
+- 本轮主要推进统一命名与兼容迁移；Paint S v14 头像独立图层任务未执行，v13 历史业务证据未重新验收。

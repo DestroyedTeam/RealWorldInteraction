@@ -17,7 +17,7 @@
   **不是** backing scale（实测内建屏报 1.0，实际 2.0）。正确来源：
   `NSScreen.backingScaleFactor` / `NSWindow.backingScaleFactor`，或**直接测量
   "窗口图像 px ÷ 窗口 pt"**（自洽，无需假设）。
-- 独立探针：`cargo run -p rcu-macos --example coords`（只读，不输入/不截屏）。
+- 独立探针：`cargo run -p rwi-macos --example coords`（只读，不输入/不截屏）。
   实测 2026-09-15：main id=3 (0,0,2048×1152) 1x；id=1 (282,1152,1800×1169) 报 1x、
   实际 backing 2x；cursor 以全局 pt 返回。
 
@@ -72,12 +72,12 @@
 - 结论：**参考系不是"窗口 rect"，而是"该次捕获实际的区域"**。
 
 ### 修复清单（按层）
-1. **rcu-macos（核心）**：捕获时记录并上报**捕获区域**（窗口内/全局 pt 的 rect，
+1. **rwi-macos（核心）**：捕获时记录并上报**捕获区域**（窗口内/全局 pt 的 rect，
    含 chrome 带的实际偏移）；`pixel_to_desktop` 必须由该 rect 与图像尺寸推导，
    而不是由窗口 rect 推导。若捕获含 chrome，则 chrome 带要么裁掉，要么在映射中体现。
-2. **rcu-core/工具面**：`Scene` 增加明确的捕获区域字段（如 `capture_region_pt`），
+2. **rwi-core/工具面**：`Scene` 增加明确的捕获区域字段（如 `capture_region_pt`），
    并在 `computer.observe` 回执中可见；`Locator::Pixel` 以图像像素为唯一输入，
-   换算全部由 RCU 完成（agent 不做任何全局换算）。
+   换算全部由 RWI 完成（agent 不做任何全局换算）。
 3. **拓扑变化的显式化**：窗口记录的 `native_epoch` 摘要加入"所在显示器 + 当前活动
    显示器集合（id/bounds/pixels/main）"；显示器热插拔后旧 frame/reference 一律失效
    （fail-closed 并提示重新 observe），不依赖 agent 察觉。
@@ -86,7 +86,7 @@
 5. **测试**：为 1 与 3 增加离线单测（纯函数：给定 rect/图像/拓扑 → 期望映射与失效）。
 
 ### iShot 复核（修复后由用户执行）
-- 用户在全屏截图（1:1）中标出鼠标位置；RCU 侧把同一"图像像素目标"映射出的
+- 用户在全屏截图（1:1）中标出鼠标位置；RWI 侧把同一"图像像素目标"映射出的
   全局 pt 与该点比对，误差须 ≤1pt。
 
 ## 7. 追加实测（2026-09-15 深夜）
@@ -102,20 +102,20 @@
 ## 8. iShot 复核方式修订（无需光标）
 
 截图通常不含光标 ✗。改为**墨迹参照法**：
-1) RCU 在画布内落一笔显著深红墨迹（并给出"按实现换算的期望全局点"）；
+1) RWI 在画布内落一笔显著深红墨迹（并给出"按实现换算的期望全局点"）；
 2) 用户全屏截图（系统截图/iShot 均可）发回；
-3) RCU 在截图中量出墨迹的实际位置（按显示器 origin/scale 换算为全局 pt）与期望比对，误差 ≤1pt。
+3) RWI 在截图中量出墨迹的实际位置（按显示器 origin/scale 换算为全局 pt）与期望比对，误差 ≤1pt。
 
 ## 9. 用户实测真值（iShot 读数，2026-09-15）
 
-用户对 RCU 所画深红线段用 iShot 读出：
+用户对 RWI 所画深红线段用 iShot 读出：
 - 起点 **(492, 669)**、终点 **(526, 670)**（线段长 ≈34pt，几乎水平）
-- 用户结论：**微信截图 / iShot / 其它截图携带的坐标都准确；只有 RCU 截图与 Python 截图坐标漂移。**
+- 用户结论：**微信截图 / iShot / 其它截图携带的坐标都准确；只有 RWI 截图与 Python 截图坐标漂移。**
 
 推断与算式：
 - iShot 读数很可能是**显示器局部坐标**（内建屏原点在其左上角）。若如此，全局坐标
   = (282+492, 1152+669) = **(774, 1821)**。
-- RCU 当时对该笔迹的期望（按实现换算）= 窗口原点(282,1190) + 图像px(1800,1300)/2
+- RWI 当时对该笔迹的期望（按实现换算）= 窗口原点(282,1190) + 图像px(1800,1300)/2
   = **(1182, 1840)** → 与实测差异 **(−408, −19)**：y 仅差 19pt、x 差 408pt ✗
   → 说明"图像像素→桌面"的横向基准与真实捕获区域不一致（与 §6 的捕获带问题同源）。
 - 需要用户再给一个**无歧义基准读数**：把 iShot 十字线放在**内建屏最左上角(0,0 可视屏幕角)**
@@ -133,7 +133,7 @@
 - 若 iShot 为"显示器局部、**y 朝上**（Cocoa 风格）" → 左上角 = (≈0, 高度≈1169) ✓✓
   实测 (2,1166) 与之吻合（x=2、y=1169−1166=3 距上缘）✓
   → 则线段 y_局部(朝下) = 1169−669 = **500**，全局 y = 1152+500 = 1652；
-  而 RCU 期望全局 y = 1840 ✗ 差 −188 ✗（与"y 仅差 19"的早先推算矛盾）
+  而 RWI 期望全局 y = 1840 ✗ 差 −188 ✗（与"y 仅差 19"的早先推算矛盾）
 ⇒ 结论：**必须用一次受控实验定标**（同一会话内画一笔已知图像坐标的墨迹，用户读其起止），
    并在必要时读一次"屏幕左下角"以确认 y 方向。空间确定后，一次线性拟合即可钉死映射。
 
@@ -151,7 +151,7 @@
 
 **已验证（可直接依赖）**
 - 画布局部 (0,0) ↔ 全局 pt **(729.31, 1610.95)**（用户读 Paint S 状态栏 `X:0 Y:0` +
-  RCU `coords` 探针同期读光标 = 一次配对，实测吻合早先 PIL 推导 (729,1609) ✓）。
+  RWI `coords` 探针同期读光标 = 一次配对，实测吻合早先 PIL 推导 (729,1609) ✓）。
 - 换算：`global = (729.31,1610.95) + canvas_px × 0.5`；窗口图像 scale = 2.000 精确 ✓。
 - `pixel_to_desktop` 由当次 `窗口 rect + 图像尺寸` 推导 ✓（自洽，无需外部常量）。
 
@@ -176,12 +176,12 @@
 → `{changed: bool, bbox_px: [x0,y0,x1,y1], changed_ratio, region}`（两帧须同 target/同尺寸）。
 
 **实现落点**
-- rcu-imaging：复用现有 PNG 解码（`view()` 已解码并缩放）→ 新增 `diff_bbox(a, b) -> Option<[u32;4]>`
+- rwi-imaging：复用现有 PNG 解码（`view()` 已解码并缩放）→ 新增 `diff_bbox(a, b) -> Option<[u32;4]>`
   （逐像素比较，容差可配；只返回包围盒与比例，不回传像素）。
-- rcu-core：`Engine::ink_delta(...)`（校验两 artifact 属于同 target/frame 系，字节上限沿用 budget）。
-- rcu-agent：executor 分支 + 目录/能力注册（writes: false，纯读取）。
-- rcu-mcp：`#[tool] computer.ink_delta` + 参数；JS 车道同步放行。
-- 测试：rcu-imaging 纯函数单测（构造两张小图 → 期望 bbox）；离线可跑。
+- rwi-core：`Engine::ink_delta(...)`（校验两 artifact 属于同 target/frame 系，字节上限沿用 budget）。
+- rwi-agent：executor 分支 + 目录/能力注册（writes: false，纯读取）。
+- rwi-mcp：`#[tool] computer.ink_delta` + 参数；JS 车道同步放行。
+- 测试：rwi-imaging 纯函数单测（构造两张小图 → 期望 bbox）；离线可跑。
 - 用途：探针标定（3 点 → 仿射拟合）、逐批落笔自检、最终"复刻是否有落笔"的机器验收。
 
 **配合项**：act/drag 回执增加 `press_point_pt` 与 `anchor_element`（原生实测），
@@ -297,7 +297,7 @@ Edit 菜单第 1 项即撤销（名字会变："Undo Delete"/"Undo Add Line" ✓
  
 ## 19. 腾讯图标单文件导入收口（2026-09-18）
  
-Open 面板批量导入的失败根因已验证：面板按最近文件排序，固定 `group 1` 不一定是请求文件；面板保持 modal 后，后续 RCU 输入全部 `native_dispatch_entered=false`。修正为：
+Open 面板批量导入的失败根因已验证：面板按最近文件排序，固定 `group 1` 不一定是请求文件；面板保持 modal 后，后续 RWI 输入全部 `native_dispatch_entered=false`。修正为：
 1. 删除本轮临时 `~/Documents/icon-tdesign-*.png`；
 2. 每次只复制一个目标 PNG；
 3. Add Image → AXOpen `group 1` → radio 19 → `act_checked` 移动 → 回读状态栏；
@@ -306,19 +306,19 @@ Open 面板批量导入的失败根因已验证：面板按最近文件排序，
 按此 SOP 已完成输入栏 5 枚腾讯 TDesign MIT 图标：
 - `folder`: `(880.8,460.5)` → 状态栏 `X=881,Y=460`；
 - `image`: `(932.1,460.8)`；`mail`: `(974.5,460.8)`；`microphone`: `(1016.6,460.8)`；`time`: `(1527.2,460.8)`。
-目标/偏移及 RCU request receipt：`work/replica-verify-20260915/run5/bottom-icon-isolated-results.json`；整窗证据：`run5/bottom-icons-isolated-final.png`、`run5/icon-fill-final.png`。
+目标/偏移及 RWI request receipt：`work/replica-verify-20260915/run5/bottom-icon-isolated-results.json`；整窗证据：`run5/bottom-icons-isolated-final.png`、`run5/icon-fill-final.png`。
 更新对比：`docs/validation/replica-v5-icon-fill-{current,comparison,overlay}-20260918.png`。
 
 当前图标已填：头部电话、videocam、TDesign share、TDesign add；输入栏 folder、image、mail、microphone、time；剩余 header grid/chevron/more、底栏 smiley/scissors/people/screen/robot、星标等待后续，文本与颜色仍未填。
 
 ## 20. 2026-09-19 重启后的画布重建与坐标自证
 
-**事实**：本机重启（`security session 100002 → 100003`、boot 时间戳变化、Paint S 83334 → 2578，rcu-agent 进程随之退出）。原文档
+**事实**：本机重启（`security session 100002 → 100003`、boot 时间戳变化、Paint S 83334 → 2578，rwi-agent 进程随之退出）。原文档
 `white-canvas-2x.png` 是夹具文件且未保存，磁盘与窗口列表均已不存在 → 当日复刻画布丢失；仓库内的全部计划（118/28 形状）、
 素材（头像、卡片内容、10 枚图标）与 SOP 未受影响。
 
 **恢复步骤（已实测，全部走既有授权通道）**
-1. `pgrep -fl rcu-agent` 无进程、`agent.pid` 记录 50652、端口 45129 未监听 → 用 `hub start` 以 `--config agent.json` 重启部署件，ready 条件 `port 45129 + log listening`；
+1. `pgrep -fl rwi-agent` 无进程、`agent.pid` 记录 50652、端口 45129 未监听 → 用 `hub start` 以 `--config agent.json` 重启部署件，ready 条件 `port 45129 + log listening`；
 2. 用 PIL 重建 `work/replica-verify-20260915/run6/white-canvas-2x.png`（2000×679 白底），`open -g -a "Paint S" <file>` 后台打开（不抢前台）；
 3. Host AX 恢复窗口几何：`set size to {1800,1131}`、`set position to {282,1190}`（内建屏，实测报 1776×1131，与适配器读回 1800×1131 有 ≤24pt 差异，映射不依赖该值）；
 4. Host AX 设缩放：`combo box 1 of window 1` → `set value to "150"` → `perform action "AXConfirm"`（从 100 → 150 已验证）；
@@ -355,11 +355,11 @@ Zoom 150% —— 与重启前逐项一致，说明"由画布元素点反推原�
 
 **保存与窗口语义（实测）**
 - 菜单命令（File>Save、Edit>Delete…）作用于**应用主窗口**：需先把目标窗口设为主窗口。
-  `AXRaise` 不改主窗口，**RCU 后台点击标题栏**可改（实测：`AXMain` 变为我们的文档，同时前台应用仍是 ChatGPT ✓ 未抢焦点）。
+  `AXRaise` 不改主窗口，**RWI 后台点击标题栏**可改（实测：`AXMain` 变为我们的文档，同时前台应用仍是 ChatGPT ✓ 未抢焦点）。
 - 文档 canvas 与图像尺寸不一致时，**关闭**会弹 `Resize` 对话框（Cancel 不关闭）；本次改为 `AXMinimized=true` 收起旧文档，避免与工作文档重叠。
 - **保存→读回 PNG 是像素级 oracle**：保存后的文件就是 1:1 画布内容，可直接做墨迹/落点校验（不再依赖截图与水印干扰）。
 
-**进程稳定性**：hub 托管的 `rcu-agent-mac-host` 今日 **exit=1 两次**（日志仅一行启动记录，无 stderr）。
+**进程稳定性**：hub 托管的 `rwi-agent-mac-host` 今日 **exit=1 两次**（日志仅一行启动记录，无 stderr）。
 处置：`hub ps` 查状态 → `hub start ... --config agent.json`（ready 条件 port 45129）→ `computer.targets` 复核。产品侧应加崩溃诊断输出。
 
 ## 22. 2026-09-19 恢复画布上的图标签：实测落点表与验收口径
@@ -477,7 +477,7 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
    "Click to choose a color"，值 `rgb 0.5 0 0.272727 1`）；形状工具下它是 "Click to choose a border color" 且 disabled ✗。
 2. 点击该色井 → 系统色板（NSColorPanel）以**独立窗口**出现（本机 `cgwindow:3538`，263×331，标题为空）✓；
    但 **bind 成功、observe 直接 `window_missing`**（"Pinned CGWindowID/PID has no matching AX window"）✗
-   → 该面板不在此进程 AX 窗口表内，**无法用 RCU 读写其 RGB 控件** ✗。
+   → 该面板不在此进程 AX 窗口表内，**无法用 RWI 读写其 RGB 控件** ✗。
    （替代键盘输入需把面板置前台 ✗ 与"后台操作"原则冲突。）
 3. 结论：**GUI 精确设色路线在本机不可用**（与用户提醒的"独立弹窗"一致，但那个弹窗不可寻址）。
 
@@ -533,7 +533,7 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 **遗留（明确，不隐藏）**：第 2–8 行头像仍是骨架圆圈（仅第 1 行为截图切图）；应用水印
 （`Created by Paint S`/`Free Trial`，屏幕叠加层）仍在位图内；底栏占位圆未清理（等用户授权）。
 
-## 29. 2026-09-19 晚：RCU 链路与 Add Image 的操作坑（实测，接手必读）
+## 29. 2026-09-19 晚：RWI 链路与 Add Image 的操作坑（实测，接手必读）
 
 **① JS worker 与直连工具面会不一致** ✗
 现象：`computer.targets` **直连工具**返回 1 个可用设备 ✓，但同一时刻经由 `computer.js` 的
@@ -548,12 +548,12 @@ MDI（`cdn.jsdelivr.net/npm/@mdi/svg`，Apache-2.0）用于 smile（emoticon-hap
 （`click button "Add Image" of toolbar 1` 会 -1728 失败 ✗；应按 `whose description is "Add Image"`）。
 
 **④ `Add Image` 必须"真实像素点击"**：宿主 `AXPress` 派发成功但**不会打开文件面板** ✗；
-只有 RCU 的像素路径（`resolve{kind:pixel}` + `claim` + `act` click）才会弹出 `Open` 面板 ✓（此前 ReplicaFill 亦独立观察到同一结论）。
+只有 RWI 的像素路径（`resolve{kind:pixel}` + `claim` + `act` click）才会弹出 `Open` 面板 ✓（此前 ReplicaFill 亦独立观察到同一结论）。
 
 **⑤ 图层导入的既定序列（链路恢复后照做）**
 1. `discover`（同一调用内立刻 `bind_window`）→ `observe` → 取 `AXButton(description="Add Image")` 的 `point`；
 2. `resolve{kind:pixel}` 到该点 → `claim` → `act` click → 面板出现（`discover` 应见标题 `Open` 的新窗口）；
-3. 宿主 `AXOpen` 打开 `~/Documents/card-content-layer-166x191.png` ✓（面板内 RCU 输入不可用 ✗，宿主 AX 可用 ✓）；
+3. 宿主 `AXOpen` 打开 `~/Documents/card-content-layer-166x191.png` ✓（面板内 RWI 输入不可用 ✗，宿主 AX 可用 ✓）；
 4. 再次 discover+bind 文档 → `observe` → 取画布 `AXScrollArea` 元素点 → `resolve` → `claim` →
    `act_checked` drag，`offset = pt_per_canvas_px × (target_canvas − 画布元素点换算的 canvas 坐标)`；
 5. `File > Save` → 读回 PNG 确认卡片内容出现且**图层面板新增 `Image` 行**（= 图层保留 ✓）。

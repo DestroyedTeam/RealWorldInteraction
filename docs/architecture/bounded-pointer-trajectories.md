@@ -92,7 +92,7 @@ pre-down rejection, post-down cancellation/partial insertion/schedule failure,
 release failure fencing and unwind cleanup. The JS test proves the typed path
 is forwarded as one original-frame checked call, not a per-point MCP loop.
 
-The opt-in Rust example `rcu-windows/examples/pointer_fixture.rs` is an independent
+The opt-in Rust example `rwi-windows/examples/pointer_fixture.rs` is an independent
 test application, not a backend. It draws mouse events actually received by its
 own window and writes a create-new event log. It never injects input, changes
 authorization, launches the agent, or defines a production task/oracle. GUI

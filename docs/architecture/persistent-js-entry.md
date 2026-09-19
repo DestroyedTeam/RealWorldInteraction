@@ -6,10 +6,10 @@ replace the approved architecture or require device-side JS.
 ## Dependency and ownership boundaries
 
 ```text
-AI Host ── MCP ── rcu-mcp gateway ── authenticated device RPC ── independent agent
+AI Host ── MCP ── rwi-mcp gateway ── authenticated device RPC ── independent agent
                        │
-                       └── owned rcu-mcp --js-worker process
-                              rcu-js / QuickJS + canonical JS client SDK
+                       └── owned rwi-mcp --js-worker process
+                              rwi-js / QuickJS + canonical JS client SDK
 ```
 
 The adapter supervises exactly one active interpreter per MCP process. It starts
@@ -21,8 +21,8 @@ cannot forge a worker-completion message by emitting JSON. Native operations
 use the same gateway admission, device validation, Prepare/Execute, cancellation,
 presentation and operation-reference paths as direct MCP calls.
 
-`rcu-js` has no dependency on device transport, platform FFI or business tests.
-It embeds the one canonical `integrations/javascript/rcu-client.mjs` at build
+`rwi-js` has no dependency on device transport, platform FFI or business tests.
+It embeds the one canonical `integrations/javascript/rwi-client.mjs` at build
 time. Rust remains the MCP/backend implementation. QuickJS is an interpreter
 dependency, not a Python/PowerShell/Node OS bridge. The engine is pinned to
 `rquickjs = 0.13.0`, using its standard allocator, interrupt hook and memory/stack

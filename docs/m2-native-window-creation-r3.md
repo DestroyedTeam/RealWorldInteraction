@@ -7,9 +7,9 @@
 ## 实机与源码证据
 
 - r2 的 `owner-setup-return.json` / `result.json`：既有 HWND 394290、PID 7524 恢复四个旧标签；decoy 是同窗新标签，baseline 从未打开。没有可认领的 root/decoy；父任务没有 bootstrap/model/native input。
-- `crates/rcu-mcp/src/main.rs:292-491` 注册 14 个工具，无应用启动或新建窗口工具。`computer.discover` / `computer.bind_window` 明确只读，不抢焦点、不输入。
-- `crates/rcu-core/src/lib.rs:213-243` 的 Backend 提供 discover/bind，不提供应用生命周期；`crates/rcu-windows/src/native.rs:309-356` 对已有 catalog 条目与当前窗口 epoch/owner-chain 重验后绑定。
-- `crates/rcu-windows/src/contract.rs:122-179` 的 InputGrant 要求已有 HWND/PID/birth。不能先给一个不存在的窗口发输入 grant，也不能把 app 激活返回的 PID 当成新窗口所有权。
+- `crates/rwi-mcp/src/main.rs:292-491` 注册 14 个工具，无应用启动或新建窗口工具。`computer.discover` / `computer.bind_window` 明确只读，不抢焦点、不输入。
+- `crates/rwi-core/src/lib.rs:213-243` 的 Backend 提供 discover/bind，不提供应用生命周期；`crates/rwi-windows/src/native.rs:309-356` 对已有 catalog 条目与当前窗口 epoch/owner-chain 重验后绑定。
+- `crates/rwi-windows/src/contract.rs:122-179` 的 InputGrant 要求已有 HWND/PID/birth。不能先给一个不存在的窗口发输入 grant，也不能把 app 激活返回的 PID 当成新窗口所有权。
 
 这些结论已经按当前冻结 Rust 源码核查，见 evidence/native-capability-audit.json；产品字节未修改。
 

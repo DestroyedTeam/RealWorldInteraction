@@ -5,10 +5,10 @@
 
 ## 同一条跨端链路
 
-`AI Host → rcu-mcp → mTLS device RPC → rcu-agent → rcu-macos`
+`AI Host → rwi-mcp → mTLS device RPC → rwi-agent → rwi-macos`
 
 - `PlatformPolicy` 增加 `{"kind":"macos","user_uid":501}`；UID 是部署示例，
-  不是产品常量。生产依赖仅在 macOS target 引入 `rcu-macos`；MCP/transport
+  不是产品常量。生产依赖仅在 macOS target 引入 `rwi-macos`；MCP/transport
   不引入 AX/CG/UIA 执行后端，通用系统运行时依赖与 GUI 驱动分开。
 - `NativeMacDesktop` 的构造、身份和工具目录不要求 PID、窗口、应用名或业务文本。
   窗口关闭仅影响被选资源，不改变 MCP 安装和服务生命周期。

@@ -1,0 +1,57 @@
+[package]
+name = "rwi-native-link"
+version = "0.1.0-native-link.1"
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+fixture = ["legacy-workflow"]
+# Evaluation/old evidence only; excluded from production agent/adapter builds.
+legacy-workflow = ["dep:rwi-windows", "dep:rmcp"]
+
+[dependencies]
+rwi-core = { path = "../rwi-core" }
+rwi-windows = { path = "../rwi-windows", optional = true }
+rwi-link-trust = { path = "../rwi-link-trust" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+base64 = "=0.22.1"
+zeroize = "=1.9.0"
+rmcp = { optional = true, version = "=1.7.0", default-features = false, features = ["server", "transport-io"] }
+tokio = { version = "=1.50.0", features = ["macros", "rt-multi-thread", "net", "io-std", "io-util", "sync", "time", "process", "signal"] }
+rustls = { version = "=0.23.41", default-features = false, features = ["std", "ring"] }
+tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "=0.2.189"
+
+[dev-dependencies]
+tempfile.workspace = true
+rwi-imaging = { path = "../rwi-imaging" }
+
+[[bin]]
+name = "rwi-native-agent"
+path = "src/bin/rwi-native-agent.rs"
+required-features = ["legacy-workflow"]
+
+[[bin]]
+name = "rwi-native-relay"
+path = "src/bin/rwi-native-relay.rs"
+required-features = ["legacy-workflow"]
+
+[[bin]]
+name = "rwi-native-setup"
+path = "src/bin/rwi-native-setup.rs"
+required-features = ["legacy-workflow"]
+
+[[bin]]
+name = "rwi-native-control"
+path = "src/bin/rwi-native-control.rs"
+required-features = ["legacy-workflow"]
+
+[[example]]
+name = "measure_output"
+required-features = ["legacy-workflow"]

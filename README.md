@@ -13,13 +13,13 @@ a business task, test application, window, business stage or prior goal result.
 
 | Crate | Responsibility |
 | --- | --- |
-| `rcu-core` | Targets, frames, grounded actions, leases, no-replay receipts, verification |
-| `rcu-imaging` | Image/view mapping and bounded conversion |
-| `rcu-windows`, `rcu-macos` | Native platform capture/input and identity evidence |
-| `rcu-link-trust` | Private pairing and TLS identity |
-| `rcu-native-link` | Platform-neutral authenticated device RPC; old workflows are explicitly legacy-gated |
-| `rcu-agent` | Independent device service, principal policy, native contexts, shared leases and durable operations |
-| `rcu-mcp` | Official MCP SDK adapter, stable catalog, device routing, Host cancellation and presentation |
+| `rwi-core` | Targets, frames, grounded actions, leases, no-replay receipts, verification |
+| `rwi-imaging` | Image/view mapping and bounded conversion |
+| `rwi-windows`, `rwi-macos` | Native platform capture/input and identity evidence |
+| `rwi-link-trust` | Private pairing and TLS identity |
+| `rwi-native-link` | Platform-neutral authenticated device RPC; old workflows are explicitly legacy-gated |
+| `rwi-agent` | Independent device service, principal policy, native contexts, shared leases and durable operations |
+| `rwi-mcp` | Official MCP SDK adapter, stable catalog, device routing, Host cancellation and presentation |
 
 ## Develop from this root
 
@@ -32,7 +32,7 @@ rtk proxy python3 tools/check_architecture.py --workspace . --rules architecture
 
 Rust 1.95 or newer is required by the current workspace; use the locked dependency
 graph. Remove `--offline` only when an explicit dependency fetch is needed.
-Default tests do not control a desktop. `rcu-mcp` without `--profile` has zero
+Default tests do not control a desktop. `rwi-mcp` without `--profile` has zero
 paired devices but a complete catalog. Native input requires explicit target/grant/lease
 binding; a dispatch acknowledgement never proves the requested goal.
 
@@ -48,7 +48,7 @@ binding; a dispatch acknowledgement never proves the requested goal.
   reader (21 adapter tools, 20 device capabilities). Native execution is unchanged;
   see the [output migration contract](docs/migrations/2026-09-12-compact-output-v1.md).
   Optional [Host-side JavaScript helpers](integrations/javascript/README.md) are
-  source/tested client helpers, not a deployed RCU REPL or SSH provider.
+  source/tested client helpers, not a deployed RWI REPL or SSH provider.
 - An independent Windows ARM64 GUI-subsystem agent was installed and connected
   over authenticated RPC. Two non-document UI clicks were independently observed;
   a new Host queried the old receipt without replaying input. This is a limited
@@ -74,3 +74,16 @@ Git branches and reviewable commits are the version history. `work/`, binaries,
 credentials, raw captures and local editor/Codex settings are not source releases.
 Earlier milestone documents are historical evidence; the first baseline commit
 preserves the old root and its original README.
+
+## Naming and existing installations
+
+The product is **Real World Interaction (RWI)**. Cargo packages and binaries use
+`rwi-*`, the MCP registration is `real_world_interaction`, and the Skill/Plugin
+is `real-world-interaction`. The host-side SDK is `rwi-client.mjs` (`RwiClient`);
+embedded JavaScript exposes `rwi`, with `rcu` as the same-object compatibility alias.
+
+Existing paired installations retain their certificate DNS (`rcu-agent.local`),
+wire schemas/ALPN, legacy environment variables and durable state/lock identities.
+Renaming these would require a coordinated protocol/state migration, not a label
+change. Never reset a journal or create a second input domain during renaming.
+Historical evidence and raw session archives keep their original names and hashes.

@@ -34,10 +34,10 @@
   channels within one flow, including cross-execution, verification, feedback
   and iteration. Neither is a replacement/fallback for the other. Preserve
   each channel's device/user/session identity, authorization and evidence.
-- User clarification 2026-09-12: production RCU MCP registration is user/Host-wide,
+- User clarification 2026-09-12: production RWI MCP registration is user/Host-wide,
   not project-specific. Keep the installed adapter, paired client identity and
   profile outside source checkouts/worktrees. Isolated test configurations are
-  not production installation. Change only RCU settings when authorized; retain
+  not production installation. Change only RWI settings when authorized; retain
   unrelated Host configuration and verify a real fresh task without local config.
 - ADR 0002 (`docs/adr/0002-headless-control-infrastructure-review.md`) is the user-approved architecture baseline, not a trial topology. P0–P6 are delivery stages only.
 - Production deployment, service startup, tool discovery and transport must not depend on a business task, application window, expected document text, business Stage or oracle.

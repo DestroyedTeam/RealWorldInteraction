@@ -807,16 +807,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-agent"
+name = "rwi-agent"
 version = "0.4.0-m3a.7"
 dependencies = [
  "base64",
- "rcu-core",
- "rcu-imaging",
- "rcu-link-trust",
- "rcu-macos",
- "rcu-native-link",
- "rcu-windows",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-link-trust",
+ "rwi-macos",
+ "rwi-native-link",
+ "rwi-windows",
  "serde",
  "serde_json",
  "tempfile",
@@ -826,7 +826,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-core"
+name = "rwi-core"
 version = "0.4.0-m3a.7"
 dependencies = [
  "libc",
@@ -839,17 +839,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-imaging"
+name = "rwi-imaging"
 version = "0.4.0-m3a.7"
 dependencies = [
  "png",
- "rcu-core",
+ "rwi-core",
  "serde",
  "sha2",
 ]
 
 [[package]]
-name = "rcu-js"
+name = "rwi-js"
 version = "0.4.0-m3a.7"
 dependencies = [
  "rquickjs",
@@ -858,7 +858,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-link-trust"
+name = "rwi-link-trust"
 version = "0.1.0-native-link.1"
 dependencies = [
  "libc",
@@ -875,7 +875,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-macos"
+name = "rwi-macos"
 version = "0.4.0-m3a.7"
 dependencies = [
  "block2",
@@ -886,8 +886,8 @@ dependencies = [
  "objc2",
  "objc2-foundation",
  "png",
- "rcu-core",
- "rcu-pointer",
+ "rwi-core",
+ "rwi-pointer",
  "serde",
  "serde_json",
  "sha2",
@@ -895,18 +895,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-mcp"
+name = "rwi-mcp"
 version = "0.4.0-m3a.7"
 dependencies = [
  "base64",
- "rcu-agent",
- "rcu-core",
- "rcu-imaging",
- "rcu-js",
- "rcu-link-trust",
- "rcu-macos",
- "rcu-native-link",
- "rcu-windows",
+ "rwi-agent",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-js",
+ "rwi-link-trust",
+ "rwi-macos",
+ "rwi-native-link",
+ "rwi-windows",
  "rmcp",
  "schemars",
  "serde",
@@ -917,15 +917,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-native-link"
+name = "rwi-native-link"
 version = "0.1.0-native-link.1"
 dependencies = [
  "base64",
  "libc",
- "rcu-core",
- "rcu-imaging",
- "rcu-link-trust",
- "rcu-windows",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-link-trust",
+ "rwi-windows",
  "rmcp",
  "rustls",
  "serde",
@@ -939,20 +939,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcu-pointer"
+name = "rwi-pointer"
 version = "0.4.0-m3a.7"
 dependencies = [
- "rcu-imaging",
+ "rwi-imaging",
  "serde",
 ]
 
 [[package]]
-name = "rcu-windows"
+name = "rwi-windows"
 version = "0.4.0-m3a.7"
 dependencies = [
- "rcu-core",
- "rcu-imaging",
- "rcu-pointer",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-pointer",
  "serde",
  "serde_json",
  "sha2",

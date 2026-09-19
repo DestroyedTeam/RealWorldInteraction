@@ -1,4 +1,4 @@
-# RCU 架构评审：无自有 UI 的多端控制基础设施
+# RWI 架构评审：无自有 UI 的多端控制基础设施
 
 日期：2026-09-11。状态：**正式架构基线 / 用户已批准；尚非实现或能力验收声明**。
 
@@ -8,7 +8,7 @@
 
 ## 1. 架构确认
 
-**RCU 应是 AI Host 与受控系统之间的观察、操作和证据基础设施；不是固定 Mac↔Windows 遥控器，也不是预置业务工作流引擎。**
+**RWI 应是 AI Host 与受控系统之间的观察、操作和证据基础设施；不是固定 Mac↔Windows 遥控器，也不是预置业务工作流引擎。**
 
 已由用户确定的方向：
 
@@ -24,21 +24,21 @@
 
 | 已核实的位置 | 事实 | 架构处理 |
 |---|---|---|
-| [Runtime::new，51–103](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/orchestration/runtime.rs>) | agent 启动必须读取 `approved-task.json`、校验业务 Approval，创建 task 文件目录和总预算 | 服务配置不再持有某个业务任务；授权按调用作用域提供 |
-| [AgentConfig / ClientConfig / Approval，83–121、205–251](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/protocol/types.rs>) | 安装配置、连接配置携带 task、approval SHA、文件 manifest、期望 UI 文本或 process goal | 拆出设备身份、客户端主体、授权和操作；业务目标迁往调用方/验收 |
-| [connection，68–105](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/transport/server.rs>) | Model 建链先推进固定 `Stage::Model`，失败进入 task HOLD | 建链不推进业务阶段；连接与操作分别记账 |
-| [Store::open / start_task，137–176](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/orchestration/store.rs>) | 重启未完成任务产生 HOLD；旧任务不 complete 时拒绝新 task | 不确定操作记录保持不可重放，但不阻止建立新客户端或查询其他目标 |
-| [EndProof::permits，38–52](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/orchestration/store.rs>) | 资源结束证明还要求 model goal / file oracle / process oracle 成功 | 资源已释放与业务成功独立；失败业务也能正常结束会话 |
-| [process_cleanup / application，45–110](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/deployment/plan.rs>) | ProcessCleanupSeed 复用 NotepadSeed，限定一个 Task Manager 窗口和 `Taskmgr.exe` | 用例不能进入部署/通用协议；不再增加更多业务 Seed |
-| [worker_binding，842–846](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/orchestration/control.rs>) | catalog 只允许 Activate worker；新清理流程在 Launch 调用时失败 | 目录/窗口发现是能力调用，不应受业务阶段限定 |
-| [Server::execute_operation，59–101](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/server/mod.rs>) | 一个全局 semaphore 和 Engine mutex 覆盖工具执行 | 按设备/原生执行上下文隔离；状态、目录查询不能被一个 UIA 调用拖住 |
-| [act_checked，75–116](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/checked_action.rs>) | 所有 checked action 都要求完整 document context | 保留新鲜度与语义校验，但按动作类型要求必要证据，不把整套文档扫描作为菜单/桌面/普通按钮的共同门槛 |
+| [Runtime::new，51–103](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/orchestration/runtime.rs>) | agent 启动必须读取 `approved-task.json`、校验业务 Approval，创建 task 文件目录和总预算 | 服务配置不再持有某个业务任务；授权按调用作用域提供 |
+| [AgentConfig / ClientConfig / Approval，83–121、205–251](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/protocol/types.rs>) | 安装配置、连接配置携带 task、approval SHA、文件 manifest、期望 UI 文本或 process goal | 拆出设备身份、客户端主体、授权和操作；业务目标迁往调用方/验收 |
+| [connection，68–105](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/transport/server.rs>) | Model 建链先推进固定 `Stage::Model`，失败进入 task HOLD | 建链不推进业务阶段；连接与操作分别记账 |
+| [Store::open / start_task，137–176](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/orchestration/store.rs>) | 重启未完成任务产生 HOLD；旧任务不 complete 时拒绝新 task | 不确定操作记录保持不可重放，但不阻止建立新客户端或查询其他目标 |
+| [EndProof::permits，38–52](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/orchestration/store.rs>) | 资源结束证明还要求 model goal / file oracle / process oracle 成功 | 资源已释放与业务成功独立；失败业务也能正常结束会话 |
+| [process_cleanup / application，45–110](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/deployment/plan.rs>) | ProcessCleanupSeed 复用 NotepadSeed，限定一个 Task Manager 窗口和 `Taskmgr.exe` | 用例不能进入部署/通用协议；不再增加更多业务 Seed |
+| [worker_binding，842–846](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/orchestration/control.rs>) | catalog 只允许 Activate worker；新清理流程在 Launch 调用时失败 | 目录/窗口发现是能力调用，不应受业务阶段限定 |
+| [Server::execute_operation，59–101](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-mcp/src/server/mod.rs>) | 一个全局 semaphore 和 Engine mutex 覆盖工具执行 | 按设备/原生执行上下文隔离；状态、目录查询不能被一个 UIA 调用拖住 |
+| [act_checked，75–116](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-core/src/checked_action.rs>) | 所有 checked action 都要求完整 document context | 保留新鲜度与语义校验，但按动作类型要求必要证据，不把整套文档扫描作为菜单/桌面/普通按钮的共同门槛 |
 
 这里并不是说 `act_checked` 写死了 Notepad：`Documents::finish` 在完整遍历且没有文档节点时也能生成空集合摘要。问题是通用输入仍统一依赖该 document-context 的覆盖/预算要求，而非仅校验对应动作实际需要的上下文。
 
 最新保存的 [process-cleanup3-model-setup.json](</Users/vincentadamnemessis/AI Projects/Real Computer Use/work/windows-native-plugin-20260911/process-cleanup3-model-setup.json>) 为 `ready_for_model_attachment=false`，Launch 错误是 `catalog_only_current_activate_worker`。这与上表代码路径吻合，**不是新的 Windows 业务成功记录**。
 
-当前诊断服务器能暴露 19 项工具，但[其实现，22–74](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/integration/startup_diagnostic.rs>)来自记录的 schema，并让全部业务调用返回 `native_session_unavailable`。它解决了错误可见性，不是目标服务架构；不能以它替代真正的设备路由与通用执行层。
+当前诊断服务器能暴露 19 项工具，但[其实现，22–74](</Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rwi-native-link/src/integration/startup_diagnostic.rs>)来自记录的 schema，并让全部业务调用返回 `native_session_unavailable`。它解决了错误可见性，不是目标服务架构；不能以它替代真正的设备路由与通用执行层。
 
 ## 3. 角色、组件与连接方向
 
@@ -52,7 +52,7 @@
 | operator / policy authority | 配对设备、授权主体、制定范围、撤销权限的一方 | 不应由模型伪造一个 approval JSON 自我授权 |
 | workflow / evaluation | AI Host、Skill 或测试层对“我要完成什么”的组合与判断 | 不控制通用服务能否启动或接受下一任务 |
 
-MCP 本身区分 Host、client 和 server；RCU 的控制/受控角色应建立在其上，不借用连接方向重新定义术语。[MCP 官方架构](https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture)
+MCP 本身区分 Host、client 和 server；RWI 的控制/受控角色应建立在其上，不借用连接方向重新定义术语。[MCP 官方架构](https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture)
 
 ```text
                         ┌───────────────────────────────┐
@@ -84,7 +84,7 @@ MCP 本身区分 Host、client 和 server；RCU 的控制/受控角色应建立�
 
 1. **本机**：Host→同机 adapter→本机 agent/worker；可使用受保护 Unix socket 或 Windows named pipe，不能要求为本机绕一圈远程 VM。
 2. **远程/VM**：Host→任意可用宿主的 adapter→受控设备 agent；连接 IP 只是地址，不是设备身份。
-3. **多 Host、多设备**：多个经认证的主体可访问同一 agent；允许独立只读调用，一个桌面输入流只允许一个 RCU 写租约。
+3. **多 Host、多设备**：多个经认证的主体可访问同一 agent；允许独立只读调用，一个桌面输入流只允许一个 RWI 写租约。
 4. **反向连接**：未来可由 agent 主动拨出，但身份、授权、路由语义不变；本轮不建设中继云、穿透平台或常驻网络扫描。
 5. **嵌套 VM/RDP**：宿主远程桌面窗口与客体原生桌面是两个不同 target。没有 guest agent 时，只能声明操作宿主的远程画面，不能伪称取得 guest 原生窗口树和坐标。
 
@@ -100,7 +100,7 @@ MCP 支持 stdio、Streamable HTTP 和合规自定义 transport；额外设备�
 
 首期内部 RPC 仅需：认证后的 `hello`、设备/能力查询、类型化调用、操作状态/取消、有限证据读取。每条消息有协议版本、关联 ID、目标引用、主体上下文、截止时间和容量边界；**不得出现 `NotepadSeed`、`ProcessCleanupSeed`、Oracle 阶段或预期业务文本**。状态/撤销不应与大图传输共享不可抢占的无限队列。首期有界并发请求即可，不强行引入通用事件总线、任意远程代码加载或多路流框架。
 
-**协议版本事实**：本仓库锁定 `rmcp=1.7.0`，本机该 SDK 的 `ProtocolVersion::LATEST` 是 `2025-11-25`。2026-07-28 官方规范已改为逐请求版本/能力 metadata，不再需要旧式连接初始化，并定义 `server/discover`。因此本方案中的“客户端会话”是 RCU 调用/授权上下文，不能再绑定某一种 MCP 握手或业务会话。当前保留已测试的 legacy adapter，现代协议支持另立兼容验收，**不暗中升级 SDK 或宣称现已支持新规范**。[官方版本兼容说明](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)
+**协议版本事实**：本仓库锁定 `rmcp=1.7.0`，本机该 SDK 的 `ProtocolVersion::LATEST` 是 `2025-11-25`。2026-07-28 官方规范已改为逐请求版本/能力 metadata，不再需要旧式连接初始化，并定义 `server/discover`。因此本方案中的“客户端会话”是 RWI 调用/授权上下文，不能再绑定某一种 MCP 握手或业务会话。当前保留已测试的 legacy adapter，现代协议支持另立兼容验收，**不暗中升级 SDK 或宣称现已支持新规范**。[官方版本兼容说明](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)
 
 ## 5. 目标和能力模型
 
@@ -180,7 +180,7 @@ MCP `clientInfo.name`、请求里的 client_id 或 task 文本不是认证凭据
 
 输入互斥必须在受控设备侧统一执行，不能让不同 Mac adapter 的本地状态目录各自取得“独占”。原生线程有亲和性时可使用每上下文 actor/worker；只读控制面与慢调用队列分离，不能把所有请求放进一把全局大锁。
 
-RCU 的租约只协调 RCU，不会阻止人类或其他软件输入。检测到焦点/输入/会话变化后退让、失效旧引用并停止后续批次；检测覆盖不足须在能力中明示。多个窗口不等于多个独立鼠标/键盘流。
+RWI 的租约只协调 RWI，不会阻止人类或其他软件输入。检测到焦点/输入/会话变化后退让、失效旧引用并停止后续批次；检测覆盖不足须在能力中明示。多个窗口不等于多个独立鼠标/键盘流。
 
 ## 7. 工具接口与业务边界
 
@@ -211,7 +211,7 @@ RCU 的租约只协调 RCU，不会阻止人类或其他软件输入。检测到
 |---|---|---|
 | Windows | 有 Rust UIA、GDI、SendInput、窗口/会话/权限/进程证据代码和部分历史 live 记录；当前通用服务未通过 | 优先完成新架构真实 VM 验收。GUI subsystem 消除 agent 黑窗；普通/管理员是权限配置，不是两套工具目录。桌面 worker 在正确交互会话内运行，不让 Session 0 服务假扮用户桌面 |
 | macOS | 有 Rust AX/CG 受控窗口实现和离线/离屏证据；没有本轮通用受控端 live 验收 | Mac Codex adapter 优先；本机 agent 另验证 TCC、AX、显示器和窗口。安装 MCP 不自动取得辅助功能/屏幕权限 |
-| Linux X11 | 参考有实现，RCU workspace 尚无 Linux native crate | 按 X11/输入设备权限分别协商，不以 Linux 名称等同 GNOME Wayland |
+| Linux X11 | 参考有实现，RWI workspace 尚无 Linux native crate | 按 X11/输入设备权限分别协商，不以 Linux 名称等同 GNOME Wayland |
 | Linux GNOME/Wayland | 参考有 portal、多个 compositor/provider 与 GNOME JS 路径；未移植到 Rust | 先验证 portal ScreenCast/RemoteDesktop、PipeWire/libei、可获得的 AT-SPI 语义；全局窗口表/坐标无法证明时不伪造。不把旧 JS extension 偷装成 Rust 后端 |
 | Android | 未实现 | AccessibilityService/截图需实际 OS 能力与用户授权；MediaProjection 有会话与前台服务要求。Rust 核心+JNI/平台必要声明壳需单独实现验证，不承诺静默任意控制 |
 | iOS/iPadOS | 未实现 | 普通第三方应用受沙箱、entitlement 与后台 API 限制。不能承诺像 Windows 一样安装 headless agent 后任意全系统输入；仅公开且已验证的能力，特殊开发/管理通道另列，不充当一般产品覆盖 |
@@ -222,21 +222,21 @@ RCU 的租约只协调 RCU，不会阻止人类或其他软件输入。检测到
 
 ## 9. Rust workspace 目标依赖
 
-先模块内解耦，再在需要独立构建/部署时抽 crate；不为每层新建一个空项目。建议在现有七个 crate 上，仅新增一个明确的进程装配 crate `rcu-agent`：
+先模块内解耦，再在需要独立构建/部署时抽 crate；不为每层新建一个空项目。建议在现有七个 crate 上，仅新增一个明确的进程装配 crate `rwi-agent`：
 
 ```text
-rcu-core                  纯领域契约、授权/目标/操作接口与有界状态原语
-  ↑ rcu-imaging           图像编码/解码/映射
-  ↑ rcu-windows / rcu-macos（未来平台仅在有真实实现时加入）
+rwi-core                  纯领域契约、授权/目标/操作接口与有界状态原语
+  ↑ rwi-imaging           图像编码/解码/映射
+  ↑ rwi-windows / rwi-macos（未来平台仅在有真实实现时加入）
 
-rcu-link-trust            配对、认证、私密材料；无业务目标
-  ↑ rcu-native-link → rcu-core
+rwi-link-trust            配对、认证、私密材料；无业务目标
+  ↑ rwi-native-link → rwi-core
        设备 RPC / IPC / transport；无具体 Windows 平台依赖、无 rmcp 展示逻辑
 
-rcu-agent → rcu-core + rcu-native-link + 当前平台 driver
+rwi-agent → rwi-core + rwi-native-link + 当前平台 driver
        服务装配、worker 管理；设备侧唯一授权/租约/副作用账本执行点
 
-rcu-mcp → rcu-core + rcu-native-link（+ 需要的展示/图像映射）
+rwi-mcp → rwi-core + rwi-native-link（+ 需要的展示/图像映射）
        MCP SDK / tools / adapter / Host 集成；不负责业务 oracle
 
 验收 harness → 公开 adapter/client API
@@ -244,13 +244,13 @@ rcu-mcp → rcu-core + rcu-native-link（+ 需要的展示/图像映射）
        生产服务不能反向依赖 harness
 ```
 
-当前 `rcu-native-link → rcu-windows` 和含 Windows 类型的 `protocol/types.rs` 必须去掉；不是简单移动文件夹就算解耦。平台证据转换为核心可序列化契约，具体 FFI 保留在平台 crate。当前 `rcu-core::Backend` 可以暂作兼容门面，内部按能力拆接口，不要求每个非桌面设备伪装成有窗口的 Backend。
+当前 `rwi-native-link → rwi-windows` 和含 Windows 类型的 `protocol/types.rs` 必须去掉；不是简单移动文件夹就算解耦。平台证据转换为核心可序列化契约，具体 FFI 保留在平台 crate。当前 `rwi-core::Backend` 可以暂作兼容门面，内部按能力拆接口，不要求每个非桌面设备伪装成有窗口的 Backend。
 
 具体保留、迁出、替换和最终删除项见[迁移清单](</Users/vincentadamnemessis/AI Projects/Real Computer Use/docs/migrations/2026-09-11-infrastructure-migration-plan.md>)。
 
 ## 10. 接入与运维要求
 
-- 一次安装一个稳定 RCU MCP 入口；Plugin/Skill 只指向稳定 profile/设备注册配置，不指向 `work/.../admin5/model/.mcp.json` 或业务成功后即失效的路径。
+- 一次安装一个稳定 RWI MCP 入口；Plugin/Skill 只指向稳定 profile/设备注册配置，不指向 `work/.../admin5/model/.mcp.json` 或业务成功后即失效的路径。
 - 设备配对、普通/管理员运行方式、可用性与操作授权可分别诊断。设备 offline 时 MCP 服务仍正常提供目录/状态，不强制刷新/重启 Codex 才能恢复。
 - Skill 描述选择目标、按需观察、受权操作、独立验证与恢复方法；不负责弥补缺失的能力，也不在每步禁止合理的重新观察。
 - 实际 Codex effective config、工具发现、原生连接和任务验收分别记录。项目 trusted、插件安装、`required=true`、启动等待只是 Host 设置，不能修复服务生命周期耦合。

@@ -10,7 +10,7 @@ not establish application effect or task completion.
 - One device-local presenter thread, explicitly started by the serving agent,
   not by a business task, discovery or observation. One coalescing input-progress
   slot; no replay queue. The service owns the idle marker as well as active feedback.
-- A premultiplied BGRA atmospheric lens, fixed A1 diamond hotspot and `RCU` label. No typed text,
+- A premultiplied BGRA atmospheric lens, fixed A1 diamond hotspot and `RWI` label. No typed text,
   document contents, app names, credentials or task labels are rendered.
 - A layered, disabled, transparent, non-activating tool window. The presenter
   has its own window/message processing thread and per-monitor-v2 DPI context.
@@ -44,7 +44,7 @@ not inferred proof that every accessibility provider ignores the overlay.
 ## Grounding images are not visual-monitor frames
 
 An expiring halo must not change the content hash used to authorize the next
-pixel-grounded action. The first implementation therefore excludes RCU's own
+pixel-grounded action. The first implementation therefore excludes RWI's own
 feedback from existing `computer.observe` grounding PNGs:
 
 1. A capture guard increments a suspension count and obtains a revision ticket.
@@ -60,7 +60,7 @@ contaminated grounding frame. It does not disable the MCP service or replay
 input. Query paths do not initialize the presenter; the serving executable does.
 
 **Current limitation:** this phase supplies device-screen feedback, not feedback
-inside RCU grounding screenshots. A later explicitly visual/read-only capture
+inside RWI grounding screenshots. A later explicitly visual/read-only capture
 path must separate presentation from action authority, also allowing image-only
 observation without the current UIA walk. Hiding briefly during GDI copying may
 be visible on the device; measure this rather than claiming perfect smoothness.
@@ -109,10 +109,10 @@ identity, focused-window checks, UIA point guards, leases and the operation ledg
 
 ## macOS presenter (same material, separate host)
 
-The A1 material and motion expression live in the shared `rcu-pointer` crate;
-`rcu-windows/src/pointer_feedback` re-exports them at its original paths so its
+The A1 material and motion expression live in the shared `rwi-pointer` crate;
+`rwi-windows/src/pointer_feedback` re-exports them at its original paths so its
 presenter is unchanged. The macOS presenter renders the identical material
-inside a borderless, click-through AppKit window (`RCU AI Cursor`, accessory
+inside a borderless, click-through AppKit window (`RWI AI Cursor`, accessory
 policy, level 1000) owned by the device agent:
 
 - AppKit work is confined to the process main thread, which pumps a bounded

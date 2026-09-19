@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Explicit engineering cleanup of Cargo caches below work/, never product code.
 
-Requires a reviewable plan and an apply SHA. Preserves named RCU executables in a
+Requires a reviewable plan and an apply SHA. Preserves named RWI executables in a
 content-addressed archive before deleting disposable build intermediates.
 """
 import argparse
@@ -38,7 +38,7 @@ def named_binaries(cache):
             continue
         for name in files:
             path = current / name
-            if name.startswith("rcu-") and path.suffix in {"", ".exe"} and not path.is_symlink():
+            if name.startswith(("rwi-", "rcu-")) and path.suffix in {"", ".exe"} and not path.is_symlink():
                 yield path
 
 

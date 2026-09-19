@@ -1,7 +1,7 @@
 # UIOS scope: device pointer feedback
 
 This design contract scopes the currently implemented Windows pointer surface.
-It does not narrow RCU's approved multi-endpoint architecture or claim production
+It does not narrow RWI's approved multi-endpoint architecture or claim production
 support for macOS, Linux, Android, iOS or hardware endpoints. Those pointer
 renderers are deferred and unverified; common service/input meanings remain
 platform-neutral. A future native target needs its own references and evidence.

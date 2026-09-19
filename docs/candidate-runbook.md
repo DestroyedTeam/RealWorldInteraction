@@ -9,16 +9,16 @@ Built source and a **project-local** plugin candidate. No Codex configuration, p
 From the repository root:
 
 ```sh
-rtk cargo build --release -p rcu-mcp --locked
+rtk cargo build --release -p rwi-mcp --locked
 rtk proxy mkdir -p plugins/real-computer-use/bin
-rtk proxy cp target/release/rcu-mcp plugins/real-computer-use/bin/rcu-mcp
+rtk proxy cp target/release/rwi-mcp plugins/real-computer-use/bin/rwi-mcp
 ```
 
 Review `.mcp.json`: no native selector, no `--allow-input`, and an explicit shared candidate state root. Run the plugin validator and stdio integration tests. They do not install the plugin or prove the current Codex host sees its tools.
 
 ## Before any real native acceptance
 
-Arrange an exclusive human/automation test window for the exact host/guest/session, document who relinquished input, and specify the reversible goal and restoration oracle. Existing CrossMacro processes do not honor RCU's advisory lock. Do not wake a VM or take control because the plugin was installed.
+Arrange an exclusive human/automation test window for the exact host/guest/session, document who relinquished input, and specify the reversible goal and restoration oracle. Existing CrossMacro processes do not honor RWI's advisory lock. Do not wake a VM or take control because the plugin was installed.
 
 After explicit authorization, first add only `--macos-window PID:CGWindowID` to a **separate candidate server entry**. Read-only observation still reads screen/AX data and is part of the authorization. Verify the recorded host/session/PID/process epoch, window bounds, screenshot dimensions/normalization, focus and native hit test. Grant OS permissions only as a separately approved setup operation; this server never requests them automatically.
 

@@ -1,22 +1,22 @@
-# RCU Host-side client helpers
+# RWI Host-side client helpers
 
 ## Built-in persistent MCP entry
 
 The Rust adapter now exposes `computer.js` and `computer.js_reset`. No external
-Node import/transport is needed there: `rcu`, `state`, `emit` and `emitImage` are
+Node import/transport is needed there: `rwi`, `state`, `emit` and `emitImage` are
 preloaded in an owned QuickJS worker. Use `state.*` for persistent objects;
 cell-local declarations are intentionally not retained. See
 [the runtime contract](../../docs/architecture/persistent-js-entry.md).
 
 ```js
 // computer.js arguments: {code: "...", timeout_ms: 30000}
-state.inventory = await rcu.targets();
+state.inventory = await rwi.targets();
 emit(state.inventory.targets);
 ```
 
 Later cells can reuse selected `state.window` objects and the same authenticated
 adapter contexts. Every cell remains bounded; native services and direct tools
-do not depend on the JS worker. This is a public RCU MCP entry, not registration
+do not depend on the JS worker. This is a public RWI MCP entry, not registration
 inside Codex's private CUA REPL. Existing MCP processes need a fresh process to
 discover new tools; the adapter cannot change a Host's cached catalog itself.
 
@@ -38,7 +38,7 @@ again and bind it; binding never focuses. `discover` reports a separate native
 Only `foreground.status === 'known'` supplies `identity` (null means truly none).
 
 ```js
-const d = await rcu.call('computer.discover', {target, title_contains: title});
+const d = await rwi.call('computer.discover', {target, title_contains: title});
 // Select one exact returned native window; reject ambiguity/transition states.
 await state.window.bind(selection);
 await state.window.activate({
@@ -89,19 +89,19 @@ implemented by this interface. See [the contract](../../docs/architecture/bounde
 
 ## Optional integration into another JS Host
 
-`rcu-client.mjs` is an optional JavaScript client layer over an injected,
+`rwi-client.mjs` is an optional JavaScript client layer over an injected,
 authenticated MCP transport. It does not implement OS input, spawn a shell,
 install a REPL/plugin or provide an SSH service. Rust remains the product backend.
 
 In a persistent JS host, import the module once and supply the Host's MCP client:
 
 ```js
-const { RcuClient } = await import('/absolute/installation/rcu-client.mjs');
-const rcu = new RcuClient((name, args) => mcpClient.callTool({ name, arguments: args }));
+const { RwiClient } = await import('/absolute/installation/rwi-client.mjs');
+const rcu = new RwiClient((name, args) => mcpClient.callTool({ name, arguments: args }));
 ```
 
 `mcpClient` above must be the real initialized Host transport, not a fabricated
-global. This repository does not register an RCU trusted service in Codex's
+global. This repository does not register an RWI trusted service in Codex's
 private REPL. Importing these helpers does not make `functions.exec` persistent.
 The SDK alone does not install a Plugin. The built-in Rust entry above is the
 implemented REPL wiring; global Plugin packaging remains separate work.
@@ -116,7 +116,7 @@ implemented REPL wiring; global Plugin packaging remains separate work.
   offers `act({element,intent,value,requestId})` and `observe()`, then releases.
   Await it in the same Host evaluation. Observe after mutation before selecting
   another action. A caught/ignored action failure still poisons the batch.
-- Wrappers from one `RcuClient` coordinate per exact target: ownership covers
+- Wrappers from one `RwiClient` coordinate per exact target: ownership covers
   claim, native work, reads and cleanup. Inside a batch use the callback's
   `observe`, `snapshot`, and `elementsPage`, not outside window methods. Reads on
   a different target remain independent. Rebinding/observing through another
@@ -172,7 +172,7 @@ fixed preferred/fallback hierarchy. A flow may use GUI execution with terminal
 verification, terminal execution with GUI verification, or feedback from both
 before the next step. This SDK currently implements only the GUI/MCP peer.
 An existing authorized terminal connector can be composed by its caller; no
-`rcu.terminal` API is advertised until a real provider exists.
+`rwi.terminal` API is advertised until a real provider exists.
 
 After terminal actions replace a GUI process/window, invalidate the prior
 binding and discover/bind/observe anew. Keep each channel's host/user/session,
@@ -183,7 +183,7 @@ filesystem/process result. Honor explicitly GUI-only acceptance tests.
 ## Offline tests
 
 ```sh
-node --test integrations/javascript/rcu-client.test.mjs
+node --test integrations/javascript/rwi-client.test.mjs
 ```
 
 These tests inject a synthetic MCP function. They validate client sequencing and
@@ -192,8 +192,10 @@ failure handling, not Windows execution or overall model latency.
 
 `withInput` requires an observed `mutation_ready: true` and `blocked: false`;
 a known input-domain fence also stops it before claim. Every newly observed
-step inside a batch is checked again. `RcuInputNotReadyError.data` identifies
+step inside a batch is checked again. `RwiInputNotReadyError.data` identifies
 `client_precondition`, the frame, readiness flags and retained detail reference.
 This rejects known-unready work locally; it never grants native permission,
 automatically recovers a fence, observes again or retries prior input. The
 server remains authoritative and earlier action receipts/lease cleanup survive.
+
+The canonical worker global is `rwi`. `rcu` remains an alias of the same client for existing cells; it does not allocate a second owner or lease domain.

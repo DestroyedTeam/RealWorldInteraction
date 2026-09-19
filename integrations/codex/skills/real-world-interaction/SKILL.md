@@ -13,7 +13,7 @@ business result. A window closing does not invalidate the installation.
 ## Preserve the requested Host entry
 
 For native MCP/plugin/skill acceptance, GUI actions must originate from the
-Host's currently loaded RCU tools. Do not substitute a shell-launched Python,
+Host's currently loaded RWI tools. Do not substitute a shell-launched Python,
 Node, stdio or HTTP test client, even when it talks to the real Rust MCP server.
 Such clients can test transport/integration when requested, but cannot prove the
 Host's native entry works. If the loaded entry cannot carry an advertised action,
@@ -31,7 +31,7 @@ file export and file reopening as separate acceptance nodes.
   machine; use an already authorized SSH/remote connector for another device.
   A local command is not a guest command. Confirm the remote host identity and
   effective user; GUI and SSH may belong to different OS sessions.
-- RCU does not currently provide an SSH tool. Do not invent one, install a remote
+- RWI does not currently provide an SSH tool. Do not invent one, install a remote
   shell service, or expand network access just because this skill is loaded.
 - Respect explicitly requested GUI-only tasks and native MCP acceptance tests.
   Terminal work is not evidence that native input/capture works. A rejected GUI

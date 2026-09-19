@@ -9,7 +9,7 @@
 - `git branch --show-current` 为 `main`；`git log` 返回尚无任何提交。不是“已有提交但没有合适分支”。
 - 根 workspace 仍为 0.3.0 / 5 个 crates；当前候选为 `work/b1-native-link-r2/source`，核心版本 0.4.0-m3a.7 / 7 个 crates。
 - `work` 约 69 GB，深度两层有 20 个名为 `source` 的目录。不能把历史快照当作 20 条可维护开发线。
-- 当前候选 `rcu-mcp/main.rs` 1635 行、`rcu-native-link/control.rs` 1257 行、`worker.rs` 1143 行；Windows `application.rs` 1627 行、`agent_binding.rs` 1596 行。入口、协议、生命周期和平台证明耦合，单纯增加目录层级不能修复职责边界。
+- 当前候选 `rwi-mcp/main.rs` 1635 行、`rwi-native-link/control.rs` 1257 行、`worker.rs` 1143 行；Windows `application.rs` 1627 行、`agent_binding.rs` 1596 行。入口、协议、生命周期和平台证明耦合，单纯增加目录层级不能修复职责边界。
 - 数据来自本地当次检查；体积不是待删除清单，源码副本也不代表全部都是可丢弃文件。
 
 ## 唯一研发主线
@@ -38,13 +38,13 @@
 | integration / ai hosts | Codex 插件、Skill、模型可读回包 | 改写原始快照、放宽动作校验、伪造 App 注册 |
 | deployment / provisioning | 显式 Ordinary/Admin 配置、固定安装根、启动与回收 | 修改其他软件/全局配置、自动批准权限 |
 
-按稳定边界逐步拆分已有 crates，不一次性制造大量空 crate。先切开内部模块与接口，再据依赖和跨平台复用需求拆 crate。`rcu-native-link` 对 Windows 的直接依赖是待隔离平台端口的债务，不因为当前检查允许就视为合理终态。
+按稳定边界逐步拆分已有 crates，不一次性制造大量空 crate。先切开内部模块与接口，再据依赖和跨平台复用需求拆 crate。`rwi-native-link` 对 Windows 的直接依赖是待隔离平台端口的债务，不因为当前检查允许就视为合理终态。
 
 ### 第一批结构变更
 
-- 新的原生插件导出与模型回包投影放在 `rcu-native-link/src/integration/`，明确不拥有原生执行或授权。暂保留 `plugin` / `presentation` 公共重导出，避免把调用方全部改名混入行为修复。
-- 已拆分 `rcu-mcp`：`main.rs` 从 1635 行减为 13 行，仅调用启动入口；`bootstrap` 负责进程与平台装配，`server` 负责 MCP 执行/路由/回包，`server/parameters` 独立持有工具参数，原单测移到 `server/tests`，工具 schema 不变。路由与回包还可进一步细分。
-- `rcu-native-link` 已按 `protocol`、`transport`、`orchestration`、`deployment`、`integration` 分组，顶层保留稳定公共重导出。大文件债务仍在，结构分组不代表内部依赖已全部解耦。
+- 新的原生插件导出与模型回包投影放在 `rwi-native-link/src/integration/`，明确不拥有原生执行或授权。暂保留 `plugin` / `presentation` 公共重导出，避免把调用方全部改名混入行为修复。
+- 已拆分 `rwi-mcp`：`main.rs` 从 1635 行减为 13 行，仅调用启动入口；`bootstrap` 负责进程与平台装配，`server` 负责 MCP 执行/路由/回包，`server/parameters` 独立持有工具参数，原单测移到 `server/tests`，工具 schema 不变。路由与回包还可进一步细分。
+- `rwi-native-link` 已按 `protocol`、`transport`、`orchestration`、`deployment`、`integration` 分组，顶层保留稳定公共重导出。大文件债务仍在，结构分组不代表内部依赖已全部解耦。
 - Windows 优先拆 `session/token`、`window/uia`、`capture`、`input`、`lifecycle`；FFI 与纯规则测试分离。Ordinary/Admin 共用身份和安装状态，不复制实现绕过 HOLD。
 
 ## 可执行约束

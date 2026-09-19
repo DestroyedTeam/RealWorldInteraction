@@ -4,7 +4,7 @@
 
 r3 的编排修复可独立复核，但 **不可排期、不可进入 Windows**。`readiness.json` 固定为 `ready_for_live=false`，真实入口在发起 guest 调用前拒绝。原因是当前 Rust 产品尚无经过验证的真实 Notepad 独立窗口创建能力；不得把这个阻塞转嫁成“再请 owner 布置两个窗口”。未来应由新的产品候选解决，不能仅翻转此标志或沿用本 run/grant。
 
-r2 实机结论是 **distribution pass / task not_run**：安装与两 EXE/两文件 SHA 读回通过；bootstrap、实际模型和 RCU native input 均未运行。owner 回执说明旧四标签恢复，decoy 仅为旧窗口的新标签，baseline 未打开。没有可认领的新 root/decoy。cleanup 读回 0 个候选进程、0 个候选任务，强制终止为空；这不是中途取消通过。旧 HWND 394290 / PID 7524 不能关闭或杀进程。
+r2 实机结论是 **distribution pass / task not_run**：安装与两 EXE/两文件 SHA 读回通过；bootstrap、实际模型和 RWI native input 均未运行。owner 回执说明旧四标签恢复，decoy 仅为旧窗口的新标签，baseline 未打开。没有可认领的新 root/decoy。cleanup 读回 0 个候选进程、0 个候选任务，强制终止为空；这不是中途取消通过。旧 HWND 394290 / PID 7524 不能关闭或杀进程。
 
 ## 根因与修复范围
 
