@@ -75,6 +75,10 @@ fn actual_provision_cli_emits_only_public_metadata_and_refuses_overwrite() {
     let public: rwi_link_trust::ProvisionManifest = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(public.schema, "rcu.private_pairing_provision.v1");
     assert!(!public.ca_private_key_persisted);
+    assert_eq!(
+        public.expires_unix_seconds - public.created_unix_seconds,
+        180 * 24 * 60 * 60,
+    );
     for role in ["agent", "controller", "model"] {
         let paths = rwi_link_trust::IdentityPaths::in_profile(&root.join(role));
         let identity = paths.load().unwrap();

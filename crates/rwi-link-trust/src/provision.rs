@@ -9,6 +9,12 @@ use std::{io, path::Path};
 use time::{Duration, OffsetDateTime};
 use zeroize::Zeroizing;
 
+// Host-wide pairing survives ordinary development sessions and app updates.
+// The CA private key is deliberately discarded, so expiry requires a new
+// pairing and explicit pin rotation rather than an in-place leaf renewal.
+const CA_VALIDITY_DAYS: i64 = 365;
+const PEER_VALIDITY_DAYS: i64 = 180;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProvisionedPeer {
@@ -60,7 +66,7 @@ impl Generation {
         let mut params = CertificateParams::new(Vec::<String>::new())
             .map_err(|_| invalid("trust_ca_parameters_invalid"))?;
         params.not_before = now - Duration::minutes(5);
-        params.not_after = now + Duration::days(7);
+        params.not_after = now + Duration::days(CA_VALIDITY_DAYS);
         params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
         params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
         params.distinguished_name = DistinguishedName::new();
@@ -127,7 +133,7 @@ impl Generation {
 /// Windows receives only its private agent profile via the native ACL importer.
 pub fn provision(destination: &Path) -> io::Result<ProvisionManifest> {
     let generation = Generation::new()?;
-    let expiry = generation.now + Duration::days(3);
+    let expiry = generation.now + Duration::days(PEER_VALIDITY_DAYS);
     let agent = generation.identity("agent", generation.now - Duration::minutes(5), expiry)?;
     let controller =
         generation.identity("controller", generation.now - Duration::minutes(5), expiry)?;

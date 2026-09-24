@@ -1,0 +1,23 @@
+{
+  "schema": "rcu.private_pairing_provision.v1",
+  "server_dns_name": "rcu-agent.local",
+  "created_unix_seconds": 1790222339,
+  "expires_unix_seconds": 1805774339,
+  "ca_sha256": "31f07393920a7591bd9ff512806c8da99d73fac96d80a8178a5c07b0b055f107",
+  "agent": {
+    "role": "agent",
+    "directory": "agent",
+    "certificate_sha256": "588a428afe54f1a55bb5c22f8e254b3ae5e69f99c0f78235c54dbd33df6f9469"
+  },
+  "controller": {
+    "role": "controller",
+    "directory": "controller",
+    "certificate_sha256": "d53c7b3092177d8d67e431a4b3db7547d6f697400ae5cdc33fc09665884c5151"
+  },
+  "model": {
+    "role": "model",
+    "directory": "model",
+    "certificate_sha256": "46716fb2de215b07c30e6f7f7b130d564fd71874d68fd7f77db8f86543e63717"
+  },
+  "ca_private_key_persisted": false
+}
