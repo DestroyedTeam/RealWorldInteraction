@@ -2954,5 +2954,29 @@
     },
     "agent_deployed_same_stable_certificate": true,
     "full_goal_complete": false
+  },
+  "R58_window_local_response_visual": {
+    "date": "2026-10-12",
+    "capture_visual_native_same_window_A_B_accepted": true,
+    "normal_snapshot_already_worked_in_baseline": true,
+    "native_source_pixels": [
+      1320,
+      1104
+    ],
+    "single_display_required_for_readonly_capture": false,
+    "input_mapping_unchanged": true,
+    "normal_input_reference_available": false,
+    "semantic_close_refused_before_dispatch": true,
+    "window_local_input_complete": false,
+    "source_lifetime_closed_exit0": true,
+    "expiry_count": 1,
+    "report": "outputs/validation/r58-window-local-visual-2026-10-12/REPORT.md",
+    "workspace": {
+      "passed": 762,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "full_goal_complete": false
   }
 }

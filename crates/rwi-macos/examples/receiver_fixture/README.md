@@ -63,6 +63,15 @@ windowWillClose 时不声称 `state.closed`。
 
 ## 三类接收 oracle
 
+### 显式窗口边界只读验收
+
+`--boundary-right` 仅在完整显式分配后启用：自有主窗口右侧四分之一跨出指定
+NSScreen，其余四分之三和全部高度留在该屏。先确认原尺寸可容纳，创建后必须
+读回同一 screen ID 和精确请求 frame；不符即退出，不移动到主屏或解除限制。
+默认完整单屏定位不变，不能与 right-side、cover、sheet、系统panel模式混用。
+本模式用于独立比较 exact-window 只读画面与输入映射，**不授予跨屏输入**；
+已分配控制器只读截图并核对所有输入计数为0。到期关闭仍走原本自有生命周期。
+
 |区域|实际接收后改变|不能推导的结论|
 |---|---|---|
 |Safe count NSButton|`safe_button_actions`；标准按钮 title 和下方 AX 文本更新|target/action 也可由 AXPress 触发，不证明 NSEvent 一定是输入源|

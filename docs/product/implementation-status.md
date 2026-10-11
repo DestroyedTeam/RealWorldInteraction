@@ -1803,3 +1803,13 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 原Colors AXPress/-25204仍uncertain，早期计数0、晚期计数1；没有重放。七原请求全部terminal/released/no pending/no uncertainty/no replay。126与127各fresh AXClose一次，closed/expiry0/进程exit0，six bindings detached；没有点击隐藏panel的Close。顺序原图、hash和结果在outputs/validation/r57-window-missing-context-2026-10-12/。
 - 同输入source配置BASELINE false1→MODIFIED true0→独立copy ROLLBACK false1/三个hash+module absence精确恢复→REAPPLIED true0。沿用同四角色从156扩为158，原97immutable基线不改；不称生产回滚。Live已部署320pt紧凑比例与eye.slash/play.fill/xmark，R48真实v2显隐/返回/close证据保留；官方页面未给私有UI精确像素规格。
 - 完整F01–F16未完成；继续background cold tracking、window-local/offscreen、foreign-provider菜单、隐藏/最小化、跨应用DnD等。用户休息，不请求人工配合；不以本次诊断补齐代替后续原生实现。
+
+
+## 2026-10-12 · R58：独立只读窗口画面不再误要求完整单屏
+
+- 用上一轮checkpoint实际启动严格window-display边界合同（1pass/0），不复演已完成GUI。新增record_for_visual的窗口局部合同真实1pass/1fail/101，保留旧strict行为；修正为可选containing_display后同命令2pass/0。只改独立visual record，保持on-screen精确PID/ID、session/process birth、重复行、SCK owner/frame/contentRect/scale、pre/post拓扑/几何检查；无display时仍null，不赋予输入或假称hidden可拍。
+- 完整11门exit0，workspace762/0/11/42、Receiver66/UI7，fmt/全targets/features Clippy-Dwarnings、release/架构门通过。新增fixture --boundary-right只在显式allocation启用，3/4宽在所选screen、1/4跨出，精确frame与screen回读，不回主屏；默认完整单屏、重复/混合模式拒绝保留。
+- 同证书/DR原子部署Agent68669 / 4a4e2cf7-a45c-4996-8f79-5f8f2a40a22a，signed SHA256 f55c53358783bcfb29858d0f25e219db9d6ada9aa273ef5c522014a076a37b10；原inode排他lease与durable终态资源门先过。四权限、MCP5cf8424、CA/profile/config不变；没有Host重启、权限/人工请求。
+- own128（PID68206/CG43156）前后同一个process_start/CGID/位置：[3225,504,660,552]，Virtual4右缘3720，catalog.display=null。旧独立capture_visual报visual_display_unknown，新返回真实完整1320×1104/122552bytePNG；普通snapshot在旧版已可读7controls，新版仍可读，但两者mutation_ready=false、input_reference_available=false、original_to_desktop=null。不是修好了已正常的snapshot，不把响应图的visual_to_desktop借作输入frame。
+- fresh AXClose在checked_context_unavailable前置拒绝、native_dispatch=false；另一次明确的cleanup placement在AX读降级后target_binding_unknown/native_execution=false，未move、不重放。三个binding退役；源最终真实到期closed/expiry1/进程exit0，所有Safe/drag/hover/text/scroll输入计数0，不称显式Close成功。保留这些window-local输入/语义动作缺口，继续真正实现，不以只读成功替代。
+- 配置BASELINE false1/MODIFIED true0/独立copy ROLLBACK false1/REAPPLIED true0，六源pristine hash精确恢复，非生产回滚。沿用同四角色/累计158路径与原97基线；真实顺序原图/报告在outputs/validation/r58-window-local-visual-2026-10-12/。整个F01–F16保持未完成；过去CmdTab、Host v2 Live、sheet等已完成结果不重演。

@@ -26,6 +26,8 @@ pub struct Options {
     pub cover_controls: bool,
     /// Explicit non-overlapping second own app on the allocated display.
     pub right_side: bool,
+    /// Explicit read-only geometry fixture: last quarter outside the selected screen.
+    pub boundary_right: bool,
     pub modal_controls: bool,
     pub system_panel_controls: bool,
     pub environment_sample_ms: Option<u32>,
@@ -76,6 +78,7 @@ impl Options {
         let mut lifetime_ms = None;
         let mut cover_controls = false;
         let mut right_side = false;
+        let mut boundary_right = false;
         let mut modal_controls = false;
         let mut system_panel_controls = false;
         let mut environment_sample_ms = None;
@@ -125,6 +128,7 @@ impl Options {
                 }
                 "--cover-controls" if !cover_controls => cover_controls = true,
                 "--right-side" if !right_side => right_side = true,
+                "--boundary-right" if !boundary_right => boundary_right = true,
                 "--modal-controls" if !modal_controls => modal_controls = true,
                 "--system-panel-controls" if !system_panel_controls => system_panel_controls = true,
                 "--regular-app" if !regular_app => regular_app = true,
@@ -203,6 +207,7 @@ impl Options {
             && lifetime_ms.is_none()
             && !cover_controls
             && !right_side
+            && !boundary_right
             && !modal_controls
             && !system_panel_controls
             && environment_sample_ms.is_none()
@@ -240,6 +245,17 @@ impl Options {
             .filter(|id| *id != 0)
             .ok_or("--display-id must be a nonzero u32")?;
         let lifetime_ms = lifetime_ms.unwrap_or(120_000);
+        if boundary_right
+            && (right_side
+                || cover_controls
+                || modal_controls
+                || system_panel_controls
+                || command_tab_delay.is_some())
+        {
+            return Err(
+                "boundary geometry fixture cannot combine with another window/actor mode".into(),
+            );
+        }
         if self_foreground_after_ms.is_some() && self_foreground_on_first_down_after_ms.is_some() {
             return Err(
                 "own foreground actor needs exactly one launch or first-down trigger".into(),
@@ -294,6 +310,7 @@ impl Options {
             lifetime_ms,
             cover_controls,
             right_side,
+            boundary_right,
             modal_controls,
             system_panel_controls,
             environment_sample_ms,
@@ -506,6 +523,90 @@ impl Rect {
         self.contains(placed)
             .then_some(placed)
             .ok_or("fixture right-side window cannot fit explicit display")
+    }
+    pub fn place_boundary_right(self, width: f64, height: f64) -> Result<Self, &'static str> {
+        let mut placed = self.place(width, height)?;
+        placed.x = self.x + self.width - width * 0.75;
+        Ok(placed)
+    }
+    pub fn same(self, other: Self) -> bool {
+        [
+            self.x - other.x,
+            self.y - other.y,
+            self.width - other.width,
+            self.height - other.height,
+        ]
+        .into_iter()
+        .all(|d| d.is_finite() && d.abs() < 0.01)
+    }
+}
+
+#[cfg(test)]
+mod boundary_geometry_contract {
+    use super::*;
+    fn options(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "own-boundary",
+                "--state-dir",
+                "/tmp/rwi-own-boundary",
+                "--display-id",
+                "4",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn boundary_is_explicit_and_rejects_duplicate_or_mixed_allocations() {
+        assert!(!options(&[]).unwrap().unwrap().boundary_right);
+        assert!(
+            options(&["--boundary-right"])
+                .unwrap()
+                .unwrap()
+                .boundary_right
+        );
+        assert!(Options::parse(["--boundary-right"].into_iter().map(str::to_owned)).is_err());
+        for extra in [
+            "--boundary-right",
+            "--right-side",
+            "--cover-controls",
+            "--modal-controls",
+            "--system-panel-controls",
+        ] {
+            assert!(options(&["--boundary-right", extra]).is_err());
+        }
+    }
+    #[test]
+    fn boundary_geometry_keeps_three_quarters_on_allocated_screen_and_checks_readback() {
+        let screen = Rect {
+            x: 1800.,
+            y: 89.,
+            width: 1920.,
+            height: 1080.,
+        };
+        let own = screen.place_boundary_right(660., 552.).unwrap();
+        assert_eq!(own.x, 3225.);
+        assert_eq!(own.y, 113.);
+        assert_eq!(screen.x + screen.width - own.x, own.width * 0.75);
+        assert!(!screen.contains(own));
+        assert!(own.same(own));
+        assert!(!own.same(Rect {
+            x: own.x - 1.,
+            ..own
+        }));
+        assert!(!own.same(Rect { x: f64::NAN, ..own }));
+        assert!(
+            Rect {
+                width: 600.,
+                ..screen
+            }
+            .place_boundary_right(660., 552.)
+            .is_err()
+        );
     }
 }
 

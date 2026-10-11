@@ -1406,7 +1406,9 @@ pub fn run(options: Options) -> Result<(), String> {
             let screen_frame = explicit_screen_frame(options.display_id)?;
             let decoration: NSRect = msg_send![class(c"NSWindow")?,
                 frameRectForContentRect:rect(0., 0., 660., 520.), styleMask:3usize];
-            let placed = if options.right_side {
+            let placed = if options.boundary_right {
+                screen_frame.place_boundary_right(decoration.size.width, decoration.size.height)?
+            } else if options.right_side {
                 screen_frame.place_right(decoration.size.width, decoration.size.height)?
             } else {
                 screen_frame.place(decoration.size.width, decoration.size.height)?
@@ -1593,9 +1595,12 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*window, setFrame:requested_frame, display:true, animate:false];
             let actual: NSRect = msg_send![&*window, frame];
             let screen: *mut AnyObject = msg_send![&*window, screen];
-            if !screen_frame.contains(geometry(actual))
-                || screen_id(screen) != Some(options.display_id)
-            {
+            let allocation_matches = if options.boundary_right {
+                placed.same(geometry(actual))
+            } else {
+                screen_frame.contains(geometry(actual))
+            };
+            if !allocation_matches || screen_id(screen) != Some(options.display_id) {
                 UI_STATE.with(|cell| {
                     let mut borrowed = cell.borrow_mut();
                     let ui = borrowed.as_mut().unwrap();
@@ -1608,7 +1613,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     cell.borrow_mut().take();
                 });
                 return Err(
-                    "fixture window not fully on explicit display; stopped without fallback".into(),
+                    "fixture window did not match its explicit display/geometry allocation; stopped without fallback".into(),
                 );
             }
             if options.cover_controls {
