@@ -178,6 +178,10 @@ impl Engine {
             return Ok(result);
         }
         operation::checkpoint("before_revalidation")?;
+        if matches!(intent, Intent::MovePointer) {
+            MovePointerOptions::parse(value.as_deref())?
+                .require_capability(&self.backend(target)?.capabilities())?;
+        }
         let mut resolved = self
             .refs
             .iter()

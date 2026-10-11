@@ -1,0 +1,144 @@
+//! Explicit delivery selection; never promote background movement implicitly.
+use crate::{ForegroundState, Result, fault};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "delivery", rename_all = "snake_case", deny_unknown_fields)]
+pub enum MovePointerOptions {
+    BackgroundWindow {},
+    ForegroundSystem {
+        expected_foreground: ForegroundState,
+    },
+}
+impl MovePointerOptions {
+    pub fn parse(value: Option<&str>) -> Result<Self> {
+        let Some(value) = value else {
+            return Ok(Self::BackgroundWindow {});
+        };
+        if value.len() > 4096 {
+            return Err(fault(
+                "invalid_input_value",
+                "Bound pointer delivery options to 4096 bytes.",
+            ));
+        }
+        let options: Self = serde_json::from_str(value).map_err(|_| {
+            fault(
+                "invalid_input_value",
+                "Use explicit pointer delivery options, never text, a button or an action.",
+            )
+        })?;
+        if let Self::ForegroundSystem {
+            expected_foreground,
+        } = &options
+        {
+            expected_foreground.validate()?;
+        }
+        Ok(options)
+    }
+    pub fn requires_foreground(&self) -> bool {
+        matches!(self, Self::ForegroundSystem { .. })
+    }
+    pub fn require_capability(&self, capabilities: &serde_json::Value) -> Result<()> {
+        if self.requires_foreground()
+            && capabilities["pointer_move"]["foreground_system"]["implemented"] != true
+        {
+            return Err(fault(
+                "capability_unavailable",
+                "This backend does not advertise explicit foreground pointer delivery; no fallback.",
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn foreground() -> serde_json::Value {
+        serde_json::json!({"delivery":"foreground_system","expected_foreground":{
+            "pid":42,"window":"cgwindow:7","process_start":"42:1:2","native_epoch":"a".repeat(64)}})
+    }
+    #[test]
+    fn pointer_options_default_is_unchanged_and_foreground_requires_explicit_exact_tuple() {
+        assert_eq!(
+            MovePointerOptions::parse(None).unwrap(),
+            MovePointerOptions::BackgroundWindow {}
+        );
+        let value = foreground().to_string();
+        assert!(
+            MovePointerOptions::parse(Some(&value))
+                .unwrap()
+                .requires_foreground()
+        );
+        assert!(crate::Intent::MovePointer.validate(Some(&value)).is_ok());
+        assert!(MovePointerOptions::parse(Some("{\"delivery\":\"foreground_system\"}")).is_err());
+    }
+    #[test]
+    fn pointer_options_reject_unknown_null_text_buttons_and_invalid_foreground() {
+        for value in [
+            "",
+            "null",
+            "text",
+            "{}",
+            "{\"delivery\":\"auto\"}",
+            "{\"delivery\":\"background_window\",\"button\":\"left\"}",
+        ] {
+            assert!(MovePointerOptions::parse(Some(value)).is_err(), "{value}");
+        }
+        let mut value = foreground();
+        value["expected_foreground"]["pid"] = serde_json::json!(0);
+        assert!(MovePointerOptions::parse(Some(&value.to_string())).is_err());
+    }
+    #[test]
+    fn pointer_options_foreground_capability_is_not_inherited_from_background_support() {
+        let value = foreground().to_string();
+        let options = MovePointerOptions::parse(Some(&value)).unwrap();
+        assert!(
+            options
+                .require_capability(&serde_json::json!({"pointer_move":{"implemented":true}}))
+                .is_err()
+        );
+        assert!(
+            options
+                .require_capability(
+                    &serde_json::json!({"pointer_move":{"foreground_system":{"implemented":true}}})
+                )
+                .is_ok()
+        );
+        assert!(
+            MovePointerOptions::BackgroundWindow {}
+                .require_capability(&serde_json::json!({}))
+                .is_ok()
+        );
+    }
+    #[cfg(feature = "fixture")]
+    #[test]
+    fn pointer_options_unadvertised_foreground_is_refused_before_backend_input() {
+        let dir = tempfile::tempdir().unwrap();
+        let fixture = crate::fixture::Fixture::default();
+        let mut engine = crate::Engine::new(dir.path().into()).unwrap();
+        engine
+            .register("fixture".into(), Box::new(fixture.clone()))
+            .unwrap();
+        let frame = engine.observe("fixture").unwrap().frame;
+        let reference = engine
+            .resolve(
+                "fixture",
+                &frame,
+                crate::Locator::Element { id: "Input".into() },
+            )
+            .unwrap();
+        let lease = engine.claim("fixture", 5000).unwrap();
+        let result = engine.act(
+            "fixture",
+            &reference.reference,
+            &lease,
+            "unsupported-foreground",
+            crate::Intent::MovePointer,
+            Some(foreground().to_string()),
+        );
+        assert_eq!(result.unwrap_err().code, "capability_unavailable");
+        assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        engine.release(&lease).unwrap();
+    }
+}

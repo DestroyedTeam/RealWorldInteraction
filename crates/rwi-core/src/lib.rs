@@ -2,6 +2,8 @@
 
 mod foreground;
 pub use foreground::ForegroundState;
+mod move_pointer_options;
+pub use move_pointer_options::MovePointerOptions;
 mod checked_action;
 mod engine_lifecycle;
 mod engine_mutation;
@@ -198,6 +200,7 @@ pub struct Scene {
 pub enum Intent {
     Click,
     /// One checked pointer-move event. No button transition or text value;
+    /// optional strict delivery options never enable automatic foreground fallback.
     /// dispatch acknowledgement does not establish an application's hover effect.
     MovePointer,
     DoubleClick,
@@ -209,11 +212,8 @@ pub enum Intent {
 }
 impl Intent {
     pub fn validate(&self, value: Option<&str>) -> Result<()> {
-        if matches!(self, Self::MovePointer) && value.is_some() {
-            return Err(fault(
-                "invalid_input_value",
-                "Pointer movement takes no value, button transition, or semantic action.",
-            ));
+        if matches!(self, Self::MovePointer) {
+            MovePointerOptions::parse(value)?;
         }
         if let Self::Drag(path) = self {
             if value.is_some() {

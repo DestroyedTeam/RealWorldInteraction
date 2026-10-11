@@ -313,6 +313,14 @@ pub(crate) fn native_capabilities(
         "fallback": false,
     });
     capabilities["native_semantic_action_policy"] = json!("advertised_element_action");
+    capabilities["pointer_move"]["default_delivery"] = json!("background_window");
+    capabilities["pointer_move"]["foreground_system"] = json!({
+        "implemented":true,"route":"explicit CGEventPost(HID)","moves_system_cursor":true,
+        "activation_requested":false,"fallback":false,"native_acknowledgement":false,
+        "value":{"delivery":"foreground_system","expected_foreground":"fresh exact selected-window tuple from current_foreground"},
+        "requires":"fresh grounded reference + shared input lease + exact current foreground + idle HID + existing post/listen permissions",
+        "goal_verification":"independent; not guaranteed tracking or tooltip"
+    });
     capabilities
 }
 

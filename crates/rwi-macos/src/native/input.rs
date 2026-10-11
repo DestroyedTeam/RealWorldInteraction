@@ -10,6 +10,7 @@ mod move_pointer;
 use anchor_native::AxObject;
 use continuation::{Facts, Kind, Sequence};
 use mouse_gesture::MouseGesture;
+mod foreground_move;
 
 impl NativeMac {
     pub(super) fn dispatch_input(
@@ -27,6 +28,12 @@ impl NativeMac {
         }
         let requested_native_action =
             native_action_request(intent, target.native_action.as_deref(), value)?;
+        let move_options = if matches!(intent, Intent::MovePointer) {
+            rwi_core::MovePointerOptions::parse(value)?
+        } else {
+            rwi_core::MovePointerOptions::BackgroundWindow {}
+        };
+        let foreground_pointer = move_options.requires_foreground();
         // The global combined-session timer cannot prove a human or receiving
         // window. Scope a possible conflict to native foreground/focused identity.
         // Only an explicit native semantic action can use exact sibling isolation.
@@ -94,7 +101,7 @@ impl NativeMac {
         if pointer && !native_press {
             validate_capture_fringe(delivery.frame, target.point, intent)?;
         }
-        if pointer && !crate::background::pointer_delivery_available() {
+        if pointer && !foreground_pointer && !crate::background::pointer_delivery_available() {
             return Err(fault(
                 "background_delivery_unavailable",
                 "Window-local background event addressing is unavailable on this macOS build; no input dispatched.",
@@ -153,9 +160,22 @@ impl NativeMac {
                         &counter,
                         || {
                             self.read_input_batch(true, expected, target, intent)?
-                                .validate(expected, target, Kind::Pointer)
+                                .validate(expected, target, Kind::Pointer)?;
+                            if let rwi_core::MovePointerOptions::ForegroundSystem {
+                                expected_foreground: foreground,
+                            } = &move_options
+                            {
+                                foreground_move::guard(self, foreground)?;
+                            }
+                            Ok(())
                         },
-                        || crate::background::deliver_pointer(&event, &delivery, target.point),
+                        || {
+                            if foreground_pointer {
+                                foreground_move::post(&event)
+                            } else {
+                                crate::background::deliver_pointer(&event, &delivery, target.point)
+                            }
+                        },
                     )?;
                 }
                 Intent::Drag(path) => {
