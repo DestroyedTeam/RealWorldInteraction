@@ -486,3 +486,36 @@ fn unicode_chunks_never_split_surrogate_pairs() {
     );
     assert_eq!(String::from_utf16(&chunks.concat()).unwrap(), text);
 }
+
+#[test]
+fn unnamed_standard_window_controls_get_exact_subrole_names() {
+    for (subrole, expected) in [
+        ("AXCloseButton", "Close window"),
+        ("AXMinimizeButton", "Minimize window"),
+        ("AXZoomButton", "Zoom window"),
+        ("AXFullScreenButton", "Toggle full screen"),
+    ] {
+        assert_eq!(
+            window_control_name("AXButton", Some(subrole), String::new()),
+            expected
+        );
+    }
+}
+#[test]
+fn window_control_names_do_not_override_provider_or_guess_unknown_roles() {
+    assert_eq!(
+        window_control_name("AXButton", Some("AXCloseButton"), "Provider title".into()),
+        "Provider title"
+    );
+    for subrole in [None, Some(""), Some("AXUnknown"), Some("AXGenericButton")] {
+        assert_eq!(window_control_name("AXButton", subrole, String::new()), "");
+    }
+    assert_eq!(
+        window_control_name("AXTextField", Some("AXCloseButton"), String::new()),
+        ""
+    );
+    assert_eq!(
+        window_control_name("AXButton", Some("AXSecureTextField"), String::new()),
+        ""
+    );
+}

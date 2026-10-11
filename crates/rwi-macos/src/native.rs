@@ -519,6 +519,21 @@ pub(crate) fn action_names(el: &Cf) -> Vec<String> {
         }
     }
 }
+/// Name only positively identified standard window controls when the provider
+/// supplies no title/description. No geometry inference or additional AX read.
+fn window_control_name(role: &str, subrole: Option<&str>, name: String) -> String {
+    if !name.is_empty() || role != "AXButton" {
+        return name;
+    }
+    match subrole {
+        Some("AXCloseButton") => "Close window",
+        Some("AXMinimizeButton") => "Minimize window",
+        Some("AXZoomButton") => "Zoom window",
+        Some("AXFullScreenButton") => "Toggle full screen",
+        _ => "",
+    }
+    .into()
+}
 fn element_description(el: &Cf) -> Result<AxElement> {
     let role = el.attr("AXRole")?.string()?;
     let subrole = match el.attr("AXSubrole") {
@@ -543,6 +558,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
         .filter(|s| !s.is_empty())
         .or_else(|| el.attr("AXDescription").ok().and_then(|v| v.string().ok()))
         .unwrap_or_default();
+    let name = window_control_name(&role, subrole.as_deref(), name);
     // Bind native object identity to its real process birth, including hosted views.
     let owner_epoch = process_epoch(el.pid()?)?;
     let id = digest(format!("{owner_epoch}:{native_id}:{role}:{subrole:?}:{r:?}").as_bytes());
