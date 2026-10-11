@@ -1693,3 +1693,14 @@ RWI拖动把第三行企鹅头像从50×48改为48×48；尺寸提示由CUA新�
 - 102/103/104均真实 named-close、lifetime_close_requests0、进程exit0；11原请求全部terminal/released/no pending/no replay，两条AX effect uncertain如实保留。12个本轮及过期自有 binding detach；只读恢复观测0 keys/0 buttons/flags0、stale session key12保留，input_sent=false，无全局自动释放。
 - 同一 CLI/input：BASELINE1（没有--check-only）、MODIFIED0（配置合法/noGUI/noinput/native binding false）、独立 binary copy执行ROLLBACK后1且SHA等于原始、重应用0。不能把纯配置检查当native成功。完整四角色继续沿用原150路径与原97基线；R47实际11门全部0：workspace736/0/11/42、Receiver63、UI7；fmt/全targets/features Clippy-Dwarnings、release Agent/MCP 与架构门通过（旧12债务仍保留），不借旧R45绿灯。
 - 正式 Host 任务绑定、真人竞争输入、完整 F01–F16/其它应用覆盖仍未完成；小浮层是已有部署的实机复核，不是本轮新部署。证据：`/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/command-tab-native-r46`；截图按真实顺序保存在 `/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-autonomous-native-r47`。用户休息期间不请求展开/切窗/重启/权限；不能自动代替管理员/系统授权。
+
+
+### 2026-10-11 R48 · Live 原生 AX 回执修复、无标签页组件与新会话接力
+- 本轮只在预览自己的 NSButton 子类实现公开 `accessibilityPerformPress`：enabled/明确target/已配置toggle或stop检查后，一次 `NSControl.sendAction:to:`，返回真实触发BOOL。失败false、不重试、不发键鼠、不改外部应用AX执行器；ACK仍不等于Live效果。
+- 已部署Agent64062/2ead7588-7da3-44b4-b856-04df7f796bfb。复用同证书/DR，config/profile/CA/MCP哈希与四权限保持；排他原inode lease及全部当前durable终态门通过才交换APP。无新授权/密钥替换/Host重启。
+- 自有105/CG40636位于虚拟4，预览实测320×303点/640×606：loaded RWI原生Hide及Close各一次，两个AX回执均returned；独立回读hidden/clear→APIresume/running→stopped/requested/worker_done/clear，源仍存在。旧R47两个-25200/uncertain结果不升级、不重放。
+- 无任何IAB标签页时，`show_live`的旧v1会话组件已真采集并显示，live3同binding fffe4aca…：65帧/可见/有图→切另一任务76帧/隐藏/清图/暂停presence。mcpapps tabs=[]仅意味着没有侧栏tab，不能等同未内联渲染。返回第一次公开导航MessagePort错误保留，第二次导航ACK但76帧/仍隐藏，**完整隐藏/返回恢复仍未通过**，不拿导航ACK充数。
+- 105后来原生lifetime到期closed/exit0（expiry1），不称显式关闭；业务safe0/drag0。两个原生按钮原请求terminal/released/no pending/no replay，两绑定退役；formal live3最终duration_expired，不把晚到Stop当活动Close。兼容测试页23已关闭。
+- 当前源码11门均0：workspace737/0/11/42、Receiver63、UI7、fmt/全targets/features Clippy-Dwarnings/release Agent+MCP/架构；新helper纯单测1，不冒充所有App兼容性。匹配source配置probe1/0/1/0，独立副本执行rollback恢复两原hash/新module absent，再重应用。原97baseline保持，四角色扩展151。
+- 上轮00f58ca真实Mac+Windows CI已success；本轮源码须单独提交与验证。依据用户已允许插件旧会话不可用时新会话接力，创建同项目「Real World Interaction：Live 新会话验收」01a12a1a-5f77-7153-b9e8-609f2c788d2a，只验新MCP v2组件、不改源码/设置、不操作用户应用，不要求人工配合。原A01–A07/F01–F16目标不缩减。
+- 原生证据 `/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-button-accessibility-r48/NATIVE_RESULT_R48.json`；公开API依据：https://developer.apple.com/documentation/appkit/nsaccessibilityprotocol/accessibilityperformpress() （返回动作触发结果而非业务成功），https://developer.apple.com/documentation/appkit/nscontrol/sendaction(_:to:) 。
