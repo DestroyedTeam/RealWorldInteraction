@@ -1,5 +1,6 @@
 //! Main-thread AppKit UI. No native input events or application activation.
 use super::*;
+mod accessibility_button;
 mod panel;
 use objc2::{
     msg_send,

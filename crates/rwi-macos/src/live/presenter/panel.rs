@@ -231,7 +231,7 @@ unsafe fn button(
     frame: NSRect,
 ) -> std::result::Result<Retained<AnyObject>, String> {
     unsafe {
-        let button = view(c"NSButton", frame)?;
+        let button = accessibility_button::new(frame)?;
         let _: () = msg_send![&*button,setBezelStyle:7usize]; // NSBezelStyleCircular, SDK.
         let font: *mut AnyObject = msg_send![class(c"NSFont")?,systemFontOfSize:12.0f64];
         let _: () = msg_send![&*button,setFont:font];
