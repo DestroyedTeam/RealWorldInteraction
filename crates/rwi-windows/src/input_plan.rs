@@ -36,6 +36,12 @@ pub(crate) fn plan_with_policy(
     let mut keyboard = false;
     let mut text = false;
     let batches = match intent {
+        Intent::MovePointer => {
+            return Err(fault(
+                "capability_unavailable",
+                "Checked pointer movement is not implemented on Windows; no click or global input fallback.",
+            ));
+        }
         Intent::Drag(path) => {
             return Ok(Plan {
                 batches: vec![],
@@ -546,5 +552,15 @@ mod tests {
         });
         assert_eq!(f.trace, ["document"]);
         assert_eq!(f.sent, 0);
+    }
+
+    #[test]
+    fn hover_contract_windows_refuses_without_click_or_sendinput_fallback() {
+        let intent: Intent =
+            serde_json::from_str("\"move_pointer\"").expect("shared move_pointer intent");
+        assert_eq!(
+            plan(&intent, None).unwrap_err().code,
+            "capability_unavailable"
+        );
     }
 }

@@ -13,7 +13,11 @@ mod ffi;
 #[cfg(any(target_os = "macos", test))]
 mod geometry;
 #[cfg(target_os = "macos")]
+mod live;
+#[cfg(target_os = "macos")]
 mod native;
+#[cfg(all(test, target_os = "macos"))]
+mod nsevent_probe;
 pub mod overlay;
 #[cfg(target_os = "macos")]
 mod recovery;

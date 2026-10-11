@@ -45,7 +45,7 @@ pub(crate) struct Generation {
 
 /// Delegation only; key generation and signatures remain rcgen/ring. This
 /// ensures rcgen's retained serialized DER is zeroized even on error paths.
-pub(crate) struct EphemeralSigner(Zeroizing<KeyPair>);
+pub(crate) struct EphemeralSigner(pub(crate) Zeroizing<KeyPair>);
 impl PublicKeyData for EphemeralSigner {
     fn der_bytes(&self) -> &[u8] {
         self.0.der_bytes()
@@ -62,11 +62,14 @@ impl SigningKey for EphemeralSigner {
 
 impl Generation {
     pub fn new() -> io::Result<Self> {
-        let now = OffsetDateTime::now_utc();
+        Self::at(OffsetDateTime::now_utc(), CA_VALIDITY_DAYS)
+    }
+
+    pub(crate) fn at(now: OffsetDateTime, ca_days: i64) -> io::Result<Self> {
         let mut params = CertificateParams::new(Vec::<String>::new())
             .map_err(|_| invalid("trust_ca_parameters_invalid"))?;
         params.not_before = now - Duration::minutes(5);
-        params.not_after = now + Duration::days(CA_VALIDITY_DAYS);
+        params.not_after = now + Duration::days(ca_days);
         params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
         params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
         params.distinguished_name = DistinguishedName::new();
@@ -87,40 +90,58 @@ impl Generation {
         not_before: OffsetDateTime,
         not_after: OffsetDateTime,
     ) -> io::Result<Identity> {
-        let names = if role == "agent" {
-            vec![SERVER_DNS_NAME.to_owned()]
-        } else {
-            Vec::new()
-        };
-        let mut params =
-            CertificateParams::new(names).map_err(|_| invalid("trust_leaf_parameters_invalid"))?;
-        params.not_before = not_before;
-        params.not_after = not_after;
-        params.is_ca = IsCa::ExplicitNoCa;
-        params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
-        params.extended_key_usages = vec![if role == "agent" {
-            ExtendedKeyUsagePurpose::ServerAuth
-        } else {
-            ExtendedKeyUsagePurpose::ClientAuth
-        }];
-        params.distinguished_name = DistinguishedName::new();
-        params
-            .distinguished_name
-            .push(DnType::CommonName, format!("RWI private {role}"));
-        params.use_authority_key_identifier_extension = true;
         let key = Zeroizing::new(
             KeyPair::generate()
                 .map_err(|_| invalid("trust_os_random_leaf_key_generation_failed"))?,
         );
-        let certificate = params
-            .signed_by(&*key, &self.issuer)
-            .map_err(|_| invalid("trust_leaf_certificate_generation_failed"))?;
-        Identity::from_der(
+        issue_identity(
             self.issuer.der().to_vec(),
-            certificate.der().to_vec(),
-            Zeroizing::new(key.serialize_der()),
+            &self.issuer,
+            role,
+            not_before,
+            not_after,
+            key,
         )
     }
+}
+
+pub(crate) fn issue_identity(
+    ca: Vec<u8>,
+    issuer: &rcgen::Issuer<'_, EphemeralSigner>,
+    role: &str,
+    not_before: OffsetDateTime,
+    not_after: OffsetDateTime,
+    key: Zeroizing<KeyPair>,
+) -> io::Result<Identity> {
+    let names = if role == "agent" {
+        vec![SERVER_DNS_NAME.to_owned()]
+    } else {
+        Vec::new()
+    };
+    let mut params =
+        CertificateParams::new(names).map_err(|_| invalid("trust_leaf_parameters_invalid"))?;
+    params.not_before = not_before;
+    params.not_after = not_after;
+    params.is_ca = IsCa::ExplicitNoCa;
+    params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+    params.extended_key_usages = vec![if role == "agent" {
+        ExtendedKeyUsagePurpose::ServerAuth
+    } else {
+        ExtendedKeyUsagePurpose::ClientAuth
+    }];
+    params.distinguished_name = DistinguishedName::new();
+    params
+        .distinguished_name
+        .push(DnType::CommonName, format!("RWI private {role}"));
+    params.use_authority_key_identifier_extension = true;
+    let certificate = params
+        .signed_by(&*key, issuer)
+        .map_err(|_| invalid("trust_leaf_certificate_generation_failed"))?;
+    Identity::from_der(
+        ca,
+        certificate.der().to_vec(),
+        Zeroizing::new(key.serialize_der()),
+    )
 }
 
 /// Generate an entirely new per-run private CA and three independently keyed

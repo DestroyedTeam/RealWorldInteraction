@@ -28,8 +28,12 @@ unsafe extern "C" {}
 pub struct Capture {
     pub png: Vec<u8>,
     pub size: [u32; 2],
+    /// Native ScreenCaptureKit window pixels before any visual max_edge cap.
+    pub native_size: [u32; 2],
     /// Content-region digest: the native title-bar chrome band is excluded so
-    /// activation-state repaints cannot invalidate actionable content.
+    /// activation-state repaints cannot invalidate actionable content. The
+    /// bottom one logical point is also excluded (compositor edge dithering);
+    /// synthetic pointer paths cannot target that excluded edge.
     pub content_sha: String,
 }
 #[derive(Clone)]
@@ -63,6 +67,35 @@ pub(crate) fn api_available() -> bool {
 }
 impl Capturer {
     pub fn capture(&self, pid: u32, window: u32, expected: Rect) -> Result<Capture> {
+        self.capture_with_limit(pid, window, expected, None)
+    }
+
+    /// Size the response-only visual from ScreenCaptureKit's actual native
+    /// pointPixelScale, then cap its longest pixel edge. This does not decode
+    /// an observe PNG or create an input-grounding frame.
+    pub(crate) fn capture_visual(
+        &self,
+        pid: u32,
+        window: u32,
+        expected: Rect,
+        max_edge: u32,
+    ) -> Result<Capture> {
+        if !(64..=2048).contains(&max_edge) {
+            return Err(fault(
+                "invalid_visual_limit",
+                "Use a bounded visual output with max_edge 64..2048 pixels.",
+            ));
+        }
+        self.capture_with_limit(pid, window, expected, Some(max_edge))
+    }
+
+    fn capture_with_limit(
+        &self,
+        pid: u32,
+        window: u32,
+        expected: Rect,
+        max_edge: Option<u32>,
+    ) -> Result<Capture> {
         if !unsafe { ffi::CGPreflightScreenCaptureAccess() } {
             return Err(fault(
                 "screen_capture_permission_missing",
@@ -154,9 +187,21 @@ impl Capturer {
                                     "Filter content does not match the pinned full window.",
                                 ));
                             }
-                            let width = (rect.w * scale as f64).round() as usize;
-                            let height = (rect.h * scale as f64).round() as usize;
+                            let native_width = (rect.w * scale as f64).round() as usize;
+                            let native_height = (rect.h * scale as f64).round() as usize;
+                            validate_pixels(native_width, native_height)?;
+                            let [width, height] = max_edge
+                                .map(|limit| {
+                                    bounded_native_size([native_width, native_height], limit)
+                                })
+                                .unwrap_or([native_width, native_height]);
                             validate_pixels(width, height)?;
+                            if width > native_width || height > native_height {
+                                return Err(fault(
+                                    "visual_upscale_unavailable",
+                                    "Visual output cannot exceed native window pixels.",
+                                ));
+                            }
                             let configuration = screenshot_configuration_for(
                                 configuration_class,
                                 rect,
@@ -190,7 +235,11 @@ impl Capturer {
                                                     "Native screenshot has no SDR image.",
                                                 ));
                                             }
-                                            encode_native_image(image, width, height)
+                                            let mut capture =
+                                                encode_native_image(image, width, height, rect.h)?;
+                                            capture.native_size =
+                                                [native_width as u32, native_height as u32];
+                                            Ok(capture)
                                         })
                                     };
                                     let _ = tx.send(result);
@@ -275,6 +324,15 @@ fn callback_result<T>(operation: impl FnOnce() -> Result<T>) -> Result<T> {
         ))
     })
 }
+fn bounded_native_size(native: [usize; 2], max_edge: u32) -> [usize; 2] {
+    let edge = native[0].max(native[1]);
+    let limit = max_edge as usize;
+    if edge <= limit {
+        native
+    } else {
+        native.map(|value| (value * limit / edge).max(1))
+    }
+}
 fn validate_pixels(w: usize, h: usize) -> Result<()> {
     if w == 0
         || h == 0
@@ -290,7 +348,12 @@ fn validate_pixels(w: usize, h: usize) -> Result<()> {
         Ok(())
     }
 }
-unsafe fn encode_native_image(ptr: *const c_void, w: usize, h: usize) -> Result<Capture> {
+unsafe fn encode_native_image(
+    ptr: *const c_void,
+    w: usize,
+    h: usize,
+    logical_height: f64,
+) -> Result<Capture> {
     // Borrowed callback image is retained exactly once, then released by CGImage.
     let image = unsafe { CGImage::from_ptr(ffi::CFRetain(ptr).cast_mut().cast()) };
     if image.width() != w || image.height() != h {
@@ -324,13 +387,25 @@ unsafe fn encode_native_image(ptr: *const c_void, w: usize, h: usize) -> Result<
             }
         }
     }
-    let band = (h / 16).clamp(16, 96).min(h / 4);
-    let content_sha = rwi_core::digest(&pixels[band * w * 4..]);
+    let content_sha = content_digest(pixels, w, h, logical_height);
     Ok(Capture {
         png: encode_rgba(w, h, pixels)?,
         size: [w as u32, h as u32],
+        native_size: [w as u32, h as u32],
         content_sha,
     })
+}
+
+fn content_digest(pixels: &[u8], w: usize, h: usize, logical_height: f64) -> String {
+    let band = (h / 16).clamp(16, 96).min(h / 4);
+    let bottom = (h as f64 / logical_height).ceil() as usize;
+    // Tiny captures retain all pixels rather than accepting an empty digest.
+    let range = if band.saturating_add(bottom) < h {
+        band * w * 4..(h - bottom) * w * 4
+    } else {
+        0..pixels.len()
+    };
+    rwi_core::digest(&pixels[range])
 }
 struct Limited(Vec<u8>);
 impl Write for Limited {
@@ -419,7 +494,7 @@ mod tests {
             false,
             0,
         );
-        let capture = unsafe { encode_native_image(image.as_ptr().cast(), 2, 2) }.unwrap();
+        let capture = unsafe { encode_native_image(image.as_ptr().cast(), 2, 2, 2.0) }.unwrap();
         let mut reader = png::Decoder::new(std::io::Cursor::new(capture.png))
             .read_info()
             .unwrap();
@@ -451,7 +526,7 @@ mod tests {
             false,
             0,
         );
-        let capture = unsafe { encode_native_image(image.as_ptr().cast(), 2, 2) }.unwrap();
+        let capture = unsafe { encode_native_image(image.as_ptr().cast(), 2, 2, 2.0) }.unwrap();
         assert_eq!(capture.size, [2, 2]);
         let mut reader = png::Decoder::new(std::io::Cursor::new(capture.png))
             .read_info()
@@ -485,5 +560,28 @@ mod tests {
             validate_pixels(20000, 20000).unwrap_err().code,
             "screenshot_pixel_budget"
         );
+    }
+
+    #[test]
+    fn visual_limit_uses_native_point_pixel_scale_without_upscaling() {
+        assert_eq!(bounded_native_size([2868, 1320], 2048), [2048, 942]);
+        assert_eq!(bounded_native_size([1434, 660], 2048), [1434, 660]);
+        assert_eq!(bounded_native_size([2868, 1320], 1024), [1024, 471]);
+        assert_eq!(bounded_native_size([256, 128], 2048), [256, 128]);
+    }
+
+    #[test]
+    fn compositor_bottom_fringe_is_excluded_but_body_changes_are_exact() {
+        for scale in [1usize, 2] {
+            let (w, h) = (20 * scale, 100 * scale);
+            let mut pixels = vec![245; w * h * 4];
+            let original = content_digest(&pixels, w, h, 100.0);
+            for channel in &mut pixels[(h - scale) * w * 4..] {
+                *channel = 246;
+            }
+            assert_eq!(content_digest(&pixels, w, h, 100.0), original);
+            pixels[((h - scale - 1) * w + 10) * 4] += 1;
+            assert_ne!(content_digest(&pixels, w, h, 100.0), original);
+        }
     }
 }

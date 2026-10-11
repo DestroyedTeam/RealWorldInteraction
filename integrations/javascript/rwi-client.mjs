@@ -60,11 +60,19 @@ export class RwiClient {
     if (data?.dispatch_error) throw new RwiToolError(tool, reply);
     return { data, media: (reply.content ?? []).filter(c => c.type !== 'text') };
   }
-  async targets() { return (await this.call('computer.targets')).data; }
+  async targets(selector) {
+    let args = {};
+    if (selector != null) {
+      if (typeof selector === 'string' && selector) args = { device_id: selector };
+      else if (typeof selector === 'object' && !Array.isArray(selector) && Object.keys(selector).length === 1 && typeof selector.device_id === 'string' && selector.device_id) args = { device_id: selector.device_id };
+      else throw new TypeError('Use targets(), targets(exactDeviceId), or targets({device_id: exactDeviceId})');
+    }
+    return (await this.call('computer.targets', args)).data;
+  }
   window(target) {
     if (typeof target !== 'string' || !target) throw new TypeError('Use an exact returned target');
     if (!this.#targets.has(target) && this.#targets.size >= 64) throw new Error('Target wrapper limit; discard the client/JS worker rather than losing active ownership');
-    if (!this.#targets.has(target)) this.#targets.set(target, { owner: null, version: 0, ownership: 0 });
+    if (!this.#targets.has(target)) this.#targets.set(target, { owner: null, version: 0, ownership: 0, detached: false });
     return new RwiWindow(this, target, this.#targets.get(target));
   }
   async result(resultRef, options = {}) {
@@ -87,10 +95,14 @@ class RwiWindow {
   constructor(client, target, coordinator) {
     this.#client = client; this.#target = target; this.#coordinator = coordinator; this.#seenVersion = coordinator.version;
   }
+  /** Device/context locator only; it conveys no current window/frame authority. */
+  get target() { return this.#target; }
   #access(owner) {
+    if (this.#coordinator.detached) throw new Error("Window target was detached; attach a fresh target, never replay");
     if (this.#coordinator.owner && this.#coordinator.owner !== owner) throw new Error('Do not access the target concurrently: an operation is active; replacing binding during it is forbidden. Use the owner-bound callback APIs');
   }
   #current(reply) {
+    if (this.#coordinator.detached) throw new Error("Window target was detached; attach a fresh target, never replay");
     if (this.#seenVersion !== this.#coordinator.version) {
       this.#observation = null; this.#elements.clear(); this.#aliases.clear(); this.#selection = null;
       const error = new Error('Target state was superseded by another wrapper; observe/bind anew, never replay');
@@ -135,6 +147,36 @@ class RwiWindow {
       const result = reply.data;
       this.#selection = selected;
       return result;
+    } finally { this.#disown(state); }
+  }
+  /** New independent server-side window target; the source observation stays valid. */
+  async attach(selection) {
+    this.#access(null); this.#current();
+    const selected = Object.fromEntries(['window','pid','native_epoch','relation'].map(k => [k, selection[k]]));
+    const state = { inFlight: true }; this.#own(state);
+    try {
+      const reply = await this.#client.call('computer.attach_window', { target: this.#target, selection: selected });
+      if (typeof reply.data.target !== 'string' || !reply.data.target || reply.data.target === this.#target || reply.data.parent_target !== this.#target) {
+        const error = new Error('Attachment lacks a new independent target; no bind/action replayed'); error.reply = reply; throw error;
+      }
+      const window = this.#client.window(reply.data.target);
+      window.#selection = selected;
+      return window;
+    } finally { this.#disown(state); }
+  }
+  /** Retire a binding, not the application. The server rejects active leases. */
+  async detach() {
+    this.#access(null); this.#current();
+    this.#invalidate();
+    const state = { inFlight: true }; this.#own(state);
+    try {
+      const reply = await this.#client.call('computer.detach_window', { target: this.#target });
+      if (reply.data.detached !== true || reply.data.target !== this.#target) {
+        const error = new Error('Detachment was not confirmed; inspect retained reply'); error.reply = reply; throw error;
+      }
+      this.#coordinator.detached = true;
+      this.#selection = null;
+      return reply;
     } finally { this.#disown(state); }
   }
   /** Explicit focus operation, not input on an observed background window. */
@@ -192,6 +234,10 @@ class RwiWindow {
     if (!o) throw new Error('Observe before reading a summary');
     if (!Number.isInteger(offset) || offset < 0 || offset > this.#aliases.size || !Number.isInteger(limit) || limit < 1 || limit > 128) throw new TypeError('Use a bounded summary page');
     const rows = [...this.#aliases];
+    const scope = o.scene.binding?.scope;
+    const observedWindow = typeof scope?.window === 'string' && Number.isInteger(scope.pid)
+      ? { window: scope.window, pid: scope.pid, title: o.scene.binding.mutation_context?.window_title ?? null }
+      : null;
     const coverageReason = o.adapter_status?.native_details?.uia?.walk?.truncation ?? o.adapter_status?.native_details?.uia?.error?.code;
     const elements = rows.slice(offset, offset + limit).map(([ref, id]) => {
       const e = this.#elements.get(id);
@@ -213,7 +259,7 @@ class RwiWindow {
     return {
       target: this.#target,
       frame: o.frame,
-      window: o.adapter_status?.native_details?.window ? Object.fromEntries(['title','pid','window','native_epoch'].filter(k => o.adapter_status.native_details.window[k] !== undefined).map(k => [k,o.adapter_status.native_details.window[k]])) : null,
+      window: o.adapter_status?.native_details?.window ? Object.fromEntries(['title','pid','window','native_epoch'].filter(k => o.adapter_status.native_details.window[k] !== undefined).map(k => [k,o.adapter_status.native_details.window[k]])) : observedWindow,
       elements,
       coverage: { loaded: rows.length, returned: elements.length, next_offset: offset + elements.length < rows.length ? offset + elements.length : null, native_total: o.presentation?.elements?.total ?? null, native_complete: o.presentation?.elements?.native_complete ?? null, adapter_next_offset: o.presentation?.elements?.next_offset ?? null, reason: coverageReason == null ? null : String(coverageReason).slice(0, 240) },
       blocked: o.scene.blocked ?? null,
@@ -226,7 +272,7 @@ class RwiWindow {
     };
   }
   async snapshot(options = {}) { return this.#snapshot(options, null); }
-  async #snapshot({ preview = false, maxEdge = 1024, crop, offset = 0, limit = 64, ...options } = {}, owner) {
+  async #snapshot({ preview = false, maxEdge = 2048, crop, offset = 0, limit = 64, ...options } = {}, owner) {
     const ownership = this.#readStamp(owner);
     if (typeof preview !== 'boolean' || !Number.isInteger(maxEdge) || maxEdge < 64 || maxEdge > 2048) throw new TypeError('Use preview boolean and maxEdge 64..2048');
     const observed = await this.#observe({ ...options, inline_image: false }, owner);

@@ -44,7 +44,7 @@ file export and file reopening as separate acceptance nodes.
   capabilities and authorized client targets. Respect the user's device/window
   allocation. Tool presence, `implemented`, `available`, and `authorized` are
   different facts; action-specific binding/focus/lease checks still apply.
-- Discover and bind a fresh exact window when needed. Binding does not focus it.
+- Discover a fresh exact window when needed. If the device advertises independent window attachment, attach through the original desktop target and retain the new target for that window; otherwise explicitly bind. Selection does not focus it.
   A returned device/context/window generation belongs only to that context.
   Pass `device_id` when cached artifact identifiers collide across devices.
 - Discovery is paged (8 windows / 12 KiB). Prefer the known PID/title filter;
@@ -64,14 +64,14 @@ file export and file reopening as separate acceptance nodes.
 
 ## Persistent JS entry when advertised
 
-Prefer `computer.js` for already-determined related calls. It provides `rcu`,
+Use `computer.js` for bounded related logic, not as mandatory setup for an ordinary typed snapshot or click. It provides `rcu`,
 `state`, `emit(data)` and `emitImage(reply.media[i])` in an async cell body.
 For example: `state.inventory = await rcu.targets(); emit(state.inventory.targets)`.
 Persist selected windows with `state.win = rcu.window(exactReturnedTarget)`;
 cell-local `let`/`const` do not persist. Use `rcu.call(tool, args)` for other
 advertised tools; no import or hand-written transport is needed.
 
-`state.win` supports `bind(selection)`, `observe(options)`, `elementsPage(offset)`
+`state.win` supports `bind(selection)`, advertised `attach(selection)` (returns a new fixed-target wrapper), `detach()` (retires an attachment after lease release), `observe(options)`, `elementsPage(offset)`
 and `withInput(async ({act, observe}) => { ... })`. Await every operation.
 `act({element, intent, value, requestId})` requires an observed exact element and
 stable mutation ID; it invalidates old observations. Observe again before another

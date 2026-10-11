@@ -211,6 +211,9 @@ mod tests {
             scope,
             element_revision: None,
             source_region: None,
+            pixel_anchor: None,
+            red_marker_anchor: None,
+            pixel_anchor_used: false,
         };
         assert!(grounding_matches(&binding, &scene, &target));
         for field in ["content", "layout", "native_epoch", "focus_window"] {
@@ -281,6 +284,9 @@ mod tests {
             },
             element_revision: Some(element.revision()),
             source_region: None,
+            pixel_anchor: None,
+            red_marker_anchor: None,
+            pixel_anchor_used: false,
         };
         let scene = Scene {
             identity: Identity {

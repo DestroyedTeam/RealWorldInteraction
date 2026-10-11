@@ -26,6 +26,11 @@ mod unix {
         path: PathBuf,
     }
 
+    /// Advisory lock lives on a stable inode; never unlink it on unlock.
+    pub struct Lock {
+        _file: File,
+    }
+
     fn check_path(path: &Path) -> io::Result<()> {
         if !path.is_absolute() || path.canonicalize()? != path {
             return Err(invalid("trust_profile_path_noncanonical"));
@@ -104,7 +109,11 @@ mod unix {
                 )
             };
             if fd < 0 {
-                return Err(io::Error::last_os_error());
+                let error = io::Error::last_os_error();
+                return Err(io::Error::new(
+                    error.kind(),
+                    format!("trust_open_private_file: {error}"),
+                ));
             }
             // SAFETY: openat returned a new owned fd, transferred exactly once.
             let file = unsafe { File::from_raw_fd(fd) };
@@ -181,6 +190,100 @@ mod unix {
             file.sync_all()?;
             self.dir.sync_all()
         }
+
+        pub fn lock(&self) -> io::Result<Lock> {
+            // The bundle provisions this stable inode before publishing its
+            // manifest. Never race O_CREAT or replace/delete the lock at runtime.
+            // SAFETY: stable directory fd, constant basename, no-follow/nonblock;
+            // type/owner/link/mode are checked before flock on this owned fd.
+            let fd = unsafe {
+                libc::openat(
+                    self.dir.as_raw_fd(),
+                    c"renewal.lock".as_ptr(),
+                    libc::O_RDWR | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK,
+                )
+            };
+            if fd < 0 {
+                let error = io::Error::last_os_error();
+                return Err(io::Error::new(
+                    error.kind(),
+                    format!("trust_open_lock_file: {error}"),
+                ));
+            }
+            // SAFETY: transfer new fd exactly once. Closing releases flock.
+            let file = unsafe { File::from_raw_fd(fd) };
+            private_metadata(
+                &file
+                    .metadata()
+                    .map_err(|e| io::Error::new(e.kind(), format!("trust_lock_metadata: {e}")))?,
+                false,
+            )?;
+            // Bounded lock wait: no process can hold up service startup forever.
+            let until = std::time::Instant::now() + std::time::Duration::from_secs(2);
+            loop {
+                match file.try_lock() {
+                    Ok(()) => return Ok(Lock { _file: file }),
+                    Err(std::fs::TryLockError::Error(error)) => {
+                        return Err(io::Error::new(
+                            error.kind(),
+                            format!("trust_lock_acquire: {error}"),
+                        ));
+                    }
+                    Err(std::fs::TryLockError::WouldBlock)
+                        if std::time::Instant::now() >= until =>
+                    {
+                        return Err(io::Error::new(
+                            io::ErrorKind::WouldBlock,
+                            "trust_renewal_lock_busy",
+                        ));
+                    }
+                    Err(std::fs::TryLockError::WouldBlock) => {}
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+        }
+
+        /// Atomic replacement of an existing checked private file. Readers see
+        /// either complete version; keys are never truncated in place.
+        pub fn replace(&self, name: &str, bytes: &[u8]) -> io::Result<()> {
+            if bytes.is_empty() || bytes.len() > 1024 * 1024 {
+                return Err(invalid("trust_replace_size_invalid"));
+            }
+            // read() also rejects path traversal, symlinks and hard links.
+            let _old = zeroize::Zeroizing::new(self.read(&self.path.join(name), 1024 * 1024)?);
+            static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+            let temp = format!(
+                ".renew-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            );
+            let temp_c = CString::new(temp.as_str()).expect("generated basename");
+            let name_c = basename(&self.path.join(name))?;
+            self.write_new(&temp, bytes)?;
+            let result = (|| {
+                // SAFETY: both names are basenames within the retained private
+                // directory. renameat replaces the entry, never follows links.
+                if unsafe {
+                    libc::renameat(
+                        self.dir.as_raw_fd(),
+                        temp_c.as_ptr(),
+                        self.dir.as_raw_fd(),
+                        name_c.as_ptr(),
+                    )
+                } != 0
+                {
+                    return Err(io::Error::last_os_error());
+                }
+                self.dir.sync_all()
+            })();
+            if result.is_err() {
+                // SAFETY: remove only our bounded create-only temporary entry.
+                unsafe {
+                    libc::unlinkat(self.dir.as_raw_fd(), temp_c.as_ptr(), 0);
+                }
+            }
+            result
+        }
     }
 }
 
@@ -191,7 +294,20 @@ pub use unix::Reader;
 pub struct Reader;
 
 #[cfg(not(unix))]
+pub struct Lock;
+
+#[cfg(not(unix))]
 impl Reader {
+    pub fn lock(&self) -> io::Result<Lock> {
+        Err(invalid(
+            "trust_renewal_requires_native_private_file_support",
+        ))
+    }
+    pub fn replace(&self, _name: &str, _bytes: &[u8]) -> io::Result<()> {
+        Err(invalid(
+            "trust_renewal_requires_native_private_file_support",
+        ))
+    }
     pub fn open(_path: &Path) -> io::Result<Self> {
         Err(invalid("trust_native_private_acl_reader_required"))
     }

@@ -807,161 +807,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rwi-agent"
-version = "0.4.0-m3a.7"
-dependencies = [
- "base64",
- "rwi-core",
- "rwi-imaging",
- "rwi-link-trust",
- "rwi-macos",
- "rwi-native-link",
- "rwi-windows",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "rwi-core"
-version = "0.4.0-m3a.7"
-dependencies = [
- "libc",
- "schemars",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "uuid",
-]
-
-[[package]]
-name = "rwi-imaging"
-version = "0.4.0-m3a.7"
-dependencies = [
- "png",
- "rwi-core",
- "serde",
- "sha2",
-]
-
-[[package]]
-name = "rwi-js"
-version = "0.4.0-m3a.7"
-dependencies = [
- "rquickjs",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "rwi-link-trust"
-version = "0.1.0-native-link.1"
-dependencies = [
- "libc",
- "rcgen",
- "rustls",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "time",
- "tokio",
- "tokio-rustls",
- "zeroize",
-]
-
-[[package]]
-name = "rwi-macos"
-version = "0.4.0-m3a.7"
-dependencies = [
- "block2",
- "core-foundation",
- "core-graphics",
- "foreign-types",
- "libc",
- "objc2",
- "objc2-foundation",
- "png",
- "rwi-core",
- "rwi-pointer",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
-name = "rwi-mcp"
-version = "0.4.0-m3a.7"
-dependencies = [
- "base64",
- "rwi-agent",
- "rwi-core",
- "rwi-imaging",
- "rwi-js",
- "rwi-link-trust",
- "rwi-macos",
- "rwi-native-link",
- "rwi-windows",
- "rmcp",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "rwi-native-link"
-version = "0.1.0-native-link.1"
-dependencies = [
- "base64",
- "libc",
- "rwi-core",
- "rwi-imaging",
- "rwi-link-trust",
- "rwi-windows",
- "rmcp",
- "rustls",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tokio",
- "tokio-rustls",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "rwi-pointer"
-version = "0.4.0-m3a.7"
-dependencies = [
- "rwi-imaging",
- "serde",
-]
-
-[[package]]
-name = "rwi-windows"
-version = "0.4.0-m3a.7"
-dependencies = [
- "rwi-core",
- "rwi-imaging",
- "rwi-pointer",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tokio",
- "windows",
-]
-
-[[package]]
 name = "ref-cast"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1128,6 +973,163 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "rwi-agent"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "base64",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-link-trust",
+ "rwi-macos",
+ "rwi-native-link",
+ "rwi-windows",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "rwi-core"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "libc",
+ "png",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "uuid",
+]
+
+[[package]]
+name = "rwi-imaging"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "png",
+ "rwi-core",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "rwi-js"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "rquickjs",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rwi-link-trust"
+version = "0.1.0-native-link.1"
+dependencies = [
+ "libc",
+ "rcgen",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "time",
+ "tokio",
+ "tokio-rustls",
+ "x509-parser",
+ "zeroize",
+]
+
+[[package]]
+name = "rwi-macos"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "block2",
+ "core-foundation",
+ "core-graphics",
+ "foreign-types",
+ "libc",
+ "objc2",
+ "objc2-foundation",
+ "png",
+ "rwi-core",
+ "rwi-pointer",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "rwi-mcp"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "base64",
+ "rmcp",
+ "rwi-agent",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-js",
+ "rwi-link-trust",
+ "rwi-macos",
+ "rwi-native-link",
+ "rwi-windows",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "rwi-native-link"
+version = "0.1.0-native-link.1"
+dependencies = [
+ "base64",
+ "libc",
+ "rmcp",
+ "rustls",
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-link-trust",
+ "rwi-windows",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tokio-rustls",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "rwi-pointer"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "rwi-imaging",
+ "serde",
+]
+
+[[package]]
+name = "rwi-windows"
+version = "0.4.0-m3a.7"
+dependencies = [
+ "rwi-core",
+ "rwi-imaging",
+ "rwi-pointer",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "windows",
+]
 
 [[package]]
 name = "schemars"

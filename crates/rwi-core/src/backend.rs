@@ -5,7 +5,18 @@ use crate::{
 };
 use std::time::Instant;
 
+/// A separately owned window backend plus read-only selection evidence.
+pub struct WindowAttachment {
+    pub backend: Box<dyn Backend>,
+    pub details: serde_json::Value,
+}
+
 pub trait Backend: Send {
+    /// Opt in only when the native backend also verifies the exact bitmap/AX
+    /// surface at dispatch. Every other platform keeps full-content matching.
+    fn local_pixel_anchor(&self) -> bool {
+        false
+    }
     /// Optional native side-effect counter, for proving pre-dispatch rejection.
     fn input_dispatch_count(&self) -> Option<u64> {
         None
@@ -54,6 +65,29 @@ pub trait Backend: Send {
             "Native window move is not implemented on this platform; nothing was moved.",
         ))
     }
+    /// Explicit foreground operation, never a background-input fallback.
+    fn focus_window(
+        &mut self,
+        _reference: &Resolved,
+        _expected: &crate::ForegroundState,
+    ) -> Result<serde_json::Value> {
+        Err(fault(
+            "capability_unavailable",
+            "Explicit bound-window foreground is unavailable on this backend; no fallback.",
+        ))
+    }
+    /// Explicit device/session foreground keyboard stream. Never an application
+    /// addressed-input fallback; unsupported backends send nothing.
+    fn hotkey(
+        &mut self,
+        _key: &str,
+        _expected: &crate::ForegroundState,
+    ) -> Result<serde_json::Value> {
+        Err(fault(
+            "capability_unavailable",
+            "Foreground/system keyboard input is unavailable on this backend; no fallback.",
+        ))
+    }
     /// Visual-only pointer feedback for the user, driven by the native overlay.
     /// It is never input and backends without an overlay fail closed.
     fn feedback(&mut self, _visible: bool, _point: Option<[f64; 2]>) -> Result<serde_json::Value> {
@@ -72,6 +106,28 @@ pub trait Backend: Send {
         Err(fault(
             "capability_unavailable",
             "This backend has no independent read-only visual capture; observe is not substituted.",
+        ))
+    }
+    fn live(
+        &mut self,
+        _: crate::LiveAction,
+        _: Option<crate::LiveOptions>,
+    ) -> Result<serde_json::Value> {
+        Err(fault(
+            "capability_unavailable",
+            "Session-scoped local Live preview is not implemented on this backend.",
+        ))
+    }
+    fn live_view(&mut self, _: crate::LiveViewUpdate) -> Result<serde_json::Value> {
+        Err(fault(
+            "capability_unavailable",
+            "This backend has no Host-view visibility binding.",
+        ))
+    }
+    fn live_controller(&self) -> Result<std::sync::Arc<dyn crate::LiveController>> {
+        Err(fault(
+            "capability_unavailable",
+            "Session-scoped local Live preview is not implemented on this backend.",
         ))
     }
     fn observe_region(&mut self, _region: [u32; 4]) -> Result<Scene> {
@@ -99,6 +155,15 @@ pub trait Backend: Send {
         Err(fault(
             "capability_unavailable",
             "This adapter has a fixed window binding.",
+        ))
+    }
+    /// Create an independent binding from a fresh explicit catalog selection.
+    /// Must not activate, place, capture, send input or change the source binding.
+    /// The returned backend must retain the same physical desktop identity.
+    fn attach_window(&mut self, _selection: &WindowSelection) -> Result<WindowAttachment> {
+        Err(fault(
+            "capability_unavailable",
+            "Independent window attachment is not implemented on this target.",
         ))
     }
     /// Native adapters may avoid capture/PNG encoding for semantic references.

@@ -15,6 +15,7 @@ fn setup(platform: PlatformPolicy) -> (tempfile::TempDir, Arc<Runtime>, PeerPin)
         bind: "127.0.0.1:0".parse().unwrap(),
         identity: IdentityPaths::in_profile(temp.path()),
         principals: vec![Principal {
+            journal_identity: None,
             certificate: pin.clone(),
             observe: true,
             input: true,
@@ -113,11 +114,13 @@ async fn principal_receipts_are_isolated_but_desktop_leases_are_shared() {
     drop(initial);
     config.principals.extend([
         Principal {
+            journal_identity: None,
             certificate: q.clone(),
             observe: true,
             input: true,
         },
         Principal {
+            journal_identity: None,
             certificate: readonly.clone(),
             observe: true,
             input: false,

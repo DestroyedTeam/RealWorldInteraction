@@ -72,6 +72,7 @@ impl NativeWindows {
             identity: self.identity.clone(),
             window: rwi_core::lifecycle::WindowIdentity { window: before.window.clone(), pid: before.pid, process_created: before.process_created.expect("validated native tuple"), native_epoch: before.native_epoch.clone().expect("validated native epoch") },
             source_rect: VisualRect { x: rectangle.x, y: rectangle.y, width: rectangle.width, height: rectangle.height },
+            source_pixel_size: [rectangle.width, rectangle.height],
             image_size, visual_to_desktop: [sx,0.,0.,sy,f64::from(rectangle.x)+(sx-1.)/2.,f64::from(rectangle.y)+(sy-1.)/2.],
             captured_unix_ms, assurance: "native-attested-visible-desktop".into(),
             atomicity: "non-atomic visible-desktop rectangle; pre/post selected identity, visibility, geometry, display and DPI checks; other occlusion remains visible".into(),

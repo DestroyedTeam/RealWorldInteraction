@@ -1,13 +1,24 @@
 use rwi_link_trust::{IdentityPaths, PeerPin};
 use serde::{Deserialize, Serialize};
 use std::{io, net::SocketAddr, path::PathBuf};
+#[cfg(test)]
+mod tests;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Principal {
     pub certificate: PeerPin,
+    /// Explicit one-time legacy-to-SPKI migration continuity. Authentication
+    /// still requires `certificate`; this only preserves the old journal scope.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub journal_identity: Option<PeerPin>,
     pub observe: bool,
     pub input: bool,
+}
+impl Principal {
+    pub fn identity(&self) -> &PeerPin {
+        self.journal_identity.as_ref().unwrap_or(&self.certificate)
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -67,7 +78,11 @@ impl Config {
             if (p.input && !p.observe)
                 || self.principals[..i]
                     .iter()
-                    .any(|q| q.certificate == p.certificate)
+                    .any(|q| q.certificate == p.certificate || q.identity() == p.identity())
+                || p.journal_identity.as_ref().is_some_and(|old| {
+                    !p.certificate.as_str().starts_with("spki:")
+                        || old.as_str().starts_with("spki:")
+                })
             {
                 return Err(io::Error::other("invalid_principal_policy"));
             }

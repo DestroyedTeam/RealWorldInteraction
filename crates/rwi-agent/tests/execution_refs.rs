@@ -23,6 +23,7 @@ fn setup() -> (tempfile::TempDir, Arc<Runtime>, PeerPin, PeerPin) {
         principals: vec![p.clone(), q.clone()]
             .into_iter()
             .map(|certificate| Principal {
+                journal_identity: None,
                 certificate,
                 observe: true,
                 input: true,

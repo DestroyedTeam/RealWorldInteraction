@@ -13,6 +13,7 @@ fn config(root: &std::path::Path) -> Config {
         bind: "127.0.0.1:0".parse().unwrap(),
         identity: IdentityPaths::in_profile(root),
         principals: vec![Principal {
+            journal_identity: None,
             certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
             observe: false,
             input: false,

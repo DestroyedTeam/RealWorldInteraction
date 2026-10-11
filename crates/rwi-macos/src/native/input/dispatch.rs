@@ -6,6 +6,41 @@ pub(super) fn count(counter: &AtomicU64) {
         Some(n.saturating_add(1))
     });
 }
+/// A returned failure after an addressed AppKit preparation event is still an
+/// uncertain application effect. An unchanged, unsaturated counter after that
+/// event proves no requested mouse/key/scroll/drag/AX effect entered this call.
+/// This does not undo preparation, authorize replay, or reconcile an old fence.
+pub(super) fn preparation_only_failure(
+    mut error: rwi_core::Fault,
+    receiver_prepared: bool,
+    requested_input_before: u64,
+    requested_input_after: u64,
+) -> rwi_core::Fault {
+    if receiver_prepared
+        && requested_input_before < u64::MAX
+        && requested_input_before == requested_input_after
+    {
+        let prior = error.diagnostic.take().map(|value| *value);
+        let mut diagnostic = match prior {
+            Some(value) if value.is_object() => value,
+            Some(value) => serde_json::json!({"cause": value}),
+            None => serde_json::json!({}),
+        };
+        diagnostic["dispatch_evidence"] = serde_json::json!({
+            "version": 1,
+            "kind": "macos_background_preparation_only",
+            "api": "CGEventPostToPid",
+            "preparation_event": "NSApplicationActivatedEventType",
+            "preparation_events": 1,
+            "requested_input_events": 0,
+            "held_input_resources": false,
+            "replay_allowed": false
+        });
+        error.diagnostic = Some(Box::new(diagnostic));
+        error.next_step = "Requested input was not sent; one addressed AppKit preparation event was posted. Inspect fresh state, never replay.".into();
+    }
+    error
+}
 pub(super) fn pair<T>(
     counter: &AtomicU64,
     down: T,
@@ -32,6 +67,34 @@ pub(super) fn single(counter: &AtomicU64, post: impl FnOnce()) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn preparation_effect_is_not_confused_with_a_requested_input_or_zero_effect() {
+        for (prepared, before, after, proven) in [
+            (true, 1, 1, true),
+            (true, 8, 8, true),
+            (false, 0, 0, false),
+            (true, 1, 2, false),
+            (true, 2, 1, false),
+            (true, u64::MAX, u64::MAX, false),
+        ] {
+            let mut cause = rwi_core::fault("stale_reference", "Inspect original request.");
+            cause.diagnostic = Some(Box::new(serde_json::json!({"content_changed": true})));
+            let error = preparation_only_failure(cause, prepared, before, after);
+            assert_eq!(error.code, "stale_reference");
+            let diagnostic = error.diagnostic.unwrap();
+            assert_eq!(diagnostic["content_changed"], true);
+            assert_eq!(diagnostic.get("dispatch_evidence").is_some(), proven);
+            if proven {
+                assert_eq!(diagnostic["dispatch_evidence"]["requested_input_events"], 0);
+                assert_eq!(
+                    diagnostic["dispatch_evidence"]["held_input_resources"],
+                    false
+                );
+                assert_eq!(diagnostic["dispatch_evidence"]["replay_allowed"], false);
+                assert!(error.next_step.contains("preparation event was posted"));
+            }
+        }
+    }
     #[test]
     fn cancel_before_down_has_zero_posts_but_cancel_after_down_keeps_release() {
         for before in [true, false] {

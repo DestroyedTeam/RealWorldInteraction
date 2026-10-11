@@ -1,5 +1,77 @@
 use super::*;
 #[test]
+fn mcp_compat_resolve_view_defaults_to_strict_and_rejects_non_boolean_anchor() {
+    let strict = json!({"target":"exact-target","view_id":"original-view","x":12.5,"y":6.0});
+    let args: ResolveViewArgs = serde_json::from_value(strict.clone()).unwrap();
+    assert!(!args.red_marker_cluster);
+    assert_eq!([args.x, args.y], [12.5, 6.0]);
+    for enabled in [false, true] {
+        let mut input = strict.clone();
+        input["red_marker_cluster"] = json!(enabled);
+        let args: ResolveViewArgs = serde_json::from_value(input).unwrap();
+        assert_eq!(args.red_marker_cluster, enabled);
+    }
+    for value in [Value::Null, json!("true"), json!(1)] {
+        let mut input = strict.clone();
+        input["red_marker_cluster"] = value;
+        assert!(serde_json::from_value::<ResolveViewArgs>(input).is_err());
+    }
+    let mut unknown = strict;
+    unknown["relax_native_checks"] = json!(true);
+    assert!(serde_json::from_value::<ResolveViewArgs>(unknown).is_err());
+}
+
+#[tokio::test]
+async fn mcp_compat_explicit_anchor_on_unsupported_backend_has_no_strict_fallback() {
+    let state = tempfile::tempdir().unwrap();
+    let mut engine = Engine::new(state.path().into()).unwrap();
+    let png = rwi_imaging::encode_rgb([200, 100], &vec![77; 200 * 100 * 3]).unwrap();
+    engine
+        .register("raster".into(), Box::new(RasterBackend(png)))
+        .unwrap();
+    let observed = engine.observe("raster").unwrap();
+    let server = Server::new(engine);
+    let image = server
+        .image(Parameters(ImageArgs {
+            target: "raster".into(),
+            frame: observed.frame,
+            artifact_id: observed.artifact_id.unwrap(),
+            crop: None,
+            max_edge: 1200,
+            operation_id: None,
+        }))
+        .await;
+    let view_id = image.structured_content.unwrap()["view_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let strict = server
+        .resolve_view(Parameters(ResolveViewArgs {
+            target: "raster".into(),
+            view_id: view_id.clone(),
+            x: 12.5,
+            y: 6.0,
+            red_marker_cluster: false,
+        }))
+        .await;
+    assert_ne!(strict.is_error, Some(true));
+    assert!(strict.structured_content.unwrap()["reference"].is_string());
+    let explicit = server
+        .resolve_view(Parameters(ResolveViewArgs {
+            target: "raster".into(),
+            view_id,
+            x: 12.5,
+            y: 6.0,
+            red_marker_cluster: true,
+        }))
+        .await;
+    assert_eq!(explicit.is_error, Some(true));
+    let data = explicit.structured_content.unwrap();
+    assert_eq!(data["error"], "red_marker_anchor_unavailable");
+    assert!(data.get("reference").is_none());
+}
+
+#[test]
 fn legacy_api_does_not_advertise_or_accept_device_gateway_drag() {
     let args = json!({"target":"a","frame":"b","element":"c","lease":"d","request_id":"e","intent":{"drag":{"waypoints":[{"at_ms":0,"offset":[0,0]},{"at_ms":100,"offset":[1,1]}]}}});
     assert!(serde_json::from_value::<CheckedActArgs>(args).is_err());
@@ -65,6 +137,122 @@ impl rwi_core::Backend for RasterBackend {
         Err(fault("fixture_read_only", "Not an oracle fixture."))
     }
 }
+
+struct VisualOnlyBackend(RasterBackend);
+impl rwi_core::Backend for VisualOnlyBackend {
+    fn identity(&self) -> rwi_core::Identity {
+        self.0.identity()
+    }
+    fn capabilities(&self) -> Value {
+        self.0.capabilities()
+    }
+    fn observe(&mut self) -> CoreResult<rwi_core::Scene> {
+        let mut scene = self.0.observe()?;
+        scene.assurance = "synthetic visual-only; no input authority".into();
+        scene.binding = None;
+        scene.pixel_to_desktop = None;
+        scene.mutation_ready = false;
+        scene.elements.clear();
+        Ok(scene)
+    }
+    fn act(
+        &mut self,
+        _: &rwi_core::Binding,
+        _: &rwi_core::Resolved,
+        _: &Intent,
+        _: Option<&str>,
+    ) -> CoreResult<Option<bool>> {
+        Err(fault("fixture_read_only", "No input exists."))
+    }
+    fn inspect(
+        &mut self,
+        _: &rwi_core::Scope,
+        _: &Predicate,
+        _: &str,
+    ) -> CoreResult<rwi_core::Oracle> {
+        Err(fault("fixture_read_only", "Not an oracle fixture."))
+    }
+}
+
+#[tokio::test]
+async fn visual_only_image_tiles_remain_readable_without_resolvable_view_or_input_frame() {
+    let state = tempfile::tempdir().unwrap();
+    let mut e = Engine::new(state.path().into()).unwrap();
+    let original = rwi_imaging::encode_rgb([200, 100], &vec![77; 200 * 100 * 3]).unwrap();
+    e.register(
+        "visual-only".into(),
+        Box::new(VisualOnlyBackend(RasterBackend(original))),
+    )
+    .unwrap();
+    let observation = e.observe("visual-only").unwrap();
+    assert!(observation.scene.binding.is_none());
+    assert_eq!(
+        e.resolve(
+            "visual-only",
+            &observation.frame,
+            Locator::Pixel { x: 1., y: 1. }
+        )
+        .unwrap_err()
+        .code,
+        "target_binding_unknown"
+    );
+    let lease = e.claim("visual-only", 5000).unwrap();
+    assert_eq!(
+        e.act_checked(rwi_core::CheckedAction {
+            target: "visual-only",
+            frame: &observation.frame,
+            element: "invented-element",
+            lease: &lease,
+            request: "visual-only-must-not-dispatch",
+            intent: Intent::Click,
+            value: None,
+        })
+        .unwrap_err()
+        .code,
+        "target_binding_unknown"
+    );
+    e.release(&lease).unwrap();
+    let aid = observation.artifact_id.unwrap();
+    let server = Server::new(e);
+    let response = server
+        .image(Parameters(ImageArgs {
+            target: "visual-only".into(),
+            frame: observation.frame,
+            artifact_id: aid,
+            crop: Some([20, 10, 100, 80]),
+            max_edge: 1200,
+            operation_id: None,
+        }))
+        .await;
+    let wire = serde_json::to_value(&response).unwrap();
+    let content = wire["content"].as_array().unwrap();
+    let png = content.iter().find(|c| c["type"] == "image").unwrap();
+    let bytes = STANDARD.decode(png["data"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        rwi_imaging::decode_original(&bytes).unwrap().size,
+        [100, 80]
+    );
+    assert!(wire["structuredContent"]["view_id"].is_null());
+    assert!(wire["structuredContent"]["resolve_tool"].is_null());
+    assert_eq!(
+        wire["structuredContent"]["input_reference_available"],
+        false
+    );
+    assert!(server.views.lock().unwrap().is_empty());
+    let rejected = server
+        .resolve_view(Parameters(ResolveViewArgs {
+            target: "visual-only".into(),
+            view_id: "invented-view".into(),
+            x: 1.,
+            y: 1.,
+            red_marker_cluster: false,
+        }))
+        .await;
+    assert_eq!(
+        rejected.structured_content.unwrap()["error"],
+        "unknown_view"
+    );
+}
 #[tokio::test]
 async fn image_tool_emits_viewable_png_and_pixel_mapping_is_exact_frame_scoped() {
     let state = tempfile::tempdir().unwrap();
@@ -106,6 +294,7 @@ async fn image_tool_emits_viewable_png_and_pixel_mapping_is_exact_frame_scoped()
             view_id: view_id.clone(),
             x: 4.,
             y: 5.,
+            red_marker_cluster: false,
         }))
         .await;
     assert_eq!(
@@ -118,6 +307,7 @@ async fn image_tool_emits_viewable_png_and_pixel_mapping_is_exact_frame_scoped()
             view_id,
             x: 4.,
             y: 5.,
+            red_marker_cluster: false,
         }))
         .await;
     assert_eq!(wrong.structured_content.unwrap()["error"], "unknown_view");

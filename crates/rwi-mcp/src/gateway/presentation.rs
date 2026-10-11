@@ -47,6 +47,12 @@ pub(super) struct Presentation {
 fn bytes(v: &Value) -> usize {
     serde_json::to_vec(v).expect("JSON value").len()
 }
+// Serialize once for both the capacity check and the exact retained-data hash.
+// The temporary buffer is dropped before retaining/cloning the JSON tree.
+fn metadata_fingerprint(v: &Value) -> Option<(usize, String)> {
+    let encoded = serde_json::to_vec(v).expect("JSON value");
+    (encoded.len() <= CACHE_BYTES).then(|| (encoded.len(), rwi_core::digest(&encoded)))
+}
 fn error(code: &str, message: &str) -> DeviceResult {
     DeviceResult::error(code, message)
 }
@@ -55,18 +61,11 @@ impl Presentation {
     /// Retain nested-call metadata without projecting or treating it as native
     /// execution history. Same explicit adapter-local lifetime as observations.
     pub fn retain(&mut self, tool: &str, data: Value) -> Option<String> {
-        let size = bytes(&data);
-        if size > CACHE_BYTES {
-            return None;
-        }
-        self.prune();
-        while self.entries.len() >= CACHE_ENTRIES
-            || self.entries.iter().map(|e| e.bytes).sum::<usize>() + size > CACHE_BYTES
-        {
-            self.entries.pop_front();
-        }
-        let id = uuid::Uuid::new_v4().to_string();
-        let sha = rwi_core::digest(&serde_json::to_vec(&data).expect("JSON value"));
+        let (size, sha) = metadata_fingerprint(&data)?;
+        self.make_room(size);
+        // This is an adapter-local lookup token, not a native execution ID.
+        // Keep all UUID entropy while dropping separators from the MCP surface.
+        let id = uuid::Uuid::new_v4().simple().to_string();
         self.entries.push_back(Entry {
             id: id.clone(),
             at: Instant::now(),
@@ -79,6 +78,41 @@ impl Presentation {
     }
     fn prune(&mut self) {
         self.entries.retain(|e| e.at.elapsed() < TTL);
+    }
+    fn make_room(&mut self, incoming_bytes: usize) {
+        debug_assert!(incoming_bytes <= CACHE_BYTES);
+        self.prune();
+        while self.entries.len() >= CACHE_ENTRIES
+            || self.entries.iter().map(|e| e.bytes).sum::<usize>() + incoming_bytes > CACHE_BYTES
+        {
+            self.entries.pop_front();
+        }
+    }
+
+    /// Borrow the retained original rows without capture, RPC or lifetime renewal.
+    pub(super) fn observation_rows(
+        &mut self,
+        reference: &str,
+        frame: &str,
+    ) -> Result<&[Value], DeviceResult> {
+        self.prune();
+        let entry = self.entries.iter().find(|e| e.id == reference)
+            .ok_or_else(|| error("observation_expired", "Retained observation is unavailable; obtain a new snapshot, never replay input."))?;
+        if entry.tool != "computer.observe" || entry.data["frame"] != frame {
+            return Err(error(
+                "observation_frame_mismatch",
+                "Use observation_ref and frame from the same snapshot.",
+            ));
+        }
+        entry.data["scene"]["elements"]
+            .as_array()
+            .map(Vec::as_slice)
+            .ok_or_else(|| {
+                error(
+                    "observation_shape_unknown",
+                    "Retained data has no native element array.",
+                )
+            })
     }
 
     pub fn project(&mut self, tool: &str, mut result: DeviceResult) -> DeviceResult {
@@ -101,19 +135,14 @@ impl Presentation {
         {
             return result;
         }
-        let raw = result.data.clone();
-        let original_bytes = bytes(&raw);
-        if original_bytes > CACHE_BYTES {
+        let Some((original_bytes, sha)) = metadata_fingerprint(&result.data) else {
             return result;
-        }
-        self.prune();
-        while self.entries.len() >= CACHE_ENTRIES
-            || self.entries.iter().map(|e| e.bytes).sum::<usize>() + original_bytes > CACHE_BYTES
-        {
-            self.entries.pop_front();
-        }
-        let id = uuid::Uuid::new_v4().to_string();
-        let sha = rwi_core::digest(&serde_json::to_vec(&raw).expect("JSON value"));
+        };
+        self.make_room(original_bytes);
+        let raw = std::mem::take(&mut result.data);
+        // Keep exact native frame/element/target identifiers unchanged; only
+        // this opaque adapter-local result handle uses the compact UUID form.
+        let id = uuid::Uuid::new_v4().simple().to_string();
         let mut data = raw.clone();
         let mut omitted = Vec::new();
         if tool == "computer.targets" {
@@ -345,6 +374,48 @@ mod tests {
         }
     }
     #[test]
+    fn retained_and_projected_metadata_keep_exact_serialized_fingerprint() {
+        let raw = json!({"targets":[],"devices":[],"text":"界\\\"","unknown":null});
+        let encoded = serde_json::to_vec(&raw).unwrap();
+        let expected_sha = rwi_core::digest(&encoded);
+        let mut cache = Presentation::default();
+        let id = cache.retain("computer.targets", raw.clone()).unwrap();
+        assert_eq!(cache.entries[0].bytes, encoded.len());
+        assert_eq!(cache.entries[0].sha, expected_sha);
+        assert_eq!(cache.read(args(&id, "", 0)).data["value"], raw);
+        let projected = cache.project("computer.targets", DeviceResult::value(&raw));
+        assert_eq!(
+            projected.data["presentation"]["metadata_sha256"],
+            expected_sha
+        );
+        assert_eq!(
+            projected.data["presentation"]["original_metadata_bytes"],
+            encoded.len()
+        );
+        assert_eq!(projected.data["unknown"], Value::Null);
+        assert_eq!(cache.entries[1].data, raw);
+    }
+    #[test]
+    fn shared_admission_enforces_accounted_byte_budget_and_expiry() {
+        let mut cache = Presentation::default();
+        let first = cache.retain("nested", json!({"value":1})).unwrap();
+        // Accounting-only fixture: no large allocation or native capture.
+        cache.entries[0].bytes = CACHE_BYTES;
+        cache.retain("nested", json!({"value":2})).unwrap();
+        assert_eq!(cache.entries.len(), 1);
+        assert_eq!(
+            cache.read(args(&first, "", 0)).data["code"],
+            "result_ref_expired"
+        );
+        cache.entries[0].at -= TTL;
+        cache.project(
+            "computer.targets",
+            DeviceResult::value(json!({"targets":[]})),
+        );
+        assert_eq!(cache.entries.len(), 1);
+        assert_eq!(cache.entries[0].tool, "computer.targets");
+    }
+    #[test]
     fn compact_observation_retains_authority_focus_and_partial_coverage() {
         let raw = observation();
         let mut cache = Presentation::default();
@@ -369,6 +440,8 @@ mod tests {
         );
         assert_eq!(p["presentation"]["elements"]["native_complete"], false);
         let id = p["presentation"]["result_ref"].as_str().unwrap();
+        assert_eq!(id.len(), 32);
+        assert!(id.bytes().all(|byte| byte.is_ascii_hexdigit()));
         let page = cache.read(args(id, "/scene/elements", 0));
         assert_eq!(page.data["value"][0], raw["scene"]["elements"][0]);
         assert_eq!(page.data["next_offset"], 16);
@@ -526,4 +599,26 @@ mod tests {
             json!({"before_bytes":bytes(&raw),"after_bytes":bytes(&result.data),"raw_elements":raw["scene"]["elements"].as_array().unwrap().len(),"returned_elements":result.data["scene"]["elements"].as_array().unwrap().len(),"full_metadata_reconstructed":true,"export_pages":pages,"native_calls":0})
         );
     }
+}
+
+#[cfg(test)]
+#[test]
+fn retained_control_reads_do_not_renew_cache_lifetime() {
+    let mut cache = Presentation::default();
+    let id = cache
+        .retain(
+            "computer.observe",
+            json!({"frame":"f","scene":{"elements":[]}}),
+        )
+        .unwrap();
+    assert_eq!(id.len(), 32);
+    assert!(id.bytes().all(|byte| byte.is_ascii_hexdigit()));
+    let at = cache.entries[0].at;
+    assert!(cache.observation_rows(&id, "f").is_ok());
+    assert_eq!(cache.entries[0].at, at);
+    cache.entries[0].at = Instant::now() - TTL - Duration::from_secs(1);
+    assert_eq!(
+        cache.observation_rows(&id, "f").unwrap_err().data["code"],
+        "observation_expired"
+    );
 }

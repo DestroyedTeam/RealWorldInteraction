@@ -4,6 +4,31 @@ impl Gateway {
     pub(super) async fn invoke(
         &self,
         tool: &str,
+        args: Value,
+        context: Option<RequestContext<RoleServer>>,
+    ) -> DeviceResult {
+        if tool == "computer.live" {
+            return self.host_live(args, context).await;
+        }
+        let detached = (tool == "computer.detach_window").then(|| args["target"].clone());
+        let result = self.invoke_device(tool, args, context).await;
+        if let Some(target) = detached
+            && !result.is_error
+            && result.data["detached"] == true
+            && result.data["target"] == target
+            && let Some(target) = target.as_str()
+        {
+            // The native session ended with its backend. Retire only this
+            // target's Host presence page; other window viewers remain valid.
+            self.presence.remove_target(target);
+        }
+        result
+    }
+    /// Internal typed adapters may attach Host-view presence. Public tools and
+    /// the JS bridge must go through invoke(), which rejects forged presence.
+    pub(super) async fn invoke_device(
+        &self,
+        tool: &str,
         mut args: Value,
         context: Option<RequestContext<RoleServer>>,
     ) -> DeviceResult {
@@ -25,7 +50,7 @@ impl Gateway {
             return DeviceResult::error("invalid_arguments", &e.to_string());
         }
         if tool == "computer.targets" {
-            return self.targets().await;
+            return self.targets(args["device_id"].as_str()).await;
         }
         let id = match self.route_id(tool, &args) {
             Ok(id) => id,
@@ -34,7 +59,6 @@ impl Gateway {
         let Some(route) = self.routes.get(&id) else {
             return DeviceResult::error("device_unknown", "Device is not paired.");
         };
-        let token = route.context.lock().await.as_ref().map(|c| c.token.clone());
         let host_cancelled = async {
             if let Some(context) = context {
                 context.ct.cancelled().await;
@@ -43,6 +67,20 @@ impl Gateway {
             }
         };
         tokio::pin!(host_cancelled);
+        // Exact operation references authenticate control requests independently
+        // of the volatile window context. A slow OpenContext must never hold
+        // status/cancel behind the work lane's context-initialization lock.
+        let context_independent = matches!(tool, "computer.operation" | "computer.cancel");
+        let token = if context_independent {
+            None
+        } else {
+            tokio::select! {
+                biased;
+                _=shutdown.changed()=>return DeviceResult::error("host_disconnected","No request was forwarded while waiting for context."),
+                _=&mut host_cancelled=>return DeviceResult::error("operation_cancelled_before_dispatch","No request was forwarded while waiting for context."),
+                connection=route.context.lock()=>connection.as_ref().map(|c| c.token.clone()),
+            }
+        };
         let executable = device::catalog::executable(tool);
         let call = match tool {
             "computer.operation" => Call::Operation {
@@ -76,8 +114,14 @@ impl Gateway {
             Ok(r) => r,
             Err(e) => return e,
         };
-        if reply.result.data["code"] == "context_unknown" {
-            *route.context.lock().await = None;
+        if !context_independent && reply.result.data["code"] == "context_unknown" {
+            // Do not wait behind another discovery or clear a newer context
+            // because an old request failed. Discovery owns the next refresh.
+            if let Ok(mut current) = route.context.try_lock()
+                && current.as_ref().map(|c| &c.token) == token.as_ref()
+            {
+                *current = None;
+            }
         }
         if reply.result.is_error || !executable {
             // Durable history must not populate volatile handle routing.
@@ -180,6 +224,7 @@ mod tests {
             bind: endpoint,
             identity,
             principals: vec![Principal {
+                journal_identity: None,
                 certificate: pairing.model.certificate_sha256,
                 observe: true,
                 input: true,
@@ -307,6 +352,7 @@ mod tests {
             bind: endpoint,
             identity,
             principals: vec![Principal {
+                journal_identity: None,
                 certificate: pairing.model.certificate_sha256,
                 observe: true,
                 input: true,

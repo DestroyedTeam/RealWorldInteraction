@@ -3,9 +3,12 @@ mod dispatch;
 #[cfg(all(test, feature = "fixture"))]
 mod dispatch_tests;
 mod execution;
+mod live_control;
 mod namespace;
 #[cfg(all(test, feature = "fixture"))]
 mod visual_tests;
+#[cfg(all(test, feature = "fixture"))]
+mod window_tests;
 pub use namespace::NamespaceRepair;
 mod recovery;
 use crate::{
@@ -45,9 +48,23 @@ struct Context {
     executor: Arc<Mutex<Executor>>,
     gate: Arc<tokio::sync::Semaphore>,
     registry: Arc<Registry>,
+    live_gate: Arc<tokio::sync::Semaphore>,
+    live_controls: Arc<Mutex<rwi_core::LiveControllers>>,
     touched: Mutex<Instant>,
     target: String,
+    target_catalog: Arc<Mutex<serde_json::Value>>,
     entered: Arc<AtomicBool>,
+}
+impl Context {
+    fn owns_target(&self, target: &serde_json::Value) -> bool {
+        target == &self.target
+            || self
+                .target_catalog
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .as_array()
+                .is_some_and(|rows| rows.iter().any(|row| &row["target"] == target))
+    }
 }
 /// Orderly service ownership ends here, not when an incidental duplicate OS
 /// descriptor (e.g. during concurrent process creation) is eventually closed.
@@ -134,8 +151,13 @@ impl Runtime {
             .iter()
             .find(|p| p.certificate == peer)
         {
-            self.call(&peer, policy, request.context.as_deref(), request.call)
-                .await
+            self.call(
+                policy.identity(),
+                policy,
+                request.context.as_deref(),
+                request.call,
+            )
+            .await
         } else {
             DeviceResult::error("principal_denied", "Peer has no device policy.")
         };
@@ -157,8 +179,17 @@ impl Runtime {
         match call {
             Call::Describe => {
                 let mut r = self.describe(policy);
-                r.data["context_valid"] =
-                    json!(token.is_none() || self.context(peer, token).is_some());
+                let context = self.context(peer, token);
+                r.data["context_valid"] = json!(token.is_none() || context.is_some());
+                if let Some(context) = context {
+                    r.data["targets"] = context
+                        .target_catalog
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .clone();
+                    let facts = r.data["live_desktop_facts"].clone();
+                    capabilities::refresh_volatile_target_facts(&mut r.data["targets"], &facts);
+                }
                 r
             }
             Call::OpenContext => {
@@ -219,6 +250,9 @@ impl Runtime {
                     let Ok(_idle) = c.gate.clone().try_acquire_owned() else {
                         return true;
                     };
+                    let Ok(_live_idle) = c.live_gate.clone().try_acquire_owned() else {
+                        return true;
+                    };
                     if !c.native_quiescent() {
                         return true;
                     }
@@ -231,6 +265,9 @@ impl Runtime {
                         "Close idle contexts; metadata remains available.",
                     );
                 }
+                let executor = Executor::new(engine);
+                let target_catalog = executor.target_catalog.clone();
+                let live_controls = executor.live_controls.clone();
                 contexts.insert(
                     token.clone(),
                     Arc::new(Context {
@@ -240,9 +277,12 @@ impl Runtime {
                         executions: Mutex::new(BTreeMap::new()),
                         sequence: AtomicU64::new(1),
                         principal: peer.as_str().into(),
-                        executor: Arc::new(Mutex::new(Executor::new(engine))),
+                        executor: Arc::new(Mutex::new(executor)),
+                        target_catalog,
                         gate: Arc::new(tokio::sync::Semaphore::new(1)),
                         registry: Arc::new(Registry::default()),
+                        live_gate: Arc::new(tokio::sync::Semaphore::new(1)),
+                        live_controls,
                         touched: Mutex::new(Instant::now()),
                         target,
                         entered,
@@ -263,6 +303,12 @@ impl Runtime {
                     return DeviceResult::error(
                         "context_busy",
                         "Pending native resources remain owned; query/cancel the operation.",
+                    );
+                };
+                let Ok(_live_idle) = context.live_gate.clone().try_acquire_owned() else {
+                    return DeviceResult::error(
+                        "context_busy",
+                        "Owned Live control is pending; query its operation before closing.",
                     );
                 };
                 if !context.native_quiescent() {

@@ -24,12 +24,20 @@ pub(crate) struct WindowRecord {
     /// unambiguous. `built_in` distinguishes the laptop panel from external
     /// displays so callers can honor a screen allocation exactly.
     pub display: Option<DisplayRecord>,
+    /// No capture/pixel input authority; only advertised AX actions.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub semantic_only: bool,
 }
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct DisplayRecord {
     pub id: u32,
+    /// ColorSync UUID when available; unlike CGDirectDisplayID this can be
+    /// used to rediscover a BetterDisplay virtual display after reconnect.
+    pub uuid: Option<String>,
     pub built_in: bool,
     pub bounds: [f64; 4],
+    pub pixels: [u64; 2],
+    pub rotation: f64,
 }
 /// Optional call-site policy: a window may only be bound when its containing
 /// display matches. Windows without an unambiguous display never match.
@@ -53,6 +61,7 @@ impl DisplayRecord {
     pub(crate) fn from_native(display: &crate::native::Display) -> Self {
         Self {
             id: display.id,
+            uuid: display.uuid.clone(),
             built_in: display.built_in,
             bounds: [
                 display.rect.x,
@@ -60,6 +69,8 @@ impl DisplayRecord {
                 display.rect.w,
                 display.rect.h,
             ],
+            pixels: display.pixels,
+            rotation: display.rotation,
         }
     }
 }
@@ -103,7 +114,13 @@ impl WindowRecord {
             title_truncated: w.title.as_ref().is_some_and(|t| t.len() > 1024),
             title,
             display: display.map(DisplayRecord::from_native),
+            semantic_only: false,
         })
+    }
+    pub(crate) fn logical(mut self) -> Self {
+        self.semantic_only = true;
+        self.native_epoch = digest(format!("{}:focused_ax_dialog", self.native_epoch).as_bytes());
+        self
     }
     pub(crate) fn require_same(&self, current: &Self) -> Result<()> {
         if self != current {

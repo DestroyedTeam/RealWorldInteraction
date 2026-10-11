@@ -1,12 +1,14 @@
 //! Background delivery: postToPid input carrying exact window addressing.
-//! The system cursor does not move and no application is activated; the pinned
-//! window does not need to be frontmost. Window-addressing field numbers follow
+//! No system cursor movement or explicit system-frontmost request. The target
+//! may change its active/key/order state when consuming an event. Keyboard
+//! compatibility may additionally send an AppKit activation notification;
+//! pointer sequences never do. State preservation needs independent readback.
+//! Window-addressing field numbers follow
 //! the MIT-licensed kwwk-computer-use-core / trycua/cua reference implementations.
 use crate::ffi;
 use crate::geometry::Rect;
 use core_graphics::{
-    event::{CGEvent, EventField},
-    event_source::{CGEventSource, CGEventSourceStateID},
+    event::{CGEvent, CGEventFlags, EventField},
     geometry::CGPoint,
 };
 use foreign_types::ForeignType;
@@ -34,46 +36,6 @@ fn application_activated_event(window: isize) -> Option<CGEvent> {
         return None;
     }
     Some(unsafe { CGEvent::from_ptr(ffi::CFRetain(cg.cast()).cast_mut().cast()) })
-}
-
-/// Consume the "first mouse activates, content does not receive it" behavior
-/// before the real action. The primer targets the title bar center so it does
-/// not trigger content; the window center is the fallback for chromeless windows.
-pub(crate) fn primer_click(delivery: &Delivery, alternate: bool) {
-    let x = if alternate {
-        delivery.frame.x + delivery.frame.w / 4.0
-    } else {
-        delivery.frame.x + delivery.frame.w / 2.0
-    };
-    let point = [x, delivery.frame.y + 25.0_f64.min(delivery.frame.h / 2.0)];
-    let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) else {
-        return;
-    };
-    let Ok(down) = CGEvent::new_mouse_event(
-        source,
-        core_graphics::event::CGEventType::LeftMouseDown,
-        CGPoint::new(point[0], point[1]),
-        core_graphics::event::CGMouseButton::Left,
-    ) else {
-        return;
-    };
-    let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) else {
-        return;
-    };
-    let Ok(up) = CGEvent::new_mouse_event(
-        source,
-        core_graphics::event::CGEventType::LeftMouseUp,
-        CGPoint::new(point[0], point[1]),
-        core_graphics::event::CGMouseButton::Left,
-    ) else {
-        return;
-    };
-    down.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, 1);
-    up.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, 1);
-    deliver_pointer(&down, delivery, point);
-    std::thread::sleep(std::time::Duration::from_millis(30));
-    deliver_pointer(&up, delivery, point);
-    std::thread::sleep(std::time::Duration::from_millis(20));
 }
 
 pub(crate) fn activate_background_window(pid: u32, window: u32) -> bool {
@@ -118,6 +80,9 @@ fn stamp(event: &CGEvent, delivery: &Delivery, pointer: bool) {
     event.set_integer_value_field(TARGET_WINDOW_NUMBER_FIELD, i64::from(delivery.window));
     event.set_integer_value_field(PRIVATE_WINDOW_ROUTING_FIELD, 1);
     if pointer {
+        // Pointer intents currently have no modifier argument. Never inherit
+        // a user's Alt/Command/Shift held in another application.
+        event.set_flags(CGEventFlags::empty());
         event.set_integer_value_field(
             EventField::MOUSE_EVENT_WINDOW_UNDER_MOUSE_POINTER,
             i64::from(delivery.window),
@@ -134,7 +99,7 @@ mod tests {
     use core_graphics::event::CGEventType;
     use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
     fn source() -> CGEventSource {
-        CGEventSource::new(CGEventSourceStateID::HIDSystemState).unwrap()
+        CGEventSource::new(CGEventSourceStateID::Private).unwrap()
     }
     fn event() -> CGEvent {
         CGEvent::new_keyboard_event(source(), 0, true).unwrap()
@@ -172,7 +137,9 @@ mod tests {
             },
         };
         let event = mouse_event();
+        event.set_flags(CGEventFlags::CGEventFlagAlternate | CGEventFlags::CGEventFlagCommand);
         stamp(&event, &delivery, true);
+        assert_eq!(event.get_flags(), CGEventFlags::empty());
         let read = |field: u32| event.get_integer_value_field(field);
         assert_eq!(read(TARGET_WINDOW_NUMBER_FIELD), 10656);
         assert_eq!(read(PRIVATE_WINDOW_ROUTING_FIELD), 1);
@@ -199,7 +166,9 @@ mod tests {
             },
         };
         let event = event();
-        deliver_key(&event, &delivery);
+        event.set_flags(CGEventFlags::CGEventFlagCommand);
+        stamp(&event, &delivery, false);
+        assert_eq!(event.get_flags(), CGEventFlags::CGEventFlagCommand);
         assert_eq!(
             event.get_integer_value_field(EventField::EVENT_TARGET_UNIX_PROCESS_ID),
             514

@@ -1,0 +1,1589 @@
+//! Standalone main-thread AppKit receiver. Only public framework selectors.
+//! No mouse/key posting, global monitor, capture, target-app access or private SPI.
+//! The only posted event is an own-NSApplication ApplicationDefined run-loop wake.
+use super::model::{
+    DispatchEvent, DispatchRegion, DispatchStage, MouseEvent, MouseKind, Options, Rect, Region,
+    State, Store, SystemPanelOracle, activation_policy_ready, is_dispatch_mouse_type,
+};
+use objc2::{
+    msg_send,
+    rc::{Allocated, Retained, autoreleasepool},
+    runtime::{AnyClass, AnyObject, Bool, ClassBuilder, Sel},
+    sel,
+};
+use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
+use std::{
+    cell::{Cell, RefCell},
+    ffi::CStr,
+    panic::AssertUnwindSafe,
+};
+
+#[link(name = "AppKit", kind = "framework")]
+unsafe extern "C" {}
+#[link(name = "Foundation", kind = "framework")]
+unsafe extern "C" {
+    /// Public Foundation NSRunLoopMode constant, not a guessed string or SPI.
+    static NSRunLoopCommonModes: *const AnyObject;
+}
+
+struct UI {
+    state: State,
+    store: Store,
+    app: Retained<AnyObject>,
+    window: Retained<AnyObject>,
+    cover: Option<Retained<AnyObject>>,
+    modal_sheet: Option<Retained<AnyObject>>,
+    modal_button: Option<Retained<AnyObject>>,
+    color_panel: Option<Retained<AnyObject>>,
+    font_panel: Option<Retained<AnyObject>>,
+    button: Retained<AnyObject>,
+    hover: Retained<AnyObject>,
+    canvas: Retained<AnyObject>,
+    input: Retained<AnyObject>,
+    scroll: Retained<AnyObject>,
+    summary: Retained<AnyObject>,
+    tooltip_text: Retained<NSString>,
+    tooltip_tag: isize,
+    lifetime_timer: Option<Retained<AnyObject>>,
+    environment_timer: Option<Retained<AnyObject>>,
+    self_foreground_timer: Option<Retained<AnyObject>>,
+    // AppKit target and delegate are unretained properties. Keep them alive.
+    _actions: Retained<AnyObject>,
+}
+thread_local! {
+    static UI_STATE: RefCell<Option<UI>> = const { RefCell::new(None) };
+    static DISPATCH_BORROW_SKIPS: Cell<u64> = const { Cell::new(0) };
+}
+
+fn class(name: &'static CStr) -> Result<&'static AnyClass, String> {
+    AnyClass::get(name).ok_or_else(|| format!("AppKit class unavailable: {name:?}"))
+}
+fn rect(x: f64, y: f64, width: f64, height: f64) -> NSRect {
+    NSRect::new(NSPoint::new(x, y), NSSize::new(width, height))
+}
+fn geometry(frame: NSRect) -> Rect {
+    Rect {
+        x: frame.origin.x,
+        y: frame.origin.y,
+        width: frame.size.width,
+        height: frame.size.height,
+    }
+}
+unsafe fn screen_id(screen: *mut AnyObject) -> Option<u32> {
+    if screen.is_null() {
+        return None;
+    }
+    let key = NSString::from_str("NSScreenNumber");
+    unsafe {
+        let description: *mut AnyObject = msg_send![screen, deviceDescription];
+        let number: *mut AnyObject = msg_send![description, objectForKey:&*key];
+        (!number.is_null()).then(|| msg_send![number, unsignedIntValue])
+    }
+}
+fn explicit_screen_frame(display_id: u32) -> Result<Rect, String> {
+    unsafe {
+        let screens: Retained<AnyObject> = msg_send![class(c"NSScreen")?, screens];
+        let count: usize = msg_send![&*screens, count];
+        for index in 0..count {
+            let screen: *mut AnyObject = msg_send![&*screens, objectAtIndex:index];
+            if screen_id(screen) == Some(display_id) {
+                return Ok(geometry(msg_send![screen, frame]));
+            }
+        }
+    }
+    Err(format!(
+        "explicit display {display_id} is not in NSScreen; no fallback window"
+    ))
+}
+fn frontmost_pid() -> Option<i32> {
+    // Public metadata only: no title/text, enumeration, capture or global hook.
+    unsafe {
+        let workspace: *mut AnyObject = msg_send![class(c"NSWorkspace").ok()?, sharedWorkspace];
+        let app: *mut AnyObject = msg_send![workspace, frontmostApplication];
+        (!app.is_null()).then(|| msg_send![app, processIdentifier])
+    }
+}
+unsafe fn view(class: &AnyClass, frame: NSRect) -> Retained<AnyObject> {
+    let allocated: Allocated<AnyObject> = unsafe { msg_send![class, alloc] };
+    unsafe { msg_send![allocated, initWithFrame:frame] }
+}
+
+/// No Rust panic may unwind through Objective-C's callback ABI.
+fn callback(f: impl FnOnce()) {
+    if std::panic::catch_unwind(AssertUnwindSafe(f)).is_err() {
+        eprintln!("receiver_fixture: callback panic; receipt must not be accepted");
+        UI_STATE.with(|cell| {
+            if let Ok(mut borrowed) = cell.try_borrow_mut()
+                && let Some(ui) = borrowed.as_mut()
+            {
+                ui.state.status = "error";
+                ui.state.output_error = Some("callback_panicked".into());
+                let _ = ui.store.persist(&ui.state);
+            }
+        });
+    }
+}
+impl UI {
+    fn arm_first_down_foreground_timer(&mut self, delay_ms: u32) -> Result<(), String> {
+        if self.self_foreground_timer.is_some() {
+            return Err("own foreground timer already exists; never overwrite it".into());
+        }
+        // Explicit fixture-only main-thread actor. The existing callback checks
+        // exact timer ownership/running lifetime before own-app public activation.
+        unsafe {
+            let timer: Retained<AnyObject> = msg_send![class(c"NSTimer")?,
+                timerWithTimeInterval:f64::from(delay_ms) / 1000.,
+                target:&*self._actions, selector:sel!(ownForegroundRequested:),
+                userInfo:std::ptr::null_mut::<AnyObject>(), repeats:false];
+            let main: *mut AnyObject = msg_send![class(c"NSRunLoop")?, mainRunLoop];
+            let _: () = msg_send![main, addTimer:&*timer, forMode:NSRunLoopCommonModes];
+            self.self_foreground_timer = Some(timer);
+        }
+        Ok(())
+    }
+    fn invalidate_lifetime_timer(&mut self) {
+        for slot in [
+            &mut self.lifetime_timer,
+            &mut self.environment_timer,
+            &mut self.self_foreground_timer,
+        ] {
+            if let Some(timer) = slot.take() {
+                // The run loop, timer target and all UI owners are on this main thread.
+                unsafe {
+                    let _: () = msg_send![&*timer, invalidate];
+                }
+            }
+        }
+    }
+    fn close_system_panels(&mut self) {
+        for (slot, observed) in [
+            (&mut self.color_panel, &mut self.state.system_panels.color),
+            (&mut self.font_panel, &mut self.state.system_panels.font),
+        ] {
+            if let Some(panel) = slot.take() {
+                unsafe {
+                    let _: () = msg_send![&*panel, orderOut:std::ptr::null_mut::<AnyObject>()];
+                    let _: () = msg_send![&*panel, close];
+                    observed.visible = Some(msg_send![&*panel, isVisible]);
+                    observed.window_key = Some(msg_send![&*panel, isKeyWindow]);
+                }
+            }
+        }
+    }
+    fn close_own_modal(&mut self) {
+        if let Some(sheet) = self.modal_sheet.take() {
+            // No sheet delegate or input bridge: only our own retained lifecycle.
+            unsafe {
+                let _: () = msg_send![&*self.window, endSheet:&*sheet];
+                let _: () = msg_send![&*sheet, orderOut:std::ptr::null_mut::<AnyObject>()];
+                let _: () = msg_send![&*sheet, close];
+                self.state.modal.visible = Some(msg_send![&*sheet, isVisible]);
+                let parent: *mut AnyObject = msg_send![&*sheet, sheetParent];
+                self.state.modal.attached_to_own_parent =
+                    Some(std::ptr::eq(parent.cast_const(), &*self.window));
+            }
+            self.modal_button = None;
+        }
+    }
+    fn close_own_cover(&mut self) {
+        if let Some(cover) = self.cover.take() {
+            // Only our retained, non-key, own cover. It has no delegate, so this
+            // does not recursively close or stop the primary receiver window.
+            unsafe {
+                let _: () = msg_send![&*cover, close];
+                let visible: bool = msg_send![&*cover, isVisible];
+                self.state.cover_visible = Some(visible);
+                if visible {
+                    self.state.output_error = Some("own_cover_close_not_observed".into());
+                }
+            }
+        }
+    }
+    fn sample_environment(&mut self) {
+        if let Some(panel) = &self.color_panel {
+            sample_system_panel(panel, &self.window, &mut self.state.system_panels.color);
+        }
+        if let Some(panel) = &self.font_panel {
+            sample_system_panel(panel, &self.window, &mut self.state.system_panels.font);
+        }
+        // Own AppKit activation/key state and OS frontmost PID are independent.
+        // No title/text, app enumeration, capture or global event hook.
+        unsafe {
+            self.state.app_active = Some(msg_send![&*self.app, isActive]);
+            self.state.window_key = Some(msg_send![&*self.window, isKeyWindow]);
+            self.state.responder.accepts_mouse_moved =
+                Some(msg_send![&*self.window, acceptsMouseMovedEvents]);
+            let first: *mut AnyObject = msg_send![&*self.window, firstResponder];
+            self.state.responder.first_responder_class = first.as_ref().map(|object| {
+                object
+                    .class()
+                    .name()
+                    .to_string_lossy()
+                    .chars()
+                    .take(128)
+                    .collect()
+            });
+            self.state.responder.first_responder_region =
+                first.as_ref().and_then(|object| self.region(object));
+            let areas: Retained<AnyObject> = msg_send![&*self.hover, trackingAreas];
+            self.state.responder.hover_tracking_areas = Some(msg_send![&*areas, count]);
+            self.state.actual_window_frame = Some(geometry(msg_send![&*self.window, frame]));
+            let screen: *mut AnyObject = msg_send![&*self.window, screen];
+            self.state.actual_display_id = screen_id(screen);
+            if let Some(cover) = &self.cover {
+                self.state.cover_window_number = Some(msg_send![&**cover, windowNumber]);
+                self.state.cover_frame = Some(geometry(msg_send![&**cover, frame]));
+                self.state.cover_visible = Some(msg_send![&**cover, isVisible]);
+                let screen: *mut AnyObject = msg_send![&**cover, screen];
+                self.state.cover_display_id = screen_id(screen);
+                let ordered: Retained<AnyObject> = msg_send![&*self.app, orderedWindows];
+                let count: usize = msg_send![&*ordered, count];
+                let mut primary_index = None;
+                let mut cover_index = None;
+                for index in 0..count {
+                    let item: *mut AnyObject = msg_send![&*ordered, objectAtIndex:index];
+                    if std::ptr::eq(item.cast_const(), &*self.window) {
+                        primary_index = Some(index);
+                    }
+                    if std::ptr::eq(item.cast_const(), &**cover) {
+                        cover_index = Some(index);
+                    }
+                }
+                self.state.cover_above_primary = cover_index
+                    .zip(primary_index)
+                    .map(|(cover, primary)| cover < primary);
+            }
+            if let Some(sheet) = &self.modal_sheet {
+                self.state.modal.window_number = Some(msg_send![&**sheet, windowNumber]);
+                self.state.modal.visible = Some(msg_send![&**sheet, isVisible]);
+                self.state.modal.is_sheet = Some(msg_send![&**sheet, isSheet]);
+                self.state.modal.window_key = Some(msg_send![&**sheet, isKeyWindow]);
+                self.state.modal.frame = Some(geometry(msg_send![&**sheet, frame]));
+                let parent: *mut AnyObject = msg_send![&**sheet, sheetParent];
+                self.state.modal.attached_to_own_parent =
+                    Some(std::ptr::eq(parent.cast_const(), &*self.window));
+                let screen: *mut AnyObject = msg_send![&**sheet, screen];
+                self.state.modal.display_id = screen_id(screen);
+            }
+            let clip: *mut AnyObject = msg_send![&*self.scroll, contentView];
+            let bounds: NSRect = msg_send![clip, bounds];
+            self.state.scroll.clip_origin = Some([bounds.origin.x, bounds.origin.y]);
+        }
+        self.state.frontmost_pid = frontmost_pid();
+        self.state.app_frontmost = self
+            .state
+            .frontmost_pid
+            .map(|pid| pid as u32 == self.state.pid);
+    }
+    fn flush(&mut self) {
+        self.sample_environment();
+        self.flush_sampled();
+    }
+    fn flush_sampled(&mut self) {
+        self.state.ax_provider_probe = super::ax_delay::snapshot();
+        if let Err(error) = self.store.persist(&self.state) {
+            self.state.output_error = Some(error.to_string());
+            self.state.status = "error";
+            eprintln!("receiver_fixture JSON output failed: {error}");
+        }
+        let text = NSString::from_str(&self.state.summary());
+        let title = NSString::from_str(&format!("Safe count: {}", self.state.safe_button_actions));
+        // SAFETY: UI is retained on the main thread; setters are public AppKit.
+        unsafe {
+            if let Some(button) = &self.modal_button {
+                let title = NSString::from_str(&format!(
+                    "Modal safe count: {}",
+                    self.state.modal.safe_actions
+                ));
+                let _: () = msg_send![&**button, setTitle:&*title];
+            }
+            let _: () = msg_send![&*self.summary, setStringValue:&*text];
+            let _: () = msg_send![&*self.button, setTitle:&*title];
+            let _: () = msg_send![&*self.hover, setNeedsDisplay:true];
+            let _: () = msg_send![&*self.canvas, setNeedsDisplay:true];
+        }
+    }
+    fn region(&self, view: &AnyObject) -> Option<Region> {
+        if std::ptr::eq(view, &*self.hover) {
+            Some(Region::HoverZone)
+        } else if std::ptr::eq(view, &*self.canvas) {
+            Some(Region::Canvas)
+        } else {
+            None
+        }
+    }
+    unsafe fn dispatch_hit_region(&self, window_point: NSPoint) -> Option<DispatchRegion> {
+        unsafe {
+            let content: *mut AnyObject = msg_send![&*self.window, contentView];
+            if content.is_null() {
+                return None;
+            }
+            let parent: *mut AnyObject = msg_send![content, superview];
+            // NSView.hitTest: takes the receiver's superview coordinates. The
+            // original NSEvent point is in this window's AppKit coordinates.
+            let parent_point: NSPoint = if parent.is_null() {
+                window_point
+            } else {
+                msg_send![parent, convertPoint:window_point,
+                    fromView:std::ptr::null_mut::<AnyObject>()]
+            };
+            let hit: *mut AnyObject = msg_send![content, hitTest:parent_point];
+            if hit.is_null() {
+                return None;
+            }
+            for (candidate, region) in [
+                (&*self.button, DispatchRegion::SafeButton),
+                (&*self.hover, DispatchRegion::HoverZone),
+                (&*self.canvas, DispatchRegion::Canvas),
+            ] {
+                let descendant: bool = msg_send![hit, isDescendantOf:candidate];
+                if std::ptr::eq(hit.cast_const(), candidate) || descendant {
+                    return Some(region);
+                }
+            }
+            Some(DispatchRegion::OtherOwnContent)
+        }
+    }
+}
+
+fn dispatch_subtype(event: &AnyObject, native_type: usize) -> Option<i16> {
+    // Lazy getter: enter/exit must still be forwarded/recorded, but calling
+    // subtype on a tracking NSEvent raises rather than returning an unknown.
+    super::model::dispatch_subtype_supported(native_type)
+        .then(|| unsafe { msg_send![event, subtype] })
+}
+
+fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) -> bool {
+    let native_type: usize = unsafe { msg_send![event, type] };
+    if !is_dispatch_mouse_type(native_type) {
+        return false;
+    }
+    let mut recorded = false;
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let Ok(mut borrowed) = cell.try_borrow_mut() else {
+                DISPATCH_BORROW_SKIPS.with(|skips| skips.set(skips.get() + 1));
+                return;
+            };
+            let Some(ui) = borrowed.as_mut() else {
+                return;
+            };
+            unsafe {
+                // Public NSEvent.h properties valid for these mouse types only;
+                // no characters, keyboard codes, global cursor or other app read.
+                let window_number: isize = msg_send![event, windowNumber];
+                let point: NSPoint = msg_send![event, locationInWindow];
+                let receiver_match = match stage {
+                    DispatchStage::Application => std::ptr::eq(this, &*ui.app),
+                    DispatchStage::Window => std::ptr::eq(this, &*ui.window),
+                };
+                let own_window_match = receiver_match
+                    && ui
+                        .state
+                        .window_number
+                        .is_some_and(|owned| owned > 0 && owned == window_number);
+                let hit_region = if own_window_match && point.x.is_finite() && point.y.is_finite() {
+                    ui.dispatch_hit_region(point)
+                } else {
+                    None
+                };
+                ui.state.dispatch_probe.receive(DispatchEvent {
+                    sequence: 0,
+                    stage,
+                    native_type,
+                    window_number,
+                    window_point: [point.x, point.y],
+                    subtype: dispatch_subtype(event, native_type),
+                    timestamp_seconds: msg_send![event, timestamp],
+                    own_window_match,
+                    hit_region,
+                });
+            }
+            recorded = true;
+            // No persist/flush/setters before superclass dispatch. This leaves
+            // all receiving-view/tooltip counters and route behavior untouched.
+        })
+    });
+    recorded
+}
+fn persist_dispatch_only() {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let Ok(mut borrowed) = cell.try_borrow_mut() else {
+                DISPATCH_BORROW_SKIPS.with(|skips| skips.set(skips.get() + 1));
+                return;
+            };
+            let Some(ui) = borrowed.as_mut() else {
+                return;
+            };
+            ui.state.dispatch_probe.borrow_skips = DISPATCH_BORROW_SKIPS.with(Cell::get);
+            // JSON-only after super returns: no environment query, redraw,
+            // selection, activation or control mutation. IO overhead is explicit.
+            if let Err(error) = ui.store.persist(&ui.state) {
+                ui.state.output_error = Some(error.to_string());
+                ui.state.status = "error";
+                eprintln!("receiver_fixture dispatch JSON output failed: {error}");
+            }
+        })
+    });
+}
+extern "C" fn application_send_event(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    let recorded = record_dispatch(this, event, DispatchStage::Application);
+    // Both base classes are permanent AppKit classes validated before registering
+    // this subclass. Always forward every event once, including ignored key/wake.
+    let superclass = AnyClass::get(c"NSApplication").expect("registered AppKit superclass");
+    unsafe {
+        let _: () = msg_send![super(this, superclass), sendEvent:event];
+    }
+    if recorded {
+        persist_dispatch_only();
+    }
+}
+extern "C" fn window_send_event(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    let recorded = record_dispatch(this, event, DispatchStage::Window);
+    let superclass = AnyClass::get(c"NSWindow").expect("registered AppKit superclass");
+    unsafe {
+        let _: () = msg_send![super(this, superclass), sendEvent:event];
+    }
+    if recorded {
+        persist_dispatch_only();
+    }
+    record_own_scroll_after_super(this, event);
+}
+
+fn record_own_scroll_after_super(this: &AnyObject, event: &AnyObject) {
+    // Not an input bridge: normal NSWindow/NSScrollView handling has returned.
+    // Read only this own window's scroll viewport, without moving it ourselves.
+    let native_type: usize = unsafe { msg_send![event, type] };
+    if native_type != 22 {
+        return;
+    }
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let Some(ui) = borrowed.as_mut() else { return };
+            if !std::ptr::eq(this, &*ui.window) {
+                return;
+            }
+            let number: isize = unsafe { msg_send![event, windowNumber] };
+            if Some(number) != ui.state.window_number {
+                return;
+            }
+            unsafe {
+                let clip: *mut AnyObject = msg_send![&*ui.scroll, contentView];
+                let bounds: NSRect = msg_send![clip, bounds];
+                let dx: f64 = msg_send![event, scrollingDeltaX];
+                let dy: f64 = msg_send![event, scrollingDeltaY];
+                ui.sample_environment();
+                ui.state
+                    .scroll_received([dx, dy], [bounds.origin.x, bounds.origin.y]);
+            }
+            ui.flush();
+        });
+    });
+}
+
+extern "C" fn text_changed(_this: &AnyObject, _cmd: Sel, notification: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let Some(ui) = borrowed.as_mut() else { return };
+            let control: *mut AnyObject = unsafe { msg_send![notification, object] };
+            if !std::ptr::eq(control.cast_const(), &*ui.input) {
+                return;
+            }
+            // Standard nonsecure fixture field, not keyboard event characters,
+            // other windows, passwords or a programmatically set target value.
+            let text: Retained<NSString> = unsafe { msg_send![&*ui.input, stringValue] };
+            ui.sample_environment();
+            ui.state.text_changed(&text.to_string());
+            ui.flush();
+        });
+    });
+}
+
+unsafe fn stop_own_app(app: &AnyObject, window_number: isize) -> Result<(), String> {
+    // stop: requests termination after the current AppKit event. A timer can run
+    // while nextEventMatchingMask: waits, so enqueue an own-application wake too.
+    // This is not a mouse/key event, native post-to-PID or another application's
+    // input. Never record it as a mouse receipt or verified goal.
+    unsafe {
+        let _: () = msg_send![app, stop:std::ptr::null_mut::<AnyObject>()];
+        let wake: Retained<AnyObject> = msg_send![class(c"NSEvent")?,
+            otherEventWithType:15usize, // NSEventTypeApplicationDefined
+            location:NSPoint::new(0., 0.), modifierFlags:0usize,
+            timestamp:0.0f64, windowNumber:window_number,
+            context:std::ptr::null_mut::<AnyObject>(), subtype:0i16,
+            data1:0isize, data2:0isize];
+        let _: () = msg_send![app, postEvent:&*wake, atStart:true];
+    }
+    Ok(())
+}
+
+extern "C" fn sheet_safe_action(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.state.modal_action("fixture_sheet_safe_action");
+                ui.flush();
+            }
+        })
+    });
+}
+extern "C" fn sheet_close_action(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.state.modal_action("fixture_close_sheet_action");
+                ui.close_own_modal();
+                ui.flush();
+            }
+        })
+    });
+}
+extern "C" fn sheet_open_action(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
+    callback(|| {
+        // Drop the Rust UI borrow before AppKit may re-enter while creating a sheet.
+        let Some((parent, actions)) = UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let ui = borrowed.as_mut()?;
+            if ui.modal_sheet.is_some() || ui.state.status != "running" {
+                return None;
+            }
+            ui.state.modal_action("fixture_open_sheet_action");
+            ui.flush();
+            Some((ui.window.clone(), ui._actions.clone()))
+        }) else {
+            return;
+        };
+        let created = (|| -> Result<(Retained<AnyObject>, Retained<AnyObject>), String> {
+            unsafe {
+                let frame: NSRect = msg_send![&*parent, frame];
+                let allocated: Allocated<AnyObject> = msg_send![class(c"NSPanel")?, alloc];
+                let sheet: Retained<AnyObject> = msg_send![allocated,
+                    initWithContentRect:rect(frame.origin.x+150., frame.origin.y+270.,360.,150.),
+                    styleMask:3usize, backing:2usize, defer:false];
+                let _: () = msg_send![&*sheet, setReleasedWhenClosed:false];
+                let title = NSString::from_str("RWI own modal sheet");
+                let _: () = msg_send![&*sheet, setTitle:&*title];
+                let content = view(class(c"NSView")?, rect(0., 0., 360., 150.));
+                label(
+                    &content,
+                    "Own document-modal sheet",
+                    rect(16., 105., 328., 24.),
+                )?;
+                let safe = view(class(c"NSButton")?, rect(16., 58., 208., 34.));
+                let title = NSString::from_str("Modal safe count: 0");
+                let _: () = msg_send![&*safe, setTitle:&*title];
+                let _: () = msg_send![&*safe, setBezelStyle:1usize];
+                let _: () = msg_send![&*safe, setTarget:&*actions];
+                let _: () = msg_send![&*safe, setAction:sel!(sheetSafeAction:)];
+                identify(&safe, "rwi-fixture-modal-safe", "RWI modal safe button");
+                let _: () = msg_send![&*content, addSubview:&*safe];
+                let close = view(class(c"NSButton")?, rect(230., 16., 112., 30.));
+                let title = NSString::from_str("Close sheet");
+                let _: () = msg_send![&*close, setTitle:&*title];
+                let _: () = msg_send![&*close, setBezelStyle:1usize];
+                let _: () = msg_send![&*close, setTarget:&*actions];
+                let _: () = msg_send![&*close, setAction:sel!(sheetCloseAction:)];
+                identify(&close, "rwi-fixture-modal-close", "RWI close own sheet");
+                let _: () = msg_send![&*content, addSubview:&*close];
+                let _: () = msg_send![&*sheet, setContentView:&*content];
+                Ok((sheet, safe))
+            }
+        })();
+        let (sheet, button) = match created {
+            Ok(value) => value,
+            Err(error) => {
+                UI_STATE.with(|cell| {
+                    if let Some(ui) = cell.borrow_mut().as_mut() {
+                        ui.state.output_error = Some(error);
+                        ui.state.status = "error";
+                        ui.flush();
+                    }
+                });
+                return;
+            }
+        };
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.modal_sheet = Some(sheet.clone());
+                ui.modal_button = Some(button);
+            }
+        });
+        unsafe {
+            // Public optional completion handler; no fabricated event or global activation.
+            let _: () = msg_send![&*parent, beginSheet:&*sheet,
+                completionHandler:std::ptr::null_mut::<block2::Block<dyn Fn(isize)>>()];
+        }
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.flush();
+            }
+        });
+    });
+}
+fn sample_system_panel(
+    panel: &AnyObject,
+    own_parent: &AnyObject,
+    observed: &mut SystemPanelOracle,
+) {
+    // AppKit shared panel readback; no capture, global hook or guessed owner chain.
+    unsafe {
+        observed.window_number = Some(msg_send![panel, windowNumber]);
+        observed.visible = Some(msg_send![panel, isVisible]);
+        observed.window_key = Some(msg_send![panel, isKeyWindow]);
+        observed.frame = Some(geometry(msg_send![panel, frame]));
+        observed.display_id = screen_id(msg_send![panel, screen]);
+        observed.is_sheet = Some(msg_send![panel, isSheet]);
+        let parent: *mut AnyObject = msg_send![panel, sheetParent];
+        observed.attached_to_own_parent = Some(std::ptr::eq(parent.cast_const(), own_parent));
+    }
+}
+fn open_system_panel(kind: &'static str, sender: &AnyObject) {
+    callback(|| {
+        let allowed = UI_STATE.with(|cell| {
+            let mut b = cell.borrow_mut();
+            b.as_mut()
+                .is_some_and(|ui| ui.state.system_panel_open(kind))
+        });
+        if !allowed {
+            return;
+        }
+        // Never hold UI's RefCell borrow over potentially reentrant framework calls.
+        let panel: Result<Retained<AnyObject>, String> = (|| unsafe {
+            if kind == "color" {
+                let p: Retained<AnyObject> = msg_send![class(c"NSColorPanel")?, sharedColorPanel];
+                let _: () = msg_send![&*p, orderFront:sender];
+                Ok(p)
+            } else {
+                let manager: Retained<AnyObject> =
+                    msg_send![class(c"NSFontManager")?, sharedFontManager];
+                let _: () = msg_send![&*manager, orderFrontFontPanel:sender];
+                let p: Option<Retained<AnyObject>> = msg_send![&*manager, fontPanel:false];
+                p.ok_or_else(|| "shared_font_panel_not_created".into())
+            }
+        })();
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                match panel {
+                    Ok(panel) => {
+                        if kind == "color" {
+                            ui.color_panel = Some(panel);
+                        } else {
+                            ui.font_panel = Some(panel);
+                        }
+                    }
+                    Err(error) => ui.state.output_error = Some(error),
+                }
+                ui.flush();
+            }
+        });
+    });
+}
+extern "C" fn color_panel_open(_this: &AnyObject, _cmd: Sel, sender: &AnyObject) {
+    open_system_panel("color", sender);
+}
+extern "C" fn font_panel_open(_this: &AnyObject, _cmd: Sel, sender: &AnyObject) {
+    open_system_panel("font", sender);
+}
+extern "C" fn clicked(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.sample_environment();
+                ui.state.click();
+                ui.flush();
+            }
+        })
+    });
+}
+extern "C" fn window_closed(_this: &AnyObject, _cmd: Sel, _notification: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.sample_environment();
+                ui.invalidate_lifetime_timer();
+                ui.close_own_modal();
+                ui.close_own_cover();
+                ui.close_system_panels();
+                ui.state.close();
+                ui.flush();
+                // stop: exits NSApplication's run loop after this close event.
+                unsafe {
+                    if let Err(error) = stop_own_app(&ui.app, ui.state.window_number.unwrap_or(0)) {
+                        ui.state.status = "error";
+                        ui.state.output_error = Some(error);
+                        ui.flush();
+                    }
+                }
+            }
+        })
+    });
+}
+extern "C" fn environment_sampled(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            // Nested AppKit loops may re-enter while an event callback owns UI.
+            // Skipping that sample is not a state transition or input receipt.
+            let Ok(mut borrowed) = cell.try_borrow_mut() else {
+                return;
+            };
+            let Some(ui) = borrowed.as_mut() else { return };
+            if ui.state.status != "running"
+                || !ui
+                    .environment_timer
+                    .as_ref()
+                    .is_some_and(|owned| std::ptr::eq(&**owned, timer))
+            {
+                return;
+            }
+            let unix_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as u64;
+            // Public own-app/window readback; no activation, input or screenshots.
+            ui.sample_environment();
+            ui.state.note_environment_probe(unix_ms);
+            ui.flush_sampled();
+        })
+    });
+}
+extern "C" fn own_foreground_requested(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
+    callback(|| {
+        let own = UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let ui = borrowed.as_mut()?;
+            if ui.state.status != "running"
+                || !ui
+                    .self_foreground_timer
+                    .as_ref()
+                    .is_some_and(|owned| std::ptr::eq(&**owned, timer))
+            {
+                return None;
+            }
+            let owned = ui.self_foreground_timer.take().unwrap();
+            unsafe {
+                let _: () = msg_send![&*owned, invalidate];
+            }
+            ui.sample_environment();
+            ui.state.request_self_foreground();
+            ui.flush();
+            Some((
+                ui.app.clone(),
+                ui.window.clone(),
+                ui.state.self_foreground_method,
+            ))
+        });
+        let Some((app, window, method)) = own else {
+            return;
+        };
+        // Public own-app/window lifecycle only. Never send events to another
+        // application, synthesize a key/mouse, or claim a human input witness.
+        // No RefCell borrow spans potentially reentrant AppKit lifecycle calls.
+        unsafe {
+            let legacy = method == Some("explicit_legacy_activate_ignoring_other_apps");
+            let selector = if legacy {
+                sel!(activateIgnoringOtherApps:)
+            } else {
+                sel!(activate)
+            };
+            let available: bool = msg_send![&*app, respondsToSelector:selector];
+            if available {
+                if legacy {
+                    let _: () = msg_send![&*app, activateIgnoringOtherApps:true];
+                } else {
+                    let _: () = msg_send![&*app, activate];
+                }
+                let _: () =
+                    msg_send![&*window, makeKeyAndOrderFront:std::ptr::null_mut::<AnyObject>()];
+            } else {
+                UI_STATE.with(|cell| {
+                    if let Some(ui) = cell.borrow_mut().as_mut() {
+                        ui.state.output_error = Some("own_foreground_api_unavailable".into());
+                    }
+                });
+            }
+        }
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.flush();
+            }
+        });
+    });
+}
+extern "C" fn lifetime_expired(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
+    callback(|| {
+        let window = UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let ui = borrowed.as_mut()?;
+            if ui.state.status == "closed"
+                || !ui
+                    .lifetime_timer
+                    .as_ref()
+                    .is_some_and(|owned| std::ptr::eq(&**owned, timer))
+            {
+                return None;
+            }
+            ui.sample_environment();
+            ui.state.request_lifetime_close();
+            ui.flush();
+            Some(ui.window.clone())
+        });
+        if let Some(window) = window {
+            // No RefCell borrow spans performClose: it synchronously invokes this
+            // own window's delegate. Only windowWillClose records state.closed.
+            unsafe {
+                let _: () = msg_send![&*window, performClose:std::ptr::null_mut::<AnyObject>()];
+            }
+            let close_unconfirmed = UI_STATE.with(|cell| {
+                cell.borrow()
+                    .as_ref()
+                    .is_some_and(|ui| ui.state.status != "closed")
+            });
+            if close_unconfirmed {
+                // Sharing chrome may disable the close-button action. This is
+                // still the uniquely retained own window, never a shared control.
+                eprintln!("receiver_fixture: performClose unconfirmed; closing own window");
+                unsafe {
+                    let _: () = msg_send![&*window, close];
+                }
+            }
+            UI_STATE.with(|cell| {
+                if let Some(ui) = cell.borrow_mut().as_mut()
+                    && ui.state.status != "closed"
+                {
+                    // A refused/failed public close is not a fabricated closed
+                    // receipt. Bound our run-loop lifetime but preserve the error.
+                    ui.invalidate_lifetime_timer();
+                    ui.state.status = "error";
+                    ui.state.output_error = Some("lifetime_own_window_close_not_confirmed".into());
+                    ui.flush();
+                    unsafe {
+                        if let Err(error) =
+                            stop_own_app(&ui.app, ui.state.window_number.unwrap_or(0))
+                        {
+                            eprintln!("receiver_fixture stop failed: {error}");
+                        }
+                    }
+                }
+            });
+        }
+    });
+}
+extern "C" fn flipped(_this: &AnyObject, _cmd: Sel) -> Bool {
+    Bool::YES
+}
+extern "C" fn first_mouse(_this: &AnyObject, _cmd: Sel, _event: *mut AnyObject) -> Bool {
+    // These harmless fixture controls intentionally receive inactive clicks.
+    Bool::YES
+}
+
+fn receive(this: &AnyObject, event: &AnyObject, kind: MouseKind) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+        if let Some(ui) = cell.borrow_mut().as_mut()
+            && let Some(region) = ui.region(this)
+        {
+            // SAFETY: AppKit invokes these methods with a live mouse NSEvent.
+            // Both positions come from public NSView conversion; window points
+            // are AppKit bottom-left, local points are this flipped view's top-left.
+            ui.sample_environment();
+            let frontmost = ui.state.frontmost_pid;
+            let receipt = unsafe {
+                let point: NSPoint = msg_send![event, locationInWindow];
+                let local: NSPoint = msg_send![this, convertPoint:point, fromView:std::ptr::null_mut::<AnyObject>()];
+                MouseEvent {
+                    region, kind,
+                    local_point: [local.x, local.y], window_point: [point.x, point.y],
+                    native_type: msg_send![event, type],
+                    window_number: msg_send![event, windowNumber],
+                    receiving_app_active: msg_send![&*ui.app, isActive],
+                    receiving_window_key: msg_send![&*ui.window, isKeyWindow],
+                    frontmost_pid: frontmost,
+                    receiving_app_frontmost: frontmost.map(|pid| pid as u32 == ui.state.pid),
+                    timestamp_seconds: msg_send![event, timestamp],
+                    modifier_flags: msg_send![event, modifierFlags],
+                    event_number: (kind != MouseKind::Moved)
+                        .then(|| msg_send![event, eventNumber]),
+                    pressure: matches!(kind, MouseKind::Down | MouseKind::Dragged | MouseKind::Up)
+                        .then(|| msg_send![event, pressure]),
+                    // NSEvent.h: deltaX/Y are valid for mouse move/drag. Preserve
+                    // the raw values; no flipped-view/pixel-unit reinterpretation.
+                    delta: matches!(kind, MouseKind::Moved | MouseKind::Dragged)
+                        .then(|| [msg_send![event, deltaX], msg_send![event, deltaY]]),
+                }
+            };
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .and_then(|value| u64::try_from(value.as_millis()).ok());
+            let actor_delay = ui.state.arm_foreground_on_first_canvas_down(&receipt, now);
+            ui.state.receive(receipt);
+            if let Some(delay) = actor_delay
+                && let Err(error) = ui.arm_first_down_foreground_timer(delay)
+            {
+                ui.state.output_error = Some(error);
+            }
+            ui.flush();
+        }
+    })
+    });
+}
+extern "C" fn mouse_down(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    receive(this, event, MouseKind::Down);
+}
+extern "C" fn mouse_dragged(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    receive(this, event, MouseKind::Dragged);
+}
+extern "C" fn mouse_up(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    receive(this, event, MouseKind::Up);
+}
+extern "C" fn mouse_moved(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    receive(this, event, MouseKind::Moved);
+}
+extern "C" fn mouse_entered(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    receive(this, event, MouseKind::Entered);
+}
+extern "C" fn mouse_exited(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    receive(this, event, MouseKind::Exited);
+}
+
+extern "C" fn tooltip_requested(
+    this: &AnyObject,
+    _cmd: Sel,
+    view: &AnyObject,
+    tag: isize,
+    point: NSPoint,
+    _data: *mut std::ffi::c_void,
+) -> *mut NSString {
+    // Public NSViewToolTipOwner callback, not a synthesized input event. A +0
+    // return is backed by UI's retained string for the whole own-window lifetime.
+    let mut text = std::ptr::null_mut();
+    callback(|| {
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut()
+                && std::ptr::eq(this, view)
+                && ui.region(view) == Some(Region::HoverZone)
+                && tag == ui.tooltip_tag
+            {
+                ui.sample_environment();
+                // SDK documents this point in the tooltip view's coordinates.
+                // Preserve it separately from event/mouse and never infer visible.
+                ui.state.tooltip_requested([point.x, point.y]);
+                ui.flush();
+                text = Retained::as_ptr(&ui.tooltip_text).cast_mut();
+            }
+        })
+    });
+    text
+}
+
+extern "C" fn draw(this: &AnyObject, _cmd: Sel, _dirty: NSRect) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let borrowed = cell.borrow();
+            let Some(ui) = borrowed.as_ref() else {
+                return;
+            };
+            let Some(region) = ui.region(this) else {
+                return;
+            };
+            // Public AppKit drawing runs only inside this view's drawRect: callback.
+            unsafe {
+                let color = match region {
+                    Region::HoverZone if ui.state.hover.inside => sel!(systemGreenColor),
+                    Region::HoverZone => sel!(controlBackgroundColor),
+                    Region::Canvas => sel!(textBackgroundColor),
+                };
+                let color: *mut AnyObject = match color {
+                    s if s == sel!(systemGreenColor) => {
+                        msg_send![class(c"NSColor").unwrap(), systemGreenColor]
+                    }
+                    s if s == sel!(controlBackgroundColor) => {
+                        msg_send![class(c"NSColor").unwrap(), controlBackgroundColor]
+                    }
+                    _ => msg_send![class(c"NSColor").unwrap(), textBackgroundColor],
+                };
+                let _: () = msg_send![color, setFill];
+                let bounds: NSRect = msg_send![this, bounds];
+                let _: () = msg_send![class(c"NSBezierPath").unwrap(), fillRect:bounds];
+                if region == Region::Canvas {
+                    let path = ui.state.drag.active.as_ref().or(ui
+                        .state
+                        .drag
+                        .last_completed
+                        .as_ref());
+                    if let Some(path) = path {
+                        let curve: Retained<AnyObject> =
+                            msg_send![class(c"NSBezierPath").unwrap(), new];
+                        let blue: *mut AnyObject =
+                            msg_send![class(c"NSColor").unwrap(), systemBlueColor];
+                        let _: () = msg_send![blue, setStroke];
+                        let _: () = msg_send![&*curve, setLineWidth:3.0f64];
+                        for (index, point) in path.points.iter().enumerate() {
+                            let point = NSPoint::new(point[0], point[1]);
+                            if index == 0 {
+                                let _: () = msg_send![&*curve, moveToPoint:point];
+                            } else {
+                                let _: () = msg_send![&*curve, lineToPoint:point];
+                            }
+                        }
+                        let _: () = msg_send![&*curve, stroke];
+                    }
+                }
+            }
+        })
+    });
+}
+
+struct FixtureClasses {
+    actions: &'static AnyClass,
+    receiver: &'static AnyClass,
+    button: &'static AnyClass,
+    application: &'static AnyClass,
+    window: &'static AnyClass,
+}
+fn classes() -> Result<FixtureClasses, String> {
+    let mut actions = ClassBuilder::new(c"RWIReceiverFixtureActions", class(c"NSObject")?)
+        .ok_or("receiver action class already registered")?;
+    let mut receiver = ClassBuilder::new(c"RWIReceiverFixtureView", class(c"NSView")?)
+        .ok_or("receiver view class already registered")?;
+    let mut button = ClassBuilder::new(c"RWIReceiverFixtureButton", class(c"NSButton")?)
+        .ok_or("receiver button class already registered")?;
+    let mut application =
+        ClassBuilder::new(c"RWIReceiverFixtureApplication", class(c"NSApplication")?)
+            .ok_or("receiver application class already registered")?;
+    let mut window = ClassBuilder::new(c"RWIReceiverFixtureWindow", class(c"NSWindow")?)
+        .ok_or("receiver window class already registered")?;
+    // SAFETY: selector signatures exactly match the public AppKit SDK headers.
+    unsafe {
+        actions.add_method(sel!(clicked:), clicked as extern "C" fn(_, _, _));
+        actions.add_method(
+            sel!(systemColorOpen:),
+            color_panel_open as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(systemFontOpen:),
+            font_panel_open as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(sheetOpenAction:),
+            sheet_open_action as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(sheetSafeAction:),
+            sheet_safe_action as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(sheetCloseAction:),
+            sheet_close_action as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(controlTextDidChange:),
+            text_changed as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(windowWillClose:),
+            window_closed as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(lifetimeExpired:),
+            lifetime_expired as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(environmentSampled:),
+            environment_sampled as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
+            sel!(ownForegroundRequested:),
+            own_foreground_requested as extern "C" fn(_, _, _),
+        );
+        receiver.add_method(sel!(isFlipped), flipped as extern "C" fn(_, _) -> _);
+        receiver.add_method(
+            sel!(acceptsFirstMouse:),
+            first_mouse as extern "C" fn(_, _, _) -> _,
+        );
+        button.add_method(
+            sel!(acceptsFirstMouse:),
+            first_mouse as extern "C" fn(_, _, _) -> _,
+        );
+        receiver.add_method(sel!(drawRect:), draw as extern "C" fn(_, _, _));
+        receiver.add_method(sel!(mouseDown:), mouse_down as extern "C" fn(_, _, _));
+        receiver.add_method(sel!(mouseDragged:), mouse_dragged as extern "C" fn(_, _, _));
+        receiver.add_method(sel!(mouseUp:), mouse_up as extern "C" fn(_, _, _));
+        receiver.add_method(sel!(mouseMoved:), mouse_moved as extern "C" fn(_, _, _));
+        receiver.add_method(sel!(mouseEntered:), mouse_entered as extern "C" fn(_, _, _));
+        receiver.add_method(sel!(mouseExited:), mouse_exited as extern "C" fn(_, _, _));
+        receiver.add_method(
+            sel!(view:stringForToolTip:point:userData:),
+            tooltip_requested as extern "C" fn(_, _, _, _, _, _) -> _,
+        );
+        application.add_method(
+            sel!(accessibilityWindows),
+            super::ax_delay::accessibility_windows as extern "C" fn(_, _) -> _,
+        );
+        application.add_method(
+            sel!(sendEvent:),
+            application_send_event as extern "C" fn(_, _, _),
+        );
+        window.add_method(
+            sel!(sendEvent:),
+            window_send_event as extern "C" fn(_, _, _),
+        );
+    }
+    Ok(FixtureClasses {
+        actions: actions.register(),
+        receiver: receiver.register(),
+        button: button.register(),
+        application: application.register(),
+        window: window.register(),
+    })
+}
+
+unsafe fn label(
+    content: &AnyObject,
+    text: &str,
+    frame: NSRect,
+) -> Result<Retained<AnyObject>, String> {
+    let label = unsafe { view(class(c"NSTextField")?, frame) };
+    let string = NSString::from_str(text);
+    unsafe {
+        let _: () = msg_send![&*label, setStringValue:&*string];
+        let _: () = msg_send![&*label, setEditable:false];
+        let _: () = msg_send![&*label, setSelectable:false];
+        let _: () = msg_send![&*label, setBezeled:false];
+        let _: () = msg_send![&*label, setDrawsBackground:false];
+        let _: () = msg_send![content, addSubview:&*label];
+    }
+    Ok(label)
+}
+unsafe fn identify(view: &AnyObject, identifier: &str, label: &str) {
+    let identifier = NSString::from_str(identifier);
+    let label = NSString::from_str(label);
+    unsafe {
+        let _: () = msg_send![view, setAccessibilityIdentifier:&*identifier];
+        let _: () = msg_send![view, setAccessibilityLabel:&*label];
+    }
+}
+
+extern "C" fn calibration_accepts_first_responder(_this: &AnyObject, _cmd: Sel) -> Bool {
+    Bool::YES
+}
+fn hover_calibration_class(
+    base: &'static AnyClass,
+    enabled: bool,
+) -> Result<&'static AnyClass, String> {
+    if !enabled {
+        return Ok(base);
+    }
+    let mut builder = ClassBuilder::new(c"RWIHoverFirstResponderCalibration", base)
+        .ok_or("own hover calibration class already registered")?;
+    // SAFETY: public NSResponder BOOL acceptsFirstResponder signature. The
+    // subclass inherits normal receiver callbacks; no sendEvent override,
+    // tracking-number synthesis, input sender or external application mutation.
+    unsafe {
+        builder.add_method(
+            sel!(acceptsFirstResponder),
+            calibration_accepts_first_responder as extern "C" fn(_, _) -> _,
+        );
+    }
+    Ok(builder.register())
+}
+
+pub fn run(options: Options) -> Result<(), String> {
+    // AppKit application lifetime and every retained UI object stay on main.
+    if unsafe { libc::pthread_main_np() } != 1 {
+        return Err("AppKit receiver must run on the main thread".into());
+    }
+    let store = Store::create(&options.state_dir).map_err(|e| e.to_string())?;
+    let mut state = State::new(options.run_id);
+    state.requested_display_id = Some(options.display_id);
+    state.lifetime_ms = Some(options.lifetime_ms);
+    state.environment_sample_ms = options.environment_sample_ms;
+    state.system_panels.enabled = options.system_panel_controls;
+    state.self_foreground_on_first_down_after_ms = options.self_foreground_on_first_down_after_ms;
+    if options.self_foreground_after_ms.is_some()
+        || options.self_foreground_on_first_down_after_ms.is_some()
+    {
+        state.self_foreground_method = Some(if options.legacy_self_foreground {
+            "explicit_legacy_activate_ignoring_other_apps"
+        } else {
+            "public_modern_activate"
+        });
+    }
+    state.responder.calibration_requested = options.hover_first_responder;
+    store.persist(&state).map_err(|e| e.to_string())?;
+    println!(
+        "fixture prepared: title={:?} pid={} state={}",
+        state.window_title,
+        state.pid,
+        store.path.display()
+    );
+    autoreleasepool(|_| {
+        let FixtureClasses {
+            actions: actions_class,
+            receiver: receiver_class,
+            button: button_class,
+            application: application_class,
+            window: window_class,
+        } = classes()?;
+        // SAFETY: this is the dedicated fixture process, initialized on main.
+        // Public AppKit methods only; never activate another application.
+        unsafe {
+            // First sharedApplication is sent to our registered subclass. Do not
+            // swizzle an existing singleton or override sharedApplication itself.
+            let app: Retained<AnyObject> = msg_send![application_class, sharedApplication];
+            let own_application: bool = msg_send![&*app, isKindOfClass:application_class];
+            if !own_application {
+                return Err("shared application does not contain own dispatch probe".into());
+            }
+            // Explicit own-fixture opt-in exposes a normal Cmd+Tab/Dock app for
+            // real foreground takeover tests; the default remains Accessory.
+            // Setting policy does not request activation of any application.
+            let policy = if options.regular_app { 0isize } else { 1isize };
+            let before: isize = msg_send![&*app, activationPolicy];
+            let accepted: bool = msg_send![&*app, setActivationPolicy:policy];
+            let observed: isize = msg_send![&*app, activationPolicy];
+            state.application_identity.activation_policy_before = Some(before);
+            state
+                .application_identity
+                .activation_policy_request_accepted = Some(accepted);
+            state.application_identity.activation_policy = Some(observed);
+            let own: Retained<AnyObject> =
+                msg_send![class(c"NSRunningApplication")?, currentApplication];
+            let identifier: Option<Retained<NSString>> = msg_send![&*own, bundleIdentifier];
+            let name: Option<Retained<NSString>> = msg_send![&*own, localizedName];
+            state.application_identity.bundle_identifier =
+                identifier.map(|s| s.to_string().chars().take(256).collect());
+            state.application_identity.localized_name =
+                name.map(|s| s.to_string().chars().take(128).collect());
+            store.persist(&state).map_err(|e| e.to_string())?;
+            if !activation_policy_ready(before, policy, accepted, observed) {
+                return Err(format!(
+                    "explicit fixture activation policy not observed: before={before}, requested={policy}, accepted={accepted}, observed={observed}"
+                ));
+            }
+            let _: () = msg_send![&*app, finishLaunching];
+            // Ground the caller-selected NSScreen before creating any window.
+            // No default/main-screen creation followed by a later move.
+            let screen_frame = explicit_screen_frame(options.display_id)?;
+            let decoration: NSRect = msg_send![class(c"NSWindow")?,
+                frameRectForContentRect:rect(0., 0., 660., 520.), styleMask:3usize];
+            let placed = if options.right_side {
+                screen_frame.place_right(decoration.size.width, decoration.size.height)?
+            } else {
+                screen_frame.place(decoration.size.width, decoration.size.height)?
+            };
+            let requested_frame = rect(placed.x, placed.y, placed.width, placed.height);
+            let content_frame: NSRect = msg_send![class(c"NSWindow")?,
+                contentRectForFrameRect:requested_frame, styleMask:3usize];
+            state.requested_window_frame = Some(placed);
+            let actions: Retained<AnyObject> = msg_send![actions_class, new];
+            let allocated: Allocated<AnyObject> = msg_send![window_class, alloc];
+            let window: Retained<AnyObject> = msg_send![allocated,
+                initWithContentRect:content_frame, styleMask:3usize,
+                backing:2usize, defer:false];
+            let title = NSString::from_str(&state.window_title);
+            let _: () = msg_send![&*window, setTitle:&*title];
+            let _: () = msg_send![&*window, setReleasedWhenClosed:false];
+            let _: () = msg_send![&*window, setDelegate:&*actions];
+            let _: () = msg_send![&*window, setAcceptsMouseMovedEvents:true];
+            let _: () = msg_send![&*window, setFrame:requested_frame, display:false, animate:false];
+            let content = view(class(c"NSView")?, rect(0., 0., 660., 520.));
+            label(
+                &content,
+                "RWI receiver · harmless local controls only",
+                rect(
+                    24.,
+                    478.,
+                    if options.system_panel_controls {
+                        216.
+                    } else if options.modal_controls {
+                        420.
+                    } else {
+                        612.
+                    },
+                    24.,
+                ),
+            )?;
+            if options.modal_controls {
+                let open = view(class(c"NSButton")?, rect(464., 474., 172., 30.));
+                let title = NSString::from_str("Open own sheet");
+                let _: () = msg_send![&*open, setTitle:&*title];
+                let _: () = msg_send![&*open, setBezelStyle:1usize];
+                let _: () = msg_send![&*open, setTarget:&*actions];
+                let _: () = msg_send![&*open, setAction:sel!(sheetOpenAction:)];
+                identify(&open, "rwi-fixture-modal-open", "RWI open own modal sheet");
+                let _: () = msg_send![&*content, addSubview:&*open];
+            }
+            if options.system_panel_controls {
+                for (x, title, identifier, action) in [
+                    (
+                        252.,
+                        "Colors",
+                        "rwi-system-color-open",
+                        sel!(systemColorOpen:),
+                    ),
+                    (360., "Fonts", "rwi-system-font-open", sel!(systemFontOpen:)),
+                ] {
+                    let control = view(class(c"NSButton")?, rect(x, 474., 98., 30.));
+                    let title = NSString::from_str(title);
+                    let _: () = msg_send![&*control,setTitle:&*title];
+                    let _: () = msg_send![&*control,setBezelStyle:1usize];
+                    let _: () = msg_send![&*control,setTarget:&*actions];
+                    let _: () = msg_send![&*control,setAction:action];
+                    identify(&control, identifier, &title.to_string());
+                    let _: () = msg_send![&*content,addSubview:&*control];
+                }
+            }
+            let button = view(button_class, rect(24., 430., 180., 34.));
+            let button_title = NSString::from_str("Safe count: 0");
+            let _: () = msg_send![&*button, setTitle:&*button_title];
+            let _: () = msg_send![&*button, setBezelStyle:1usize];
+            let _: () = msg_send![&*button, setTarget:&*actions];
+            let _: () = msg_send![&*button, setAction:sel!(clicked:)];
+            identify(&button, "rwi-fixture-safe-button", "RWI safe count button");
+            let _: () = msg_send![&*content, addSubview:&*button];
+            let input = view(class(c"NSTextField")?, rect(230., 432., 406., 30.));
+            let _: () = msg_send![&*input, setEditable:true];
+            let _: () = msg_send![&*input, setSelectable:true];
+            let _: () = msg_send![&*input, setDelegate:&*actions];
+            let placeholder = NSString::from_str("RWI test text · nonsecure own field");
+            let _: () = msg_send![&*input, setPlaceholderString:&*placeholder];
+            identify(&input, "rwi-fixture-input", "RWI fixture text input");
+            let _: () = msg_send![&*content, addSubview:&*input];
+            label(
+                &content,
+                "Hover zone (native tooltip, tracking receipt below)",
+                rect(24., 398., 612., 22.),
+            )?;
+            let hover = view(
+                hover_calibration_class(receiver_class, options.hover_first_responder)?,
+                rect(24., 342., 612., 50.),
+            );
+            identify(&hover, "rwi-fixture-hover", "RWI hover zone");
+            let tooltip =
+                NSString::from_str("RWI fixture hover tooltip · harmless acceptance target");
+            // AppKit's dynamic string request is a separate observable callback.
+            // owner is weak: the hover view is retained by UI and the own window.
+            let tooltip_tag: isize = msg_send![&*hover,
+                addToolTipRect:rect(0., 0., 612., 50.),
+                owner:&*hover, userData:std::ptr::null_mut::<std::ffi::c_void>()];
+            let allocated: Allocated<AnyObject> = msg_send![class(c"NSTrackingArea")?, alloc];
+            // MouseEnteredAndExited | MouseMoved | ActiveAlways | InVisibleRect.
+            // ActiveAlways tests receiving while inactive, not a promise that any
+            // producer's process-directed mouse event will create tracking events.
+            let tracking: Retained<AnyObject> = msg_send![allocated,
+                initWithRect:rect(0., 0., 612., 50.), options:0x283usize,
+                owner:&*hover, userInfo:std::ptr::null_mut::<AnyObject>()];
+            let _: () = msg_send![&*hover, addTrackingArea:&*tracking];
+            state.hover.tooltip_registered = true;
+            let _: () = msg_send![&*content, addSubview:&*hover];
+            label(
+                &content,
+                "Drag canvas (blue path requires received down → drag → up)",
+                rect(24., 312., 612., 22.),
+            )?;
+            let canvas = view(receiver_class, rect(24., 100., 360., 206.));
+            identify(&canvas, "rwi-fixture-canvas", "RWI drag canvas");
+            let _: () = msg_send![&*content, addSubview:&*canvas];
+            let scroll = view(class(c"NSScrollView")?, rect(404., 100., 232., 206.));
+            let _: () = msg_send![&*scroll, setHasVerticalScroller:true];
+            let _: () = msg_send![&*scroll, setHasHorizontalScroller:false];
+            let _: () = msg_send![&*scroll, setAutohidesScrollers:false];
+            let _: () = msg_send![&*scroll, setBorderType:1usize];
+            identify(&scroll, "rwi-fixture-scroll", "RWI native scroll viewport");
+            let document = view(receiver_class, rect(0., 0., 210., 1000.));
+            for n in 0..30 {
+                label(
+                    &document,
+                    &format!("Native scroll row {n:02}"),
+                    rect(12., 10. + f64::from(n) * 30., 190., 24.),
+                )?;
+            }
+            let _: () = msg_send![&*scroll, setDocumentView:&*document];
+            let _: () = msg_send![&*content, addSubview:&*scroll];
+            let summary = label(&content, &state.summary(), rect(24., 20., 612., 72.))?;
+            identify(&summary, "rwi-fixture-state", "RWI receiver state");
+            let _: () = msg_send![&*window, setContentView:&*content];
+            if options.hover_first_responder {
+                // Explicit fixture setup only. Neither the backend nor a hover
+                // operation changes the first responder or invokes a callback.
+                let accepted: Bool = msg_send![&*window, makeFirstResponder:&*hover];
+                state.responder.calibration_accepted = Some(accepted.as_bool());
+            }
+            UI_STATE.with(|cell| {
+                *cell.borrow_mut() = Some(UI {
+                    state,
+                    store,
+                    app: app.clone(),
+                    window: window.clone(),
+                    cover: None,
+                    modal_sheet: None,
+                    modal_button: None,
+                    color_panel: None,
+                    font_panel: None,
+                    button,
+                    hover,
+                    canvas,
+                    input,
+                    scroll,
+                    summary,
+                    tooltip_text: tooltip,
+                    tooltip_tag,
+                    lifetime_timer: None,
+                    environment_timer: None,
+                    self_foreground_timer: None,
+                    _actions: actions,
+                })
+            });
+            // Deliberately no makeKeyAndOrderFront / application activation.
+            let _: () = msg_send![&*window, orderFront:std::ptr::null_mut::<AnyObject>()];
+            let _: () = msg_send![&*window, setFrame:requested_frame, display:true, animate:false];
+            let actual: NSRect = msg_send![&*window, frame];
+            let screen: *mut AnyObject = msg_send![&*window, screen];
+            if !screen_frame.contains(geometry(actual))
+                || screen_id(screen) != Some(options.display_id)
+            {
+                UI_STATE.with(|cell| {
+                    let mut borrowed = cell.borrow_mut();
+                    let ui = borrowed.as_mut().unwrap();
+                    ui.state.status = "error";
+                    ui.state.output_error = Some("initial_window_placement_mismatch".into());
+                    ui.flush();
+                });
+                let _: () = msg_send![&*window, orderOut:std::ptr::null_mut::<AnyObject>()];
+                UI_STATE.with(|cell| {
+                    cell.borrow_mut().take();
+                });
+                return Err(
+                    "fixture window not fully on explicit display; stopped without fallback".into(),
+                );
+            }
+            if options.cover_controls {
+                // A real second own window covers the harmless button. Ground
+                // it in the same allocated NSScreen before ordering; no main
+                // display fallback, makeKey, activation, input, or global hook.
+                let cover_rect = rect(
+                    content_frame.origin.x + 16.,
+                    content_frame.origin.y + 418.,
+                    205.,
+                    58.,
+                );
+                if !screen_frame.contains(geometry(cover_rect)) {
+                    let _: () = msg_send![&*window, close];
+                    return Err("own cover does not fit allocated display".into());
+                }
+                let allocated: Allocated<AnyObject> = msg_send![window_class, alloc];
+                let cover: Retained<AnyObject> = msg_send![allocated, initWithContentRect:cover_rect, styleMask:0usize, backing:2usize, defer:false];
+                let _: () = msg_send![&*cover, setReleasedWhenClosed:false];
+                let _: () = msg_send![&*cover, setOpaque:true];
+                let title = NSString::from_str(&format!("RWI own cover · {}", options.display_id));
+                let _: () = msg_send![&*cover, setTitle:&*title];
+                let cover_content = view(class(c"NSView")?, rect(0., 0., 205., 58.));
+                label(&cover_content, "RWI own cover", rect(12., 18., 180., 24.))?;
+                let _: () = msg_send![&*cover, setContentView:&*cover_content];
+                let base_number: isize = msg_send![&*window, windowNumber];
+                let _: () = msg_send![&*cover, orderWindow:1isize, relativeTo:base_number];
+                let frame: NSRect = msg_send![&*cover, frame];
+                let cover_screen: *mut AnyObject = msg_send![&*cover, screen];
+                let key: bool = msg_send![&*cover, isKeyWindow];
+                if !screen_frame.contains(geometry(frame))
+                    || screen_id(cover_screen) != Some(options.display_id)
+                    || key
+                {
+                    let _: () = msg_send![&*cover, close];
+                    let _: () = msg_send![&*window, close];
+                    return Err("own cover placement/key readback mismatch; no fallback".into());
+                }
+                UI_STATE.with(|cell| {
+                    cell.borrow_mut().as_mut().unwrap().cover = Some(cover);
+                });
+            }
+            UI_STATE.with(|cell| {
+                let mut borrowed = cell.borrow_mut();
+                let ui = borrowed.as_mut().unwrap();
+                ui.state.window_number = Some(msg_send![&*window, windowNumber]);
+                ui.state.status = "running";
+                ui.flush();
+            });
+            // A nonrepeating timer is scoped to this validated own window/run.
+            // No timer is made on help/no arguments or failed initial placement.
+            let timer_class = class(c"NSTimer")?;
+            let loop_class = class(c"NSRunLoop")?;
+            let timer: Retained<AnyObject> = UI_STATE.with(|cell| {
+                let borrowed = cell.borrow();
+                let ui = borrowed.as_ref().unwrap();
+                msg_send![timer_class,
+                    timerWithTimeInterval:f64::from(options.lifetime_ms) / 1000.,
+                    target:&*ui._actions, selector:sel!(lifetimeExpired:),
+                    userInfo:std::ptr::null_mut::<AnyObject>(), repeats:false]
+            });
+            let main_loop: *mut AnyObject = msg_send![loop_class, mainRunLoop];
+            let _: () = msg_send![main_loop, addTimer:&*timer, forMode:NSRunLoopCommonModes];
+            UI_STATE.with(|cell| {
+                cell.borrow_mut().as_mut().unwrap().lifetime_timer = Some(timer);
+            });
+            if let Some(ms) = options.environment_sample_ms {
+                let timer: Retained<AnyObject> = UI_STATE.with(|cell| {
+                    let borrowed = cell.borrow();
+                    let ui = borrowed.as_ref().unwrap();
+                    msg_send![timer_class,
+                        timerWithTimeInterval:f64::from(ms) / 1000.,
+                        target:&*ui._actions, selector:sel!(environmentSampled:),
+                        userInfo:std::ptr::null_mut::<AnyObject>(), repeats:true]
+                });
+                let _: () = msg_send![main_loop, addTimer:&*timer, forMode:NSRunLoopCommonModes];
+                UI_STATE.with(|cell| {
+                    cell.borrow_mut().as_mut().unwrap().environment_timer = Some(timer);
+                });
+            }
+            if let Some(ms) = options.self_foreground_after_ms {
+                let timer: Retained<AnyObject> = UI_STATE.with(|cell| {
+                    let mut borrowed = cell.borrow_mut();
+                    let ui = borrowed.as_mut().unwrap();
+                    ui.state.self_foreground_after_ms = Some(ms);
+                    ui.state.self_foreground_method = Some(if options.legacy_self_foreground {
+                        "explicit_legacy_activate_ignoring_other_apps"
+                    } else {
+                        "public_modern_activate"
+                    });
+                    ui.flush();
+                    msg_send![timer_class, timerWithTimeInterval:f64::from(ms) / 1000.,
+                        target:&*ui._actions, selector:sel!(ownForegroundRequested:),
+                        userInfo:std::ptr::null_mut::<AnyObject>(), repeats:false]
+                });
+                let _: () = msg_send![main_loop, addTimer:&*timer, forMode:NSRunLoopCommonModes];
+                UI_STATE.with(|cell| {
+                    cell.borrow_mut().as_mut().unwrap().self_foreground_timer = Some(timer);
+                });
+            }
+            super::ax_delay::configure(options.ax_windows_delay_ms);
+            let _: () = msg_send![&*app, run];
+            let result: Result<(), String> = UI_STATE.with(|cell| {
+                if let Some(mut ui) = cell.borrow_mut().take() {
+                    ui.invalidate_lifetime_timer();
+                    ui.close_own_modal();
+                    ui.close_own_cover();
+                    ui.close_system_panels();
+                    if ui.state.status != "closed" {
+                        ui.state.status = "error";
+                        if ui.state.output_error.is_none() {
+                            ui.state.output_error =
+                                Some("run_loop_returned_without_window_closed".into());
+                        }
+                        ui.flush();
+                    }
+                    let _: () = msg_send![&*ui.window, orderOut:std::ptr::null_mut::<AnyObject>()];
+                    if ui.state.status != "closed" || ui.state.output_error.is_some() {
+                        return Err("own window closed state was not verified without error".into());
+                    }
+                }
+                Ok(())
+            });
+            result?;
+        }
+        Ok(())
+    })
+}

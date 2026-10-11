@@ -125,23 +125,48 @@ impl<K: PartialEq> Facts<K> {
         }
         Ok(())
     }
+    fn text_resized_in_place(&self, now: &Self, kind: Kind) -> bool {
+        matches!(kind, Kind::Text)
+            && self.hit_rect.x == now.hit_rect.x
+            && self.hit_rect.y == now.hit_rect.y
+            && now.hit_rect.valid()
+            && now.hit_rect != self.hit_rect
+    }
     fn require_continuation(&self, now: &Self, kind: Kind) -> Result<()> {
+        let grew = self.text_resized_in_place(now, kind);
         if now.identity != self.identity
             || now.process != self.process
             || now.scope != self.scope
             || now.window != self.window
             || now.hit != self.hit
-            || now.hit_id != self.hit_id
+            || (now.hit_id != self.hit_id && !grew)
             || now.window_rect != self.window_rect
-            || now.hit_rect != self.hit_rect
+            || (now.hit_rect != self.hit_rect && !grew)
             || now.point != self.point
             || now.layout != self.layout
             || now.class != self.class
         {
-            return Err(fault(
+            let mut error = fault(
                 "input_anchor_changed",
                 "Native context, process, AX window/hit object or original geometry changed; continuation cannot authorize a replacement.",
-            ));
+            );
+            error.diagnostic = Some(Box::new(serde_json::json!({
+                "identity_changed":now.identity != self.identity,
+                "process_changed":now.process != self.process,
+                "scope_changed":now.scope != self.scope,
+                "window_object_changed":now.window != self.window,
+                "hit_object_changed":now.hit != self.hit,
+                "hit_id_changed":now.hit_id != self.hit_id,
+                "window_rect_changed":now.window_rect != self.window_rect,
+                "hit_rect_before":[self.hit_rect.x,self.hit_rect.y,self.hit_rect.w,self.hit_rect.h],
+                "hit_rect_after":[now.hit_rect.x,now.hit_rect.y,now.hit_rect.w,now.hit_rect.h],
+                "point_changed":now.point != self.point,
+                "layout_changed":now.layout != self.layout,
+                "class_changed":now.class != self.class,
+                "text_resize_in_place":grew,
+                "replay_allowed":false
+            })));
+            return Err(error);
         }
         let focus_allowed = if matches!(kind, Kind::DoubleClick) {
             now.focused == self.focused || now.focused.as_ref() == Some(&self.hit)
@@ -187,11 +212,18 @@ impl<K: PartialEq> Sequence<K> {
             events.1,
             || {
                 operation::checkpoint("macos_continuation_guard")?;
-                let facts = read(self.anchor.is_none())?;
-                facts.validate(expected, target, self.kind)?;
+                let mut facts = read(self.anchor.is_none())?;
                 if let Some(anchor) = &self.anchor {
                     anchor.require_continuation(&facts, self.kind)?;
+                    if anchor.text_resized_in_place(&facts, self.kind) {
+                        // Local normalization only after exact native object,
+                        // focus, process and layout continuity is proven. No new
+                        // public reference, geometry authority or replay token.
+                        facts.hit_id = anchor.hit_id.clone();
+                    }
+                    facts.validate(expected, target, self.kind)?;
                 } else {
+                    facts.validate(expected, target, self.kind)?;
                     candidate = Some(facts);
                 }
                 operation::checkpoint("macos_continuation_ready")

@@ -3,8 +3,8 @@ use super::execution::Execution;
 use super::*;
 use serde_json::Value;
 
-struct Finish(Operation);
-fn fault_result(error: rwi_core::Fault) -> DeviceResult {
+pub(super) struct Finish(pub(super) Operation);
+pub(super) fn fault_result(error: rwi_core::Fault) -> DeviceResult {
     let mut result = DeviceResult::error(&error.code, &error.next_step);
     if let Some(diagnostic) = error.diagnostic {
         result.data["diagnostic"] = *diagnostic;
@@ -33,13 +33,92 @@ fn needs_input_fence(
     resources_released: bool,
     result: &DeviceResult,
 ) -> bool {
+    // Positive backend-issued evidence can distinguish uncertain application
+    // effects from a possibly held key/button. Cleanup uncertainty still fences
+    // and durable receipts still forbid replay, including preparation-only calls.
+    let ax_without_held_input = result.data["dispatch_error"]["code"]
+        == "native_action_unconfirmed"
+        && result.data["dispatch_error"]["diagnostic"]["api"] == "AXUIElementPerformAction"
+        && result.data["dispatch_error"]["diagnostic"]["held_input_resources"] == false
+        && result.data["dispatch_error"]["diagnostic"]["replay_allowed"] == false;
+    let preparation = &result.data["dispatch_error"]["diagnostic"]["dispatch_evidence"];
+    let preparation_without_requested_input = preparation["version"] == 1
+        && preparation["kind"] == "macos_background_preparation_only"
+        && preparation["api"] == "CGEventPostToPid"
+        && preparation["preparation_event"] == "NSApplicationActivatedEventType"
+        && preparation["preparation_events"] == 1
+        && preparation["requested_input_events"] == 0
+        && preparation["held_input_resources"] == false
+        && preparation["replay_allowed"] == false;
     writes
         && (!resources_released
             || result.data["resource_release_uncertain"] == true
             || (entered
+                && !(ax_without_held_input || preparation_without_requested_input)
                 && (result.is_error
                     || result.data["dispatch"] == "uncertain"
                     || result.data["state"] == "uncertain")))
+}
+#[cfg(test)]
+#[test]
+fn preparation_only_uncertainty_requires_complete_native_evidence_and_clean_release() {
+    let mut result = DeviceResult::value(json!({
+        "dispatch": "uncertain",
+        "dispatch_error": {
+            "code": "stale_reference",
+            "diagnostic": {"dispatch_evidence": {
+                "version": 1,
+                "kind": "macos_background_preparation_only",
+                "api": "CGEventPostToPid",
+                "preparation_event": "NSApplicationActivatedEventType",
+                "preparation_events": 1,
+                "requested_input_events": 0,
+                "held_input_resources": false,
+                "replay_allowed": false
+            }}
+        }
+    }));
+    assert!(!needs_input_fence(true, true, true, &result));
+    assert!(needs_input_fence(true, true, false, &result));
+    result.data["resource_release_uncertain"] = json!(true);
+    assert!(needs_input_fence(true, true, true, &result));
+    result.data["resource_release_uncertain"] = json!(false);
+    for (field, wrong) in [
+        ("version", json!(2)),
+        ("kind", json!("unknown")),
+        ("api", json!("AXUIElementPerformAction")),
+        ("preparation_event", json!("mouseDown")),
+        ("preparation_events", json!(0)),
+        ("requested_input_events", json!(1)),
+        ("requested_input_events", json!("0")),
+        ("held_input_resources", json!(true)),
+        ("held_input_resources", json!("false")),
+        ("replay_allowed", json!(true)),
+    ] {
+        let mut invalid = result.clone();
+        invalid.data["dispatch_error"]["diagnostic"]["dispatch_evidence"][field] = wrong;
+        assert!(needs_input_fence(true, true, true, &invalid), "{field}");
+    }
+    for field in [
+        "version",
+        "kind",
+        "api",
+        "preparation_event",
+        "preparation_events",
+        "requested_input_events",
+        "held_input_resources",
+        "replay_allowed",
+    ] {
+        let mut invalid = result.clone();
+        invalid.data["dispatch_error"]["diagnostic"]["dispatch_evidence"]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+        assert!(
+            needs_input_fence(true, true, true, &invalid),
+            "missing {field}"
+        );
+    }
 }
 #[cfg(test)]
 #[test]
@@ -52,6 +131,28 @@ fn cleanup_uncertainty_is_not_mistaken_for_a_clean_pre_dispatch_rejection() {
     let mut cleanup = rejection.clone();
     cleanup.data["resource_release_uncertain"] = true.into();
     assert!(needs_input_fence(true, false, true, &cleanup));
+}
+#[cfg(test)]
+#[test]
+fn ax_effect_uncertainty_does_not_require_unrelated_hardware_to_be_idle() {
+    let mut result = DeviceResult::error("native_action_unconfirmed", "Inspect; never replay.");
+    result.data["dispatch"] = json!("uncertain");
+    result.data["dispatch_error"] = json!({
+        "code": "native_action_unconfirmed",
+        "diagnostic": {"api":"AXUIElementPerformAction", "held_input_resources":false, "replay_allowed":false}
+    });
+    assert!(!needs_input_fence(true, true, true, &result));
+    assert!(needs_input_fence(true, true, false, &result));
+    result.data["resource_release_uncertain"] = json!(true);
+    assert!(needs_input_fence(true, true, true, &result));
+    result.data["resource_release_uncertain"] = json!(false);
+    for evidence in [Value::Null, json!(true), json!("false")] {
+        result.data["dispatch_error"]["diagnostic"]["held_input_resources"] = evidence;
+        assert!(needs_input_fence(true, true, true, &result));
+    }
+    result.data["dispatch_error"]["diagnostic"]["held_input_resources"] = json!(false);
+    result.data["dispatch_error"]["diagnostic"]["api"] = json!("CGEventPostToPid");
+    assert!(needs_input_fence(true, true, true, &result));
 }
 impl Drop for Finish {
     fn drop(&mut self) {
@@ -129,6 +230,9 @@ impl Runtime {
         entry: Arc<Execution>,
         finish: Finish,
     ) -> DeviceResult {
+        if entry.tool == "computer.live" && entry.arguments["action"] != "start" {
+            return self.dispatch_live(context, entry, finish).await;
+        }
         let Ok(permit) = context.gate.clone().try_acquire_owned() else {
             return DeviceResult::error(
                 "context_busy",
@@ -276,7 +380,7 @@ impl Runtime {
         };
         if arguments
             .get("target")
-            .is_some_and(|v| v != &context.target)
+            .is_some_and(|target| !context.owns_target(target))
         {
             return DeviceResult::error("foreign_target", "Use this context's cached handles.");
         }

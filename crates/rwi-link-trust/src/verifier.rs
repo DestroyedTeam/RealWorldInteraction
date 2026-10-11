@@ -28,7 +28,7 @@ impl ServerCertVerifier for PinnedServer {
         let verified = self
             .webpki
             .verify_server_cert(leaf, intermediates, name, ocsp, now)?;
-        if PeerPin::of_der(leaf.as_ref()) != self.pin {
+        if !self.pin.matches(leaf.as_ref()).unwrap_or(false) {
             return Err(Error::General("paired_server_fingerprint_mismatch".into()));
         }
         Ok(verified)
@@ -80,7 +80,7 @@ impl ClientCertVerifier for PinnedClient {
         now: UnixTime,
     ) -> Result<ClientCertVerified, Error> {
         let verified = self.webpki.verify_client_cert(leaf, intermediates, now)?;
-        if !self.pins.contains(&PeerPin::of_der(leaf.as_ref())) {
+        if crate::authenticated_peer_pin(Some(std::slice::from_ref(leaf)), &self.pins).is_err() {
             return Err(Error::General("paired_client_fingerprint_mismatch".into()));
         }
         Ok(verified)

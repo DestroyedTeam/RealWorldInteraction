@@ -5,7 +5,11 @@ fn macos_catalog_never_equates_one_driver_with_every_tool() {
     for tool in [
         "computer.discover",
         "computer.bind_window",
+        "computer.attach_window",
+        "computer.detach_window",
         "computer.observe",
+        "computer.capture_visual",
+        "computer.live",
         "computer.act_checked",
         "computer.recover_input",
         "computer.move_window",
@@ -15,7 +19,6 @@ fn macos_catalog_never_equates_one_driver_with_every_tool() {
     for tool in [
         "computer.activate_window",
         "computer.launch_application",
-        "computer.capture_visual",
         "computer.lifecycle_preflight",
         "computer.lifecycle_receipt",
         "computer.future_unknown",
@@ -26,12 +29,21 @@ fn macos_catalog_never_equates_one_driver_with_every_tool() {
 #[test]
 fn macos_discovery_and_binding_do_not_require_tcc_or_selected_window() {
     let caps = json!({"permissions":{}});
-    for tool in ["computer.discover", "computer.bind_window"] {
+    for tool in [
+        "computer.discover",
+        "computer.bind_window",
+        "computer.attach_window",
+        "computer.detach_window",
+    ] {
         assert_eq!(macos_prerequisite(tool, &caps), None);
     }
     assert_eq!(
         macos_prerequisite("computer.observe", &caps),
         Some("accessibility_permission_missing")
+    );
+    assert_eq!(
+        macos_prerequisite("computer.capture_visual", &caps),
+        Some("screen_capture_permission_missing")
     );
 }
 #[test]
@@ -46,6 +58,10 @@ fn macos_permissions_are_independent_and_binding_replaces_the_foreground_gate() 
         Some("screen_capture_permission_missing")
     );
     assert_eq!(
+        macos_prerequisite("computer.capture_visual", &caps),
+        Some("screen_capture_permission_missing")
+    );
+    assert_eq!(
         macos_prerequisite("computer.recover_input", &caps),
         Some("reconciliation_unavailable")
     );
@@ -54,6 +70,10 @@ fn macos_permissions_are_independent_and_binding_replaces_the_foreground_gate() 
     assert_eq!(macos_prerequisite("computer.recover_input", &caps), None);
     assert_eq!(
         macos_prerequisite("computer.observe", &caps),
+        Some("selected_window_required")
+    );
+    assert_eq!(
+        macos_prerequisite("computer.capture_visual", &caps),
         Some("selected_window_required")
     );
     caps["permissions"]["post_event"] = json!(false);

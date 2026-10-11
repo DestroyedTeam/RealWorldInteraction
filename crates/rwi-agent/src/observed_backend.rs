@@ -12,6 +12,12 @@ pub struct Observed {
     pub entered: Arc<AtomicBool>,
 }
 impl Backend for Observed {
+    fn local_pixel_anchor(&self) -> bool {
+        self.inner.local_pixel_anchor()
+    }
+    fn input_dispatch_count(&self) -> Option<u64> {
+        self.inner.input_dispatch_count()
+    }
     fn identity(&self) -> Identity {
         self.inner.identity()
     }
@@ -26,6 +32,19 @@ impl Backend for Observed {
     }
     fn capture_visual(&mut self, options: VisualOptions) -> Result<VisualCapture> {
         self.inner.capture_visual(options)
+    }
+    fn live(
+        &mut self,
+        action: LiveAction,
+        options: Option<LiveOptions>,
+    ) -> Result<serde_json::Value> {
+        self.inner.live(action, options)
+    }
+    fn live_view(&mut self, update: LiveViewUpdate) -> Result<serde_json::Value> {
+        self.inner.live_view(update)
+    }
+    fn live_controller(&self) -> Result<Arc<dyn LiveController>> {
+        self.inner.live_controller()
     }
     fn observe_region(&mut self, r: [u32; 4]) -> Result<Scene> {
         self.inner.observe_region(r)
@@ -42,6 +61,16 @@ impl Backend for Observed {
     fn bind_window(&mut self, s: &WindowSelection) -> Result<serde_json::Value> {
         self.inner.bind_window(s)
     }
+    fn attach_window(&mut self, s: &WindowSelection) -> Result<rwi_core::WindowAttachment> {
+        let attachment = self.inner.attach_window(s)?;
+        Ok(rwi_core::WindowAttachment {
+            backend: Box::new(Observed {
+                inner: attachment.backend,
+                entered: self.entered.clone(),
+            }),
+            details: attachment.details,
+        })
+    }
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
         self.inner.inspect(s, p, e)
     }
@@ -51,12 +80,32 @@ impl Backend for Observed {
     fn popups(&mut self, scope: &Scope) -> Result<Vec<Popup>> {
         self.inner.popups(scope)
     }
+    fn focus_window(&mut self, r: &Resolved, f: &ForegroundState) -> Result<serde_json::Value> {
+        let before = self.inner.input_dispatch_count();
+        let previous = self.entered.swap(true, Ordering::AcqRel);
+        let result = self.inner.focus_window(r, f);
+        let after = self.inner.input_dispatch_count();
+        if !previous && before.is_some_and(|n| n < u64::MAX) && before == after {
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
+    fn hotkey(&mut self, key: &str, f: &ForegroundState) -> Result<serde_json::Value> {
+        let before = self.inner.input_dispatch_count();
+        let previous = self.entered.swap(true, Ordering::AcqRel);
+        let result = self.inner.hotkey(key, f);
+        let after = self.inner.input_dispatch_count();
+        if !previous && before.is_some_and(|n| n < u64::MAX) && before == after {
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
     fn move_window(&mut self, r: &Resolved, d: &DisplayTarget) -> Result<serde_json::Value> {
         let before = self.inner.input_dispatch_count();
         self.entered.store(true, Ordering::Release);
         let result = self.inner.move_window(r, d);
         let after = self.inner.input_dispatch_count();
-        if before.is_some() && before == after {
+        if before.is_some_and(|n| n < u64::MAX) && before == after {
             // No native dispatch happened; keep the explicit pre-dispatch proof.
             self.entered.store(false, Ordering::Release);
         }
@@ -88,7 +137,7 @@ impl Backend for Observed {
         self.entered.store(true, Ordering::Release);
         let result = self.inner.act(b, r, i, v);
         let after = self.inner.input_dispatch_count();
-        if before.is_some() && before == after {
+        if before.is_some_and(|n| n < u64::MAX) && before == after {
             // Native Windows counters prove a pre-dispatch rejection. Preserve
             // its receipt without unnecessarily fencing the entire input domain.
             self.entered.store(false, Ordering::Release);

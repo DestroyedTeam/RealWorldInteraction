@@ -16,7 +16,7 @@ struct Sink<'a> {
     target: &'a Resolved,
     counters: Arc<std::sync::atomic::AtomicU64>,
     started: Instant,
-    last_point: [f64; 2],
+    gesture: MouseGesture,
 }
 
 impl TrajectorySink for Sink<'_> {
@@ -36,6 +36,7 @@ impl TrajectorySink for Sink<'_> {
                 "Every drag sample must stay inside the pinned window frame; no input.",
             ));
         }
+        validate_capture_fringe(self.delivery.frame, point, &Intent::Click)?;
         Ok(())
     }
     fn guard_point(&mut self, point: [f64; 2], held: bool) -> Result<()> {
@@ -79,48 +80,30 @@ impl TrajectorySink for Sink<'_> {
         Ok(())
     }
     fn press_left(&mut self, point: [f64; 2]) -> Result<()> {
-        let event = CGEvent::new_mouse_event(
-            source()?,
-            CGEventType::LeftMouseDown,
-            CGPoint::new(point[0], point[1]),
-            CGMouseButton::Left,
-        )
-        .map_err(|_| fault("input_allocation_failed", "No mouse down event allocated."))?;
-        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, 1);
+        // Background AppKit views can retain stale pointer-tracking state.
+        // Prime only the already-grounded start point, not an arbitrary titlebar
+        // click. There is still exactly one mouse-down and no system cursor warp.
+        let moved = self.gesture.tracking_event()?;
+        dispatch::count(&self.counters);
+        crate::background::deliver_pointer(&moved, &self.delivery, point);
+        std::thread::sleep(std::time::Duration::from_millis(12));
+        self.guard_point(point, false)?;
+        let event = self.gesture.down_event()?;
         dispatch::count(&self.counters);
         crate::background::deliver_pointer(&event, &self.delivery, point);
-        self.last_point = point;
         Ok(())
     }
     fn move_held(&mut self, point: [f64; 2]) -> Result<()> {
-        let event = CGEvent::new_mouse_event(
-            source()?,
-            CGEventType::LeftMouseDragged,
-            CGPoint::new(point[0], point[1]),
-            CGMouseButton::Left,
-        )
-        .map_err(|_| fault("input_allocation_failed", "No drag event allocated."))?;
+        let (event, motion) = self.gesture.motion_event(point)?;
         dispatch::count(&self.counters);
         crate::background::deliver_pointer(&event, &self.delivery, point);
-        self.last_point = point;
+        self.gesture.commit_motion(motion);
         Ok(())
     }
     fn release_left(&mut self) -> Result<()> {
-        let event = CGEvent::new_mouse_event(
-            source()?,
-            CGEventType::LeftMouseUp,
-            CGPoint::new(self.last_point[0], self.last_point[1]),
-            CGMouseButton::Left,
-        )
-        .map_err(|_| {
-            fault(
-                "input_allocation_failed",
-                "No mouse release event allocated.",
-            )
-        })?;
-        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, 1);
+        let event = self.gesture.release_event()?;
         dispatch::count(&self.counters);
-        crate::background::deliver_pointer(&event, &self.delivery, self.last_point);
+        crate::background::deliver_pointer(&event, &self.delivery, self.gesture.last_point());
         Ok(())
     }
 }
@@ -151,7 +134,7 @@ impl NativeMac {
             target,
             counters,
             started: Instant::now(),
-            last_point: target.point,
+            gesture: MouseGesture::new(target.point, CGMouseButton::Left)?,
         };
         let stats = input_trajectory::execute(path, target.point, &mut sink)?;
         let _ = stats;

@@ -26,7 +26,7 @@ pub(super) fn tools() -> Vec<Tool> {
     vec![
         Tool::new(
             "computer.js",
-            "Run bounded async JS in a persistent owned Rust/QuickJS worker. Available: rwi (RwiClient; rcu is a compatibility alias), state.*, emit(data), emitImage(reply.media[i]). Example: state.targets = await rwi.targets(); emit(state.targets). Use rwi.call(tool,args) for the advertised computer.* tools; rwi.window(exactTarget) provides bind, activate, snapshot, summary, observe, elementsPage, captureVisual and withInput. activate requires a fresh explicit foreground tuple; never silently focus. captureVisual({maxEdge:1024,feedback:\"exclude\"}) is response-only, no input frame; include does not guarantee a visible pointer. Prefer snapshot(): concise controls use act({ref,frame,intent,requestId}) with the exact returned frame. snapshot({preview:true}) adds a mapped 1024px preview; emit data once and media separately. Locals do not persist: use state.window. Await every call. withInput owns its target across wrappers: use its callback observe/snapshot/elementsPage, not outside reads. maxDurationMs stops new scheduling, not in-flight native effects. Cells run serially, max 64 calls / 60s; native authorization, lease, operation refs and no-replay remain authoritative. Errors, cancellation and reset discard JS state; stopping JS does NOT prove native effects stopped. Leases created here are released at cell end, never held across model turns. No Node, shell, filesystem or network API; terminal remains a separate complementary Host channel. Emit only needed data; tool calls are not automatically echoed.",
+            "Run bounded async JS in a persistent owned Rust/QuickJS worker. Available: rwi (RwiClient; rcu is a compatibility alias), state.*, emit(data), emitImage(reply.media[i]). For ordinary input prefer computer.snapshot/controls/click/type_text/press_key/drag; JS is optional orchestration. Example: state.targets = await rwi.targets(); emit(state.targets). rwi.call(tool,args) accepts native catalog tools (e.g. computer.act/observe/resolve_view) and computer.result, not MCP convenience tools; call those typed tools directly; rwi.window(exactTarget) provides bind, activate, snapshot, summary, observe, elementsPage, captureVisual and withInput. activate requires a fresh explicit foreground tuple; never silently focus. captureVisual({maxEdge:1024,feedback:\"exclude\"}) is response-only, no input frame; include does not guarantee a visible pointer. Prefer snapshot(): concise controls use act({ref,frame,intent,requestId}) with the exact returned frame. snapshot({preview:true}) adds a mapped 2048px preview; emit data once and media separately. Multiple wrappers with the same target share one current binding, not independent app windows. Locals do not persist: use state.window. Await every call. withInput owns its target across wrappers: use its callback observe/snapshot/elementsPage, not outside reads. maxDurationMs stops new scheduling, not in-flight native effects. Cells run serially, max 64 calls / 60s; native authorization, lease, operation refs and no-replay remain authoritative. Errors, cancellation and reset discard JS state. execution_summary distinguishes earlier returned dispatches from a later read failure; a failed cell is not a rollback. Never replay the cell; inspect original receipts. Stopping JS does NOT prove native effects stopped. Leases created here are released at cell end, never held across model turns. No Node, shell, filesystem or network API; terminal remains a separate complementary Host channel. Emit only needed data; tool calls are not automatically echoed.",
             Arc::new(
                 serde_json::to_value(schemars::schema_for!(JsArgs))
                     .unwrap()
@@ -156,7 +156,21 @@ impl Repl {
                                 .iter()
                                 .any(|d| d.name == tool)
                         {
-                            return Err(io::Error::other("js_unknown_capability"));
+                            return Err(io::Error::other(format!(
+                                "js_unknown_capability: {tool}. rwi.call accepts native catalog tools and computer.result; call MCP convenience tools directly.",
+                                tool = tool
+                                    .chars()
+                                    .take(128)
+                                    .map(|c| {
+                                        if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')
+                                        {
+                                            c
+                                        } else {
+                                            '?'
+                                        }
+                                    })
+                                    .collect::<String>(),
+                            )));
                         }
                         let Some(arguments) = arguments.as_object().cloned() else {
                             return Err(io::Error::other("js_arguments_not_object"));

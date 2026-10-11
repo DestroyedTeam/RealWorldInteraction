@@ -23,6 +23,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let pin = PeerPin::parse(&"a".repeat(64)).unwrap();
         let policy = Principal {
+            journal_identity: None,
             certificate: pin.clone(),
             observe: true,
             input: true,
@@ -291,7 +292,7 @@ impl Runtime {
         };
         if arguments
             .get("target")
-            .is_some_and(|v| v != &context.target)
+            .is_some_and(|target| !context.owns_target(target))
         {
             return DeviceResult::error(
                 "foreign_target",

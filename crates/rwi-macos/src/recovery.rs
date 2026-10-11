@@ -14,6 +14,11 @@ struct State {
     flags: u64,
 }
 fn require_released(states: &[State]) -> Result<()> {
+    // Legacy conservative reconciliation for potentially interrupted CGEvent
+    // sequences, not a precondition for background input. These global tables
+    // do not attribute a user's keys in another app to an RWI operation.
+    // Native AX actions acquire no held key/button resources and must not
+    // enter this recovery path merely because their business effect is unknown.
     // The hardware source (HIDSystemState, id 1) is the authority on physical
     // input. A key that only the combined-session state still reports down is
     // residue (e.g. a key-up swallowed by another process): our injected
@@ -30,7 +35,7 @@ fn require_released(states: &[State]) -> Result<()> {
     }) {
         return Err(fault(
             "native_input_resources_held",
-            "Native keys, buttons or momentary modifiers are still down. Do not inject cleanup or clear uncertainty; wait for an explicitly authorized fresh resource check.",
+            "Global keys/buttons/modifiers are down; this does not identify an RWI-owned input. This legacy interrupted-event reconciliation cannot prove release. Do not inject cleanup or replay; require scoped ownership evidence or a fresh resource check.",
         ));
     }
     Ok(())

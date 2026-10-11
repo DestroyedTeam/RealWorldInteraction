@@ -219,4 +219,17 @@ pub(super) struct ResolveViewArgs {
     pub(super) view_id: String,
     pub(super) x: f64,
     pub(super) y: f64,
+    #[serde(default)]
+    pub(super) red_marker_cluster: bool,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FocusWindowArgs {
+    pub(super) target: String,
+    pub(super) lease: String,
+    pub(super) reference: String,
+    pub(super) request_id: String,
+    pub(super) expected_foreground: rwi_core::ForegroundState,
+    pub(super) operation_id: Option<String>,
 }

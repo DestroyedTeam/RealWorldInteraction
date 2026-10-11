@@ -2,8 +2,14 @@
 mod cancellation;
 #[cfg(all(test, unix))]
 mod cancellation_tests;
+#[cfg(all(test, unix))]
+mod control_lane_tests;
+mod convenience;
 mod invocation;
+mod live_ui;
+mod presence;
 mod presentation;
+mod progress;
 mod repl;
 mod routing;
 mod shutdown;
@@ -37,6 +43,7 @@ struct Gateway {
     shutdown: tokio::sync::watch::Sender<bool>,
     presentation: Arc<Mutex<presentation::Presentation>>,
     repl: Arc<repl::Repl>,
+    presence: Arc<presence::Views>,
 }
 impl Gateway {
     fn new(profile: io::Result<AdapterProfile>) -> Self {
@@ -74,6 +81,7 @@ impl Gateway {
             shutdown: tokio::sync::watch::channel(false).0,
             presentation: Arc::new(Mutex::new(presentation::Presentation::default())),
             repl: Arc::new(repl::Repl::default()),
+            presence: Arc::new(presence::Views::default()),
         }
     }
     async fn request(
@@ -110,11 +118,23 @@ impl Gateway {
                 DeviceResult::error("device_connection_failed", &format!("{e}; {failure_scope}"))
             })
     }
-    async fn targets(&self) -> DeviceResult {
+    async fn targets(&self, selected_device_id: Option<&str>) -> DeviceResult {
+        let device_ids = match selected_device_id {
+            Some(id) if !device::valid_id(id) => {
+                return DeviceResult::error("invalid_arguments", "Use one valid paired device_id.");
+            }
+            Some(id) if !self.routes.contains_key(id) => {
+                return DeviceResult::error(
+                    "device_unknown",
+                    "The selected device_id is not paired.",
+                );
+            }
+            Some(id) => vec![id.to_owned()],
+            None => self.routes.keys().cloned().collect(),
+        };
         let mut pending = tokio::task::JoinSet::new();
-        for id in self.routes.keys() {
+        for id in device_ids {
             let this = self.clone();
-            let id = id.clone();
             pending.spawn(async move {
                 let d = this.inspect_device(&id).await;
                 (id, d)
@@ -152,7 +172,7 @@ impl Gateway {
             .await
             .as_ref()
             .map(|c| c.token.clone());
-        let description = match self.request(id, previous, Call::Describe).await {
+        let description = match self.request(id, previous.clone(), Call::Describe).await {
             Ok(r) => r,
             Err(e) => return e,
         };
@@ -161,10 +181,13 @@ impl Gateway {
         }
         let route = &self.routes[id];
         let mut context = route.context.lock().await;
-        if description.result.data["context_valid"] == false
-            || context
-                .as_ref()
-                .is_some_and(|c| c.instance != description.instance)
+        // Describe was sent outside the lock: a newer context may have opened
+        // while its response was in flight. Only retire the inspected epoch.
+        if context.as_ref().map(|c| &c.token) == previous.as_ref()
+            && (description.result.data["context_valid"] == false
+                || context
+                    .as_ref()
+                    .is_some_and(|c| c.instance != description.instance))
         {
             *context = None;
         }
@@ -190,7 +213,14 @@ impl Gateway {
             });
         }
         let mut result = description.result;
+        if context.as_ref().map(|c| &c.token) == previous.as_ref()
+            && result.data["context_valid"] == true
+            && result.data["targets"].is_array()
+        {
+            context.as_mut().unwrap().targets = result.data["targets"].clone();
+        }
         result.data["targets"] = context.as_ref().unwrap().targets.clone();
+        self.remember(id, &result.data);
         result
     }
     async fn close(&self) {
@@ -320,38 +350,120 @@ fn mcp_result(mut result: DeviceResult) -> CallToolResult {
     }
     reply
 }
+const SERVER_INSTRUCTIONS: &str = "RWI: use computer.targets({device_id}) for a known device; omit only for all peers (offline peers may delay). Add include_timings only if exposed by the tool input schema: adapter wall time, not native CPU; elapsed_ms is pre-cache. Never replay uncertain input. Keep GUI and terminal evidence separate.";
+
+#[cfg(test)]
+mod instruction_contract {
+    #[test]
+    fn timing_guidance_is_schema_scoped_and_keeps_no_replay() {
+        let instructions = super::SERVER_INSTRUCTIONS;
+        assert!(
+            instructions.contains("Add include_timings only if exposed by the tool input schema")
+        );
+        assert!(!instructions.contains("include_timings=true adds"));
+        assert!(instructions.contains("Never replay uncertain input"));
+        assert!(instructions.contains("elapsed_ms is pre-cache"));
+    }
+}
+
 impl ServerHandler for Gateway {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_server_info(Implementation::new("real-world-interaction",env!("CARGO_PKG_VERSION"))).with_instructions("Generic multi-device RWI. Select computer.targets. Never replay uncertain input. GUI and terminal are complementary; report each channel's evidence separately.")
+        let mut capabilities = ServerCapabilities::builder()
+            .enable_tools()
+            .enable_resources()
+            .build();
+        capabilities.extensions = Some(BTreeMap::from([(
+            live_ui::EXTENSION.into(),
+            json!({"mimeTypes":[live_ui::MIME]})
+                .as_object()
+                .unwrap()
+                .clone(),
+        )]));
+        ServerInfo::new(capabilities)
+            .with_server_info(Implementation::new(
+                "real-world-interaction",
+                env!("CARGO_PKG_VERSION"),
+            ))
+            .with_instructions(SERVER_INSTRUCTIONS)
     }
     async fn list_tools(
         &self,
         _: Option<PaginatedRequestParams>,
-        _: RequestContext<RoleServer>,
+        context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
+        let ui_supported = live_ui::negotiated(&context);
         let mut tools: Vec<_> = device::catalog::definitions()
             .into_iter()
             .map(|mut d| {
                 schema_numbers(&mut d.input_schema);
-                Tool::new(
+                let tool = Tool::new(
                     d.name,
                     d.description,
                     Arc::new(d.input_schema.as_object().unwrap().clone()),
-                )
+                );
+                match d.name {
+                    "computer.live" => tool.with_title("Control task Live preview"),
+                    "computer.hotkey" => tool.with_title("Send foreground/system shortcut"),
+                    "computer.attach_window" => tool.with_title("Attach independent window"),
+                    "computer.detach_window" => tool.with_title("Detach window binding"),
+                    "computer.targets" => tool.with_title("Inspect paired devices"),
+                    "computer.discover" => tool.with_title("Find native windows"),
+                    "computer.bind_window" => tool.with_title("Select exact native window"),
+                    "computer.observe" => tool.with_title("Observe selected window"),
+                    "computer.capture_visual" => tool.with_title("Capture read-only window visual"),
+                    "computer.act_checked" => tool.with_title("Act on exact observed control"),
+                    "computer.operation" => tool.with_title("Query original operation"),
+                    "computer.cancel" => tool.with_title("Cancel pending operation"),
+                    "computer.verify" => tool.with_title("Verify native state"),
+                    _ => tool,
+                }
             })
             .collect();
         tools.push(Tool::new("computer.result", "Read retained original metadata from this adapter's result_ref. No device RPC, capture or input. Use a JSON pointer and array pages; byte_offset=0 exports any large value as bounded UTF-8 JSON chunks. References expire independently of native execution; never replay input to recreate them.", Arc::new(serde_json::to_value(schemars::schema_for!(presentation::ResultArgs)).unwrap().as_object().unwrap().clone())));
         tools.extend(repl::tools());
+        tools.extend(convenience::tools());
+        if ui_supported {
+            tools.push(live_ui::start_tool());
+            tools.push(live_ui::presence_tool());
+        }
         Ok(ListToolsResult {
             tools,
             ..Default::default()
         })
+    }
+    async fn list_resources(
+        &self,
+        _: Option<PaginatedRequestParams>,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, ErrorData> {
+        Ok(ListResourcesResult {
+            resources: vec![live_ui::resource()],
+            ..Default::default()
+        })
+    }
+    async fn read_resource(
+        &self,
+        p: ReadResourceRequestParams,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResult, ErrorData> {
+        live_ui::read(&p.uri)
     }
     async fn call_tool(
         &self,
         p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        if p.name == live_ui::PRESENCE_TOOL {
+            return Ok(mcp_result(
+                self.app_live_presence(p.arguments.unwrap_or_default(), &context)
+                    .await,
+            ));
+        }
+        if p.name == live_ui::START_TOOL {
+            return Ok(self
+                .start_live_app(p.arguments.unwrap_or_default(), context)
+                .await);
+        }
         if p.name == "computer.js" {
             return Ok(self
                 .repl
@@ -409,6 +521,16 @@ impl Gateway {
                 }
             }
         };
+        if convenience::handles(&p.name) {
+            return Ok(mcp_result(
+                self.convenience(
+                    &p.name,
+                    Value::Object(p.arguments.unwrap_or_default()),
+                    context,
+                )
+                .await,
+            ));
+        }
         let mut result = self
             .invoke(
                 &p.name,

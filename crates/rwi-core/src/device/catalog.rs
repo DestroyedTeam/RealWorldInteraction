@@ -3,7 +3,10 @@ use super::api::*;
 use serde_json::Value;
 #[derive(serde::Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct Empty {}
+pub struct TargetsArgs {
+    /// Probe only this paired device; omit to inspect every configured device.
+    pub device_id: Option<String>,
+}
 pub struct ToolDefinition {
     pub name: &'static str,
     pub description: &'static str,
@@ -13,6 +16,30 @@ pub struct ToolDefinition {
 pub fn definitions() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
+            name: "computer.hotkey",
+            description: "Explicit foreground/system keyboard input on an authorized macOS desktop, e.g. cmd+tab. Supply original desktop target, shared input lease, stable request_id and fresh expected_foreground from targets. Posts one bounded balanced key/modifier sequence into the system stream, not to a PID. Yields to recent HID activity or changed foreground/session; always releases its own posted keys. No text, auto-focus, background fallback or replay. Receipt is not a verified switch; independently observe foreground. Unsupported/scoped-window backends refuse.",
+            input_schema: serde_json::to_value(schemars::schema_for!(HotkeyArgs)).unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
+            name: "computer.focus_window",
+            description: "Explicitly bring one bound macOS visual window to foreground via public AX APIs, never a background-input fallback. Resolve kind=window from a <=10s frame; supply lease, stable request_id, and exact expected_foreground from targets/metadata. Guard identity/context/current foreground and HID activity. Each AX request once, no keys/warp/unhide/restore/retry. Receipt is not a goal or input grant; inspect fresh native foreground independently. Unsupported backends refuse.",
+            input_schema: serde_json::to_value(schemars::schema_for!(FocusWindowArgs)).unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
+            name: "computer.attach_window",
+            description: "Create a NEW independent window target from the original desktop target and one fresh computer.discover selection (exact window/PID/native_epoch, relation=initial). Does not launch, activate, move, capture or replace the original binding/Live source. Use the returned target for snapshot/controls/actions. Windows are independently referenced but share the same physical desktop lease. Maximum 16 targets per context. Unsupported platforms report capability_unavailable.",
+            input_schema: serde_json::to_value(schemars::schema_for!(BindArgs)).unwrap(),
+            writes: false,
+        },
+        ToolDefinition {
+            name: "computer.detach_window",
+            description: "Retire one attached window target without closing its application/window. Release that target's lease first. Drops its cached frames/references and Live session; durable action receipts remain queryable and input is never replayed. Cannot detach the original desktop target; context close retires all bindings.",
+            input_schema: serde_json::to_value(schemars::schema_for!(DetachWindowArgs)).unwrap(),
+            writes: false,
+        },
+        ToolDefinition {
             name: "computer.recover_input",
             description: "Explicitly reconcile an input resource domain returned by computer.targets. Requires input authorization, idle native writers and independent native key/button state. Retains every uncertain action and rejects all old operation replays; this does not verify or retry the business goal.",
             input_schema: serde_json::to_value(schemars::schema_for!(RecoverInputArgs)).unwrap(),
@@ -20,8 +47,8 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.targets",
-            description: "List explicit targets, pinned identities and actual native capabilities. No discovery or wakeup of virtual machines.",
-            input_schema: serde_json::to_value(schemars::schema_for!(Empty)).unwrap(),
+            description: "List explicit targets, pinned identities and actual native capabilities. Optional device_id probes only that paired endpoint, avoiding delays from unrelated offline devices; omit it to inspect all configured devices. No discovery or wakeup of virtual machines.",
+            input_schema: serde_json::to_value(schemars::schema_for!(TargetsArgs)).unwrap(),
             writes: false,
         },
         ToolDefinition {
@@ -32,13 +59,19 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.capture_visual",
-            description: "Read a lightweight visible-desktop image of the exact selected native window. max_edge=64..2048 (default 1024), no upscaling. feedback=exclude (default) suspends the device presenter only during pixel copy; include means do not actively exclude, not a promise that a marker appears. No UIA walk, activation, lease, frame, artifact, view or input reference. This visual_id cannot authorize input. Native worker/cancellation and pre/post identity/visibility/geometry checks still apply; pixels are not an atomic compositor transaction.",
+            description: "Read one bounded visual of the exact selected native window: Windows copies its visible desktop rectangle (other occlusion may appear); macOS uses a ScreenCaptureKit exact-window filter (separate panels are not included). max_edge=64..2048, no upscaling. feedback=exclude by default; inclusion does not promise a marker. No AX/UIA walk, activation, lease, frame, artifact, view or input reference. This visual_id cannot authorize input. Native pre/post identity and geometry checks apply; pixels are not an atomic compositor transaction.",
             input_schema: serde_json::to_value(schemars::schema_for!(CaptureVisualArgs)).unwrap(),
             writes: false,
         },
         ToolDefinition {
+            name: "computer.live",
+            description: "Control a bounded macOS Live overlay: start, hide, resume, pause, stop or status. Start needs options.display and a bound visual window. Open returned viewer.url via open_in_codex in this task; the overlay is hidden until that panel is visible. Switching tasks or covering/closing the panel hides and clears it. Follows explicit visual bindings; semantic-only dialogs do not change its source. Hide clears and removes the native panel until resume; pause clears but keeps a placeholder; stop/context close/expiry ends capture. No focus, input, screen-recording protection or native Host task-ID attestation. Inspect presenter status.",
+            input_schema: serde_json::to_value(schemars::schema_for!(LiveArgs)).unwrap(),
+            writes: false,
+        },
+        ToolDefinition {
             name: "computer.resolve",
-            description: "Bind one semantic element, window-level placement locator (kind=window) or original-image pixel to a specific frame, native window and PID. Ambiguous/unknown mappings are rejected; kind=window yields a non-input reference for computer.move_window.",
+            description: "Bind one semantic element, window-level placement locator (kind=window) or original-image pixel to a specific frame, native window and PID. Ambiguous/unknown mappings are rejected; kind=window yields a non-input reference for computer.move_window or explicit computer.focus_window.",
             input_schema: serde_json::to_value(schemars::schema_for!(ResolveArgs)).unwrap(),
             writes: false,
         },
@@ -50,7 +83,7 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.act",
-            description: "Dispatch one intent against a fresh native binding, lease and stable request_id. Windows needs an allocated input grant; Text/KeyChord need exact focused UIA element. Text: 1..1024 UTF-16 units, no control chars; Enter/Tab separate. Chords: Ctrl/Alt/Shift+key. Read capabilities for scroll units. Typed intent {drag:{waypoints:[{at_ms,offset:[dx,dy]}]}} performs one bounded device-paced left drag when pointer_drag.implemented is advertised; offsets use device physical pixels from the reference, not preview pixels. No automatic focus or replay; independently verify.",
+            description: "Dispatch one intent against a fresh native binding, lease and stable request_id. move_pointer sends one checked mouse-move with no value or button transition; requires pointer_move.implemented, and is not proof of hover/tooltip success. Windows needs an allocated input grant; Text/KeyChord need exact focused UIA element. Text: 1..1024 UTF-16 units, no control chars; Enter/Tab separate. Chords: Ctrl/Alt/Shift+key. Read capabilities for scroll units. Typed intent {drag:{waypoints:[{at_ms,offset:[dx,dy]}]}} performs one bounded device-paced left drag when pointer_drag.implemented is advertised; offsets use device physical pixels from the reference, not preview pixels. No automatic focus or replay; independently verify.",
             input_schema: serde_json::to_value(schemars::schema_for!(ActArgs)).unwrap(),
             writes: true,
         },
@@ -65,7 +98,7 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.move_window",
-            description: "Explicitly move the bound window onto a requested display (built_in and/or exact native id). Lease-scoped and idempotent: it never presses input, never focuses, never replays, and invalidates frames/references on this target. Unsupported platforms fail closed.",
+            description: "Explicitly move the bound window onto a requested display (built_in, exact native id, and/or macOS ColorSync UUID). All supplied selectors must match one current display. Lease-scoped and idempotent: it never presses input, never focuses, never replays, and invalidates frames/references on this target. Unsupported platforms fail closed.",
             input_schema: serde_json::to_value(schemars::schema_for!(
                 crate::device::api::MoveWindowArgs
             ))
@@ -124,7 +157,7 @@ pub fn definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "computer.discover",
-            description: "Discover windows in the allocated desktop: at most 8 windows / 12 KiB structured data per page. Prefer an exact pid or title_contains filter to avoid model-side long enumeration. Use next_cursor alone for the same cached result; complete=false is not absence. Read-only, no focus or VM wakeup.",
+            description: "Discover windows in the allocated desktop: at most 8 windows / 12 KiB structured data per page. On macOS each page also reports current displays with ColorSync UUIDs when available; numeric display ids and coordinates can change. Prefer an exact pid or title_contains filter. Use next_cursor alone for the same cached result; complete=false is not absence. Read-only, no focus or VM wakeup.",
             input_schema: serde_json::to_value(schemars::schema_for!(TargetArgs)).unwrap(),
             writes: false,
         },
@@ -167,7 +200,7 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
             Ok(())
         }
         "computer.targets" => {
-            let _: Empty = serde_json::from_value(args.clone())?;
+            let _: TargetsArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.observe" => {
@@ -176,6 +209,10 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
         }
         "computer.capture_visual" => {
             let _: CaptureVisualArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.live" => {
+            let _: LiveArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.resolve" => {
@@ -226,8 +263,12 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
             let _: TargetArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
-        "computer.bind_window" => {
+        "computer.bind_window" | "computer.attach_window" => {
             let _: BindArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.detach_window" => {
+            let _: DetachWindowArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.pointer_feedback" => {
@@ -236,6 +277,14 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
         }
         "computer.move_window" => {
             let _: crate::device::api::MoveWindowArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.focus_window" => {
+            let _: FocusWindowArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.hotkey" => {
+            let _: HotkeyArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
         "computer.image" => {
@@ -272,4 +321,88 @@ pub fn executable(tool: &str) -> bool {
             "computer.targets" | "computer.operation" | "computer.cancel"
         )
         && !cached_read(tool)
+}
+
+#[cfg(test)]
+mod foreground_contract_tests {
+    fn focus_request() -> serde_json::Value {
+        serde_json::json!({
+            "target": "fixture-target",
+            "lease": "fixture-lease",
+            "reference": "fixture-window-reference",
+            "request_id": "focus-validator-fixture",
+            "expected_foreground": {
+                "pid": 7,
+                "window": "cgwindow:77",
+                "process_start": "fixture-process-start",
+                "native_epoch": "fixture-native-epoch"
+            }
+        })
+    }
+
+    #[test]
+    fn focus_validator_accepts_complete_request_and_keeps_required_fields() {
+        let valid = focus_request();
+        super::validate("computer.focus_window", &valid).unwrap();
+        for field in [
+            "target",
+            "lease",
+            "reference",
+            "request_id",
+            "expected_foreground",
+        ] {
+            let mut incomplete = valid.clone();
+            incomplete.as_object_mut().unwrap().remove(field);
+            assert!(
+                super::validate("computer.focus_window", &incomplete).is_err(),
+                "{field}"
+            );
+        }
+        let mut wrong_type = valid;
+        wrong_type["expected_foreground"]["pid"] = serde_json::json!("not-a-pid");
+        assert!(super::validate("computer.focus_window", &wrong_type).is_err());
+        assert_eq!(
+            super::validate("computer.not_a_real_tool", &serde_json::json!({}))
+                .unwrap_err()
+                .to_string(),
+            "unknown capability"
+        );
+    }
+
+    #[test]
+    fn focus_validator_catalog_covers_every_advertised_tool() {
+        for definition in super::definitions() {
+            // Missing required values can fail schema validation; an advertised
+            // name must not fall through to the unknown-capability branch.
+            if let Err(error) = super::validate(definition.name, &serde_json::json!({})) {
+                assert_ne!(
+                    error.to_string(),
+                    "unknown capability",
+                    "{}",
+                    definition.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn foreground_focus_catalog_has_explicit_window_ref_and_before_tuple() {
+        let defs = super::definitions();
+        let tool = defs.iter().find(|d| d.name == "computer.focus_window");
+        assert!(tool.is_some(), "explicit macOS foreground route missing");
+        let tool = tool.unwrap();
+        assert!(tool.writes);
+        for field in [
+            "target",
+            "reference",
+            "lease",
+            "request_id",
+            "expected_foreground",
+        ] {
+            assert!(
+                tool.input_schema["properties"].get(field).is_some(),
+                "{field}"
+            );
+        }
+    }
 }

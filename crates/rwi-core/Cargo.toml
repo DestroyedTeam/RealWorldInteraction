@@ -13,6 +13,7 @@ serde_json.workspace = true
 schemars.workspace = true
 sha2.workspace = true
 uuid.workspace = true
+png = "=0.18.1"
 
 [dev-dependencies]
 tempfile.workspace = true

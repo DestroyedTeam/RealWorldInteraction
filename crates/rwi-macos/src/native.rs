@@ -1,8 +1,15 @@
+pub(crate) mod activation;
+mod coverage;
 mod delegation;
+pub(crate) mod hotkey;
 mod input;
 pub(crate) use input::NATIVE_SAMPLE_INTERVAL_MS;
 mod keyboard;
 mod metadata;
+mod objects;
+mod semantic;
+pub(crate) use semantic::focused_dialog_window;
+mod visual;
 use crate::{
     capture::Capturer,
     ffi::{self, Cf},
@@ -31,15 +38,22 @@ pub(crate) fn popups_for_pid(pid: u32) -> Vec<rwi_core::Popup> {
 }
 pub(crate) const AX_TREE_MAX_NODES: usize = 512;
 pub(crate) const AX_TREE_MAX_QUEUE: usize = 1024;
+/// The previous 16-level walk stopped before deep controls in Chromium's AX
+/// projection (the allocated local fixture has 24 explicitly labelled groups).
+/// Keep a finite depth cap; node, queue and wall-clock budgets still dominate.
+pub(crate) const AX_TREE_MAX_DEPTH: usize = 40;
 pub struct NativeMac {
     pub(crate) pid: u32,
     window: u32,
     identity: Identity,
     process: String,
     allow_input: bool,
+    pub(crate) semantic_only: bool,
     capturer: Capturer,
     pub(crate) hit_diagnostics: std::sync::Mutex<Vec<serde_json::Value>>,
     dispatches: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    objects: std::sync::Mutex<objects::Objects<objects::Ax>>,
+    pub(crate) last_observation: std::sync::Mutex<serde_json::Value>,
 }
 #[derive(Clone)]
 struct AxElement {
@@ -59,8 +73,12 @@ impl TextClass {
         if subrole == Some("AXSecureTextField") {
             return Self::Secure;
         }
-        if matches!(role, "AXTextField" | "AXTextArea") {
-            if subrole.is_some_and(|s| !s.is_empty() && s != "AXUnknown") {
+        // Editable combo boxes (for example Paint S's font-size control) use
+        // AXValue as their text surface. This classification alone grants no
+        // input: the native batch still requires AXValue to be settable and
+        // the exact hit object to equal AXFocusedUIElement.
+        if matches!(role, "AXTextField" | "AXTextArea" | "AXComboBox") {
+            if subrole.is_some_and(|s| s != "AXUnknown") {
                 Self::Plain
             } else {
                 Self::Unknown
@@ -85,6 +103,7 @@ struct Metadata {
     modal: Option<bool>,
     blocked: Option<bool>,
     mapping_ready: bool,
+    coverage: serde_json::Value,
 }
 #[derive(Clone)]
 pub(crate) struct Window {
@@ -96,6 +115,9 @@ pub(crate) struct Window {
 }
 
 impl Backend for NativeMac {
+    fn local_pixel_anchor(&self) -> bool {
+        !self.semantic_only
+    }
     fn input_dispatch_count(&self) -> Option<u64> {
         Some(self.dispatches.load(std::sync::atomic::Ordering::Acquire))
     }
@@ -110,8 +132,18 @@ impl Backend for NativeMac {
                 .ok()
                 .and_then(|f| f.console_seat),
         );
-        caps["target_scope"] =
-            serde_json::json!("pinned foreground PID + CGWindowID + process start");
+        caps["current_foreground"] = activation::foreground_state()
+            .ok()
+            .and_then(|f| serde_json::to_value(f).ok())
+            .unwrap_or(serde_json::Value::Null);
+        caps["observation_consistency"] = self
+            .last_observation
+            .lock()
+            .map(|v| v.clone())
+            .unwrap_or_default();
+        caps["target_scope"] = serde_json::json!(
+            "pinned PID + CGWindowID + process start; no implicit foreground requirement"
+        );
         // The legacy pinned constructor does not gain dynamic catalog operations.
         caps["window_discovery"]["implemented"] = serde_json::json!(false);
         caps["pointer_feedback"] = crate::overlay::status_json();
@@ -121,20 +153,45 @@ impl Backend for NativeMac {
         };
         caps
     }
+    fn capture_visual(&mut self, options: VisualOptions) -> Result<VisualCapture> {
+        self.visual_capture(options)
+    }
     fn observe(&mut self) -> Result<Scene> {
+        // Never reuse a previous snapshot's coverage/timings for a failed or
+        // visual-only read. Exact input revalidation does not touch this report.
+        if let Ok(mut saved) = self.last_observation.lock() {
+            *saved = serde_json::Value::Null;
+        }
+        if self.semantic_only {
+            let before = self.capture_guard_metadata()?;
+            let after = self.metadata()?;
+            if before.binding != after.binding || before.blocked != after.blocked {
+                return Err(fault(
+                    "semantic_binding_changed",
+                    "The exact focused dialog changed during observation.",
+                ));
+            }
+            if let Ok(mut saved) = self.last_observation.lock() {
+                *saved = serde_json::json!({"scope":"last_observe","window_context_stable":true,
+                    "pixel_semantic_atomic":false,"controls_source":"post_native_metadata",
+                    "input_revalidation_required":true,"ax_coverage_before":before.coverage,
+                    "ax_coverage_after":after.coverage});
+            }
+            let mut scene = self.metadata_scene(after, [0, 0], Vec::new(), None);
+            scene.pixel_to_desktop = None;
+            scene.image_normalization="semantic-only AX dialog; no pixels, visual mapping, or inferred rendering-window identity".into();
+            return Ok(scene);
+        }
         if !unsafe { ffi::CGPreflightScreenCaptureAccess() } {
             return Err(fault(
                 "screen_capture_permission_missing",
                 "Screen capture must already be permitted; no permission request is triggered.",
             ));
         }
-        // Background observation: activate the target application internally first
-        // so its chrome/state is stable for this frame and later revalidation.
-        if self.foreground_pid() != Some(self.pid)
-            && crate::background::activate_background_window(self.pid, self.window)
-        {
-            std::thread::sleep(std::time::Duration::from_millis(30));
-        }
+        // Observation is read-only, including for background applications.
+        // Sending an AppKit activation event here can change key-window/chrome
+        // state or dismiss a transient panel, despite not moving OS foreground.
+        // Any input preparation belongs to an explicitly leased input operation.
         // A window that is mid-animation repaints between the pre/post reads even
         // though nothing actionable changed. Retry the read-only capture a bounded
         // number of times with a short settle wait; the returned frame is still
@@ -142,37 +199,55 @@ impl Backend for NativeMac {
         let mut settled = None;
         for attempt in 0..3 {
             let result = (|| -> Result<Scene> {
-                let before = self.metadata()?;
+                let phase = Instant::now();
+                let before = self.capture_guard_metadata()?;
+                let before_ms = phase.elapsed().as_millis() as u64;
+                let phase = Instant::now();
                 let capture = self.capturer.capture(self.pid, self.window, before.rect)?;
+                let capture_ms = phase.elapsed().as_millis() as u64;
+                let phase = Instant::now();
                 let after = self.metadata()?;
-                if before.binding != after.binding
-                    || before.blocked != after.blocked
-                    || before
-                        .elements
-                        .iter()
-                        .map(|e| (e.element.revision(), &e.value))
-                        .collect::<Vec<_>>()
-                        != after
-                            .elements
-                            .iter()
-                            .map(|e| (e.element.revision(), &e.value))
-                            .collect::<Vec<_>>()
-                {
-                    return Err(fault(
-                        "capture_binding_changed",
-                        "Focus/layout/AX content changed during capture; observe again.",
-                    ));
+                let after_ms = phase.elapsed().as_millis() as u64;
+                // A second full tree was previously discarded even though only
+                // window/context/modal changes gate read-only capture. Do not
+                // claim semantic equality when that comparison is not collected.
+                let semantic_content_changed: Option<bool> = None;
+                if let Some(error) = capture_consistency_failure(
+                    before.binding != after.binding,
+                    before.blocked != after.blocked,
+                    semantic_content_changed,
+                    [before.elements.len(), after.elements.len()],
+                    attempt + 1,
+                ) {
+                    return Err(error);
                 }
-                Ok(self.metadata_scene(
+                if let Ok(mut saved) = self.last_observation.lock() {
+                    *saved = serde_json::json!({"scope":"last_observe","window_context_stable":true,
+                        "pixel_semantic_atomic":false,"semantic_content_changed":semantic_content_changed,
+                        "controls_source":"post_capture_native_metadata","input_revalidation_required":true,
+                        "attempts":attempt+1,"before_elements":null,"after_elements":after.elements.len(),"control_tree_walks":1,
+                        "metadata_before_ms":before_ms,"capture_ms":capture_ms,"metadata_after_ms":after_ms,
+                        "ax_coverage_before":before.coverage,"ax_coverage_after":after.coverage});
+                }
+                let mut scene = self.metadata_scene(
                     after,
                     capture.size,
                     capture.png,
                     Some(&capture.content_sha),
-                ))
+                );
+                scene.atomicity = "native window/context pre/post guarded; pixels precede controls; one post-capture tree, semantic comparison not collected; non-atomic, every input revalidates its original target".into();
+                Ok(scene)
             })();
             match result {
                 Ok(scene) => return Ok(scene),
-                Err(error) if error.code == "capture_binding_changed" && attempt < 2 => {
+                Err(error) if visual::ax_unavailable_for_visual(&error) => {
+                    return self.observe_visual_only(&error);
+                }
+                Err(error)
+                    if attempt < 2
+                        && (error.code == "capture_binding_changed"
+                            || ffi::observation_read_can_settle(&error)) =>
+                {
                     settled = Some(error);
                     std::thread::sleep(std::time::Duration::from_millis(150));
                 }
@@ -191,7 +266,12 @@ impl Backend for NativeMac {
         if reference.scope.element.is_none() {
             return self.observe();
         }
-        Ok(self.metadata_scene(self.metadata()?, [0, 0], Vec::new(), None))
+        Ok(self.metadata_scene(
+            self.metadata_for(Some(reference))?,
+            [0, 0],
+            Vec::new(),
+            None,
+        ))
     }
 
     fn feedback(&mut self, visible: bool, point: Option<[f64; 2]>) -> Result<serde_json::Value> {
@@ -217,6 +297,13 @@ impl Backend for NativeMac {
     fn popups(&mut self, _scope: &rwi_core::Scope) -> Result<Vec<rwi_core::Popup>> {
         Ok(crate::native::popups_for_pid(self.pid))
     }
+    fn focus_window(
+        &mut self,
+        r: &Resolved,
+        f: &rwi_core::ForegroundState,
+    ) -> Result<serde_json::Value> {
+        self.focus_exact_window(r, f)
+    }
     fn move_window(
         &mut self,
         reference: &Resolved,
@@ -231,10 +318,7 @@ impl Backend for NativeMac {
         let target = crate::native::displays()?
             .into_iter()
             .find(|candidate| {
-                display
-                    .built_in
-                    .is_none_or(|built_in| candidate.built_in == built_in)
-                    && display.id.is_none_or(|id| candidate.id == id)
+                display.matches(candidate.built_in, candidate.id, candidate.uuid.as_deref())
             })
             .ok_or_else(|| {
                 fault(
@@ -242,10 +326,11 @@ impl Backend for NativeMac {
                     "No active display matches the requested target; nothing was moved.",
                 )
             })?;
-        self.place_window_on(&target)?;
+        let requested_origin = self.place_window_on(&target)?;
         Ok(serde_json::json!({
             "window": self.window_name(),
-            "display": {"id": target.id, "built_in": target.built_in},
+            "display": {"id": target.id, "uuid": target.uuid, "built_in": target.built_in},
+            "requested_origin": requested_origin,
             "input_sent": false,
             "activated": false,
         }))
@@ -313,6 +398,36 @@ impl Backend for NativeMac {
         })
     }
 }
+
+/// Window/context changes invalidate the capture. Unrelated semantic changes
+/// remain explicit non-atomic read evidence; input revalidates the chosen target.
+fn capture_consistency_failure(
+    binding_changed: bool,
+    blocked_changed: bool,
+    semantic_content_changed: Option<bool>,
+    element_counts: [usize; 2],
+    attempt: u8,
+) -> Option<rwi_core::Fault> {
+    if !(binding_changed || blocked_changed) {
+        return None;
+    }
+    let mut error = fault(
+        "capture_binding_changed",
+        "Pre/post native metadata changed during capture; inspect diagnostic dimensions and obtain a fresh observation.",
+    );
+    error.diagnostic = Some(Box::new(serde_json::json!({
+        "stage":"capture_pre_post_metadata",
+        "attempt":attempt,
+        "binding_changed":binding_changed,
+        "blocked_changed":blocked_changed,
+        "semantic_content_changed":semantic_content_changed,
+        "before_elements":element_counts[0],
+        "after_elements":element_counts[1],
+        "native_input_dispatched":false,
+        "replay_allowed":false,
+    })));
+    Some(error)
+}
 pub(crate) fn process_epoch(pid: u32) -> Result<String> {
     let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
     let bytes = unsafe {
@@ -351,9 +466,12 @@ pub(crate) struct WindowInventory {
     pub invalid_rows: usize,
 }
 pub(crate) fn window_inventory() -> Result<WindowInventory> {
+    window_inventory_with_options(1 | 16)
+}
+fn window_inventory_with_options(options: u32) -> Result<WindowInventory> {
     let _call = operation::native_call("macos_window_inventory")?;
     unsafe {
-        let array = Cf::owned(ffi::CGWindowListCopyWindowInfo(1 | 16, 0))?;
+        let array = Cf::owned(ffi::CGWindowListCopyWindowInfo(options, 0))?;
         let rows = ffi::array(array.0, 2048)?;
         let native_rows = rows.len();
         let mut out = Vec::new();
@@ -400,6 +518,7 @@ pub(crate) fn window_inventory() -> Result<WindowInventory> {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Display {
     pub id: u32,
+    pub uuid: Option<String>,
     pub built_in: bool,
     pub rect: Rect,
     pub pixels: [u64; 2],
@@ -416,8 +535,15 @@ pub(crate) fn displays() -> Result<Vec<Display>> {
     for id in ids {
         let display = CGDisplay::new(id);
         let bounds = display.bounds();
+        let uuid = unsafe { Cf::owned(ffi::CGDisplayCreateUUIDFromDisplayID(id)) }
+            .ok()
+            .and_then(|uuid| {
+                unsafe { Cf::owned(ffi::CFUUIDCreateString(std::ptr::null(), uuid.0)) }.ok()
+            })
+            .and_then(|text| text.string().ok());
         out.push(Display {
             id,
+            uuid,
             built_in: unsafe { ffi::CGDisplayIsBuiltin(id) != 0 },
             rect: Rect {
                 x: bounds.origin.x,
@@ -582,6 +708,41 @@ fn read_classified_value(
 ) -> Option<String> {
     if class.readable() { read() } else { None }
 }
+// AXValue is not always CFString: checkboxes/radio buttons commonly use
+// CFNumber (including mixed state 2), and sliders may expose fractions.
+// Keep the existing text-classification gate at the caller; never stringify
+// arbitrary CF objects or read secure/unknown text through this helper.
+fn scalar_ax_value(value: &Cf) -> Option<String> {
+    value
+        .string()
+        .ok()
+        .or_else(|| value.boolean().map(|v| if v { "1" } else { "0" }.into()))
+        .or_else(|| unsafe { ffi::number(value.0) }.map(|v| v.to_string()))
+        .or_else(|| {
+            unsafe { ffi::real(value.0) }
+                .filter(|v| v.is_finite())
+                .map(|v| v.to_string())
+        })
+}
+
+#[cfg(test)]
+#[test]
+fn scalar_ax_values_preserve_off_on_mixed_and_fractional_values() {
+    use core_foundation::{base::TCFType, number::CFNumber};
+    for (number, expected) in [(0.0, "0"), (1.0, "1"), (2.0, "2"), (0.75, "0.75")] {
+        let native = CFNumber::from(number);
+        let value = unsafe { Cf::owned(ffi::CFRetain(native.as_CFTypeRef().cast())).unwrap() };
+        assert_eq!(scalar_ax_value(&value).as_deref(), Some(expected));
+    }
+    assert_eq!(
+        read_classified_value(TextClass::Secure, || panic!("must not read secure value")),
+        None
+    );
+    assert_eq!(
+        read_classified_value(TextClass::Unknown, || panic!("must not read unknown value")),
+        None
+    );
+}
 fn require_nonsecure_input(el: &AxElement) -> Result<()> {
     if el.text_class.readable() {
         Ok(())
@@ -642,7 +803,14 @@ pub(crate) fn action_names(el: &Cf) -> Vec<String> {
 }
 fn element_description(el: &Cf) -> Result<AxElement> {
     let role = el.attr("AXRole")?.string()?;
-    let subrole = el.attr("AXSubrole").ok().and_then(|v| v.string().ok());
+    let subrole = match el.attr("AXSubrole") {
+        Ok(value) => value.string().ok(),
+        Err(error) if ffi::attribute_is_absent(&error, "AXSubrole") => Some(String::new()),
+        Err(_) => None,
+    };
+    // NSAccessibilitySubrole is nullable. An explicitly absent specialization
+    // is not a failed AX read: ordinary NSTextView may have no subrole. Timeout,
+    // invalid object/type and AXUnknown remain unknown; secure still wins.
     let text_class = TextClass::classify(&role, subrole.as_deref());
     let r = ax_rect(el)?;
     let native_id = el
@@ -661,7 +829,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
     let owner_epoch = process_epoch(el.pid()?)?;
     let id = digest(format!("{owner_epoch}:{native_id}:{role}:{subrole:?}:{r:?}").as_bytes());
     let value = read_classified_value(text_class, || {
-        el.attr("AXValue").ok().and_then(|v| v.string().ok())
+        el.attr("AXValue").ok().and_then(|v| scalar_ax_value(&v))
     });
     let actions = action_names(el);
     let enabled = el.attr("AXEnabled").ok().and_then(|v| v.boolean());
@@ -786,70 +954,164 @@ fn scoped_visibility(
     (exact_hit, exact_hit.map(|hit| !hit))
 }
 
+fn observed_element(
+    node: &Cf,
+    window: &Cf,
+    application: &Cf,
+    bounds: Rect,
+    blocked: Option<bool>,
+    diagnostics: &mut Vec<serde_json::Value>,
+    objects: &std::sync::Mutex<objects::Objects<objects::Ax>>,
+) -> Result<AxElement> {
+    let mut e = objects::describe(node, window, objects)?;
+    let point = e.element.point;
+    let inside = bounds.contains(point);
+    let matches = if inside && blocked == Some(false) {
+        let hit = hit_test(application, point).ok();
+        let matches = hit
+            .as_ref()
+            .map(|h| unsafe { ffi::CFEqual(h.0, node.0) } != 0);
+        if matches != Some(true) && !e.element.actions.is_empty() && diagnostics.len() < 8 {
+            let rect_json = |v: &Cf| ax_rect(v).ok().map(|r| [r.x, r.y, r.w, r.h]);
+            diagnostics.push(serde_json::json!({
+                "element": e.element.id, "role": e.element.role, "point": point,
+                "node_pid": node.pid().ok(), "node_rect": rect_json(node),
+                "node_window": ffi::window_number_for_ax_element(node),
+                "hit_pid": hit.as_ref().and_then(|h| h.pid().ok()),
+                "hit_rect": hit.as_ref().and_then(rect_json),
+                "hit_role": hit.as_ref().and_then(|h| h.attr("AXRole").ok()).and_then(|r| r.string().ok()),
+                "hit_window": hit.as_ref().and_then(ffi::window_number_for_ax_element),
+                "equal": matches
+            }));
+        }
+        matches
+    } else {
+        None
+    };
+    let (visible, occluded) = scoped_visibility(inside, blocked, matches);
+    e.element.visible = visible;
+    e.element.occluded = occluded;
+    Ok(e)
+}
+
 fn ax_tree(
     window: &Cf,
     application: &Cf,
     bounds: Rect,
     blocked: Option<bool>,
     diagnostics: &mut Vec<serde_json::Value>,
-) -> Result<Vec<AxElement>> {
+    objects: &std::sync::Mutex<objects::Objects<objects::Ax>>,
+) -> Result<(Vec<AxElement>, serde_json::Value)> {
     let start = Instant::now();
     let mut pending = VecDeque::new();
-    for child in window.children().unwrap_or_default() {
-        pending.push_back((child, 1));
+    let mut coverage = coverage::Coverage::default();
+    match window.children() {
+        Ok(children) => pending.extend(children.into_iter().map(|child| (child, 1))),
+        Err(_) => coverage.child_reads_failed += 1,
     }
-    let mut nodes = 0;
     let mut out = Vec::new();
-    while let Some((node, depth)) = pending.pop_front() {
+    while !pending.is_empty() {
         operation::checkpoint("macos_ax_tree")?;
-        if nodes >= AX_TREE_MAX_NODES || start.elapsed() > Duration::from_millis(3000) {
+        if coverage.visited >= AX_TREE_MAX_NODES {
+            coverage.node_budget_reached = true;
             break;
         }
-        nodes += 1;
-        if let Ok(mut e) = element_description(&node) {
-            let point = e.element.point;
-            let inside = bounds.contains(point);
-            let matches = if inside && blocked == Some(false) {
-                let hit = hit_test(application, point).ok();
-                let matches = hit
-                    .as_ref()
-                    .map(|h| unsafe { ffi::CFEqual(h.0, node.0) } != 0);
-                if matches != Some(true) && !e.element.actions.is_empty() && diagnostics.len() < 8 {
-                    let rect_json = |v: &Cf| ax_rect(v).ok().map(|r| [r.x, r.y, r.w, r.h]);
-                    diagnostics.push(serde_json::json!({
-                        "element": e.element.id, "role": e.element.role, "point": point,
-                        "node_pid": node.pid().ok(), "node_rect": rect_json(&node),
-                        "node_window": ffi::window_number_for_ax_element(&node),
-                        "hit_pid": hit.as_ref().and_then(|h| h.pid().ok()),
-                        "hit_rect": hit.as_ref().and_then(rect_json),
-                        "hit_role": hit.as_ref().and_then(|h| h.attr("AXRole").ok()).and_then(|r| r.string().ok()),
-                        "hit_window": hit.as_ref().and_then(ffi::window_number_for_ax_element),
-                        "equal": matches
-                    }));
-                }
-                matches
-            } else {
-                None
-            };
-            let (visible, occluded) = scoped_visibility(inside, blocked, matches);
-            e.element.visible = visible;
-            e.element.occluded = occluded;
-            out.push(e);
+        if start.elapsed() > Duration::from_millis(3000) {
+            coverage.time_budget_reached = true;
+            break;
         }
-        if depth < 16 {
-            for child in node.children().unwrap_or_default() {
-                if pending.len() >= AX_TREE_MAX_QUEUE {
-                    break;
-                }
-                pending.push_back((child, depth + 1));
+        let (node, depth) = pending.pop_front().expect("nonempty queue");
+        coverage.visited += 1;
+        coverage.maximum_depth_seen = coverage.maximum_depth_seen.max(depth);
+        match observed_element(
+            &node,
+            window,
+            application,
+            bounds,
+            blocked,
+            diagnostics,
+            objects,
+        ) {
+            Ok(e) => {
+                coverage.described += 1;
+                out.push(e);
             }
+            Err(_) => coverage.descriptions_failed += 1,
+        }
+        if depth >= AX_TREE_MAX_DEPTH {
+            // Preserve the same native read budget; do not add a boundary read
+            // merely to manufacture 'complete'. Descendants are unknown.
+            coverage.unexpanded_depth_nodes += 1;
+            continue;
+        }
+        match node.children() {
+            Ok(children) => {
+                let capacity = AX_TREE_MAX_QUEUE.saturating_sub(pending.len());
+                coverage.dropped_queue_nodes += children.len().saturating_sub(capacity);
+                pending.extend(
+                    children
+                        .into_iter()
+                        .take(capacity)
+                        .map(|child| (child, depth + 1)),
+                );
+            }
+            Err(_) => coverage.child_reads_failed += 1,
         }
     }
-    Ok(out)
+    Ok((out, coverage.evidence(pending.len())))
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn capture_consistency_diagnostics_preserve_each_rejection_dimension() {
+        for bits in 1u8..8 {
+            let result = super::capture_consistency_failure(
+                bits & 1 != 0,
+                bits & 2 != 0,
+                Some(bits & 4 != 0),
+                [64, 63],
+                3,
+            );
+            if bits & 3 == 0 {
+                assert!(result.is_none());
+                continue;
+            }
+            let error = result.unwrap();
+            assert_eq!(error.code, "capture_binding_changed");
+            let diagnostic = error.diagnostic.unwrap();
+            assert_eq!(diagnostic["binding_changed"], bits & 1 != 0);
+            assert_eq!(diagnostic["blocked_changed"], bits & 2 != 0);
+            assert_eq!(diagnostic["semantic_content_changed"], bits & 4 != 0);
+            assert_eq!(diagnostic["attempt"], 3);
+            assert_eq!(diagnostic["before_elements"], 64);
+            assert_eq!(diagnostic["after_elements"], 63);
+            assert_eq!(diagnostic["native_input_dispatched"], false);
+            assert_eq!(diagnostic["replay_allowed"], false);
+            assert_eq!(diagnostic.as_object().unwrap().len(), 9);
+        }
+    }
+
+    #[test]
+    fn uncollected_semantic_comparison_keeps_window_and_modal_guards() {
+        assert!(super::capture_consistency_failure(false, false, None, [0, 64], 1).is_none());
+        for (binding, blocked) in [(true, false), (false, true), (true, true)] {
+            let diagnostic = super::capture_consistency_failure(binding, blocked, None, [0, 64], 1)
+                .unwrap()
+                .diagnostic
+                .unwrap();
+            assert!(diagnostic["semantic_content_changed"].is_null());
+            assert_eq!(diagnostic["native_input_dispatched"], false);
+        }
+    }
+
+    #[test]
+    fn unchanged_capture_metadata_remains_accepted_without_diagnostic_reads() {
+        assert!(
+            super::capture_consistency_failure(false, false, Some(false), [64, 64], 1).is_none()
+        );
+    }
+
     use super::*;
     #[test]
     fn scoped_visibility_requires_an_exact_native_hit() {
@@ -875,6 +1137,7 @@ mod tests {
     fn display(id: u32, built_in: bool, x: f64, y: f64, w: f64, h: f64) -> Display {
         Display {
             id,
+            uuid: None,
             built_in,
             rect: Rect { x, y, w, h },
             pixels: [(w as u64) * 2, (h as u64) * 2],
@@ -1029,7 +1292,7 @@ mod tests {
         let pid: u32 = std::env::var("RCU_DIAG_PID")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(18858);
+            .expect("RCU_DIAG_PID must name the explicitly allocated process");
         let application =
             unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32)).unwrap() };
         unsafe {
@@ -1038,13 +1301,31 @@ mod tests {
         for key in ["AXFocusedWindow", "AXMainWindow"] {
             if let Ok(element) = application.attr(key) {
                 println!(
-                    "AX {key} number={:?} rect={:?} title={:?} subrole={:?} modal={:?}",
+                    "AX {key} number={:?} rect={:?} role={:?} title={:?} subrole={:?} modal={:?} position_settable={:?}",
                     ffi::window_number_for_ax_element(&element),
                     ax_rect(&element).ok(),
+                    element.attr("AXRole").ok().and_then(|v| v.string().ok()),
                     element.attr("AXTitle").ok().and_then(|v| v.string().ok()),
                     element.attr("AXSubrole").ok().and_then(|v| v.string().ok()),
-                    element.attr("AXModal").ok().and_then(|v| v.boolean())
+                    element.attr("AXModal").ok().and_then(|v| v.boolean()),
+                    element.attribute_settable("AXPosition").ok()
                 );
+                if key == "AXFocusedWindow"
+                    && let Ok(rect) = ax_rect(&element)
+                {
+                    let point = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+                    if let Ok(hit) = hit_test(&application, point) {
+                        println!(
+                            "AX focused center hit point={point:?} hit_window={:?} hit_role={:?} child_window={:?} same_window={}",
+                            ffi::window_number_for_ax_element(&hit),
+                            hit.attr("AXRole").ok().and_then(|v| v.string().ok()),
+                            hit.attr("AXWindow")
+                                .ok()
+                                .and_then(|v| ffi::window_number_for_ax_element(&v)),
+                            unsafe { ffi::CFEqual(hit.0, element.0) } != 0,
+                        );
+                    }
+                }
             }
         }
         if let Ok(children_value) = application.attr("AXChildren")
@@ -1069,9 +1350,30 @@ mod tests {
             let main = w.attr("AXMain").ok().and_then(|v| v.boolean());
             let focused = w.attr("AXFocused").ok().and_then(|v| v.boolean());
             let minimized = w.attr("AXMinimized").ok().and_then(|v| v.boolean());
+            let children_count = w
+                .attr("AXChildren")
+                .ok()
+                .and_then(|value| unsafe { ffi::array(value.0, 64).ok() })
+                .map(|children| children.len());
             println!(
-                "AX window number={number:?} rect={rect:?} title={title:?} main={main:?} focused={focused:?} minimized={minimized:?}"
+                "AX window number={number:?} rect={rect:?} title={title:?} main={main:?} focused={focused:?} minimized={minimized:?} children_count={children_count:?} modal={:?} position_settable={:?}",
+                w.attr("AXModal").ok().and_then(|v| v.boolean()),
+                w.attribute_settable("AXPosition").ok()
             );
+            if let Some(rect) = rect {
+                let point = [rect.x + rect.w / 2.0, rect.y + rect.h / 2.0];
+                if let Ok(hit) = hit_test(&application, point) {
+                    println!(
+                        "AX hit point={point:?} pid={:?} window={:?} containing_window={:?} role={:?}",
+                        hit.pid().ok(),
+                        ffi::window_number_for_ax_element(&hit),
+                        hit.attr("AXWindow")
+                            .ok()
+                            .and_then(|w| ffi::window_number_for_ax_element(&w)),
+                        hit.attr("AXRole").ok().and_then(|v| v.string().ok())
+                    );
+                }
+            }
         }
         for w in &windows {
             let Ok(children_value) = w.attr("AXChildren") else {
@@ -1109,9 +1411,17 @@ mod tests {
                     continue;
                 }
                 let id = ffi::number(ffi::field(row.0, "kCGWindowNumber")).unwrap_or(-1);
-                let onscreen = ffi::number(ffi::field(row.0, "kCGWindowIsOnscreen")).unwrap_or(-1);
+                let onscreen = ffi::boolean(ffi::field(row.0, "kCGWindowIsOnscreen"));
                 let layer = ffi::number(ffi::field(row.0, "kCGWindowLayer")).unwrap_or(-1);
-                println!("CG all id={id} onscreen={onscreen} layer={layer}");
+                let alpha = ffi::real(ffi::field(row.0, "kCGWindowAlpha"));
+                let mut rect = core_graphics::geometry::CGRect::default();
+                let has_rect = ffi::CGRectMakeWithDictionaryRepresentation(
+                    ffi::field(row.0, "kCGWindowBounds"),
+                    &mut rect,
+                ) != 0;
+                println!(
+                    "CG all id={id} onscreen={onscreen:?} layer={layer} alpha={alpha:?} rect={has_rect}:{rect:?}"
+                );
             }
         }
         let capturer = crate::capture::Capturer::default();
@@ -1156,6 +1466,18 @@ mod tests {
         let normal = TextClass::classify("AXTextField", Some("AXSearchField"));
         assert!(normal.readable());
         assert!(normal.input_allowed());
+        for role in ["AXTextField", "AXTextArea", "AXComboBox"] {
+            assert_eq!(TextClass::classify(role, Some("")), TextClass::Plain);
+            assert_eq!(TextClass::classify(role, None), TextClass::Unknown);
+            assert_eq!(
+                TextClass::classify(role, Some("AXUnknown")),
+                TextClass::Unknown
+            );
+            assert_eq!(
+                TextClass::classify(role, Some("AXSecureTextField")),
+                TextClass::Secure
+            );
+        }
     }
     fn classified(class: TextClass) -> AxElement {
         AxElement {

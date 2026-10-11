@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RWI Live · 会话内控制</title>
+  <style>
+    :root { color-scheme: light dark; font-family: var(--font-sans, system-ui, sans-serif); }
+    body { margin: 0; color: var(--color-text-primary, light-dark(#182b24, #e7eeea)); }
+    main { padding: 18px 20px; border-inline-start: 3px solid #739c86; }
+    header { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    h1 { font-size: 18px; line-height: 1.4; margin: 7px 0; font-weight: 600; }
+    p { max-width: 62ch; font-size: 12px; line-height: 1.7; margin: 0 0 14px; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { font: inherit; font-size: 13px; padding: 8px 12px; min-height: 36px; border: 1px solid light-dark(#a9c0b2, #496354); border-radius: 7px; background: light-dark(#edf4ef, #23392d); color: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid #739c86; outline-offset: 3px; }
+    button:disabled { opacity: .5; cursor: default; }
+    @media (max-width: 320px) { main { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <main id="panel">
+    <header>Real World Interaction / Live</header>
+    <h1 id="state" role="status" aria-live="polite">等待会话内视图连接</h1>
+    <p id="location">这是控制卡，不是画面播放器；画面显示在指定屏幕的 RWI 原生浮层。隐藏可恢复；关闭会结束本轮，重新打开需新建观察。这里不读取对话、不发送键鼠；实际任务切换行为仍取决于 Host。</p>
+    <nav aria-label="Live 预览控制">
+      <button id="toggle" type="button" disabled>隐藏预览</button>
+      <button id="close" type="button" disabled>关闭预览</button>
+    </nav>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const status = document.getElementById('state');
+      const toggle = document.getElementById('toggle');
+      const close = document.getElementById('close');
+      const location = document.getElementById('location');
+      const pending = new Map();
+      let id = 0, ready = false, capability = null, sequence = 0;
+      let enabled = true, intersecting = false, ended = false, closing = false;
+      let queued = null, flight = null;
+      const send = message => window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*');
+      function request(method, params) {
+        const requestId = `rwi-live-${++id}`;
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('Host response timeout')); }, 3000);
+          pending.set(requestId, { resolve, reject, timer });
+          send({ id: requestId, method, params });
+        });
+      }
+      const visible = () => enabled && !closing && intersecting && document.visibilityState === 'visible';
+      function finish(message) {
+        ended = true;
+        clearInterval(heartbeat);
+        toggle.disabled = close.disabled = true;
+        status.textContent = message;
+      }
+      function report(shown, stop = false) {
+        if (!ready || !capability || ended) return Promise.resolve();
+        // One request in flight; later state supersedes a queued heartbeat.
+        // Never retry close or a timed-out event. Native presence has its own TTL.
+        queued = { shown: stop ? false : shown, stop: stop || Boolean(queued?.stop) };
+        if (flight) return flight;
+        flight = (async () => {
+          while (queued && !ended) {
+            const event = queued;
+            queued = null;
+            const owner = capability;
+            try {
+              const reply = await request('tools/call', {
+                name: 'computer.live_panel',
+                arguments: { view_key: owner.view_key, page: owner.page, sequence: ++sequence, visible: event.shown, close: event.stop }
+              });
+              if (owner !== capability) continue;
+              const data = reply.structuredContent ?? {};
+              if (event.stop) {
+                finish(reply.isError ? '关闭未确认 · 不重试，请核对原始状态' : '关闭请求已返回 · 重新打开需新建观察');
+              } else if (data.accepted === false && data.reason === 'preview_stopped') {
+                finish('本轮预览已结束 · 恢复不会重开，需新建观察');
+              } else if (data.code === 'live_ui_event_rejected') {
+                finish('此视图已过期、被替换或事件被拒绝');
+              } else {
+                status.textContent = !reply.isError && data.accepted === true
+                  ? (event.shown ? '组件可见 · 预览连接已确认' : '隐藏已确认')
+                  : '连接未确认 · 预览将自动隐藏';
+              }
+            } catch {
+              if (event.stop) finish('关闭未确认 · 不重试，请核对原始状态');
+              else status.textContent = '连接未确认 · 预览将自动隐藏';
+            }
+          }
+        })().finally(() => { flight = null; });
+        return flight;
+      }
+      window.addEventListener('message', async event => {
+        if (event.source !== window.parent || !event.data || event.data.jsonrpc !== '2.0') return;
+        const message = event.data;
+        if (pending.has(message.id)) {
+          const waiter = pending.get(message.id);
+          pending.delete(message.id);
+          clearTimeout(waiter.timer);
+          if (message.error) waiter.reject(new Error('Host bridge error'));
+          else waiter.resolve(message.result);
+          return;
+        }
+        if (!ready) return;
+        if (message.method === 'ui/notifications/tool-result') {
+          const next = message.params?._meta?.['rwi/live_panel'];
+          if (!next || !/^[0-9a-f]{32}$/.test(next.view_key) || !/^[0-9a-f]{32}$/.test(next.page)) return;
+          const display = message.params?.structuredContent?.requested_preview_display;
+          if (display?.built_in === true) {
+            location.textContent = '画面位置：内建屏上的 RWI 原生浮层；这张卡只控制隐藏、恢复和结束观察。关闭后重新打开需新建观察。';
+          } else if (Number.isSafeInteger(display?.id)) {
+            location.textContent = `画面位置：显示器 ${display.id} 的 RWI 原生浮层；若是虚拟屏，请打开它的屏幕串流，或指定可观看的物理屏作为预览屏。关闭后重新打开需新建观察。`;
+          }
+          if (next.view_key === capability?.view_key && next.page === capability?.page) return;
+          capability = { view_key: next.view_key, page: next.page };
+          sequence = 0;
+          toggle.disabled = close.disabled = false;
+          report(visible());
+        } else if (message.method === 'ui/resource-teardown') {
+          closing = true;
+          clearInterval(heartbeat);
+          await report(false);
+          finish('组件已关闭 · 预览将自动隐藏');
+          send({ id: message.id, result: {} });
+        } else if (message.method === 'ui/notifications/tool-cancelled') {
+          closing = true;
+          await report(false);
+          finish('此观察已取消 · 预览将自动隐藏');
+        } else if (message.method === 'ping' && message.id != null) {
+          send({ id: message.id, result: {} });
+        }
+      });
+      document.addEventListener('visibilitychange', () => report(visible()));
+      window.addEventListener('pagehide', () => report(false));
+      window.addEventListener('pageshow', () => report(visible()));
+      if (typeof IntersectionObserver === 'function') {
+        new IntersectionObserver(entries => {
+          intersecting = entries.some(entry => entry.isIntersecting && entry.intersectionRatio > 0);
+          report(visible());
+        }).observe(document.getElementById('panel'));
+      }
+      toggle.addEventListener('click', () => {
+        if (closing || ended) return;
+        enabled = !enabled;
+        toggle.textContent = enabled ? '隐藏预览' : '恢复预览';
+        toggle.setAttribute('aria-pressed', String(!enabled));
+        report(visible());
+      });
+      close.addEventListener('click', () => {
+        if (closing || ended) return;
+        closing = true;
+        clearInterval(heartbeat);
+        toggle.disabled = close.disabled = true;
+        report(false, true);
+      });
+      const heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
+      request('ui/initialize', {
+        protocolVersion: '2026-01-26', appInfo: { name: 'RWI Live', version: '1' },
+        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] }
+      }).then(result => {
+        if (result?.protocolVersion !== '2026-01-26') { finish('Host UI 协议未确认 · 不发布可见性'); return; }
+        ready = true;
+        send({ method: 'ui/notifications/initialized' });
+      }).catch(() => finish('Host 不支持此组件 · 预览保持隐藏'));
+    })();
+  </script>
+</body>
+</html>

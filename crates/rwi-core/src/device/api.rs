@@ -39,6 +39,18 @@ fn visual_edge() -> u32 {
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct LiveArgs {
+    pub target: String,
+    pub action: crate::LiveAction,
+    #[serde(default)]
+    pub options: Option<crate::LiveOptions>,
+    /// Internal adapter-to-device visibility delivery, excluded from MCP schema.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(skip)]
+    pub view: Option<crate::LiveViewUpdate>,
+}
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ResolveArgs {
     pub target: String,
     pub frame: String,
@@ -242,4 +254,37 @@ pub struct ResolveViewArgs {
     pub view_id: String,
     pub x: f64,
     pub y: f64,
+    /// Opt in only for a visible compact red-dot cluster on an animated canvas.
+    #[serde(default)]
+    pub red_marker_cluster: bool,
+}
+
+/// Retire only an independent window target, never the device context root.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DetachWindowArgs {
+    pub target: String,
+    #[serde(default, alias = "correlation_id")]
+    pub operation_id: Option<String>,
+}
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FocusWindowArgs {
+    pub target: String,
+    pub lease: String,
+    pub reference: String,
+    pub request_id: String,
+    pub expected_foreground: crate::ForegroundState,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct HotkeyArgs {
+    pub target: String,
+    pub lease: String,
+    pub request_id: String,
+    /// One physical key/chord, e.g. cmd+tab; never text or a shell command.
+    pub key: String,
+    pub expected_foreground: crate::ForegroundState,
 }

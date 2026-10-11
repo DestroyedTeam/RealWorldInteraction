@@ -7,10 +7,16 @@
 
 mod private_files;
 mod provision;
+mod renewal;
+mod resolver;
 mod verifier;
 
 pub use private_files::Reader as PrivateDirectory;
 pub use provision::{ProvisionManifest, ProvisionedPeer, provision};
+pub use renewal::{
+    RenewalManifest, RenewalReport, migrate_renewable, provision_renewable, renew_if_due,
+    renewal_status,
+};
 
 /// Host-side bounded private configuration read, sharing the audited fd layer.
 /// Windows callers supply their native ACL/HANDLE reader instead.
@@ -43,15 +49,17 @@ pub(crate) fn invalid(message: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message)
 }
 
-/// Public SHA-256 leaf pin. Deserialization applies the same strict validation.
+/// Legacy SHA-256 certificate pin, or explicitly prefixed `spki:` SHA-256 pin.
+/// Existing unprefixed pins NEVER change meaning during a software update.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(transparent)]
 pub struct PeerPin(String);
 
 impl PeerPin {
     pub fn parse(value: &str) -> io::Result<Self> {
-        if value.len() != 64
-            || !value
+        let hash = value.strip_prefix("spki:").unwrap_or(value);
+        if hash.len() != 64
+            || !hash
                 .bytes()
                 .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
         {
@@ -66,6 +74,22 @@ impl PeerPin {
 
     pub fn of_der(certificate: &[u8]) -> Self {
         Self(format!("{:x}", Sha256::digest(certificate)))
+    }
+
+    pub fn of_spki_der(certificate: &[u8]) -> io::Result<Self> {
+        let parsed = renewal::parse_certificate(certificate)?;
+        Ok(Self(format!(
+            "spki:{:x}",
+            Sha256::digest(parsed.public_key().raw)
+        )))
+    }
+
+    pub fn matches(&self, certificate: &[u8]) -> io::Result<bool> {
+        Ok(if self.0.starts_with("spki:") {
+            Self::of_spki_der(certificate)? == *self
+        } else {
+            Self::of_der(certificate) == *self
+        })
     }
 }
 
@@ -83,14 +107,25 @@ pub struct IdentityPaths {
     pub ca: PathBuf,
     pub certificate: PathBuf,
     pub private_key: PathBuf,
+    /// Explicit opt-in to a local renewable pairing. No discovery of signing keys.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renewal_bundle: Option<PathBuf>,
 }
 
 impl IdentityPaths {
+    pub fn in_renewable_bundle(bundle: &Path, role: &str) -> io::Result<Self> {
+        let mut paths = Self::in_profile(&bundle.join(role));
+        paths.renewal_bundle = Some(bundle.to_owned());
+        paths.validate_layout()?;
+        Ok(paths)
+    }
+
     pub fn in_profile(profile: &Path) -> Self {
         Self {
             ca: profile.join("ca.der"),
             certificate: profile.join("certificate.der"),
             private_key: profile.join("private-key.der"),
+            renewal_bundle: None,
         }
     }
 
@@ -116,10 +151,18 @@ impl IdentityPaths {
         F: Fn(&Path, usize) -> io::Result<Vec<u8>>,
     {
         self.validate_layout()?;
+        if let Some(bundle) = &self.renewal_bundle {
+            renew_if_due(bundle)?;
+        }
         let ca = read_private(&self.ca, CERTIFICATE_CAP)?;
         let certificate = read_private(&self.certificate, CERTIFICATE_CAP)?;
         let key = Zeroizing::new(read_private(&self.private_key, PRIVATE_KEY_CAP)?);
-        Identity::from_der(ca, certificate, key)
+        let mut identity = Identity::from_der(ca, certificate, key)?;
+        if self.renewal_bundle.is_some() {
+            renewal::validate_identity(self, &identity)?;
+            identity.reload = Some(self.clone());
+        }
+        Ok(identity)
     }
 
     fn validate_layout(&self) -> io::Result<()> {
@@ -142,6 +185,9 @@ impl IdentityPaths {
                 "trust_identity_paths_require_distinct_siblings_in_absolute_profile",
             ));
         }
+        if let Some(bundle) = &self.renewal_bundle {
+            renewal::validate_layout(bundle, self)?;
+        }
         Ok(())
     }
 }
@@ -153,6 +199,7 @@ pub struct Identity {
     ca: CertificateDer<'static>,
     certificate: CertificateDer<'static>,
     key: Zeroizing<PrivateKeyDer<'static>>,
+    reload: Option<IdentityPaths>,
 }
 
 impl Identity {
@@ -175,6 +222,7 @@ impl Identity {
             ca: CertificateDer::from(ca),
             certificate: CertificateDer::from(certificate),
             key: Zeroizing::new(PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(key.to_vec()))),
+            reload: None,
         };
         // Fail before network I/O if the certificate/key is malformed/mismatched.
         identity.roots()?;
@@ -225,8 +273,7 @@ impl Identity {
             .map_err(|_| invalid("trust_tls13_provider_invalid"))?
             .dangerous()
             .with_custom_certificate_verifier(Arc::new(pinned))
-            .with_client_auth_cert(vec![self.certificate.clone()], self.key.clone_key())
-            .map_err(|_| invalid("trust_client_identity_invalid"))?;
+            .with_client_cert_resolver(Arc::new(resolver::Resolver::new(self)?));
         config.enable_early_data = false;
         config.resumption = rustls::client::Resumption::disabled();
         config.key_log = Arc::new(rustls::NoKeyLog {});
@@ -258,8 +305,7 @@ impl Identity {
             .with_protocol_versions(&[&rustls::version::TLS13])
             .map_err(|_| invalid("trust_tls13_provider_invalid"))?
             .with_client_cert_verifier(Arc::new(pinned))
-            .with_single_cert(vec![self.certificate.clone()], self.key.clone_key())
-            .map_err(|_| invalid("trust_server_identity_invalid"))?;
+            .with_cert_resolver(Arc::new(resolver::Resolver::new(self)?));
         config.max_early_data_size = 0;
         config.send_tls13_tickets = 0;
         config.session_storage = Arc::new(rustls::server::NoServerSessionStorage {});
@@ -283,10 +329,34 @@ pub fn peer_sha(certs: Option<&[CertificateDer<'_>]>) -> io::Result<PeerPin> {
 }
 
 pub fn verify_peer(certs: Option<&[CertificateDer<'_>]>, expected: &PeerPin) -> io::Result<()> {
-    if peer_sha(certs)? != *expected {
+    let certificate = certs
+        .and_then(|c| c.first())
+        .ok_or_else(|| invalid("trust_authenticated_peer_certificate_missing"))?;
+    if !expected.matches(certificate.as_ref())? {
         return Err(invalid("trust_peer_pin_mismatch"));
     }
     Ok(())
+}
+
+/// Call only after the TLS verifier authenticated the chain and handshake.
+/// Returns the configured pairing identity (stable across SPKI leaf renewal).
+pub fn authenticated_peer_pin(
+    certs: Option<&[CertificateDer<'_>]>,
+    allowed: &[PeerPin],
+) -> io::Result<PeerPin> {
+    let certificate = certs
+        .and_then(|c| c.first())
+        .ok_or_else(|| invalid("trust_authenticated_peer_certificate_missing"))?;
+    let mut matched = None;
+    for pin in allowed {
+        if pin.matches(certificate.as_ref())? {
+            if matched.is_some() {
+                return Err(invalid("trust_peer_pin_ambiguous"));
+            }
+            matched = Some(pin.clone());
+        }
+    }
+    matched.ok_or_else(|| invalid("trust_peer_pin_mismatch"))
 }
 
 #[cfg(test)]

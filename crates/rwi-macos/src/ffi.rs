@@ -20,6 +20,7 @@ unsafe extern "C" {
     pub fn AXUIElementPerformAction(element: Ref, action: Ref) -> i32;
     pub fn AXUIElementCopyActionNames(element: Ref, names: *mut Ref) -> i32;
     pub fn AXUIElementGetPid(element: Ref, pid: *mut i32) -> i32;
+    pub fn AXUIElementGetTypeID() -> usize;
     pub fn AXUIElementSetMessagingTimeout(element: Ref, timeout: f32) -> i32;
     pub fn AXUIElementIsAttributeSettable(element: Ref, name: Ref, settable: *mut u8) -> i32;
     pub fn AXValueGetType(value: Ref) -> u32;
@@ -42,6 +43,11 @@ unsafe extern "C" {
     pub fn CGEventSetLocation(event: Ref, point: CGPoint);
     pub fn CGDisplayIsBuiltin(display: u32) -> i32;
 }
+#[link(name = "ColorSync", kind = "framework")]
+unsafe extern "C" {
+    /// Create-rule CFUUIDRef for one currently active CGDirectDisplayID.
+    pub fn CGDisplayCreateUUIDFromDisplayID(display: u32) -> Ref;
+}
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
     pub fn CFRelease(value: Ref);
@@ -55,6 +61,8 @@ unsafe extern "C" {
     pub fn CFArrayGetValueAtIndex(array: Ref, index: isize) -> Ref;
     pub fn CFStringGetTypeID() -> usize;
     pub fn CFStringGetLength(value: Ref) -> isize;
+    /// Create-rule CFStringRef; a null allocator selects the default allocator.
+    pub fn CFUUIDCreateString(allocator: Ref, uuid: Ref) -> Ref;
     pub fn CFNumberGetTypeID() -> usize;
     pub fn CFNumberGetValue(value: Ref, kind: u32, out: *mut c_void) -> u8;
     pub fn CFBooleanGetTypeID() -> usize;
@@ -83,10 +91,7 @@ impl Cf {
             AXUIElementCopyAttributeValue(self.0, key.as_concrete_TypeRef().cast(), &mut out)
         };
         if code != 0 {
-            return Err(fault(
-                "ax_attribute_unavailable",
-                "Required accessibility attribute is unavailable; do not guess.",
-            ));
+            return Err(attribute_read_fault(name, code));
         }
         unsafe { Self::owned(out) }
     }
@@ -150,6 +155,115 @@ impl Cf {
     pub fn children(&self) -> Result<Vec<Cf>> {
         let value = self.attr("AXChildren")?;
         unsafe { array(value.0, 256) }
+    }
+}
+// Preserve read-failure evidence without reading/logging the attribute's value.
+// This is not an input receipt and must never authorize replay of earlier input.
+pub(crate) fn attribute_is_absent(error: &rwi_core::Fault, name: &str) -> bool {
+    error.code == "ax_attribute_unavailable"
+        && error.diagnostic.as_ref().is_some_and(|d| {
+            d["api"] == "AXUIElementCopyAttributeValue"
+                && d["attribute"] == name
+                && matches!(d["ax_error"].as_i64(), Some(-25205 | -25212))
+        })
+}
+
+fn attribute_read_fault(name: &str, code: i32) -> rwi_core::Fault {
+    let mut error = fault(
+        "ax_attribute_unavailable",
+        &format!(
+            "AX read {name} returned AXError {code}; inspect fresh state, never replay prior input."
+        ),
+    );
+    error.diagnostic = Some(Box::new(serde_json::json!({
+        "api": "AXUIElementCopyAttributeValue",
+        "attribute": name,
+        "ax_error": code,
+        "operation_kind": "read",
+        "replay_allowed": false
+    })));
+    error
+}
+
+/// Only the observed AXWindows messaging failure is eligible for an observation
+/// restart. Never apply this to action dispatch, unsupported attributes or stale
+/// native identity. Each new observation still validates its complete binding.
+pub(crate) fn observation_read_can_settle(error: &rwi_core::Fault) -> bool {
+    error.code == "ax_attribute_unavailable"
+        && error.diagnostic.as_ref().is_some_and(|d| {
+            d["api"] == "AXUIElementCopyAttributeValue"
+                && d["attribute"] == "AXWindows"
+                && d["ax_error"] == -25204
+                && d["operation_kind"] == "read"
+                && d["replay_allowed"] == false
+        })
+}
+
+#[cfg(test)]
+mod attribute_read_tests {
+    use super::*;
+
+    #[test]
+    fn read_fault_preserves_exact_attribute_and_native_code() {
+        for code in [-25204, -25205, -25212] {
+            let error = attribute_read_fault("AXWindows", code);
+            assert_eq!(error.code, "ax_attribute_unavailable");
+            let diagnostic = error.diagnostic.unwrap();
+            assert_eq!(diagnostic["attribute"], "AXWindows");
+            assert_eq!(diagnostic["ax_error"], code);
+            assert_eq!(diagnostic["operation_kind"], "read");
+            assert_eq!(diagnostic["replay_allowed"], false);
+            assert!(diagnostic.get("value").is_none());
+            assert!(error.next_step.contains(&code.to_string()));
+        }
+    }
+
+    #[test]
+    fn subrole_absence_is_distinct_from_timeout_invalid_object_and_other_attributes() {
+        for code in [-25205, -25212] {
+            assert!(attribute_is_absent(
+                &attribute_read_fault("AXSubrole", code),
+                "AXSubrole"
+            ));
+        }
+        for code in [-25204, -25202, -25200] {
+            assert!(!attribute_is_absent(
+                &attribute_read_fault("AXSubrole", code),
+                "AXSubrole"
+            ));
+        }
+        assert!(!attribute_is_absent(
+            &attribute_read_fault("AXValue", -25212),
+            "AXSubrole"
+        ));
+        assert!(!attribute_is_absent(
+            &fault("native_type_mismatch", "not a string"),
+            "AXSubrole"
+        ));
+    }
+
+    #[test]
+    fn only_exact_window_list_read_failure_may_restart_observation() {
+        assert!(observation_read_can_settle(&attribute_read_fault(
+            "AXWindows",
+            -25204
+        )));
+        for (name, code) in [
+            ("AXWindows", -25205),
+            ("AXWindows", -25202),
+            ("AXValue", -25204),
+        ] {
+            assert!(!observation_read_can_settle(&attribute_read_fault(
+                name, code
+            )));
+        }
+        assert!(!observation_read_can_settle(&fault(
+            "ax_attribute_unavailable",
+            "missing evidence"
+        )));
+        let mut error = attribute_read_fault("AXWindows", -25204);
+        error.diagnostic.as_mut().unwrap()["api"] = serde_json::json!("AXUIElementPerformAction");
+        assert!(!observation_read_can_settle(&error));
     }
 }
 impl Drop for Cf {

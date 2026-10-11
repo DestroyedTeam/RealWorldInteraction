@@ -94,6 +94,7 @@ impl Backend for Fixture {
                 width: 1,
                 height: 1,
             },
+            source_pixel_size: [1, 1],
             image_size: [1, 1],
             visual_to_desktop: [1., 0., 0., 1., -1920., 0.],
             captured_unix_ms: lifecycle::now_ms(),
@@ -187,7 +188,7 @@ impl Backend for Fixture {
                     }
                 }
                 Intent::Text => a.value = value.unwrap_or("").into(),
-                Intent::Scroll | Intent::KeyChord | Intent::Drag(_) => {}
+                Intent::MovePointer | Intent::Scroll | Intent::KeyChord | Intent::Drag(_) => {}
             }
             a.epoch += 1;
         }
@@ -219,3 +220,6 @@ impl Backend for Fixture {
         })
     }
 }
+
+/// Explicit synthetic multi-window fixture; never constructed by native agents.
+pub mod windows;

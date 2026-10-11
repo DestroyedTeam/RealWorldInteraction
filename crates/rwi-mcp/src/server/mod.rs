@@ -190,32 +190,41 @@ fn make_view(
             "Original PNG dimensions do not match this frame metadata; do not resolve its pixels.",
         ));
     }
-    let id = rwi_core::digest(
-        serde_json::to_string(&(&a.target, &a.frame, &a.artifact_id, &mapping))
-            .unwrap()
-            .as_bytes(),
-    );
-    let mut views = views.lock().map_err(|_| {
-        fault(
-            "view_registry_unavailable",
-            "Reobserve in a new connection.",
-        )
-    })?;
-    views.retain(|(key, _)| key != &id);
-    views.push_back((
-        id.clone(),
-        StoredView {
-            target: a.target.clone(),
-            frame: a.frame.clone(),
-            artifact_id: a.artifact_id.clone(),
-            mapping: mapping.clone(),
-        },
-    ));
-    while views.len() > 64 {
-        views.pop_front();
-    }
+    // A visual-only scene deliberately has no binding or pixel-to-desktop
+    // input mapping. Its original artifact and cropped tiles stay readable,
+    // but no resolve_view-capable ID is issued or retained.
+    let id = if scene.binding.is_some() && scene.pixel_to_desktop.is_some() {
+        let id = rwi_core::digest(
+            serde_json::to_string(&(&a.target, &a.frame, &a.artifact_id, &mapping))
+                .unwrap()
+                .as_bytes(),
+        );
+        let mut views = views.lock().map_err(|_| {
+            fault(
+                "view_registry_unavailable",
+                "Reobserve in a new connection.",
+            )
+        })?;
+        views.retain(|(key, _)| key != &id);
+        views.push_back((
+            id.clone(),
+            StoredView {
+                target: a.target.clone(),
+                frame: a.frame.clone(),
+                artifact_id: a.artifact_id.clone(),
+                mapping: mapping.clone(),
+            },
+        ));
+        while views.len() > 64 {
+            views.pop_front();
+        }
+        Some(id)
+    } else {
+        None
+    };
+    let input_reference_available = id.is_some();
     let mut r = value(
-        json!({"view_id":id,"target":a.target,"frame":a.frame,"original_artifact_id":a.artifact_id,"original_sha256":rwi_core::digest(original),"original_bytes":original.len(),"view_sha256":rwi_core::digest(&png),"view_bytes":png.len(),"mapping":mapping,"original_unchanged":true,"resolve_tool":"computer.resolve_view"}),
+        json!({"view_id":id,"target":a.target,"frame":a.frame,"original_artifact_id":a.artifact_id,"original_sha256":rwi_core::digest(original),"original_bytes":original.len(),"view_sha256":rwi_core::digest(&png),"view_bytes":png.len(),"mapping":mapping,"original_unchanged":true,"resolve_tool":input_reference_available.then_some("computer.resolve_view"),"input_reference_available":input_reference_available}),
     )?;
     r.content
         .push(Content::image(STANDARD.encode(png), "image/png"));
@@ -271,7 +280,7 @@ impl Server {
     }
     #[tool(
         name = "computer.resolve",
-        description = "Bind one semantic element or original-image pixel to a specific frame, native window and PID. Ambiguous/unknown mappings are rejected.",
+        description = "Bind one semantic element or original-image pixel to a specific frame, native window and PID. RedMarkerCluster is explicit opt-in for a compact red-dot cluster; it rechecks marker shape/position while ignoring unrelated non-red animation. Marker move, loss or occlusion still rejects.",
         annotations(read_only_hint = true)
     )]
     async fn resolve(&self, Parameters(a): Parameters<ResolveArgs>) -> CallToolResult {
@@ -318,6 +327,23 @@ impl Server {
     ) -> CallToolResult {
         self.execute_operation(a.operation_id.clone(), move |e| {
             value(e.feedback(&a.target, a.visible, a.point)?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.focus_window",
+        description = "Explicit exact-window foreground operation, never background fallback. Requires fresh kind=window reference, lease, expected native foreground tuple and stable request_id. Unsupported backends refuse; inspect independent fresh state, no replay.",
+        annotations(read_only_hint = false, destructive_hint = true)
+    )]
+    async fn focus_window(&self, Parameters(a): Parameters<FocusWindowArgs>) -> CallToolResult {
+        self.execute_operation(a.operation_id.clone(), move |e| {
+            value(e.focus_window(
+                &a.target,
+                &a.lease,
+                &a.reference,
+                &a.request_id,
+                &a.expected_foreground,
+            )?)
         })
         .await
     }
@@ -487,6 +513,42 @@ impl Server {
         .await
     }
     #[tool(
+        name = "computer.attach_window",
+        description = "Create an independent window target from a fresh explicit discovery selection. No launch, activation, placement, capture or source rebind; physical desktop lease stays shared. Unsupported backends fail closed.",
+        annotations(read_only_hint = true)
+    )]
+    async fn attach_window(&self, Parameters(a): Parameters<BindArgs>) -> CallToolResult {
+        self.execute_operation(a.operation_id, move |e| {
+            value(e.attach_window(&a.target, &a.selection)?)
+        })
+        .await
+    }
+    #[tool(
+        name = "computer.detach_window",
+        description = "Retire an attached target, not its native application/window. Release its lease first; old frames expire and durable receipts remain. The original desktop target cannot be detached.",
+        annotations(read_only_hint = true)
+    )]
+    async fn detach_window(
+        &self,
+        Parameters(a): Parameters<rwi_core::device::api::DetachWindowArgs>,
+    ) -> CallToolResult {
+        let views = self.views.clone();
+        self.execute_operation(a.operation_id, move |e| {
+            let result = e.detach_window(&a.target)?;
+            views
+                .lock()
+                .map_err(|_| {
+                    fault(
+                        "view_registry_unavailable",
+                        "Target detached; do not replay.",
+                    )
+                })?
+                .retain(|(_, v)| v.target != a.target);
+            value(result)
+        })
+        .await
+    }
+    #[tool(
         name = "computer.image",
         description = "Return a directly viewable mapped PNG preview or native-resolution tile from the preserved original. crop=[x,y,width,height] uses ORIGINAL pixels; max_edge=64..2048. Never labels downsampling as original success.",
         annotations(read_only_hint = true)
@@ -498,7 +560,7 @@ impl Server {
     }
     #[tool(
         name = "computer.resolve_view",
-        description = "Map pixels from a specific delivered preview/tile back to its original frame and native desktop before creating a fresh reference. Do not pass view pixels to computer.resolve.",
+        description = "Map delivered-view pixels to the original frame and desktop. Default red_marker_cluster=false is strict. Opt in only when the exact point is on a visible compact red-dot cluster; native marker position/shape is rechecked, and movement, disappearance or occlusion rejects. Never pass view pixels to computer.resolve.",
         annotations(read_only_hint = true)
     )]
     async fn resolve_view(&self, Parameters(a): Parameters<ResolveViewArgs>) -> CallToolResult {
@@ -518,7 +580,12 @@ impl Server {
                 })?;
             e.original(&a.target, &v.frame, &v.artifact_id)?;
             let [x, y] = v.mapping.original_point([a.x, a.y])?;
-            value(e.resolve(&a.target, &v.frame, Locator::Pixel { x, y })?)
+            let locator = if a.red_marker_cluster {
+                Locator::RedMarkerCluster { x, y }
+            } else {
+                Locator::Pixel { x, y }
+            };
+            value(e.resolve(&a.target, &v.frame, locator)?)
         })
         .await
     }

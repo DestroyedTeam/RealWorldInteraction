@@ -6,7 +6,8 @@ license.workspace = true
 
 [dependencies]
 rustls = { version = "=0.23.41", default-features = false, features = ["std", "ring"] }
-rcgen = { version = "=0.14.8", default-features = false, features = ["crypto", "ring", "zeroize"] }
+rcgen = { version = "=0.14.8", default-features = false, features = ["crypto", "ring", "zeroize", "x509-parser"] }
+x509-parser = { version = "=0.18.1", default-features = false }
 time = { version = "=0.3.44", default-features = false, features = ["std"] }
 zeroize = "=1.9.0"
 serde.workspace = true

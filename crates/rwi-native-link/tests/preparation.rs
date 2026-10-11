@@ -76,6 +76,7 @@ fn private_windows_bundle_can_be_validated_offline_on_mac_without_install_or_key
             ca: join("trust\\agent\\ca.der"),
             certificate: join("trust\\agent\\certificate.der"),
             private_key: join("trust\\agent\\private-key.der"),
+            renewal_bundle: None,
         },
         controller_peer_sha256: provision.controller.certificate_sha256.as_str().into(),
         model_peer_sha256: provision.model.certificate_sha256.as_str().into(),

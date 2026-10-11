@@ -42,6 +42,8 @@ impl VisualOptions {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct VisualRect {
+    /// Backend desktop coordinates: physical pixels on Windows, logical points
+    /// on macOS. This response-only mapping never authorizes input.
     pub x: i32,
     pub y: i32,
     pub width: u32,
@@ -57,7 +59,7 @@ impl VisualRect {
         {
             return Err(fault(
                 "visual_source_budget",
-                "Use a valid physical desktop rectangle with at most 16 million source pixels; no silent clipping.",
+                "Use a valid backend desktop rectangle with at most 16 million source pixels/points; no silent clipping.",
             ));
         }
         Ok(())
@@ -77,6 +79,13 @@ pub struct VisualCapture {
     pub identity: Identity,
     pub window: WindowIdentity,
     pub source_rect: VisualRect,
+    /// Exact capturable native pixel extent before the max_edge reduction.
+    /// This can exceed source_rect on Retina displays, where that rectangle
+    /// is measured in desktop points rather than physical pixels.
+    /// An older peer may omit this field when decoding its legacy response;
+    /// validation of a newly produced capture still rejects that unknown size.
+    #[serde(default)]
+    pub source_pixel_size: [u32; 2],
     pub image_size: [u32; 2],
     /// Descriptive pixel-center geometry only; not a resolve_view mapping or authority.
     pub visual_to_desktop: [f64; 6],
@@ -104,8 +113,15 @@ pub struct VisualObservation {
 }
 fn validate_capture(v: &VisualCapture, options: VisualOptions) -> Result<()> {
     v.source_rect.validate()?;
+    let source = v.source_pixel_size;
+    if source.contains(&0) || u64::from(source[0]) * u64::from(source[1]) > MAX_VISUAL_SOURCE_PIXELS
+    {
+        return Err(fault(
+            "visual_source_budget",
+            "The native capturable source must contain at most 16 million pixels.",
+        ));
+    }
     let [w, h] = v.image_size;
-    let source = [v.source_rect.width, v.source_rect.height];
     let edge = source[0].max(source[1]);
     let expected_size = if edge <= options.max_edge {
         source

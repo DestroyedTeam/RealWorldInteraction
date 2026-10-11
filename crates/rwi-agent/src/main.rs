@@ -94,13 +94,13 @@ async fn run() -> io::Result<()> {
         return Ok(());
     }
     let identity = config.identity.load_with(private_read)?;
-    let tls = identity.server_config(
-        &config
-            .principals
-            .iter()
-            .map(|p| p.certificate.clone())
-            .collect::<Vec<_>>(),
-    )?;
+    let peers = config
+        .principals
+        .iter()
+        .map(|p| p.certificate.clone())
+        .collect::<Vec<_>>();
+    let tls = identity.server_config(&peers)?;
+    let renewal_bundle = config.identity.renewal_bundle.clone();
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
     let address = listener.local_addr()?;
     let runtime = rwi_agent::runtime::Runtime::new(config)?;
@@ -119,14 +119,36 @@ async fn run() -> io::Result<()> {
         let _ = tokio::signal::ctrl_c().await;
         let _ = stop.send(true);
     });
-    let result = rwi_native_link::device::serve(
+    let renewal = renewal_bundle.map(|bundle| {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+                let path = bundle.clone();
+                match tokio::task::spawn_blocking(move || rwi_link_trust::renew_if_due(&path)).await
+                {
+                    Ok(Ok(report)) if !report.renewed.is_empty() => eprintln!(
+                        "rwi-agent TLS renewed: {} (endpoint keys unchanged)",
+                        report.renewed.join(",")
+                    ),
+                    Ok(Ok(_)) => {}
+                    Ok(Err(error)) => eprintln!("rwi-agent TLS renewal failed: {error}"),
+                    Err(_) => eprintln!("rwi-agent TLS renewal worker failed"),
+                }
+            }
+        })
+    });
+    let result = rwi_native_link::device::serve_pinned(
         listener,
         tls,
+        peers,
         move |peer, request| runtime.clone().handle(peer, request),
         rx,
     )
     .await;
     signal.abort();
+    if let Some(renewal) = renewal {
+        renewal.abort();
+    }
     rwi_agent::stop_device_feedback();
     result
 }

@@ -76,9 +76,9 @@ impl Engine {
         let element_policy =
             self.backend(target)?.capabilities()["checked_context_policy"] == "native_element";
         let snapshot = self.snapshot(target, frame)?;
-        // Only this explicitly checked semantic API gets a bounded proposal
-        // horizon. The legacy act/pixel 10-second rule is unchanged.
-        if snapshot.at.elapsed() > Duration::from_secs(120) {
+        // Semantic and pixel proposals share a model-friendly bounded horizon.
+        // Their distinct native revalidation policies remain unchanged.
+        if snapshot.at.elapsed() > Duration::from_secs(INPUT_PROPOSAL_MAX_AGE_SECS) {
             return Err(fault(
                 "checked_proposal_expired",
                 "Observe anew; do not retry an uncertain action.",
@@ -106,16 +106,25 @@ impl Engine {
                 },
             ));
         }
-        let native_action = if matches!(intent, Intent::Click) {
-            value.as_deref().filter(|action| {
-                self.backend(target).is_ok_and(|b| {
-                    b.capabilities()["native_semantic_actions"]
-                        .as_array()
-                        .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(action)))
-                })
-            })
-        } else {
-            None
+        let native_action = match (&intent, value.as_deref()) {
+            (Intent::Click, Some(action)) => {
+                let caps = self.backend(target)?.capabilities();
+                if action.is_empty()
+                    || !(caps["native_semantic_action_policy"] == "advertised_element_action"
+                        || caps["native_semantic_actions"]
+                            .as_array()
+                            .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(action))))
+                {
+                    return Err(fault(
+                        "native_action_unavailable",
+                        "The selected backend does not support the explicitly requested native action. No pointer fallback or input was dispatched.",
+                    ));
+                }
+                // resolve_action checks the exact retained element's advertised
+                // actions; native revalidation preserves provider/window identity.
+                Some(action)
+            }
+            _ => None,
         };
         let old = self.resolve_action(
             target,
@@ -140,10 +149,12 @@ impl Engine {
             })
             || !grounding_matches(expected, &current, &old)
         {
-            return Err(fault(
+            let mut error = fault(
                 "checked_precondition_changed",
                 "Document/focus/layout/element context changed or became unknown; no input, no automatic reobserve loop.",
-            ));
+            );
+            error.diagnostic = Some(Box::new(grounding_diagnostic(&before, &current, &old)));
+            return Err(error);
         }
         operation::checkpoint("checked_action_fresh_resolution")?;
         if serde_json::to_vec(&current)
@@ -266,27 +277,11 @@ mod tests {
         })
     }
     #[test]
-    fn delayed_semantic_proposal_is_revalidated_and_dispatched_once_without_legacy_ttl_change() {
+    fn delayed_semantic_proposal_is_revalidated_and_dispatched_once() {
         let (_d, mut e, f) = setup();
         let frame = e.observe("fixture").unwrap().frame;
-        let r = e
-            .resolve("fixture", &frame, Locator::Element { id: "Input".into() })
-            .unwrap();
         let lease = e.claim("fixture", 60000).unwrap();
-        age(&mut e, &frame, 13);
-        assert_eq!(
-            e.act(
-                "fixture",
-                &r.reference,
-                &lease,
-                "old-call",
-                Intent::Text,
-                Some("old".into())
-            )
-            .unwrap_err()
-            .code,
-            "stale_reference"
-        );
+        age(&mut e, &frame, 30);
         assert_eq!(f.0.lock().unwrap().calls, 0);
         let result = checked(&mut e, &frame, &lease, "checked-once").unwrap();
         assert_eq!(result.system_accepted, Some(true));
@@ -310,7 +305,7 @@ mod tests {
             .resolve("fixture", &frame, Locator::Pixel { x: 30., y: 40. })
             .unwrap();
         let lease = e.claim("fixture", 60000).unwrap();
-        age(&mut e, &frame, 13);
+        age(&mut e, &frame, INPUT_PROPOSAL_MAX_AGE_SECS + 1);
         assert_eq!(
             e.act(
                 "fixture",
@@ -491,6 +486,147 @@ mod tests {
 mod native_action_tests {
     use super::*;
     use crate::fixture::Fixture;
+    struct VisiblePointerOnly(Fixture);
+    impl Backend for VisiblePointerOnly {
+        fn identity(&self) -> Identity {
+            self.0.identity()
+        }
+        fn capabilities(&self) -> serde_json::Value {
+            serde_json::json!({"checked_context_policy":"native_element","native_semantic_actions":[]})
+        }
+        fn observe(&mut self) -> Result<Scene> {
+            let mut s = self.0.observe()?;
+            for e in &mut s.elements {
+                e.visible = Some(true);
+                e.occluded = Some(false);
+                e.enabled = Some(true);
+                e.actions = vec!["AXShowMenu".into()];
+            }
+            Ok(s)
+        }
+        fn act(
+            &mut self,
+            b: &Binding,
+            r: &Resolved,
+            i: &Intent,
+            v: Option<&str>,
+        ) -> Result<Option<bool>> {
+            self.0.act(b, r, i, v)
+        }
+        fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
+            self.0.inspect(s, p, e)
+        }
+    }
+    #[test]
+    fn explicit_native_action_never_uses_a_pointer_reference_on_pointer_only_backend() {
+        for value in [
+            None,
+            Some("AXShowMenu"),
+            Some("AXUnknown"),
+            Some("unknown_action"),
+        ] {
+            let d = tempfile::tempdir().unwrap();
+            let f = Fixture::default();
+            let mut e = Engine::new(d.path().into()).unwrap();
+            e.register("t".into(), Box::new(VisiblePointerOnly(f.clone())))
+                .unwrap();
+            let frame = e.observe("t").unwrap().frame;
+            let lease = e.claim("t", 60000).unwrap();
+            let result = e.act_checked(CheckedAction {
+                target: "t",
+                frame: &frame,
+                element: "Input",
+                lease: &lease,
+                request: "one-explicit-action",
+                intent: Intent::Click,
+                value: value.map(str::to_owned),
+            });
+            if value.is_none() {
+                assert!(result.is_ok());
+                assert_eq!(f.0.lock().unwrap().calls, 1);
+            } else {
+                assert_eq!(result.unwrap_err().code, "native_action_unavailable");
+                assert_eq!(f.0.lock().unwrap().calls, 0);
+            }
+        }
+    }
+    struct AdvertisedNative(VisiblePointerOnly, bool, bool);
+    impl Backend for AdvertisedNative {
+        fn identity(&self) -> Identity {
+            self.0.identity()
+        }
+        fn capabilities(&self) -> serde_json::Value {
+            serde_json::json!({"checked_context_policy":"native_element","native_semantic_action_policy":"advertised_element_action"})
+        }
+        fn observe(&mut self) -> Result<Scene> {
+            let mut s = self.0.observe()?;
+            for e in &mut s.elements {
+                e.visible = Some(self.1);
+                e.occluded = Some(!self.1);
+                e.enabled = Some(self.2);
+            }
+            Ok(s)
+        }
+        fn act(
+            &mut self,
+            b: &Binding,
+            r: &Resolved,
+            i: &Intent,
+            v: Option<&str>,
+        ) -> Result<Option<bool>> {
+            assert_eq!(r.native_action.as_deref(), Some("AXShowMenu"));
+            self.0.act(b, r, i, v)
+        }
+        fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
+            self.0.inspect(s, p, e)
+        }
+    }
+    #[test]
+    fn explicit_native_action_policy_requires_the_exact_advertised_element_action() {
+        for visible in [false, true] {
+            for enabled in [false, true] {
+                for action in ["AXShowMenu", "AXUnknown"] {
+                    let pass = enabled && action == "AXShowMenu";
+                    let d = tempfile::tempdir().unwrap();
+                    let f = Fixture::default();
+                    let mut e = Engine::new(d.path().into()).unwrap();
+                    e.register(
+                        "t".into(),
+                        Box::new(AdvertisedNative(
+                            VisiblePointerOnly(f.clone()),
+                            visible,
+                            enabled,
+                        )),
+                    )
+                    .unwrap();
+                    let frame = e.observe("t").unwrap().frame;
+                    let lease = e.claim("t", 60000).unwrap();
+                    let result = e.act_checked(CheckedAction {
+                        target: "t",
+                        frame: &frame,
+                        element: "Input",
+                        lease: &lease,
+                        request: "one-advertised-action",
+                        intent: Intent::Click,
+                        value: Some(action.into()),
+                    });
+                    assert_eq!(result.is_ok(), pass);
+                    if !pass {
+                        assert_eq!(
+                            result.unwrap_err().code,
+                            if action == "AXUnknown" {
+                                "unsupported_action"
+                            } else {
+                                "element_disabled"
+                            }
+                        );
+                    }
+                    assert_eq!(f.0.lock().unwrap().calls, u64::from(pass));
+                    e.release(&lease).unwrap();
+                }
+            }
+        }
+    }
     struct SemanticFixture {
         base: Fixture,
         advertised: bool,
@@ -509,8 +645,8 @@ mod native_action_tests {
             self.reads += 1;
             let mut s = self.base.observe()?;
             for e in &mut s.elements {
-                e.visible = Some(false);
-                e.occluded = Some(true);
+                e.visible = Some(self.reads.is_multiple_of(2));
+                e.occluded = Some(!self.reads.is_multiple_of(2));
                 e.actions = vec!["AXPress".into()];
                 e.enabled = Some(!self.disabled);
                 if self.changed && self.reads > 1 {

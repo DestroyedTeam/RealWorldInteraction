@@ -6,7 +6,7 @@ pub use client::{Client, DescribeReconnect, TransportFailure, TransportStats};
 use rwi_core::device::{PROTOCOL_VERSION, Reply, Request, valid_id};
 use rwi_link_trust::{Identity, IdentityPaths, PeerPin};
 use serde::{Deserialize, Serialize};
-pub use server::serve;
+pub use server::{serve, serve_pinned};
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{
     io::{AsyncWriteExt, BufReader},

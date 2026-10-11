@@ -2,20 +2,44 @@
 use super::*;
 use continuation::{Facts, Kind};
 
-/// Grounding for one action point. A system-wide hit that lands in the pinned
-/// process is authoritative; otherwise the pinned window's own AX subtree is
-/// walked geometrically. Cross-window coverage never blocks background delivery.
-fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<Cf> {
-    let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide())? };
+/// Grounding stays in the pinned application; otherwise walk the exact window.
+/// Never set a timeout on AXUIElementCreateSystemWide: that changes the global
+/// timeout for every AX object in this agent, including later action callbacks.
+fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<(Cf, bool)> {
+    let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32))? };
     unsafe {
-        ffi::AXUIElementSetMessagingTimeout(system.0, 0.05);
+        ffi::AXUIElementSetMessagingTimeout(application.0, 0.05);
     }
-    if let Ok(hit) = hit_test(&system, point)
+    if let Ok(hit) = hit_test(&application, point)
         && hit.pid().ok() == Some(pid)
     {
-        return Ok(hit);
+        return Ok((hit, true));
     }
-    Ok(element_at_point(window, point)?.unwrap_or_else(|| window.retained()))
+    Ok((
+        element_at_point(window, point)?.unwrap_or_else(|| window.retained()),
+        false,
+    ))
+}
+
+#[derive(Clone, Copy, Debug, Default, serde::Serialize)]
+struct WindowCanvasProof {
+    application_hit: bool,
+    exact_window_object: bool,
+    same_pid: bool,
+    exact_window_number: bool,
+    children_count: Option<usize>,
+}
+
+fn local_pixel_canvas(role: Option<&str>, proof: WindowCanvasProof) -> bool {
+    // Preserve the existing scrolling-canvas path. A window-level canvas is a
+    // separate, positively proven case, never a fallback for failed hit testing.
+    role == Some("AXScrollArea")
+        || (role == Some("AXWindow")
+            && proof.application_hit
+            && proof.exact_window_object
+            && proof.same_pid
+            && proof.exact_window_number
+            && proof.children_count == Some(0))
 }
 pub(super) struct AxObject(Cf);
 impl AxObject {
@@ -37,6 +61,14 @@ impl NativeMac {
         target: &Resolved,
         kind: Kind,
     ) -> Result<Facts<AxObject>> {
+        self.input_anchor_facts_in_sequence(target, kind, false)
+    }
+    pub(super) fn input_anchor_facts_in_sequence(
+        &self,
+        target: &Resolved,
+        kind: Kind,
+        continuing_text: bool,
+    ) -> Result<Facts<AxObject>> {
         let _call = operation::native_call("macos_input_anchor_read")?;
         let permitted =
             || unsafe { ffi::AXIsProcessTrusted() != 0 && ffi::CGPreflightPostEventAccess() };
@@ -54,16 +86,7 @@ impl NativeMac {
                 "No more input in a replaced native context or process.",
             ));
         }
-        let all = windows()?;
-        let window = all
-            .iter()
-            .find(|w| w.id == self.window && w.pid == self.pid)
-            .ok_or_else(|| {
-                fault(
-                    "window_binding_changed",
-                    "The pinned CGWindowID/PID is absent from the on-screen window list.",
-                )
-            })?;
+        let window = self.window_record()?;
         let rect = window.rect;
         // Background operation: resolve the exact AX window from the target
         // application; no focused-application or focused-window requirement.
@@ -78,23 +101,71 @@ impl NativeMac {
                 "The exact AX window no longer matches the pinned native bounds.",
             ));
         }
-        let hit = if target.native_action.is_some() {
-            exact_action_element(
-                &window_element,
-                self.pid,
-                target.scope.element.as_deref().ok_or_else(|| {
-                    fault("native_action_target_missing", "Exact element required.")
-                })?,
-            )?
+        let (hit, application_hit) = if target.native_action.is_some() {
+            (
+                super::super::objects::exact(
+                    &window_element,
+                    self.pid,
+                    target.scope.element.as_deref().ok_or_else(|| {
+                        fault("native_action_target_missing", "Exact element required.")
+                    })?,
+                    &self.objects,
+                )?,
+                false,
+            )
         } else {
             point_element(&window_element, self.pid, target.point)?
         };
-        let hit_description = element_description(&hit)?;
+        let hit_description =
+            super::super::objects::describe(&hit, &window_element, &self.objects)?;
+        if target.pixel_anchor_used {
+            let role = hit_description.element.role.as_deref();
+            let proof = if role == Some("AXWindow") {
+                WindowCanvasProof {
+                    application_hit,
+                    exact_window_object: unsafe { ffi::CFEqual(hit.0, window_element.0) } != 0,
+                    same_pid: hit.pid().ok() == Some(self.pid)
+                        && window_element.pid().ok() == Some(self.pid),
+                    exact_window_number: ffi::window_number_for_ax_element(&hit)
+                        == Some(self.window)
+                        && ffi::window_number_for_ax_element(&window_element) == Some(self.window),
+                    // Unsupported/malformed/timeout is unknown, never an empty tree.
+                    children_count: window_element
+                        .attr("AXChildren")
+                        .ok()
+                        .and_then(|value| unsafe { ffi::array(value.0, 64).ok() })
+                        .map(|children| children.len()),
+                }
+            } else {
+                WindowCanvasProof::default()
+            };
+            if !local_pixel_canvas(role, proof) {
+                let mut error = fault(
+                    "local_pixel_surface_changed",
+                    "Local pixel grounding requires AXScrollArea or a positively hit exact AXWindow with an explicitly empty child array; this native surface is unproven. No input dispatched.",
+                );
+                error.diagnostic = Some(Box::new(serde_json::json!({
+                    "reason":"local_pixel_canvas_unproven",
+                    "actual_role":role,
+                    "window_canvas_proof":proof,
+                    "native_input_dispatched":false,
+                    "replay_allowed":false,
+                })));
+                return Err(error);
+            }
+        }
         require_nonsecure_input(&hit_description)?;
         if matches!(kind, Kind::Text | Kind::Keyboard) {
-            require_keyboard_target(&hit_description, target.scope.element.as_deref())?;
+            // Later text batches are grounded by Sequence's retained CFEqual
+            // object and focus, not the geometry-derived public element ID.
+            let requested = if continuing_text && matches!(kind, Kind::Text) {
+                Some(hit_description.element.id.as_str())
+            } else {
+                target.scope.element.as_deref()
+            };
+            require_keyboard_target(&hit_description, requested)?;
             if matches!(kind, Kind::Text) {
-                require_text_target(&hit_description, target.scope.element.as_deref())?;
+                require_text_target(&hit_description, requested)?;
             }
         }
         let focused = if kind.needs_focus() {
@@ -152,62 +223,65 @@ impl NativeMac {
     }
 }
 
-// Semantic actions resolve the actual native object in the exact bound subtree,
-// never a point hit or a global name search. Ambiguity and walk limits fail closed.
-fn exact_action_element(window: &Cf, pid: u32, id: &str) -> Result<Cf> {
-    let mut pending = VecDeque::from([(window.retained(), 0usize)]);
-    let mut selected: Option<Cf> = None;
-    let start = Instant::now();
-    let mut count = 0;
-    while let Some((node, depth)) = pending.pop_front() {
-        operation::checkpoint("macos_semantic_lookup")?;
-        if count >= AX_TREE_MAX_NODES || start.elapsed() > Duration::from_millis(3000) {
-            return Err(fault(
-                "semantic_walk_incomplete",
-                "Cannot prove unique native target within the bounded subtree.",
-            ));
-        }
-        count += 1;
-        if node.attr("AXHidden").ok().and_then(|v| v.boolean()) == Some(true) {
-            continue;
-        }
-        if let Ok(description) = element_description(&node)
-            && description.element.id == id
-        {
-            let actual_pid = node.pid()?;
-            super::super::delegation::validate_hosted_descendant(pid, actual_pid)?;
-            if let Some(previous) = &selected {
-                if unsafe { ffi::CFEqual(previous.0, node.0) } == 0 {
-                    return Err(fault(
-                        "semantic_target_ambiguous",
-                        "Distinct native objects share the observed identity; nothing dispatched.",
-                    ));
-                }
-            } else {
-                selected = Some(node.retained());
-            }
-        }
-        let children = node.children().unwrap_or_default();
-        if depth >= 16 && !children.is_empty() {
-            return Err(fault(
-                "semantic_walk_incomplete",
-                "Native subtree exceeds depth budget.",
-            ));
-        }
-        for child in children {
-            pending.push_back((child, depth + 1));
-        }
-        if pending.len() > AX_TREE_MAX_QUEUE {
-            return Err(fault(
-                "semantic_walk_incomplete",
-                "Native subtree exceeds queue budget.",
-            ));
+#[cfg(test)]
+mod canvas_tests {
+    use super::*;
+
+    fn window_proof() -> WindowCanvasProof {
+        WindowCanvasProof {
+            application_hit: true,
+            exact_window_object: true,
+            same_pid: true,
+            exact_window_number: true,
+            children_count: Some(0),
         }
     }
-    selected.ok_or_else(|| {
-        fault(
-            "semantic_target_missing",
-            "Exact observed native object no longer exists in this window.",
-        )
-    })
+
+    #[test]
+    fn empty_exact_window_canvas_supports_local_pixels_without_scroll_area() {
+        assert!(local_pixel_canvas(Some("AXWindow"), window_proof()));
+        assert!(local_pixel_canvas(
+            Some("AXScrollArea"),
+            WindowCanvasProof::default()
+        ));
+        for role in [None, Some("AXGroup"), Some("AXButton"), Some("AXTextField")] {
+            assert!(!local_pixel_canvas(role, window_proof()));
+        }
+    }
+
+    #[test]
+    fn empty_snapshot_or_geometry_fallback_cannot_prove_a_window_canvas() {
+        for proof in [
+            WindowCanvasProof {
+                application_hit: false,
+                ..window_proof()
+            },
+            WindowCanvasProof {
+                exact_window_object: false,
+                ..window_proof()
+            },
+            WindowCanvasProof {
+                same_pid: false,
+                ..window_proof()
+            },
+            WindowCanvasProof {
+                exact_window_number: false,
+                ..window_proof()
+            },
+            WindowCanvasProof {
+                children_count: None,
+                ..window_proof()
+            },
+            WindowCanvasProof {
+                children_count: Some(1),
+                ..window_proof()
+            },
+        ] {
+            assert!(!local_pixel_canvas(Some("AXWindow"), proof), "{proof:?}");
+        }
+    }
 }
+
+#[cfg(test)]
+#[path = "anchor_native/canvas_flow_tests.rs"]
+mod canvas_flow_tests;

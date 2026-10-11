@@ -4,6 +4,7 @@ use crate::config::PlatformPolicy;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 fn runtime(dir: &std::path::Path) -> (Arc<Runtime>, Principal) {
     let principal = Principal {
+        journal_identity: None,
         certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
         observe: true,
         input: false,

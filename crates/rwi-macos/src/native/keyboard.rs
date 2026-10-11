@@ -2,7 +2,7 @@
 use super::*;
 
 pub(super) fn source() -> Result<CGEventSource> {
-    CGEventSource::new(CGEventSourceStateID::HIDSystemState).map_err(|_| {
+    CGEventSource::new(CGEventSourceStateID::Private).map_err(|_| {
         fault(
             "input_source_unavailable",
             "Native event source is unavailable.",

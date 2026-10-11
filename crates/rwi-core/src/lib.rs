@@ -1,7 +1,16 @@
 //! Rust-only intent engine. OS input lives behind a target-bound native Backend.
+
+mod foreground;
+pub use foreground::ForegroundState;
 mod checked_action;
+#[cfg(test)]
+mod journal_tail_regression;
+mod live;
+mod pixel_anchor;
 mod visual;
 pub use checked_action::CheckedAction;
+pub use live::*;
+pub use pixel_anchor::{PixelAnchor, RedMarkerAnchor};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -21,6 +30,9 @@ pub mod input_trajectory;
 pub mod lease;
 pub mod lifecycle;
 pub mod operation;
+pub mod operation_journal;
+#[cfg(test)]
+mod pixel_anchor_tests;
 #[cfg(test)]
 mod tests;
 pub mod trajectory;
@@ -29,6 +41,8 @@ pub const INLINE_BYTES: usize = 8 * 1024 * 1024;
 pub const ARTIFACT_BUDGET: usize = 64 * 1024 * 1024;
 pub const MAX_FRAME_BYTES: usize = 32 * 1024 * 1024;
 pub const SNAPSHOT_LIMIT: usize = 64;
+/// Proposal lifetime only; every input still revalidates the original binding.
+pub const INPUT_PROPOSAL_MAX_AGE_SECS: u64 = 120;
 pub type Result<T> = std::result::Result<T, Fault>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -145,7 +159,19 @@ pub struct Element {
 }
 impl Element {
     pub fn revision(&self) -> String {
-        digest(&serde_json::to_vec(self).expect("finite element metadata"))
+        self.action_revision(None)
+    }
+    /// Explicit native semantic actions address an exact object, not a pointer
+    /// hit. Preserve all semantic attributes; only omit pointer hit-test hints.
+    /// Pointer/text/key references retain their complete original revision.
+    pub fn action_revision(&self, native_action: Option<&str>) -> String {
+        if native_action.is_none() {
+            return digest(&serde_json::to_vec(self).expect("finite element metadata"));
+        }
+        let mut evidence = self.clone();
+        evidence.visible = None;
+        evidence.occluded = None;
+        digest(&serde_json::to_vec(&evidence).expect("finite element metadata"))
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -168,6 +194,9 @@ pub struct Scene {
 #[serde(rename_all = "snake_case")]
 pub enum Intent {
     Click,
+    /// One checked pointer-move event. No button transition or text value;
+    /// dispatch acknowledgement does not establish an application's hover effect.
+    MovePointer,
     DoubleClick,
     ContextMenu,
     Text,
@@ -177,6 +206,12 @@ pub enum Intent {
 }
 impl Intent {
     pub fn validate(&self, value: Option<&str>) -> Result<()> {
+        if matches!(self, Self::MovePointer) && value.is_some() {
+            return Err(fault(
+                "invalid_input_value",
+                "Pointer movement takes no value, button transition, or semantic action.",
+            ));
+        }
         if let Self::Drag(path) = self {
             if value.is_some() {
                 return Err(fault(
@@ -202,6 +237,12 @@ pub enum Locator {
     /// input-grade visibility requirement. Input intents cannot use it.
     Window,
     Pixel {
+        x: f64,
+        y: f64,
+    },
+    /// Explicit opt-in for a compact, red marker cluster on an animated bitmap
+    /// surface. The cluster itself is revalidated; ordinary pixels stay strict.
+    RedMarkerCluster {
         x: f64,
         y: f64,
     },
@@ -233,6 +274,22 @@ pub struct Resolved {
     /// Callers cannot supply this through an action's reference argument.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_region: Option<[u32; 4]>,
+    /// Internal bounded local image anchor for animated bitmap surfaces.
+    /// Not accepted from or returned to an MCP caller; other platforms remain
+    /// strict unless their native backend explicitly opts in.
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub pixel_anchor: Option<PixelAnchor>,
+    /// This invocation needed the local fallback at its first full native
+    /// revalidation. Native code must check the bitmap AX surface before any
+    /// activation or pointer dispatch. Never retained in the public reference.
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub pixel_anchor_used: bool,
+    /// Internal opt-in local red-component signature for dynamic bitmap scenes.
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub red_marker_anchor: Option<RedMarkerAnchor>,
 }
 /// Semantic references bind native geometry/focus and the selected element, not
 /// unrelated image pixels. Pixel-only references remain deliberately conservative.
@@ -259,10 +316,76 @@ pub fn grounding_matches(expected: &Binding, current: &Scene, target: &Resolved)
                         Some(action) => e.enabled != Some(false) && e.actions.contains(action),
                         None => e.visible == Some(true) && e.occluded == Some(false),
                     }
-                    && target.element_revision.as_ref() == Some(&e.revision())
+                    && target.element_revision.as_ref()
+                        == Some(&e.action_revision(target.native_action.as_deref()))
             }),
-        None => now.content == expected.content,
+        None => {
+            now.content == expected.content
+                || target.red_marker_anchor.as_ref().is_some_and(|anchor| {
+                    anchor.matches(
+                        &current.png,
+                        current.image_size,
+                        target.point,
+                        current.pixel_to_desktop,
+                    )
+                })
+                || target.pixel_anchor.as_ref().is_some_and(|anchor| {
+                    anchor.matches(
+                        &current.png,
+                        current.image_size,
+                        target.point,
+                        current.pixel_to_desktop,
+                    )
+                })
+        }
     }
+}
+/// Evaluate a single fresh scene once and retain only aggregate anchor metrics.
+/// This is not a preflight ticket or input authority. Never reuse the result for
+/// a later native batch/scene; native identity, leases and hit guards still run.
+pub fn evaluate_grounding(
+    expected: &Binding,
+    current: &Scene,
+    target: &Resolved,
+) -> (bool, Option<serde_json::Value>, Option<serde_json::Value>) {
+    let Some(now) = &current.binding else {
+        return (false, None, None);
+    };
+    if now.scope != expected.scope
+        || now.focus_window != expected.focus_window
+        || now.layout != expected.layout
+        || now.native_epoch != expected.native_epoch
+        || now.mutation_context != expected.mutation_context
+    {
+        return (false, None, None);
+    }
+    if target.scope.element.is_some() {
+        return (grounding_matches(expected, current, target), None, None);
+    }
+    if now.content == expected.content {
+        return (true, None, None);
+    }
+    let marker = target.red_marker_anchor.as_ref().map(|anchor| {
+        anchor.diagnostic(
+            &current.png,
+            current.image_size,
+            target.point,
+            current.pixel_to_desktop,
+        )
+    });
+    if marker.as_ref().is_some_and(|d| d["matched"] == true) {
+        return (true, None, marker);
+    }
+    let local = target.pixel_anchor.as_ref().map(|anchor| {
+        anchor.diagnostic(
+            &current.png,
+            current.image_size,
+            target.point,
+            current.pixel_to_desktop,
+        )
+    });
+    let matched = local.as_ref().is_some_and(|d| d["matched"] == true);
+    (matched, local, marker)
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Oracle {
@@ -299,10 +422,13 @@ struct Journal {
     fingerprint: String,
     receipt: Receipt,
 }
-pub use backend::Backend;
+pub use backend::{Backend, WindowAttachment};
 mod backend;
+mod grounding_diagnostics;
 #[cfg(test)]
 mod region_tests;
+mod window_targets;
+pub use grounding_diagnostics::grounding_diagnostic;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -351,16 +477,45 @@ pub struct DisplayTarget {
     /// Exact native display id when the caller pinned one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<u32>,
+    /// Stable macOS ColorSync display UUID; can be combined with the transient
+    /// native id and built_in selector to fail closed if topology changed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
 }
 impl DisplayTarget {
     pub fn validate(&self) -> Result<()> {
-        if self.built_in.is_none() && self.id.is_none() {
+        if self.built_in.is_none() && self.id.is_none() && self.uuid.is_none() {
             return Err(fault(
                 "invalid_display_target",
-                "Provide built_in and/or an exact display id.",
+                "Provide built_in, an exact display id, and/or a display UUID.",
+            ));
+        }
+        if self.uuid.as_ref().is_some_and(|uuid| {
+            uuid.len() != 36
+                || !uuid.bytes().enumerate().all(|(index, byte)| {
+                    if [8, 13, 18, 23].contains(&index) {
+                        byte == b'-'
+                    } else {
+                        byte.is_ascii_hexdigit()
+                    }
+                })
+        }) {
+            return Err(fault(
+                "invalid_display_target",
+                "Use a canonical 36-character display UUID.",
             ));
         }
         Ok(())
+    }
+
+    /// Every supplied selector must describe the same currently active display.
+    /// A stale numeric id cannot silently override a pinned UUID.
+    pub fn matches(&self, built_in: bool, id: u32, uuid: Option<&str>) -> bool {
+        self.built_in.is_none_or(|expected| expected == built_in)
+            && self.id.is_none_or(|expected| expected == id)
+            && self.uuid.as_ref().is_none_or(|expected| {
+                uuid.is_some_and(|current| current.eq_ignore_ascii_case(expected))
+            })
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -399,6 +554,7 @@ pub struct Popup {
 fn intent_kind(intent: &Intent) -> &'static str {
     match intent {
         Intent::Click => "click",
+        Intent::MovePointer => "move_pointer",
         Intent::DoubleClick => "double_click",
         Intent::ContextMenu => "context_menu",
         Intent::Text => "text",
@@ -438,13 +594,33 @@ struct Artifact {
 struct RegisteredTarget {
     identity: Identity,
     backend: Box<dyn Backend>,
+    parent: Option<String>,
+}
+
+/// Creation evidence shares the reference's bounded lifetime. Keep Resolved's
+/// public wire/test construction unchanged; never retain a separate reason map.
+#[derive(Clone)]
+struct StoredReference {
+    value: Resolved,
+    pixel_anchor_creation_reason: Option<&'static str>,
+}
+impl std::ops::Deref for StoredReference {
+    type Target = Resolved;
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+impl std::ops::DerefMut for StoredReference {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
 }
 
 pub struct Engine {
     targets: BTreeMap<String, RegisteredTarget>,
     state: PathBuf,
     snapshots: VecDeque<(String, Snapshot)>,
-    refs: VecDeque<Resolved>,
+    refs: VecDeque<StoredReference>,
     artifacts: VecDeque<Artifact>,
     pub leases: lease::LeaseBook,
 }
@@ -477,12 +653,13 @@ impl Engine {
             RegisteredTarget {
                 identity: backend.identity(),
                 backend,
+                parent: None,
             },
         );
         Ok(())
     }
     pub fn targets(&self) -> serde_json::Value {
-        serde_json::json!(self.targets.iter().map(|(k,b)|serde_json::json!({"target":k,"identity":b.identity,"capabilities":b.backend.capabilities()})).collect::<Vec<_>>())
+        serde_json::json!(self.targets.iter().map(|(k,b)|serde_json::json!({"target":k,"identity":b.identity,"capabilities":b.backend.capabilities(),"parent_target":b.parent})).collect::<Vec<_>>())
     }
     pub fn discover(&mut self, target: &str) -> Result<serde_json::Value> {
         operation::checkpoint("discover")?;
@@ -722,13 +899,20 @@ impl Engine {
                 .unwrap_or_default(),
             None => Vec::new(),
         };
+        let mut adapter_status = self.backend(target)?.capabilities();
+        if let Some(capabilities) = adapter_status.as_object_mut() {
+            capabilities.insert(
+                "input_proposal_max_age_ms".into(),
+                serde_json::json!(INPUT_PROPOSAL_MAX_AGE_SECS * 1000),
+            );
+        }
         Ok(Observation {
             frame,
             artifact_id: artifact,
             png_sha256: hash,
             scene,
             popups,
-            adapter_status: self.backend(target)?.capabilities(),
+            adapter_status,
         })
     }
     pub fn artifact_bytes(&self) -> usize {
@@ -791,6 +975,7 @@ impl Engine {
         locator: Locator,
         native_action: Option<&str>,
     ) -> Result<Resolved> {
+        let use_local_anchor = self.backend(target)?.local_pixel_anchor();
         let snapshot = self.snapshot(target, frame)?;
         let scene = &snapshot.scene;
         let binding = scene.binding.as_ref().ok_or_else(|| {
@@ -802,6 +987,8 @@ impl Engine {
         let mut scope = binding.scope.clone();
         let mut element_revision = None;
         let placement_only = matches!(locator, Locator::Window);
+        let mut pixel = None;
+        let mut red_marker_cluster = false;
         let point = match locator {
             locator @ (Locator::Semantic { .. } | Locator::Element { .. }) => {
                 let matches = scene
@@ -820,33 +1007,44 @@ impl Engine {
                     ));
                 }
                 let e = matches[0];
-                if if let Some(action) = native_action {
-                    e.enabled == Some(false) || !e.actions.iter().any(|a| a == action)
-                } else {
-                    e.visible != Some(true) || e.occluded != Some(false)
-                } {
+                if let Some(action) = native_action {
+                    if !e.actions.iter().any(|a| a == action) {
+                        return Err(fault(
+                            "unsupported_action",
+                            "The exact element does not advertise this native action; no input sent. Use its observed actions, not a pointer fallback.",
+                        ));
+                    }
+                    if e.enabled == Some(false) {
+                        return Err(fault(
+                            "element_disabled",
+                            "The exact observed element is disabled; no native action sent.",
+                        ));
+                    }
+                } else if e.visible != Some(true) || e.occluded != Some(false) {
                     return Err(fault(
                         "visibility_unknown",
                         "Resolve occlusion before input.",
                     ));
                 }
                 scope.element = Some(e.id.clone());
-                element_revision = Some(e.revision());
+                element_revision = Some(e.action_revision(native_action));
                 e.point
             }
             Locator::Window => {
-                let [a, b, c, d, e, f] = scene.pixel_to_desktop.ok_or_else(|| {
-                    fault(
-                        "coordinate_mapping_unknown",
-                        "Do not assume scale=1 or host coordinates for a guest.",
-                    )
-                })?;
-                let (x, y) = (
-                    scene.image_size[0] as f64 / 2.0,
-                    scene.image_size[1] as f64 / 2.0,
-                );
                 scope.element = None;
-                [a * x + c * y + e, b * x + d * y + f]
+                // This reference is rejected by every input intent. A logical
+                // AX dialog has no bitmap or pixel mapping, yet an exact native
+                // backend may still place its window. Never invent a mapping:
+                // the finite zero is only a non-input placeholder in Resolved.
+                scene
+                    .pixel_to_desktop
+                    .map_or([0.0, 0.0], |[a, b, c, d, e, f]| {
+                        let (x, y) = (
+                            scene.image_size[0] as f64 / 2.0,
+                            scene.image_size[1] as f64 / 2.0,
+                        );
+                        [a * x + c * y + e, b * x + d * y + f]
+                    })
             }
             Locator::Pixel { x, y } => {
                 if !x.is_finite()
@@ -868,6 +1066,37 @@ impl Engine {
                     )
                 })?;
                 scope.element = None;
+                pixel = Some([x, y]);
+                [a * x + c * y + e, b * x + d * y + f]
+            }
+            Locator::RedMarkerCluster { x, y } => {
+                if !use_local_anchor {
+                    return Err(fault(
+                        "red_marker_anchor_unavailable",
+                        "This native backend cannot revalidate a local marker cluster; no reference created.",
+                    ));
+                }
+                if !x.is_finite()
+                    || !y.is_finite()
+                    || x < 0.0
+                    || y < 0.0
+                    || x >= scene.image_size[0] as f64
+                    || y >= scene.image_size[1] as f64
+                {
+                    return Err(fault(
+                        "outside_frame",
+                        "Use coordinates inside the original image.",
+                    ));
+                }
+                let [a, b, c, d, e, f] = scene.pixel_to_desktop.ok_or_else(|| {
+                    fault(
+                        "coordinate_mapping_unknown",
+                        "Do not assume scale=1 or host coordinates for a guest.",
+                    )
+                })?;
+                scope.element = None;
+                pixel = Some([x, y]);
+                red_marker_cluster = true;
                 [a * x + c * y + e, b * x + d * y + f]
             }
         };
@@ -877,6 +1106,55 @@ impl Engine {
                 "Inspect native layout metadata.",
             ));
         }
+        let (pixel_anchor, pixel_anchor_creation_reason) = if let Some(pixel) = pixel
+            && !red_marker_cluster
+        {
+            if !use_local_anchor {
+                (None, Some("backend_not_opted_in"))
+            } else if let Some(artifact_id) = &snapshot.artifact_id {
+                if let Some(artifact) = self.artifacts.iter().find(|entry| &entry.id == artifact_id)
+                {
+                    match PixelAnchor::from_png_diagnosed(
+                        &artifact.bytes,
+                        scene.image_size,
+                        pixel,
+                        point,
+                    ) {
+                        Ok(anchor) => (Some(anchor), None),
+                        Err(reason) => (None, Some(reason.as_str())),
+                    }
+                } else {
+                    // The original frame still exists, but its identified bytes
+                    // are no longer retained. Do not recreate from a new frame.
+                    (None, Some("source_artifact_evicted"))
+                }
+            } else {
+                (None, Some("source_artifact_absent"))
+            }
+        } else {
+            // Semantic, placement and explicit red-marker references are not
+            // ordinary pixel-anchor construction failures.
+            (None, None)
+        };
+        let red_marker_anchor = if red_marker_cluster {
+            let (pixel, artifact) = pixel.and_then(|pixel| {
+                snapshot.artifact_id.as_ref().and_then(|id| {
+                    self.artifacts
+                        .iter()
+                        .find(|artifact| &artifact.id == id)
+                        .map(|artifact| (pixel, artifact))
+                })
+            }).ok_or_else(|| fault(
+                "red_marker_anchor_unavailable",
+                "A preserved native screenshot is required to anchor a red marker cluster; no reference created.",
+            ))?;
+            Some(RedMarkerAnchor::from_png(&artifact.bytes, scene.image_size, pixel, point).ok_or_else(|| fault(
+                "red_marker_cluster_not_found",
+                "The exact point must fall on one compact red marker in a local cluster; no reference created and no fallback was attempted.",
+            ))?)
+        } else {
+            None
+        };
         let r = Resolved {
             native_action: native_action.map(str::to_owned),
             reference: id(),
@@ -887,8 +1165,14 @@ impl Engine {
             element_revision,
             placement_only,
             source_region: snapshot.source_region,
+            pixel_anchor,
+            pixel_anchor_used: false,
+            red_marker_anchor,
         };
-        self.refs.push_back(r.clone());
+        self.refs.push_back(StoredReference {
+            value: r.clone(),
+            pixel_anchor_creation_reason,
+        });
         while self.refs.len() > 256 {
             self.refs.pop_front();
         }
@@ -934,21 +1218,7 @@ impl Engine {
     }
     /// Bounded tail of the operation journal, newest last.
     pub fn recent_operations(&self, limit: usize) -> Vec<serde_json::Value> {
-        let mut text = String::new();
-        let Ok(file) = File::open(self.operations_path()) else {
-            return Vec::new();
-        };
-        if file.take(65536).read_to_string(&mut text).is_err() {
-            return Vec::new();
-        }
-        let mut rows = text
-            .lines()
-            .rev()
-            .take(limit.min(20))
-            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
-            .collect::<Vec<_>>();
-        rows.reverse();
-        rows
+        operation_journal::recent(&self.operations_path(), limit)
     }
     fn journal_path(&self, key: &str, request: &str) -> PathBuf {
         self.state
@@ -1054,6 +1324,7 @@ impl Engine {
         #[cfg(unix)]
         File::open(path.parent().unwrap())?.sync_all()?;
         let mut placed = None;
+        let dispatch_before = self.backend(target)?.input_dispatch_count();
         match operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
             self.backend(target)?.move_window(&resolved, display)
         }) {
@@ -1061,7 +1332,10 @@ impl Engine {
                 receipt.dispatch = "returned".into();
                 placed = Some(value);
             }
-            Err(error) => receipt.dispatch_error = Some(error),
+            Err(error) => {
+                let dispatch_after = self.backend(target)?.input_dispatch_count();
+                record_dispatch_failure(&mut receipt, error, dispatch_before, dispatch_after);
+            }
         }
         write(&mut file, &receipt)?;
         drop(held);
@@ -1079,6 +1353,7 @@ impl Engine {
             None => serde_json::json!({"receipt": receipt}),
         })
     }
+
     pub fn act(
         &mut self,
         target: &str,
@@ -1140,7 +1415,7 @@ impl Engine {
             return Ok(result);
         }
         operation::checkpoint("before_revalidation")?;
-        let resolved = self
+        let mut resolved = self
             .refs
             .iter()
             .find(|r| r.reference == reference && r.target == target)
@@ -1161,8 +1436,11 @@ impl Engine {
             ));
         }
         let snapshot = self.snapshot(target, &resolved.frame)?;
-        if snapshot.at.elapsed() > Duration::from_secs(10) {
-            return Err(fault("stale_reference", "Reobserve; no input sent."));
+        if snapshot.at.elapsed() > Duration::from_secs(INPUT_PROPOSAL_MAX_AGE_SECS) {
+            return Err(fault(
+                "stale_reference",
+                "Input proposal exceeded 120 seconds; reobserve. No input sent.",
+            ));
         }
         let before = snapshot.scene.clone();
         let current = self.backend(target)?.revalidate(&resolved)?;
@@ -1178,32 +1456,55 @@ impl Engine {
                 "Native input binding is not ready.",
             ));
         }
-        if !before
+        let (grounded, local_pixel, red_marker) = before
             .binding
             .as_ref()
-            .is_some_and(|binding| grounding_matches(binding, &current, &resolved))
-        {
-            let mut error = fault(
-                "stale_reference",
-                "Focus/layout/content changed; reobserve.",
+            .map(|binding| evaluate_grounding(binding, &current, &resolved))
+            .unwrap_or((false, None, None));
+        if !grounded {
+            let reason = local_pixel
+                .as_ref()
+                .and_then(|d| d["reason"].as_str())
+                .or_else(|| red_marker.as_ref().and_then(|d| d["reason"].as_str()));
+            let message = reason.map_or_else(
+                || {
+                    let full_frame_changed_without_anchor = resolved.scope.element.is_none()
+                        && resolved.pixel_anchor.is_none()
+                        && resolved.red_marker_anchor.is_none()
+                        && before.binding.as_ref().zip(current.binding.as_ref())
+                            .is_some_and(|(a, b)| a.content != b.content);
+                    if full_frame_changed_without_anchor {
+                        if let Some(reason) = resolved.pixel_anchor_creation_reason {
+                            format!("Pixel reference has no local anchor ({reason}); full-frame content changed. Inspect the source snapshot or a stable textured click surface; no input sent, never replay.")
+                        } else {
+                            "Pixel reference has no local anchor; full-frame content changed. Inspect a fresh stable textured surface; no input sent.".to_owned()
+                        }
+                    } else {
+                        "Reference grounding refused; inspect fresh binding/element state. No input sent.".to_owned()
+                    }
+                },
+                |reason| format!("Local pixel anchor refused: {reason}. Inspect a fresh stable click surface; no input sent, never replay."),
             );
-            // Report which grounding dimensions changed, without exposing
-            // document text, image data or an instruction to replay input.
-            error.diagnostic = Some(Box::new(match (&before.binding, &current.binding) {
-                (Some(expected), Some(now)) => serde_json::json!({
-                    "scope_changed": expected.scope != now.scope,
-                    "focus_changed": expected.focus_window != now.focus_window,
-                    "layout_changed": expected.layout != now.layout,
-                    "native_epoch_changed": expected.native_epoch != now.native_epoch,
-                    "mutation_context_changed": expected.mutation_context != now.mutation_context,
-                    "content_changed": expected.content != now.content,
-                    "reference_kind": if resolved.scope.element.is_some() { "element" } else { "pixel" },
-                    "native_input_dispatched": false
-                }),
-                _ => serde_json::json!({"binding_missing": true, "native_input_dispatched": false}),
-            }));
+            let mut error = fault("stale_reference", &message);
+            // Same-scene metrics are reused, not recomputed from the PNG; this
+            // does not renew authority or skip any later native input check.
+            let mut diagnostic = grounding_diagnostic(&before, &current, &resolved);
+            if let Some(reason) = resolved.pixel_anchor_creation_reason {
+                diagnostic["local_anchor_creation_reason"] = serde_json::json!(reason);
+            }
+            if let Some(local) = local_pixel {
+                diagnostic["local_pixel_anchor"] = local;
+            }
+            if let Some(marker) = red_marker {
+                diagnostic["red_marker_cluster_anchor"] = marker;
+            }
+            error.diagnostic = Some(Box::new(diagnostic));
             return Err(error);
         }
+        resolved.pixel_anchor_used = (resolved.pixel_anchor.is_some()
+            || resolved.red_marker_anchor.is_some())
+            && before.binding.as_ref().map(|binding| &binding.content)
+                != current.binding.as_ref().map(|binding| &binding.content);
         if current.blocked != Some(false) {
             return Err(fault("target_blocked", "Inspect modal/occlusion state."));
         }
@@ -1247,6 +1548,7 @@ impl Engine {
             .binding
             .as_ref()
             .ok_or_else(|| fault("target_binding_unknown", "Native binding required."))?;
+        let dispatch_before = self.backend(target)?.input_dispatch_count();
         match operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
             self.backend(target)?
                 .act(expected, &resolved, &intent, value.as_deref())
@@ -1255,7 +1557,10 @@ impl Engine {
                 receipt.dispatch = "returned".into();
                 receipt.system_accepted = accepted;
             }
-            Err(error) => receipt.dispatch_error = Some(error),
+            Err(error) => {
+                let dispatch_after = self.backend(target)?.input_dispatch_count();
+                record_dispatch_failure(&mut receipt, error, dispatch_before, dispatch_after);
+            }
         }
         write(&mut file, &receipt)?;
         drop(held);
@@ -1366,3 +1671,20 @@ mod popup_tests {
         assert_eq!(popup_kind(None), "unknown");
     }
 }
+
+// Only positive native counter evidence distinguishes rejection from unknown effect.
+// Saturated/missing/reset counters cannot prove that nothing was dispatched.
+fn record_dispatch_failure(
+    receipt: &mut Receipt,
+    error: Fault,
+    before: Option<u64>,
+    after: Option<u64>,
+) {
+    if before.is_some_and(|n| n < u64::MAX) && before == after {
+        receipt.dispatch = "rejected_before_dispatch".into();
+    }
+    receipt.dispatch_error = Some(error);
+}
+
+#[cfg(test)]
+mod dispatch_receipt_tests;

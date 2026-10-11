@@ -165,12 +165,14 @@ fn visual_metadata_limit_includes_the_outer_target_and_result_envelope() {
 #[test]
 fn identity_source_output_metadata_png_and_mapping_budgets_fail_closed() {
     type Case = (fn(&mut VisualCapture), &'static str);
-    let cases: [Case; 8] = [
+    let cases: [Case; 10] = [
         (
             |v| v.identity.session = "foreign".into(),
             "session_mismatch",
         ),
         (|v| v.source_rect.width = 17_000_000, "visual_source_budget"),
+        (|v| v.source_pixel_size = [0, 1], "visual_source_budget"),
+        (|v| v.source_pixel_size = [2, 2], "visual_output_budget"),
         (|v| v.image_size = [2049, 2049], "visual_output_budget"),
         (|v| v.visual_to_desktop[4] = 0., "visual_mapping_mismatch"),
         (
@@ -218,6 +220,7 @@ fn negative_pixel_center_mapping_and_valid_png_signature_are_required() {
         width: 2,
         height: 1,
     };
+    v.source_pixel_size = [2, 1];
     v.image_size = [2, 1];
     v.visual_to_desktop = [1., 0., 0., 1., -3000., -1200.];
     v.png[16..20].copy_from_slice(&2u32.to_be_bytes());
@@ -228,6 +231,71 @@ fn negative_pixel_center_mapping_and_valid_png_signature_are_required() {
             .unwrap_err()
             .code,
         "invalid_visual_png"
+    );
+}
+#[test]
+fn retina_visual_uses_native_pixel_extent_not_logical_point_extent() {
+    let mut v = Fixture::default()
+        .capture_visual(VisualOptions::default())
+        .unwrap();
+    v.source_rect = VisualRect {
+        x: 1536,
+        y: 24,
+        width: 1434,
+        height: 660,
+    };
+    v.source_pixel_size = [2868, 1320];
+    v.image_size = [2048, 942];
+    let sx = 1434.0 / 2048.0;
+    let sy = 660.0 / 942.0;
+    v.visual_to_desktop = [
+        sx,
+        0.,
+        0.,
+        sy,
+        1536.0 + (sx - 1.0) / 2.0,
+        24.0 + (sy - 1.0) / 2.0,
+    ];
+    v.png[16..20].copy_from_slice(&2048u32.to_be_bytes());
+    v.png[20..24].copy_from_slice(&942u32.to_be_bytes());
+    validate_capture(
+        &v,
+        VisualOptions {
+            max_edge: 2048,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    // Even on Retina, a response larger than native source pixels is not
+    // accepted merely because it fits the public 2048-pixel output budget.
+    v.source_pixel_size = [1434, 660];
+    assert_eq!(
+        validate_capture(
+            &v,
+            VisualOptions {
+                max_edge: 2048,
+                ..Default::default()
+            }
+        )
+        .unwrap_err()
+        .code,
+        "visual_output_budget"
+    );
+}
+#[test]
+fn legacy_visual_wire_can_decode_without_claiming_an_unknown_native_pixel_size() {
+    let v = Fixture::default()
+        .capture_visual(VisualOptions::default())
+        .unwrap();
+    let mut wire = serde_json::to_value(v).unwrap();
+    wire.as_object_mut().unwrap().remove("source_pixel_size");
+    let legacy: VisualCapture = serde_json::from_value(wire).unwrap();
+    assert_eq!(legacy.source_pixel_size, [0, 0]);
+    assert_eq!(
+        validate_capture(&legacy, VisualOptions::default())
+            .unwrap_err()
+            .code,
+        "visual_source_budget"
     );
 }
 #[test]

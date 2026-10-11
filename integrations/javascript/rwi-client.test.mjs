@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RwiClient, RwiToolError, RwiInputNotReadyError } from './rwi-client.mjs';
 
+test('Mac summary exposes the observed window title without invented document state or binding', async () => {
+  const c=new RwiClient(async()=>({structuredContent:{frame:'f',scene:{binding:{scope:{window:'cgwindow:42',pid:7},mutation_context:{window_title:'Native dialog',document_state:null}},elements:[]}}}));
+  const summary=(await c.window('mac-context').snapshot()).data;
+  assert.deepEqual(summary.window,{window:'cgwindow:42',pid:7,title:'Native dialog'});
+  const visual=new RwiClient(async()=>({structuredContent:{frame:'v',scene:{binding:null,elements:[]}}}));
+  assert.equal((await visual.window('visual-context').snapshot()).data.window,null);
+});
+
 function setup(failAction = false, failRelease = false) {
   const calls = []; let frame = 0;
   const client = new RwiClient(async (name, args) => {
@@ -21,6 +29,23 @@ function setup(failAction = false, failRelease = false) {
   });
   return { client, window: client.window('exact-target'), calls };
 }
+test('device selection accepts exact string or schema-shaped object without implicit routing', async () => {
+  const calls=[];
+  const c=new RwiClient(async(name,args)=>{calls.push({name,args});return {structuredContent:{devices:[]}};});
+  await c.targets(); await c.targets('mac-host'); await c.targets({device_id:'mac-host'});
+  assert.deepEqual(calls.map(x=>x.args),[{}, {device_id:'mac-host'}, {device_id:'mac-host'}]);
+  for(const value of [{target:'mac-host'},{device_id:'mac-host',extra:true},[],1,'']) {
+    await assert.rejects(c.targets(value),/Use targets/);
+  }
+  assert.equal(calls.length,3);
+});
+test('window exposes its exact target locator but not stale window authority', async () => {
+  const {client,window,calls}=setup();
+  assert.equal(window.target,'exact-target');
+  assert.equal(client.window('other-device:context').target,'other-device:context');
+  assert.throws(()=>window.summary(),/Observe/);
+  assert.equal(calls.length,0);
+});
 test('one bounded callback claims, acts, observes and releases without losing references', async () => {
   const { window, calls } = setup(); await window.observe();
   const batch = await window.withInput(async input => {
@@ -52,6 +77,11 @@ test('transport failure is surfaced with no automatic retry', async () => {
   let count = 0;
   const client = new RwiClient(async () => { count++; throw new Error('disconnected'); });
   await assert.rejects(client.targets(), /disconnected/); assert.equal(count, 1);
+});
+test('selected target discovery forwards only the exact paired device ID', async () => {
+  const { client, calls } = setup();
+  await client.targets('mac-host');
+  assert.deepEqual(calls, [{ name: 'computer.targets', args: { device_id: 'mac-host' } }]);
 });
 test('typed drag remains one checked frame-bound intent, not per-point MCP calls', async () => {
   const {window,calls}=setup();const snapshot=await window.snapshot();
@@ -136,7 +166,7 @@ test('snapshot aliases are readable and resolve only with their original frame',
   assert.equal(calls.filter(c=>c.name==='computer.act_checked').length,1);
 });
 
-test('preview defaults to 1024 and retains authoritative view mapping without inline full capture', async () => {
+test('preview defaults to 2048 and retains authoritative view mapping without inline full capture', async () => {
   const seen=[];
   const mapping={view_size:[1024,768],original_size:[2048,1536],view_to_original:[2,0,0,2,.5,.5]};
   const media={type:'image',mimeType:'image/png',data:'fixture'};
@@ -147,7 +177,7 @@ test('preview defaults to 1024 and retains authoritative view mapping without in
   });
   const w=client.window('t'),s=await w.snapshot({preview:true});
   assert.equal(seen[0].args.inline_image,false);
-  assert.equal(seen[1].args.max_edge,1024);
+  assert.equal(seen[1].args.max_edge,2048);
   assert.equal(seen[1].args.artifact_id,'a');
   assert.deepEqual(s.data.preview.mapping,mapping);
   assert.deepEqual(s.media,[media]);
@@ -536,4 +566,39 @@ test('returned dispatch without OS acceptance stays unverified and requires read
   assert.equal(result.value.data.system_accepted,null);
   assert.equal(result.value.data.goal_verified,false);
   assert.throws(()=>w.summary(),/Observe/);
+});
+
+test('attachment creates independent coordinators and preserves source observation', async () => {
+  const calls=[]; let serial=0;
+  const c=new RwiClient(async(name,args)=>{
+    calls.push({name,args});
+    if(name==='computer.attach_window') return {structuredContent:{target:`root:window:${++serial}`,parent_target:args.target,attached:true}};
+    if(name==='computer.observe') return {structuredContent:{frame:`frame-${args.target}`,scene:{elements:[{id:`button-${args.target}`}],mutation_ready:true,blocked:false}}};
+    if(name==='computer.detach_window') return {structuredContent:{target:args.target,detached:true}};
+    return {structuredContent:{}};
+  });
+  const root=c.window('root'); await root.observe(); const original=root.summary().frame;
+  const a=await root.attach({window:'cgwindow:10',pid:7,native_epoch:'epoch-10',relation:'initial',ignored:'not authority'});
+  const b=await root.attach({window:'cgwindow:11',pid:7,native_epoch:'epoch-11',relation:'initial'});
+  await a.observe(); await b.observe();
+  assert.notEqual(a.target,b.target); assert.equal(root.summary().frame,original);
+  assert.equal(a.summary().frame,`frame-${a.target}`); assert.equal(b.summary().frame,`frame-${b.target}`);
+  const alias=c.window(a.target); await alias.observe(); assert.throws(()=>a.summary(),/superseded/);
+  await alias.detach(); await assert.rejects(alias.observe(),/detached/); await assert.rejects(c.window(a.target).observe(),/detached/);
+  assert.equal(b.summary().frame,`frame-${b.target}`); assert.equal(root.summary().frame,original);
+  assert.deepEqual(calls.find(x=>x.name==='computer.attach_window').args,{target:'root',selection:{window:'cgwindow:10',pid:7,native_epoch:'epoch-10',relation:'initial'}});
+});
+test('attachment failure and malformed alias never fall back to bind or replay', async () => {
+  for(const reply of [{isError:true,structuredContent:{code:'window_epoch_changed'}},{structuredContent:{target:'root',parent_target:'root'}}]) {
+    const calls=[];
+    const c=new RwiClient(async(name,args)=>{calls.push(name);if(name==='computer.observe')return {structuredContent:{frame:'original',scene:{elements:[]}}};return reply;});
+    const root=c.window('root');await root.observe();await assert.rejects(root.attach({window:'cgwindow:10',pid:7,native_epoch:'old',relation:'initial'}));
+    assert.equal(root.summary().frame,'original');assert.deepEqual(calls,['computer.observe','computer.attach_window']);
+  }
+});
+test('failed detach retains server error and does not make another attempt', async () => {
+  let calls=0;
+  const c=new RwiClient(async(name)=>{calls++;if(name==='computer.detach_window')return {isError:true,structuredContent:{code:'target_leased'}};return {structuredContent:{frame:'fresh',scene:{elements:[]}}};});
+  const window=c.window('attachment');await window.observe();await assert.rejects(window.detach(),e=>e instanceof RwiToolError&&e.data.code==='target_leased');
+  await window.observe();assert.equal(window.summary().frame,'fresh');assert.equal(calls,3);
 });

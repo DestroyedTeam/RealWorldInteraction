@@ -1,5 +1,50 @@
 //! Owned loopback mTLS + synthetic status/release receipts, not native GUI input.
 use super::*;
+
+#[test]
+fn returned_click_then_failed_observation_is_not_an_input_failure_or_rollback() {
+    let calls = vec![
+        json!({"tool":"computer.act_checked","outcome":"returned","is_error":false,"dispatch":"returned","native_dispatch_entered":true}),
+        json!({"tool":"computer.observe","outcome":"returned","is_error":true,"code":"capture_binding_changed","native_dispatch_entered":false}),
+        json!({"tool":"computer.release","outcome":"returned","is_error":false}),
+    ];
+    let summary = execution_summary(&calls, true, false);
+    assert_eq!(summary["cell_status"], "failed");
+    assert_eq!(summary["dispatch_returned"], 1);
+    assert_eq!(summary["mutation_attempts"], 1);
+    assert_eq!(summary["last_failed_tool"], "computer.observe");
+    assert_eq!(summary["last_failed_code"], "capture_binding_changed");
+    assert_eq!(summary["goal_verified"], false);
+    assert_eq!(summary["replay_allowed"], false);
+}
+
+#[test]
+fn uncertain_preparation_missing_dispatch_and_rejected_input_stay_distinct() {
+    let calls = vec![
+        json!({"tool":"computer.act_checked","outcome":"returned","is_error":true,"dispatch":"uncertain","native_dispatch_entered":true}),
+        json!({"tool":"computer.act","outcome":"unconfirmed"}),
+        json!({"tool":"computer.act_checked","outcome":"returned","is_error":true,"dispatch":"rejected_before_dispatch","native_dispatch_entered":false}),
+        json!({"tool":"computer.observe","outcome":"returned","is_error":false,"native_dispatch_entered":true}),
+    ];
+    let summary = execution_summary(&calls, true, true);
+    assert_eq!(summary["mutation_attempts"], 3);
+    assert_eq!(summary["dispatch_returned"], 0);
+    assert_eq!(summary["rejected_before_dispatch"], 1);
+    assert_eq!(summary["dispatch_unconfirmed"], 2);
+    assert_eq!(summary["cleanup_unconfirmed"], true);
+}
+
+#[test]
+fn local_js_and_read_only_failure_do_not_claim_a_native_mutation() {
+    let summary = execution_summary(
+        &[json!({"tool":"computer.result","outcome":"returned","is_error":false})],
+        true,
+        false,
+    );
+    assert_eq!(summary["mutation_attempts"], 0);
+    assert!(summary["last_failed_tool"].is_null());
+    assert_eq!(summary["goal_verified"], false);
+}
 use rwi_link_trust::IdentityPaths;
 use rwi_native_link::device::PairedDevice;
 

@@ -135,6 +135,9 @@ impl Fake {
                     .as_ref()
                     .map(|_| scene.elements[0].revision()),
                 source_region: None,
+                pixel_anchor: None,
+                red_marker_anchor: None,
+                pixel_anchor_used: false,
             },
         )
     }
@@ -190,7 +193,7 @@ impl Fake {
             4 => self.hit = 999,
             5 => self.hit_id = "replacement-element".into(),
             6 => self.window_rect.x += 1.,
-            7 => self.hit_rect.w += 1.,
+            7 => self.hit_rect.x += 1.,
             8 => self.layout = "changed-display-layout".into(),
             9 => self.point[0] += 1.,
             10 => self.permissions = false,
@@ -418,4 +421,28 @@ fn lease_expiration_stops_continuation_and_a_new_invocation_does_not_inherit_anc
     );
     assert!(another.anchor.is_none());
     assert_eq!(counter.load(Ordering::Acquire), 2);
+}
+
+#[test]
+fn text_resize_allows_only_same_native_editor_at_original_origin() {
+    for replacement in [false, true] {
+        let state = Rc::new(RefCell::new(Fake::new()));
+        let proposal = state.borrow().proposal();
+        let counter = AtomicU64::new(0);
+        let mut sequence = Sequence::new(&Intent::Text);
+        pair(&mut sequence, &state, &proposal, &counter, vec![65]).unwrap();
+        {
+            let mut s = state.borrow_mut();
+            s.hit_rect.w += 10.;
+            s.hit_rect.h -= 0.75;
+            s.hit_id = "geometry-derived-expanded-id".into();
+            if replacement {
+                s.hit = 999;
+                s.focused = Some(999);
+            }
+        }
+        let result = pair(&mut sequence, &state, &proposal, &counter, vec![66]);
+        assert_eq!(result.is_ok(), !replacement);
+        assert_eq!(state.borrow().value, if replacement { "A" } else { "AB" });
+    }
 }

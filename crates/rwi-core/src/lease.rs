@@ -32,6 +32,16 @@ impl State {
         let now = Instant::now();
         self.leases.retain(|_, l| l.expires > now);
     }
+    pub(crate) fn require_idle_target(&mut self, target: &str) -> Result<()> {
+        self.expire();
+        if self.leases.values().any(|lease| lease.target == target) {
+            return Err(fault(
+                "target_leased",
+                "Release this target's lease before detaching; no lease was released implicitly.",
+            ));
+        }
+        Ok(())
+    }
     pub fn check(&self, token: &str, target: &str, key: &str) -> Result<()> {
         match self.leases.get(token) {
             Some(l) if l.target == target && l.key == key && l.expires > Instant::now() => Ok(()),

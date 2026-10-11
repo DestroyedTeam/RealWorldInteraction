@@ -14,7 +14,7 @@ use foreign_types::ForeignType;
 use objc2::{
     msg_send,
     rc::autoreleasepool,
-    runtime::{AnyClass, AnyObject},
+    runtime::{AnyClass, AnyObject, Bool},
 };
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
 use serde_json::json;
@@ -48,6 +48,9 @@ struct Status {
     created: bool,
     visible: bool,
     point: Option<[f64; 2]>,
+    applied_point: Option<[f64; 2]>,
+    window_id: Option<u32>,
+    display_id: Option<u32>,
     dpi: Option<u32>,
     last_error: Option<String>,
 }
@@ -84,9 +87,22 @@ pub fn install() -> bool {
             set_status(|s| s.last_error = Some("sharedApplication returned null".into()));
             return false;
         }
-        // Accessory policy: real windows without Dock activation or a menu bar.
-        let _: () = msg_send![app, setActivationPolicy: 1i64];
+        // We use a custom event pump rather than NSApplication.run, so complete
+        // AppKit launch explicitly. Prohibit activation until initialization
+        // finishes; no windows exist yet. Then allow nonactivating panels.
+        let prohibited: Bool = msg_send![app, setActivationPolicy: 2isize];
+        if !prohibited.as_bool() {
+            set_status(|s| s.last_error = Some("cannot prohibit startup activation".into()));
+            return false;
+        }
+        let _: () = msg_send![app, finishLaunching];
+        let accessory: Bool = msg_send![app, setActivationPolicy: 1isize];
+        if !accessory.as_bool() {
+            set_status(|s| s.last_error = Some("accessory presentation unavailable".into()));
+            return false;
+        }
     }
+    crate::live::install();
     true
 }
 
@@ -121,15 +137,30 @@ pub fn last_point() -> Option<[f64; 2]> {
 
 pub fn status_json() -> serde_json::Value {
     let snapshot = status().lock().ok();
-    let (created, visible, point, dpi, last_error) = snapshot
+    let (created, visible, point, applied_point, window_id, display_id, dpi, last_error) = snapshot
         .as_ref()
-        .map(|s| (s.created, s.visible, s.point, s.dpi, s.last_error.clone()))
-        .unwrap_or((false, false, None, None, None));
+        .map(|s| {
+            (
+                s.created,
+                s.visible,
+                s.point,
+                s.applied_point,
+                s.window_id,
+                s.display_id,
+                s.dpi,
+                s.last_error.clone(),
+            )
+        })
+        .unwrap_or((false, false, None, None, None, None, None, None));
     json!({
+        "implemented": true,
         "installed": SENDER.get().is_some(),
         "created": created,
         "visible": visible,
         "point": point,
+        "applied_point": applied_point,
+        "window_id": window_id,
+        "display_id": display_id,
         "dpi": dpi,
         "material": "a1_diamond_rcu",
         "last_error": last_error,
@@ -158,8 +189,11 @@ unsafe fn window_dpi(window: *mut AnyObject) -> u32 {
 /// fixed lens hotspot lands exactly on the point.
 fn cocoa_origin(point: [f64; 2]) -> Option<[f64; 2]> {
     let primary = core_graphics::display::CGDisplay::main().bounds();
-    let height = primary.size.height;
-    if !height.is_finite() || height <= 0.0 {
+    cocoa_origin_with_height(point, primary.size.height)
+}
+
+fn cocoa_origin_with_height(point: [f64; 2], height: f64) -> Option<[f64; 2]> {
+    if !height.is_finite() || height <= 0.0 || !point.iter().all(|v| v.is_finite()) {
         return None;
     }
     Some([point[0] - HOTSPOT_PT, height - point[1] - HOTSPOT_PT])
@@ -272,6 +306,7 @@ pub fn pump_forever() -> ! {
     let mut last_show = Instant::now();
     let mut motion = rwi_pointer::motion::Motion::default();
     let mut animating_until: Option<Instant> = None;
+    let mut live = crate::live::Presenter::default();
     loop {
         loop {
             match receiver.try_recv() {
@@ -306,8 +341,18 @@ pub fn pump_forever() -> ! {
                         // Order onto the target display first, then read its real
                         // backing scale so the Retina raster stays 1:1.
                         unsafe {
-                            let _: () = msg_send![created, setFrameOrigin: NSPoint::new(origin[0], origin[1])];
+                            let frame = NSRect::new(
+                                NSPoint::new(origin[0], origin[1]),
+                                NSSize::new(SIZE_PT, SIZE_PT),
+                            );
+                            let _: () =
+                                msg_send![created, setFrame: frame, display: true, animate: false];
                             let _: () = msg_send![created, orderFrontRegardless];
+                            // This presenter pumps CFRunLoop, not NSApplication.run.
+                            // Commit pending layer/window transactions explicitly.
+                            if let Some(transaction) = AnyClass::get(c"CATransaction") {
+                                let _: () = msg_send![transaction, flush];
+                            }
                         }
                         let wanted = unsafe { window_dpi(created) };
                         if wanted != dpi {
@@ -331,6 +376,49 @@ pub fn pump_forever() -> ! {
                             s.visible = true;
                             s.point = Some(point);
                             s.dpi = Some(dpi);
+                        });
+                        // Requested coordinates are not evidence of placement.
+                        // Read the window server's actual window and display back.
+                        let window_number: isize = unsafe { msg_send![created, windowNumber] };
+                        let mut actual = u32::try_from(window_number).ok().and_then(|id| {
+                            crate::native::windows()
+                                .ok()?
+                                .into_iter()
+                                .find(|w| w.id == id)
+                        });
+                        // The window server can commit a move just after the
+                        // AppKit call returns. Settle reads only; never repeat
+                        // the placement command or manufacture an applied point.
+                        let settle = Instant::now();
+                        while actual
+                            .as_ref()
+                            .is_none_or(|w| !hotspot_matches(w.rect, point))
+                            && settle.elapsed() < Duration::from_millis(50)
+                        {
+                            std::thread::sleep(Duration::from_millis(5));
+                            actual = u32::try_from(window_number).ok().and_then(|id| {
+                                crate::native::windows()
+                                    .ok()?
+                                    .into_iter()
+                                    .find(|w| w.id == id)
+                            });
+                        }
+                        set_status(|s| {
+                            s.window_id = u32::try_from(window_number).ok();
+                            s.applied_point = actual
+                                .as_ref()
+                                .map(|w| [w.rect.x + w.rect.w / 2.0, w.rect.y + w.rect.h / 2.0]);
+                            s.display_id = actual.as_ref().and_then(|w| {
+                                crate::native::displays().ok().and_then(|ds| {
+                                    crate::native::containing_display(&ds, w.rect).map(|d| d.id)
+                                })
+                            });
+                            if s.applied_point.is_none_or(|p| {
+                                (p[0] - point[0]).abs() > 1.0 || (p[1] - point[1]).abs() > 1.0
+                            }) {
+                                s.last_error =
+                                    Some("overlay placement not confirmed by window server".into());
+                            }
                         });
                     });
                     let _ = ack.send(());
@@ -377,8 +465,37 @@ pub fn pump_forever() -> ! {
         }
         // Pump the main run loop so AppKit can service its own sources: a
         // borderless window is only ordered on screen while the loop runs.
+        live.tick();
         unsafe {
             let _ = CFRunLoop::run_in_mode(kCFRunLoopDefaultMode, TICK, true);
         }
+    }
+}
+
+fn hotspot_matches(frame: crate::geometry::Rect, point: [f64; 2]) -> bool {
+    (frame.x + frame.w / 2.0 - point[0]).abs() <= 1.0
+        && (frame.y + frame.h / 2.0 - point[1]).abs() <= 1.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn desktop_hotspot_conversion_preserves_non_primary_display_coordinates() {
+        for point in [
+            [3751.0, 372.0],
+            [-800.0, 300.0],
+            [300.0, -500.0],
+            [100.0, 1300.0],
+        ] {
+            let origin = cocoa_origin_with_height(point, 982.0).unwrap();
+            assert_eq!(
+                [origin[0] + HOTSPOT_PT, 982.0 - origin[1] - HOTSPOT_PT],
+                point
+            );
+        }
+        assert!(cocoa_origin_with_height([f64::NAN, 0.0], 982.0).is_none());
+        assert!(cocoa_origin_with_height([0.0, 0.0], 0.0).is_none());
     }
 }

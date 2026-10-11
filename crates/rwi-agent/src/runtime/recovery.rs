@@ -128,6 +128,7 @@ mod tests {
     async fn corrupt_commit_requires_new_authorized_idle_resource_check_and_remains_evidence() {
         let temp = tempfile::tempdir().unwrap();
         let policy = Principal {
+            journal_identity: None,
             certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
             observe: true,
             input: true,
