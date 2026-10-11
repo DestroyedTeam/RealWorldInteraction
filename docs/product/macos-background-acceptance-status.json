@@ -2208,5 +2208,38 @@
     "human_requests": false,
     "new_remote_ci_pending": true,
     "full_goal_accepted": false
+  },
+  "R40_windows_native_compile": {
+    "date": "2026-10-11",
+    "preceding_remote_ci": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38114544302",
+    "preceding_macos": "success",
+    "preceding_windows": "four crate::input_trajectory module errors",
+    "watch_error": "unexpected EOF retained separately from completed failure readback",
+    "changed_sites": [
+      "four rwi_core::input_trajectory references",
+      "UIA Reader Element.role/enabled/actions from existing cached facts"
+    ],
+    "intermediate_missing_Element_fields_error_retained": true,
+    "same_input_actual_windows_package_check": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "original_three_hashes_restored": true,
+    "windows_package_all_target_all_feature_clippy_exit_status": 0,
+    "additional_UIA_calls": 0,
+    "invented_action_patterns": false,
+    "full_eight_mac_gates_exit_zero": true,
+    "workspace": {
+      "passed": 736,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "mac_runtime_redeploy": false,
+    "native_windows_GUI_accepted": false,
+    "new_exact_head_remote_ci_pending": true,
+    "full_goal_complete": false
   }
 }

@@ -1,6 +1,6 @@
 //! Native sink for one bounded left-button trajectory. No shell or UIA mutation.
 use super::*;
-use crate::input_trajectory::TrajectorySink;
+use rwi_core::input_trajectory::TrajectorySink;
 
 /// Cumulative operation-local timings, including failed guards. No provider data.
 #[derive(Default, serde::Serialize)]
@@ -47,7 +47,7 @@ impl GuardPhases for TimedGuard<'_, '_> {
 
 impl TrajectorySink for NativeSink<'_> {
     fn sample_interval_ms(&self) -> u64 {
-        crate::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS
+        rwi_core::input_trajectory::NATIVE_SAMPLE_INTERVAL_MS
     }
     fn now_ms(&self) -> u64 {
         self.trajectory_clock.elapsed().as_millis() as u64

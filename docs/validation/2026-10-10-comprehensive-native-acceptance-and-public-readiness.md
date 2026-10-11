@@ -1,3 +1,11 @@
+## 2026-10-11 · R40：实际 Windows 编译分支补齐
+
+第四次真实远程 run [38114544302](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38114544302) 的 Mac job 成功，Windows实际报4处 `crate::input_trajectory` 找不到。watch 曾因 GitHub API unexpected EOF 返回1；之后 run readback确认failure、failed-log取回0，区分网络监听错误与真实Windows编译错误。
+
+本机Windows target同命令复现101；四处引用改为已有 `rwi_core::input_trajectory`。再次编译实际暴露UIA Reader漏填共享Element的role/enabled/actions（E0063），原错误保留。现只复用CachedControlType/CachedIsEnabled读回；role保留literal UIAControlType:id，actions为空表示没有已知pattern，不能从control type猜授权或能力。没有新增UIA调用、改变native gesture执行/lease/no-replay，也没有增加平台依赖。
+
+实际Windows package all-target检查同输入BASELINE101→MODIFIED0→独立copy可执行ROLLBACK101→REAPPLIED0，三原文件hash恢复。本机Windows package all-target/all-feature Clippy严格0；本机完整八门禁0、workspace736/0/11/42、receiver53/UI7、architecture0/既有12debt、负例8tests0。以上不等于Windows GUI、整workspace Windows原生执行或Live Host渲染已通过；仍要新head真实CI。Mac安装Agent/MCP、CA/profile/权限不动，无人工配合或旧GUI重放。
+
 ## 2026-10-11 · R39：默认 MCP 构建排除旧 native pipe 诊断工具
 
 第三次真实远程 run [38113659051](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38113659051)：Mac成功，Windows默认测试实际在 `rwi-pipe-client.rs:16` 因未启用的 `rwi_windows` 报 E0433。该CLI属于旧 local-worker诊断，现明确 `required-features=["legacy-local"]`；Windows/MSVC build script只在同一feature开启时给它发linker指令，默认MCP仍保留asInvoker/uiAccess=false。没有把Windows/macOS后端依赖加回默认网关，也没有修改native pipe执行体、丢弃测试或权限校验。

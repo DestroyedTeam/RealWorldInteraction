@@ -144,6 +144,11 @@ impl<'a> Reader<'a> {
                 self.elements.push(Element {
                     id: id.clone(),
                     name: name.clone().unwrap_or_default(),
+                    // Reuse the bounded cache read above; retain the literal UIA
+                    // type, and do not invent action-pattern support from it.
+                    role: control.map(|id| format!("UIAControlType:{id}")),
+                    enabled,
+                    actions: vec![],
                     point,
                     visible,
                     occluded,
