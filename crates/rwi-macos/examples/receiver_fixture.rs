@@ -1,10 +1,14 @@
-//! Opt-in AppKit receiving application, not an RWI backend or input sender.
+//! Opt-in receiving fixture, never a production backend.
+//! An explicit peer-pinned Command+Tab actor is separately gated and default-off.
 #[cfg(target_os = "macos")]
 #[path = "receiver_fixture/appkit.rs"]
 mod appkit;
 #[cfg(target_os = "macos")]
 #[path = "receiver_fixture/ax_delay.rs"]
 mod ax_delay;
+#[path = "receiver_fixture/command_tab.rs"]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod command_tab;
 #[path = "receiver_fixture/model.rs"]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod model;
@@ -14,6 +18,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", model::USAGE);
         return Ok(());
     };
+    if options.check_only {
+        println!(
+            "{}",
+            serde_json::json!({"configuration_valid":true,"gui_created":false,"input_sent":false,"native_binding_verified":false,"command_tab":options.command_tab})
+        );
+        return Ok(());
+    }
     #[cfg(target_os = "macos")]
     {
         appkit::run(options)?;

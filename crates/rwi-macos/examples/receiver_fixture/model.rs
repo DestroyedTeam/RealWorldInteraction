@@ -1,4 +1,5 @@
 //! Pure receiving-state oracle and bounded atomic JSON output; no AppKit calls.
+use super::command_tab;
 use serde::Serialize;
 use std::{
     collections::VecDeque,
@@ -10,7 +11,8 @@ use std::{
 pub const USAGE: &str = "RWI receiver fixture (no window without --open-window)\n\
 Usage: receiver_fixture --open-window --run-id RUN_ID --state-dir ABS_NEW_DIRECTORY --display-id NONZERO_ID [--lifetime-ms 1..600000]\n\
 Creates only its own RWI acceptance window. Root must allocate that exact window\n\
-before native testing; it only uses the explicit display and never operates another app.\n\
+before native testing; default behavior uses only its own window on that display.\n\
+An explicit peer-pinned Command+Tab test actor is default-off; --check-only validates without GUI/input.\n\
 Default own-window lifetime is 120000 ms; no timer is started by help/no arguments.";
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
@@ -37,6 +39,9 @@ pub struct Options {
     pub legacy_self_foreground: bool,
     /// Explicit own-provider latency test, no production agent behavior.
     pub ax_windows_delay_ms: Option<u32>,
+    pub command_tab: Option<command_tab::Config>,
+    /// Validation only: no state directory, framework call, window or timer.
+    pub check_only: bool,
 }
 impl Options {
     #[cfg(test)]
@@ -80,10 +85,44 @@ impl Options {
         let mut self_foreground_on_first_down_after_ms = None;
         let mut legacy_self_foreground = false;
         let mut ax_windows_delay_ms = None;
+        let mut command_tab_delay = None;
+        let mut command_tab_peer_pid = None;
+        let mut command_tab_peer_window = None;
+        let mut command_tab_peer_bundle = None;
+        let mut check_only = false;
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => return Ok(None),
                 "--open-window" if !open => open = true,
+                "--check-only" if !check_only => check_only = true,
+                "--command-tab-on-first-down-after-ms" if command_tab_delay.is_none() => {
+                    command_tab_delay = Some(
+                        args.next()
+                            .ok_or("Command+Tab delay missing")?
+                            .parse::<u32>()
+                            .map_err(|_| "Command+Tab delay must be u32")?,
+                    );
+                }
+                "--command-tab-peer-pid" if command_tab_peer_pid.is_none() => {
+                    command_tab_peer_pid = Some(
+                        args.next()
+                            .ok_or("Command+Tab peer PID missing")?
+                            .parse::<i32>()
+                            .map_err(|_| "Command+Tab peer PID must be i32")?,
+                    );
+                }
+                "--command-tab-peer-window" if command_tab_peer_window.is_none() => {
+                    command_tab_peer_window = Some(
+                        args.next()
+                            .ok_or("Command+Tab peer window missing")?
+                            .parse::<u32>()
+                            .map_err(|_| "Command+Tab peer window must be u32")?,
+                    );
+                }
+                "--command-tab-peer-bundle" if command_tab_peer_bundle.is_none() => {
+                    command_tab_peer_bundle =
+                        Some(args.next().ok_or("Command+Tab peer bundle missing")?);
+                }
                 "--cover-controls" if !cover_controls => cover_controls = true,
                 "--right-side" if !right_side => right_side = true,
                 "--modal-controls" if !modal_controls => modal_controls = true,
@@ -173,6 +212,11 @@ impl Options {
             && self_foreground_on_first_down_after_ms.is_none()
             && !legacy_self_foreground
             && ax_windows_delay_ms.is_none()
+            && command_tab_delay.is_none()
+            && command_tab_peer_pid.is_none()
+            && command_tab_peer_window.is_none()
+            && command_tab_peer_bundle.is_none()
+            && !check_only
         {
             return Ok(None);
         }
@@ -219,6 +263,30 @@ impl Options {
         if ax_windows_delay_ms.is_some() && !regular_app {
             return Err("own AX windows provider test requires --regular-app".into());
         }
+        let command_tab = if command_tab_delay.is_some()
+            || command_tab_peer_pid.is_some()
+            || command_tab_peer_window.is_some()
+            || command_tab_peer_bundle.is_some()
+        {
+            let config = command_tab::Config {
+                delay_ms: command_tab_delay.ok_or("Command+Tab delay required")?,
+                peer_pid: command_tab_peer_pid.ok_or("Command+Tab peer PID required")?,
+                peer_window: command_tab_peer_window.ok_or("Command+Tab peer window required")?,
+                peer_bundle: command_tab_peer_bundle.ok_or("Command+Tab peer bundle required")?,
+            };
+            config.validate(regular_app, lifetime_ms, environment_sample_ms)?;
+            if self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || legacy_self_foreground
+            {
+                return Err(
+                    "Command+Tab actor cannot combine with an activation actor/fallback".into(),
+                );
+            }
+            Some(config)
+        } else {
+            None
+        };
         Ok(Some(Self {
             run_id,
             state_dir,
@@ -235,6 +303,8 @@ impl Options {
             self_foreground_on_first_down_after_ms,
             legacy_self_foreground,
             ax_windows_delay_ms,
+            command_tab,
+            check_only,
         }))
     }
 }
@@ -476,7 +546,7 @@ pub struct MouseEvent {
     pub delta: Option<[f64; 2]>,
 }
 impl MouseEvent {
-    fn finite(&self) -> bool {
+    pub(super) fn finite(&self) -> bool {
         self.local_point
             .into_iter()
             .chain(self.window_point)
@@ -898,12 +968,14 @@ pub struct State {
     pub records: VecDeque<Record>,
     pub output_error: Option<String>,
     pub ax_provider_probe: serde_json::Value,
+    pub command_tab: command_tab::Oracle,
 }
 impl State {
     pub fn new(run_id: String) -> Self {
         let pid = std::process::id();
         Self {
             schema_version: 1,
+            command_tab: command_tab::Oracle::default(),
             window_title: format!("RWI 验收 · Receiver · {run_id} · PID {pid}"),
             run_id,
             pid,

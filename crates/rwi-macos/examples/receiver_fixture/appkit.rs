@@ -1,6 +1,8 @@
 //! Standalone main-thread AppKit receiver. Only public framework selectors.
-//! No mouse/key posting, global monitor, capture, target-app access or private SPI.
-//! The only posted event is an own-NSApplication ApplicationDefined run-loop wake.
+//! Default passive receiver: no key posting, global monitor, capture or private SPI.
+//! The separately opted-in Command+Tab actor pins one allocated peer and existing
+//! post/listen authorization; it never grants permission or acts as an RWI fallback.
+use super::command_tab;
 use super::model::{
     DispatchEvent, DispatchRegion, DispatchStage, MouseEvent, MouseKind, Options, Rect, Region,
     State, Store, SystemPanelOracle, activation_policy_ready, is_dispatch_mouse_type,
@@ -47,6 +49,8 @@ struct UI {
     lifetime_timer: Option<Retained<AnyObject>>,
     environment_timer: Option<Retained<AnyObject>>,
     self_foreground_timer: Option<Retained<AnyObject>>,
+    command_tab_timer: Option<Retained<AnyObject>>,
+    command_tab_actor: Option<command_tab::native::Actor>,
     // AppKit target and delegate are unretained properties. Keep them alive.
     _actions: Retained<AnyObject>,
 }
@@ -141,11 +145,24 @@ impl UI {
         }
         Ok(())
     }
+    fn arm_command_tab_timer(&mut self, delay_ms: u32) -> Result<(), String> {
+        if self.command_tab_timer.is_some() {
+            return Err("Command+Tab timer already exists; no replay".into());
+        }
+        unsafe {
+            let timer: Retained<AnyObject> = msg_send![class(c"NSTimer")?, timerWithTimeInterval:f64::from(delay_ms)/1000., target:&*self._actions, selector:sel!(commandTabRequested:), userInfo:std::ptr::null_mut::<AnyObject>(), repeats:false];
+            let main: *mut AnyObject = msg_send![class(c"NSRunLoop")?, mainRunLoop];
+            let _: () = msg_send![main, addTimer:&*timer, forMode:NSRunLoopCommonModes];
+            self.command_tab_timer = Some(timer);
+        }
+        Ok(())
+    }
     fn invalidate_lifetime_timer(&mut self) {
         for slot in [
             &mut self.lifetime_timer,
             &mut self.environment_timer,
             &mut self.self_foreground_timer,
+            &mut self.command_tab_timer,
         ] {
             if let Some(timer) = slot.take() {
                 // The run loop, timer target and all UI owners are on this main thread.
@@ -520,6 +537,43 @@ unsafe fn stop_own_app(app: &AnyObject, window_number: isize) -> Result<(), Stri
     Ok(())
 }
 
+extern "C" fn command_tab_requested(_this: &AnyObject, _cmd: Sel, sender: &AnyObject) {
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let Some(ui) = borrowed.as_mut() else { return };
+            if ui
+                .command_tab_timer
+                .as_ref()
+                .is_none_or(|timer| !std::ptr::eq(&**timer, sender))
+                || ui.state.status != "running"
+                || ui.state.command_tab.first_down_sequence.is_none()
+            {
+                return;
+            }
+            if let Some(timer) = ui.command_tab_timer.take() {
+                unsafe {
+                    let _: () = msg_send![&*timer, invalidate];
+                }
+            }
+            if ui.state.drag.active.is_none() {
+                ui.state.command_tab.fired = true;
+                ui.state.command_tab.error =
+                    Some("original gesture already released; no system input".into());
+            } else if let Some(actor) = ui.command_tab_actor.take() {
+                actor.post_once(&mut ui.state.command_tab, frontmost_pid);
+            } else {
+                ui.state.command_tab.fired = true;
+                if ui.state.command_tab.error.is_none() {
+                    ui.state.command_tab.error =
+                        Some("allocated peer actor unavailable; no fallback".into());
+                }
+            }
+            ui.sample_environment();
+            ui.flush();
+        })
+    });
+}
 extern "C" fn sheet_safe_action(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
     callback(|| {
         UI_STATE.with(|cell| {
@@ -919,11 +973,17 @@ fn receive(this: &AnyObject, event: &AnyObject, kind: MouseKind) {
                 .ok()
                 .and_then(|value| u64::try_from(value.as_millis()).ok());
             let actor_delay = ui.state.arm_foreground_on_first_canvas_down(&receipt, now);
+            let command_tab_delay = command_tab::arm(&mut ui.state, &receipt, now);
             ui.state.receive(receipt);
             if let Some(delay) = actor_delay
                 && let Err(error) = ui.arm_first_down_foreground_timer(delay)
             {
                 ui.state.output_error = Some(error);
+            }
+            if let Some(delay) = command_tab_delay
+                && let Err(error) = ui.arm_command_tab_timer(delay)
+            {
+                ui.state.command_tab.error = Some(error);
             }
             ui.flush();
         }
@@ -1099,6 +1159,10 @@ fn classes() -> Result<FixtureClasses, String> {
             sel!(ownForegroundRequested:),
             own_foreground_requested as extern "C" fn(_, _, _),
         );
+        actions.add_method(
+            sel!(commandTabRequested:),
+            command_tab_requested as extern "C" fn(_, _, _),
+        );
         receiver.add_method(sel!(isFlipped), flipped as extern "C" fn(_, _) -> _);
         receiver.add_method(
             sel!(acceptsFirstMouse:),
@@ -1203,6 +1267,7 @@ pub fn run(options: Options) -> Result<(), String> {
     state.environment_sample_ms = options.environment_sample_ms;
     state.system_panels.enabled = options.system_panel_controls;
     state.self_foreground_on_first_down_after_ms = options.self_foreground_on_first_down_after_ms;
+    state.command_tab.config = options.command_tab.clone();
     if options.self_foreground_after_ms.is_some()
         || options.self_foreground_on_first_down_after_ms.is_some()
     {
@@ -1413,6 +1478,18 @@ pub fn run(options: Options) -> Result<(), String> {
                 let accepted: Bool = msg_send![&*window, makeFirstResponder:&*hover];
                 state.responder.calibration_accepted = Some(accepted.as_bool());
             }
+            let command_tab_actor = if let Some(config) = options.command_tab.as_ref() {
+                command_tab::native::existing_permissions(&mut state.command_tab);
+                match command_tab::native::Actor::new(config) {
+                    Ok(actor) => Some(actor),
+                    Err(error) => {
+                        state.command_tab.error = Some(error);
+                        None
+                    }
+                }
+            } else {
+                None
+            };
             UI_STATE.with(|cell| {
                 *cell.borrow_mut() = Some(UI {
                     state,
@@ -1435,6 +1512,8 @@ pub fn run(options: Options) -> Result<(), String> {
                     lifetime_timer: None,
                     environment_timer: None,
                     self_foreground_timer: None,
+                    command_tab_timer: None,
+                    command_tab_actor,
                     _actions: actions,
                 })
             });

@@ -1,7 +1,8 @@
 # RWI macOS 接收验收靶场
 
 这是独立 **Rust / AppKit 接收应用 example**，不是 backend、输入桥或对其他软件的操作脚本。
-不申请权限，不截屏，不发鼠标/键盘或他应用输入，不装事件 tap / 全局 monitor，
+默认不申请权限、不截屏、不发鼠标/键盘或他应用输入，不装事件 tap / 全局 monitor；
+只有下文显式分配的双靶场 Command+Tab actor 可以发送一次有界系统快捷键，
 不使用私有 SPI。只在自身关闭时向本 NSApplication 排队 ApplicationDefined wake，
 用来解除自身 run loop 等待；它不计为输入或目标成功 receipt。
 没有 `--open-window` 的构建和纯模型测试不会启动窗口。真实运行以对应验收 run 的
@@ -333,3 +334,17 @@ discover/bind/readback，必要时明确move验证。Close/expiry仅结束本pro
 ax_provider_probe记录实际getter调用/延迟和耗时，不宣称调用者、人类来源或AX失败；
 消息错误及恢复须由loaded RWI真实结果与独立scope/像素/接收oracle证明。
 CLI请求本身不是provider override被系统采用的证据；getter_calls必须非零。
+
+## Explicit two-fixture system Command+Tab actor
+
+Ordinary fixtures remain passive receivers. To verify an OS-level shortcut **during** an already-received background drag, opt in to `--command-tab-on-first-down-after-ms 1000`, with exact `--command-tab-peer-pid`, `--command-tab-peer-window`, and `--command-tab-peer-bundle` from a second allocated RWI receiver. A regular app, 25–200ms environment sampling, delay100–3000ms and a longer bounded lifetime are mandatory. Do not combine with either own-activation actor.
+
+Root must allocate both fixtures and positively establish peer foreground and switcher order through the loaded RWI tools. The actor pins the peer's same-UID kernel proc_pidinfo birth plus NSRunningApplication bundle/liveness and exact on-screen CG window ID/bounds/title/observed layer. WindowServer publication can lag the fixture's running record: pin process identity immediately, but positively bind the exact CG surface before any post; missing or changed identity never permits input. Existing post/listen authorization, foreground and recent HID activity are checked before each down. Held-resource preflight runs before the first down, like production `native/hotkey.rs`: HID keys/buttons and momentary flags from either table block; combined-only non-modifier residue is recorded without being misclassified as physical input. Once our Command-down is posted it can appear in the HID table too, so do not repeat the held-resource preflight against our own chord. Per-down recency/foreground/identity guards and paired cleanup remain active; this is not continuous physical-user attribution.
+
+Allocate one private-source Command-down/Tab-down/Tab-up/Command-up chord before posting. Only its own paired ups are attempted on refusal or unwinding. It never requests permission, retries the chord, activates a replacement app, captures other apps or adds a production backend bridge. Native refusals are terminal; a fresh separately allocated case is not permission to replay the refused gesture.
+
+The first actual own-background canvas down arms one common-mode timer. A released gesture, wrong timer, absent peer, changed fingerprint, active/unknown input or missing authorization sends no further down. `state.command_tab` records cause/time, API call counts, private source ID, permissions, guard HID ages and sampled foreground; none are input acknowledgement or physical-user attestation. A returned chord is not proof the OS switched: independently intersect native environment/drag records and screenshots.
+
+`--check-only` requires the same explicit allocation/configuration arguments but returns a JSON configuration report without creating the state directory, loading AppKit, opening a window or posting input. Native binding remains unverified in that report. All default/no-argument behavior is preserved.
+
+Primary APIs: [Apple private source state](https://developer.apple.com/documentation/coregraphics/cgeventsourcestateid), [existing post-event preflight](https://developer.apple.com/documentation/coregraphics/cgpreflightposteventaccess()), [CGEventPost](https://developer.apple.com/documentation/coregraphics/cgevent/post(tap:)).
