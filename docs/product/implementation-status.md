@@ -1726,3 +1726,25 @@ RWI拖动把第三行企鹅头像从50×48改为48×48；尺寸提示由CUA新�
 - 证据：`work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/`。完整 F01–F16 仍保留；hover tracking/tooltips、隐藏/最小化等窗口状态及跨应用 DnD 等未完成项不冒充验收。用户休息期间不再请求配合，只用已分配 own fixture 自主推进。
 
 R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib read_admission` 实际发现 fixture 测试未加 feature 条件（exit101），已为仅测试的 RasterFixture/复合测试补齐 cfg；同命令现 6 passed。最终重跑全部11门禁仍 744/0/11/42；发布 Agent、MCP 和 Receiver 三个二进制哈希与已实机验收版本完全相同，故不重复部署或重放输入。
+
+
+## 2026-10-11 · R51：补齐当前验收事实，保留悬停／系统共享菜单缺口
+
+- HEAD `3e1998b` 的实际远程 CI `38129247364`：Mac、Windows 两个 job 均 success，独立 gh run view 与原 watch exit0 已核对。不是把排队/进行中视为通过。
+- 专用 Receiver110 在虚拟屏4、默认 first responder 是按钮，应用 active/key/frontmost；一次真实 typed RWI hover 返回，原生 App/Window 均收到精确 own-window MouseMoved（点落 hover zone），但视图 move、enter、exit、tooltip 全0。未开启 cooperative responder 校准，不重放输入；前台并不因此自动获得 tooltip。这是待修复/适配证据，不是“不可能”的结论。
+- CUA 的当前公开 native App 接口不含 hover，所以未执行或声称 CUA hover 对照。只读 getApp 开始观察后，系统 Window sharing 替换了三颗标题栏按钮；CUA 可展开菜单看到 Close Window，RWI 当前 selected-window snapshot 未列出菜单项。只读 Rust probe 观察到 AXMenu/-25205、AXChildren/-25212、AXWindow/-25212；不能把属性读取失败当菜单不存在，菜单消失原因也未证实。
+- cleanup 使用 CUA 共享菜单 Close Window 一次；随后 getAXState 返回 noWindowsAvailable/-10005 的原始错误保留。独立 fixture state=closed、expiry0、进程exit0、RWI detach=true、原 hover 操作 terminal/resources_released；并非 RWI 的菜单关闭验收。首次 cleanup 脚本在缺失 Close window 控件时 TypeError，发生于输入前，保留而不重跑原 hover。
+- R47 Cmd+Tab 原始日志复核：首down1791705773463，系统 chord1791705774483，独立环境采样1791705774739变成目标前台，动作仍1/78/1。actor 的即时 after 值仍是旧PID，不覆盖随后真实采样；保留完整原记录，不重演已完成输入。
+- 修正文档里过期的“正式 Host MCP Apps 未验收”：R48 fresh Host106 真正 v2 渲染、away停采清图、return恢复同绑定、Close停止且source存活均已有独立证据。F12 的 foreign-PID/system-menu 缺口仍在，不能混为一谈。整个 F01–F16 计划继续，未标全量完成。
+- 产品 Rust 代码及安装 Agent/MCP 本轮未修改；本轮只更新事实账本，不再次提交或触发部署。
+
+
+## 2026-10-11 · R52：显式前台悬停闭环，默认后台路径不降级
+
+- 新增 `MovePointerOptions::ForegroundSystem`；仅调用者明确提供 `move_pointer.value.delivery=foreground_system` 与精确 `expected_foreground` 时，使用一次 CGEventPost(HID)。仍要求当前选定同窗口/PID/出生身份、原生 foreground、既有 post/listen 权限、HID 空闲、共享输入 lease、原生引用及持久化不重放；不自动激活、不把后台失败改成全局输入。默认 `background_window` 完全保留。
+- 用同一 Receiver112、同一视图点512/280、同一 foreground tuple 与 options 对照：旧 Agent `invalid_input_value` / before-dispatch / hover0；新 Agent enter1、move1、tooltip callback1，真实绿色高亮，默认 first responder 仍是按钮、无 receiver 校准和鼠标按键。生产 Agent 已用同证书/DR 原子部署，PID15620 / instance05e73ec4-2f49-4524-a926-e6fbcf2fe816；MCP、配对、四项权限均保持，无 Host 重启或人工配合。
+- 首轮构建 ENOSPC exit101 原样保留。只清理本项目可重建 incremental/debug dependency 缓存，未清理别的项目、源码、安装程序或验收证据。按原11命令恢复后全部0：workspace750/0/11/42，Receiver63、Live UI7、fmt/严格全targets/features Clippy/发布构建/架构门通过。
+- 运行中再次 ENOSPC：一次 foreground exit 在 durable reservation 前拒绝，无原生输入；原操作已终态/释放，不重放。Receiver112 实际关闭/expiry0/解绑，但输出曾失败，进程 exit1，不改写成完整清洁验收。原默认 addressed reenter 因空白像素整帧变化 stale_reference 拒绝；随后真实光标自然重入不能算该请求成功。
+- 独立 Receiver113 清洁复验：先显式移动到自有按钮外区，再进入、区内移动、退出；相对外区基线新增 enter1/move1/exit1/tooltip1，光标原生回读对应所请求点，down/up/safe actions均0，无校准。实际同 PID tooltip 窗口曾被控制器按 PID 误选，TypeError 在输入前；已保留、退役，改用精确 main CG41271。错误 tooltip-window foreground tuple 真被拒绝 `foreground_scope_mismatch`；最后 AXClose、expiry0、进程exit0、全部原请求terminal/released/no-replay、两绑定均退役。
+- Live 既有小预览320×303pt和原生 eye.slash/play.fill/xmark按钮、tooltip及可访问名称继续沿用；官方 Computer Use 文档只说明 picture-in-picture，不提供精确像素规格，不声称私有 UI 1:1 克隆。正式 v2 隐藏/返回/关闭已有 R48 独立 Host 证据，不重复请求用户配合。
+- 本轮是显式前台能力，不能代替尚未完成的后台 cold-start tracking、系统共享菜单、隐藏/最小化、跨应用 DnD 等 F01–F16 项；全量目标保持未完成。证据与真实时间顺序截图见 `outputs/validation/r52-foreground-hover-2026-10-11/REPORT.md`。

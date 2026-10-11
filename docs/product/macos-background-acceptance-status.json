@@ -142,7 +142,25 @@
       "this_turn_native_evidence": "R19 loaded own56 FG->BG during5s drag, firstBG1642.49ms,26FG/55BG,1/79/1. Real global cmdtab own57->56 AFTER drag. Separate deadline cancel1340ms/1/20/1/paired release/no orphan; original uncertain receipt immutable after idle HID+session0key0button recovery/noinput/noreplay. Stale global foreground tuple rejected before down; oldsource had also expired, not pure liveA/B isolation. Own56 expiry0 and own57 explicitclose0/2detach. R21 live own A/B only stale foreground tuple refused/no dispatch while both windows running; independent explicit focus; exact lease boundaries tested both directions. Actual correctly scoped own58 drag5s1/79/1/81FG, no orphan. Concurrent root chord with child lease rejected/never dispatched; controller4583ms queue cause not attested. All12 original requests terminal/released/no replay; explicit source58/59 close0, two detach.",
       "remaining": "covered/offscreen、真实中途取消/介入、更多 client 仍待；不是跨 app DnD",
       "last_native_evidence_date": "2026-10-11",
-      "R28_additional": "New signed Agent own67 trueinactive/keyfalse/systembackground1s drag1/16/1/all18 callbacks and blue pixels; own66 AXWindows25204 read refusal0effects, no replay; foreground fresh HIDyield0effects not positive."
+      "R28_additional": "New signed Agent own67 trueinactive/keyfalse/systembackground1s drag1/16/1/all18 callbacks and blue pixels; own66 AXWindows25204 read refusal0effects, no replay; foreground fresh HIDyield0effects not positive.",
+      "R51_command_tab_evidence_reuse": {
+        "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/command-tab-native-r46/native-run-104/state.json",
+        "first_down_unix_ms": 1791705773463,
+        "actor_fired_unix_ms": 1791705774483,
+        "first_observed_foreground_unix_ms": 1791705774739,
+        "callbacks_down_move_up": [
+          1,
+          78,
+          1
+        ],
+        "initial_frontmost_pid": 30164,
+        "later_frontmost_pid": 33600,
+        "system_shortcut_posts": 4,
+        "immediate_actor_after_sample_still_old_pid": true,
+        "delayed_independent_state_proves_transition_during_drag": true,
+        "new_input_sent_this_turn": false,
+        "physical_human_origin_attested": false
+      }
     },
     {
       "id": "F05",
@@ -160,8 +178,48 @@
       "current_state": "partial_native_view_callback_conditionally_accepted",
       "implementation_evidence": "typed hover 已加载；工厂/派发 probe 可诊断",
       "this_turn_native_evidence": "Native36 firstResponder hover: before/after inactive/keyfalse/frontmostfalse; one exact typed RWI hover maps660,374 ->2154,691, native point330,365/local306,27, App/window type5 subtype0 and real moved callback1. Native35 inactive default and Native37 active default firstResponder NSButton, App/window proper event but view0. Later Native36 type8/9+subtype3 events and counters115/enter1/exit1 are un-attributed, not RWI hover success.",
-      "remaining": "RWI-driven tracking enter/exit/highlight/tooltip and other real clients remain pending; calibration is own receiver-only, not production auto-focus or universal effect guarantee; no impossible claim.",
-      "last_native_evidence_date": "2026-10-11"
+      "remaining": "RWI-driven view/tracking/highlight/tooltip not accepted in ordinary default first-responder fixture, including foreground; App/Window MouseMoved receipt is not view effect. Continue transport/responder-layer implementation; no impossible or universal success claim.",
+      "last_native_evidence_date": "2026-10-11",
+      "R51_foreground_default": {
+        "current_head_ci_success": true,
+        "head": "3e1998bb686fdb632a61c1fe262b1e75663ab046",
+        "run_id": 38129247364,
+        "ci_evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-requirements-followthrough-r51/CURRENT_HEAD_CI_FINAL.command_execution.json",
+        "foreground_move_not_tooltip": true,
+        "receiver": 110,
+        "producer_agent_pid": 46886,
+        "producer_agent_instance": "70635301-549b-4a30-b6ad-012de8a8d4f0",
+        "allocated_display_uuid": "13E4E9B0-47F2-4043-9CDC-878D5441BD41",
+        "mouse_move_receipt": "returned",
+        "independent_app_and_window_mouse_moved": 1,
+        "view_moves": 0,
+        "tracking_enters": 0,
+        "tracking_exits": 0,
+        "tooltip_requests": 0,
+        "first_responder": "RWIReceiverFixtureButton",
+        "calibration_requested": false,
+        "source_was_active_key_and_frontmost": true,
+        "sharing_chrome_changed_by_CUA_observation": true,
+        "rwi_new_control_count": 5,
+        "standard_close_button_available_after_sharing": false,
+        "cua_menu_close_available": true,
+        "rwi_open_menu_controls_missing": true,
+        "rwi_menu_attribute_probe": {
+          "AXMenu": -25205,
+          "AXChildren": -25212,
+          "AXWindow": -25212,
+          "scope": "selected source window MenuButton read-only; not proof no menu exists"
+        },
+        "menu_disappearance_cause_attested": false,
+        "cleanup_channel": "CUA native Window sharing menu Close Window once; post-close AX observation noWindowsAvailable -10005 retained",
+        "cleanup_independent_state": "closed",
+        "lifetime_expiry": 0,
+        "fixture_process_exit": 0,
+        "rwi_hover_operation_terminal_released": true,
+        "input_replay": false,
+        "physical_human_origin_attested": false,
+        "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-requirements-followthrough-r51/NATIVE_HOVER_AND_SHARING_RESULT_R51.json"
+      }
     },
     {
       "id": "F06",
@@ -199,7 +257,25 @@
       "this_turn_native_evidence": "R19 loaded own56 FG->BG during5s drag, firstBG1642.49ms,26FG/55BG,1/79/1. Real global cmdtab own57->56 AFTER drag. Separate deadline cancel1340ms/1/20/1/paired release/no orphan; original uncertain receipt immutable after idle HID+session0key0button recovery/noinput/noreplay. Stale global foreground tuple rejected before down; oldsource had also expired, not pure liveA/B isolation. Own56 expiry0 and own57 explicitclose0/2detach. R21 live own A/B only stale foreground tuple refused/no dispatch while both windows running; independent explicit focus; exact lease boundaries tested both directions. Actual correctly scoped own58 drag5s1/79/1/81FG, no orphan. Concurrent root chord with child lease rejected/never dispatched; controller4583ms queue cause not attested. All12 original requests terminal/released/no replay; explicit source58/59 close0, two detach.",
       "remaining": "Full physical-origin/modifier/foreground conflicts and multi-client/window states remain; no more human coordination questions, continue scoped independent actors/tests.",
       "last_native_evidence_date": "2026-10-11",
-      "R28_additional": "New signed Agent own67 trueinactive/keyfalse/systembackground1s drag1/16/1/all18 callbacks and blue pixels; own66 AXWindows25204 read refusal0effects, no replay; foreground fresh HIDyield0effects not positive."
+      "R28_additional": "New signed Agent own67 trueinactive/keyfalse/systembackground1s drag1/16/1/all18 callbacks and blue pixels; own66 AXWindows25204 read refusal0effects, no replay; foreground fresh HIDyield0effects not positive.",
+      "R51_command_tab_evidence_reuse": {
+        "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/command-tab-native-r46/native-run-104/state.json",
+        "first_down_unix_ms": 1791705773463,
+        "actor_fired_unix_ms": 1791705774483,
+        "first_observed_foreground_unix_ms": 1791705774739,
+        "callbacks_down_move_up": [
+          1,
+          78,
+          1
+        ],
+        "initial_frontmost_pid": 30164,
+        "later_frontmost_pid": 33600,
+        "system_shortcut_posts": 4,
+        "immediate_actor_after_sample_still_old_pid": true,
+        "delayed_independent_state_proves_transition_during_drag": true,
+        "new_input_sent_this_turn": false,
+        "physical_human_origin_attested": false
+      }
     },
     {
       "id": "F08",
@@ -292,10 +368,24 @@
       "current_state": "partial_implemented",
       "implementation_evidence": "独立目标+共享物理桌面 lease、明确 popup 绑定与 Live 已有; R6 optional standard MCP Apps resource/presence route implemented; actual Host rendering/task switch not accepted",
       "this_turn_native_evidence": "R33 real same-provider AXParent sheet composition visually verified in nativePIP; child closes back to one layer. SlowAX live663frames/relay1; foreground+background safe1, parent0. Native hide/resume/close independent effects verified; uncertain selfAX originals retained. No human request. See R32_R33_layered_live.",
-      "remaining": "Foreign-PID authorized system family, multi-source/window stacking and actual Host MCP Apps task-ID-bound rendering/hide/resume remain. Native active Close UI now independently accepted; it is not full task-binding.",
+      "remaining": "Foreign-PID/system menu native identity + menu/control discovery and multi-source families remain. Actual fresh Host v2 render/away/return/close is accepted; do not keep claiming that completed component test is missing. Private cryptographic Host task-ID not claimed.",
       "last_native_evidence_date": "2026-10-11",
       "R28_additional": "PureLive module extraction compiled/deployed, no new Live/render/presence/native-family acceptance this round; earlier evidence retained.",
-      "R34_additional": "Native same-provider Colors/Fonts/typography independent exact bindings; new bounded inventory recovery exercised, tab-mode change and virtual placement read back. Not attached sheets; no automatic same-PID family. Formal MCP Apps route protocol available but component unmounted/frame0 so rendering/task binding unaccepted."
+      "R34_additional": "Native same-provider Colors/Fonts/typography independent exact bindings; new bounded inventory recovery exercised, tab-mode change and virtual placement read back. Not attached sheets; no automatic same-PID family. Formal MCP Apps route protocol available but component unmounted/frame0 so rendering/task binding unaccepted.",
+      "R51_formal_host_component": {
+        "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-mcpapps-v2-receiver106-2026-10-11/ACCEPTANCE.json",
+        "actual_v2_component": true,
+        "browser_tab_dependency": false,
+        "native_visible": true,
+        "task_switch_hide_restore": true,
+        "close_preserves_source": true
+      },
+      "R51_window_sharing_menu_gap": {
+        "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-requirements-followthrough-r51/NATIVE_HOVER_AND_SHARING_RESULT_R51.json",
+        "standard_titlebar_controls_replaced": true,
+        "opened_close_menu_not_in_selected_window_snapshot": true,
+        "root_menu_attribute_read_incomplete": true
+      }
     },
     {
       "id": "F13",
@@ -2436,5 +2526,104 @@
       "test_only_cfg_production_artifacts_identical": true,
       "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/FEATURE_SCOPED_PRODUCTION_HASH_COMPARISON.json"
     }
+  },
+  "R51_current_native_checks": {
+    "current_head_ci_success": true,
+    "head": "3e1998bb686fdb632a61c1fe262b1e75663ab046",
+    "run_id": 38129247364,
+    "ci_evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-requirements-followthrough-r51/CURRENT_HEAD_CI_FINAL.command_execution.json",
+    "foreground_move_not_tooltip": true,
+    "receiver": 110,
+    "producer_agent_pid": 46886,
+    "producer_agent_instance": "70635301-549b-4a30-b6ad-012de8a8d4f0",
+    "allocated_display_uuid": "13E4E9B0-47F2-4043-9CDC-878D5441BD41",
+    "mouse_move_receipt": "returned",
+    "independent_app_and_window_mouse_moved": 1,
+    "view_moves": 0,
+    "tracking_enters": 0,
+    "tracking_exits": 0,
+    "tooltip_requests": 0,
+    "first_responder": "RWIReceiverFixtureButton",
+    "calibration_requested": false,
+    "source_was_active_key_and_frontmost": true,
+    "sharing_chrome_changed_by_CUA_observation": true,
+    "rwi_new_control_count": 5,
+    "standard_close_button_available_after_sharing": false,
+    "cua_menu_close_available": true,
+    "rwi_open_menu_controls_missing": true,
+    "rwi_menu_attribute_probe": {
+      "AXMenu": -25205,
+      "AXChildren": -25212,
+      "AXWindow": -25212,
+      "scope": "selected source window MenuButton read-only; not proof no menu exists"
+    },
+    "menu_disappearance_cause_attested": false,
+    "cleanup_channel": "CUA native Window sharing menu Close Window once; post-close AX observation noWindowsAvailable -10005 retained",
+    "cleanup_independent_state": "closed",
+    "lifetime_expiry": 0,
+    "fixture_process_exit": 0,
+    "rwi_hover_operation_terminal_released": true,
+    "input_replay": false,
+    "physical_human_origin_attested": false,
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-requirements-followthrough-r51/NATIVE_HOVER_AND_SHARING_RESULT_R51.json"
+  },
+  "R52_explicit_foreground_pointer": {
+    "result": {
+      "scope": "explicit opted-in foreground movement on exact selected window; not generic/background-hover compatibility",
+      "changed_fields": [
+        "MovePointerOptions::ForegroundSystem",
+        "move_pointer.value.delivery",
+        "move_pointer.value.expected_foreground",
+        "pointer_move.foreground_system"
+      ],
+      "default_delivery": "background_window unchanged",
+      "baseline_same_options": "old Agent invalid_input_value before dispatch; own112 native hover0/0/0/tooltip0",
+      "modified_own112": "same options/view point and exact same foreground tuple: enter1/move1/tooltip1; independent green pixels; no button transitions/calibration",
+      "independent_own113_delta": {
+        "enters": 1,
+        "exits": 1,
+        "moves": 1,
+        "tooltip_requests": 1
+      },
+      "independent_own113_no_button_transitions": true,
+      "same_pid_wrong_tooltip_window": "foreground_scope_mismatch rejected_before_dispatch; own state and cursor unchanged",
+      "native_cleanup113": {
+        "exit_status": 0,
+        "closed": true,
+        "expiry": 0,
+        "bindings_detached": true
+      },
+      "retained_failures": [
+        "initial full workspace compile101 ENOSPC",
+        "own112 exit1 due output ENOSPC, although closed/expiry0/detached",
+        "foreground exit reservation failed ENOSPC before native call; terminal/released; not replayed",
+        "default reenter stale_reference before input; natural cursor reenter is not that request effect",
+        "rtk absolute space-containing cursor-probe command exit1; corrected relative command0",
+        "own113 initial PID-only selection picked tooltip; controller TypeError before input; detached and exact main selected"
+      ],
+      "workspace": {
+        "passed": 750,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "eleven_gates_exit_zero": true,
+      "source_config_baseline_modified_rollback_reapplied_exit": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "agent_instance": "05e73ec4-2f49-4524-a926-e6fbcf2fe816",
+      "agent_pid": 15620,
+      "installed_mcp_changed": false,
+      "certificate_and_pairing_replaced": false,
+      "tcc_permissions_preserved": true,
+      "human_cooperation_requested": false,
+      "full_goal_complete": false
+    },
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/hover-natural-responder-r52/NATIVE_RESULT_R52.json",
+    "report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r52-foreground-hover-2026-10-11/REPORT.md",
+    "background_cold_start_hover": "pending; default addressed delivery was not replaced by global posting"
   }
 }
