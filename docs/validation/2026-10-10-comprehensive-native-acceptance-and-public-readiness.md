@@ -1,3 +1,9 @@
+## 2026-10-11 · 当前：macOS／Windows 真实 CI 全部通过
+
+已确认源码head `e0afa0f2dbfb4f0b5685d8bc68be77dcc6cc08ab` 的 [真实CI](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38117287848)：macOS与Windows两项job均success，Format、默认tests、all-feature compile/lint、architecture、architecture负例全部完成0。此前7次实际失败、监听unexpected EOF及每次最小修正都保留，未移除测试/改SHA/放宽规则。当前本机Rust736/0/11/42、独立selector4、architecture10；各层范围分开，不把CI等同native GUI。下面旧“pending”段落为历史步骤，已由这次实际结果替代。
+
+本记录只补充文档，不修改已验源码/fixture/profile/安装组件。320点宽原生Live、隐藏/恢复/关闭与具名系统窗口按钮的已观察结果保留；formal Host渲染／强任务绑定、真实人工来源、其他native窗口状态和future矩阵仍有未验收项，不作整计划封版。用户不需要现在切窗/展开/授权/重启。
+
 ## 2026-10-11 · R43：Windows 工程检查显式 UTF‑8
 
 第七次真实远程 run [38116812011](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38116812011)：Mac全部成功；Windows默认tests及all-feature compile/lint均成功，随后architecture检查按系统CP1252默认编码读取UTF‑8 Rust源码，在0x9d处UnicodeDecodeError。该阶段不是Rust编译/GUI失败。

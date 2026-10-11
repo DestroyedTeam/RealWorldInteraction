@@ -2334,7 +2334,19 @@
     "R42_Rust_mandatory_gates_reused_source_unchanged": true,
     "native_runtime_installation_changed": false,
     "human_requests": false,
-    "new_exact_head_CI_pending": true,
+    "new_exact_head_CI_pending": false,
     "full_goal_complete": false
+  },
+  "current_verified_remote_CI": {
+    "source_head": "e0afa0f2dbfb4f0b5685d8bc68be77dcc6cc08ab",
+    "url": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38117287848",
+    "overall": "success",
+    "jobs": {
+      "Compile and non-desktop tests (windows-latest)": "success",
+      "Compile and non-desktop tests (macos-latest)": "success"
+    },
+    "non_desktop_scope_only": true,
+    "full_native_Host_goal_complete": false,
+    "following_change": "documentation only, tested source unchanged"
   }
 }
