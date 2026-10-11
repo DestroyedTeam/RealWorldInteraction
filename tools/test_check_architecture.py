@@ -39,10 +39,46 @@ class ArchitectureTests(unittest.TestCase):
         with self.manifest.open("a") as stream:
             stream.write('[dependencies]\ninnocent={package="platform",path="../platform"}\n')
         self.assertIn("platform", str(audit(self.root, self.rules)["violations"]))
+
         self.manifest.write_text('[package]\nname="core"\n[dependencies]\ninnocent={workspace=true}\n')
         with (self.root / "Cargo.toml").open("a") as stream:
             stream.write('[workspace.dependencies]\ninnocent={package="platform",path="platform"}\n')
         self.assertIn("platform", str(audit(self.root, self.rules)["violations"]))
+
+    def presentation_rules(self):
+        self.rules["presentation_only_packages"] = {"core": {"external_dependencies": ["serde"]}}
+
+    def test_presentation_leaf_allows_only_declared_serde_and_ignores_dev_edges(self):
+        self.presentation_rules()
+        with self.manifest.open("a") as stream:
+            stream.write('[dependencies]\nserde="1"\n[dev-dependencies]\nimage={path="../image"}\n')
+        self.assertTrue(audit(self.root, self.rules)["passed"])
+
+    def test_presentation_registry_alias_and_target_build_edges_remain_forbidden(self):
+        self.presentation_rules()
+        for fragment in [
+            '[dependencies]\ninnocent={package="windows",version="1",optional=true}\n',
+            '[target.\'cfg(windows)\'.dependencies]\nwindows="1"\n',
+            '[build-dependencies]\nlibloading="1"\n',
+        ]:
+            with self.subTest(fragment=fragment):
+                self.manifest.write_text('[package]\nname="core"\n' + fragment)
+                self.assertFalse(audit(self.root, self.rules)["passed"])
+
+    def test_presentation_workspace_alias_cannot_hide_external_platform_package(self):
+        self.presentation_rules()
+        self.manifest.write_text('[package]\nname="core"\n[dependencies]\ninnocent={workspace=true}\n')
+        with (self.root / "Cargo.toml").open("a") as stream:
+            stream.write('[workspace.dependencies]\ninnocent={package="windows",version="1"}\n')
+        self.assertIn("windows", str(audit(self.root, self.rules)["violations"]))
+
+    def test_presentation_implicit_or_explicit_build_script_is_refused(self):
+        self.presentation_rules()
+        (self.root / "core/build.rs").write_text("fn main() {}\n")
+        self.assertFalse(audit(self.root, self.rules)["passed"])
+        (self.root / "core/build.rs").unlink()
+        self.manifest.write_text('[package]\nname="core"\nbuild="elsewhere.rs"\n')
+        self.assertFalse(audit(self.root, self.rules)["passed"])
 
 
 if __name__ == "__main__":

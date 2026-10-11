@@ -20,3 +20,9 @@
 - 修正已部署，同一本地证书重签，Plugin 查询四项权限仍为 true，无新增授权。fmt、workspace offline tests（441 passed / 10 ignored）、全目标全特性 clippy 通过。
 - 新观察后请求 v14-avatar-row1-place-diagnostic-20260919-03 得到 dispatch=returned（1567 ms），但独立截图未显示头像位移。诊断改动没有放宽任何校验；不能把这次返回归因为拖动问题已修复。
 - Computer Use 也进行了单次定位拖动对照（538 ms），截图同样未确认头像位移。当前证据不足以归咎于 RWI 单独故障或应用限制，需继续检查坐标映射、选择控制柄及应用实际接收路径。未继续重发。
+
+## 交互状态实验：实际位移已观察
+
+CUA 打开 Object 菜单，发现 End Editing；Transform 操作进入原地变换，随后通过 End Editing 退出，控制柄消失。RWI 新观察后执行 v14-row1-object-mode-placement-20260919-01（900 ms，预览起点375,437；桌面偏移-88.59375,-283.670295），最新截图显示头像和控制柄移至第一行，尺寸仍48×48、三图层保持。因此未移动不能简单归因后台API；编辑状态是已观察到的相关因素，尚非所有失败的唯一根因证明。
+
+坐标接口资料复核：[Apple NSEvent.locationInWindow](https://developer.apple.com/documentation/appkit/nsevent/locationinwindow) 区分窗口基础坐标与视图转换。未凭该文档直接翻转私有SPI坐标，也未添加未验证的修饰键。

@@ -15,7 +15,7 @@
 - 原子更新 RWI 自身 Agent 配置与 mac-host 客户端 profile，Windows 设备条目、端点、Agent 持久 journal 路径保持原值。仅重启 RWI Agent LaunchAgent，没有重新签名 APP 或改变 TCC 授权。
 - 证书 readback 和 pin 交叉检查通过：Agent/model/controller leaf 均到 2027-03-23 03:58:59 UTC，CA 到 2027-09-24 03:58:59 UTC。
 
-## 通信验收与当前限制
+## 通信验收与当时限制（Codex 重启前）
 
 - 新启动的**实际 MCP 子进程**读取生产 Host profile，`initialize` 成功，`computer.targets` 返回 mac-host、Agent healthy、四项 macOS 权限 true；这是生产传输及配对验收。
 - 本任务已加载的旧 MCP 进程仍持有旧内存中的 TLS 身份/pin，返回 `UnknownIssuer`。只终止本任务启动于 2026-09-24 11:50 的 RWI MCP 进程后，Codex 工具仍返回 `Transport closed`；没有继续终止另一条旧任务的进程。
@@ -24,4 +24,8 @@
 
 ## 原因与长期安排
 
-180 天有效期降低开发周期中的突然过期概率，但仍会到期。未来需在到期前实现完整的配对轮换与 Host profile 热加载，或提供明确的健康检查/重连流程；不可关闭 TLS 时间校验。证书时间边界由 [RFC 5280](https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.5) 定义。
+180 天有效期降低开发周期中的突然过期概率，但仍会到期。此处是当日上午修复的限制；当晚经用户明确批准，已部署可续签配对、同 key/SPKI pin、热读 leaf 及旧账本身份连续性。迁移后当前任务仍需重新加载一次，后续常规续签不需要重启。见 [最新分层验收](2026-09-24-task-visible-live-and-renewal.md)。不可关闭 TLS 时间校验；证书时间边界由 [RFC 5280](https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.5) 定义。
+
+## 用户重启后的闭环
+
+本任务当前加载的Plugin已成功targets/discover/bind/snapshot，并实际操作Paint。四项TCC true，不再只是standalone传输探针。后续记录见[虚拟工作区验收](2026-09-24-virtual-workspace.md)。

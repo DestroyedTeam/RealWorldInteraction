@@ -1,0 +1,227 @@
+{
+  "schema": "rcu.r02_r03_independent_closure.v1",
+  "recorded_utc": "2026-09-11T18:00:28.943427+00:00",
+  "implementation_commit": "a5e41be1b679cca210a846f4c0c784afc35bc2f5",
+  "eof_test_commit": "78f9df6ee9dd13392f94d26021fc5dae473a88af",
+  "evidence_index_commit": "a9d68f9b932a11f9ce4154f1be8484ba0f01b12f",
+  "decisions": {
+    "R02": {
+      "status": "closed_original_reported_defect",
+      "basis": "Fixed-source inspection plus matching existing unit/process-crash logs; unique pending and no-overwrite commit permit fresh authorized proof without modifying bad evidence.",
+      "limits": [
+        "Not arbitrary ledger corruption or full recovery acceptance",
+        "256-entry retention capacity remains",
+        "Windows sixth checkpoint is not a Unix directory fsync",
+        "No physical power-loss or native key-state acceptance"
+      ]
+    },
+    "R03": {
+      "status": "closed_original_reported_defect",
+      "basis": "Production sticky send_replace and pre-admission check, deterministic zero-subscriber queued-future/authenticated-peer count test, plus retained in-flight MCP-process EOF test logs.",
+      "limits": [
+        "Exact zero-subscriber scenario is Gateway component/integration test, not an external MCP-process test",
+        "No strong native termination or all Stop schedules claim"
+      ]
+    },
+    "R01": {
+      "status": "open_reference_lifecycle_contract_not_implemented",
+      "contract_commit": "23fa01bff905fcdd67ec203d2e42edd58e726953"
+    },
+    "A01": {
+      "status": "not_implemented"
+    },
+    "full_architecture": {
+      "status": "not_complete"
+    }
+  },
+  "source_file_records": [
+    {
+      "commit": "a5e41be1b679cca210a846f4c0c784afc35bc2f5",
+      "path": "crates/rcu-agent/src/ledger/recovery.rs",
+      "sha256": "16ea8b936af4d10562328076d0dd3d3d3854970763bac5579380990d2b9c1dc9"
+    },
+    {
+      "commit": "a5e41be1b679cca210a846f4c0c784afc35bc2f5",
+      "path": "crates/rcu-agent/src/runtime/recovery.rs",
+      "sha256": "f299162c805e4fa3354ebeccc885593cd52d456b029cdaf3351c71b3dd3bbf89"
+    },
+    {
+      "commit": "78f9df6ee9dd13392f94d26021fc5dae473a88af",
+      "path": "crates/rcu-mcp/src/gateway/shutdown.rs",
+      "sha256": "dcf1afc43fca15fc5bd9b349ef08a7962943a0aea0f4981dcb4928f83cff0da1"
+    },
+    {
+      "commit": "a5e41be1b679cca210a846f4c0c784afc35bc2f5",
+      "path": "crates/rcu-mcp/src/gateway.rs",
+      "sha256": "a6b458f3dd282bed25616c86cecd6f023dbcc08fdd168e17d4747daf6aec89f8"
+    },
+    {
+      "commit": "a5e41be1b679cca210a846f4c0c784afc35bc2f5",
+      "path": "crates/rcu-agent/src/runtime/recovery.rs",
+      "sha256": "f299162c805e4fa3354ebeccc885593cd52d456b029cdaf3351c71b3dd3bbf89"
+    },
+    {
+      "commit": "a5e41be1b679cca210a846f4c0c784afc35bc2f5",
+      "path": "crates/rcu-mcp/src/gateway.rs",
+      "sha256": "a6b458f3dd282bed25616c86cecd6f023dbcc08fdd168e17d4747daf6aec89f8"
+    },
+    {
+      "commit": "23fa01bff905fcdd67ec203d2e42edd58e726953",
+      "path": "docs/adr/0003-execution-reference-and-durable-request-identity.md",
+      "sha256": "73ab2bf39f22127fa9b8bae29c65ff542905468bd837a992ea10574cc939978b"
+    }
+  ],
+  "evidence_integrity": {
+    "recorded_utc": "2026-09-11T17:56:56.639062+00:00",
+    "index_commit": "a9d68f9b932a11f9ce4154f1be8484ba0f01b12f",
+    "index_sha256": "db3d6c6a7d31c3f6e9e963f220073732de70f20145d2706fde8a7cb23d1b21a5",
+    "evidence": [
+      {
+        "path": "work/review-fixes-20260912/default-tests.log",
+        "bytes": 25188,
+        "sha256": "38303a8a6514b6a56beb6120f7e2860ee14491a864146ea486a847b6ce01d5d8",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/all-feature-tests.log",
+        "bytes": 34189,
+        "sha256": "3d1da0beea2266ff51b19a7a7086c1c2a9dc9241d4ba32739ccdd5af9f04ba6d",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/clippy.log",
+        "bytes": 180,
+        "sha256": "17ec66e13854fb59e320495e8dd246d8f3bbcf2bd24707eddd277de8a185660f",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/windows-clippy.log",
+        "bytes": 688,
+        "sha256": "a9c8f2b43b392837c4c01d8ffac7b6c0c2429d01d0fe522263865d5fa302200e",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/architecture.json",
+        "bytes": 1923,
+        "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/windows-tests-executed.stdout",
+        "bytes": 923,
+        "sha256": "1dbdfb7e07603936e9a449650eba1dc4d85c7b0bc026c8d88c9340618b6f6db9",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/agent-update-verified.stdout",
+        "bytes": 2638,
+        "sha256": "0afd719fad88c99e4c1491a7a77f8d9e2c434b471c683d60c806abb2b30dce58",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/adapter-updated.json",
+        "bytes": 231,
+        "sha256": "6c5e7b4c8f90a1800d033e4633e271e40d5ede41a2804ee915e8cd2622a80ef8",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/codex-updated-query.log",
+        "bytes": 13129,
+        "sha256": "6b38f1974e7c88c1a16ffbd2f4d684a7545f3a021032580d9ebecbbb75ddc370",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/codex-updated-query/response-0005.json",
+        "bytes": 538184,
+        "sha256": "7f98953d6192f840b213ae3b18c2eb163e560150f6412128f425ffa851019937",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/codex-updated-query/response-0006.json",
+        "bytes": 2765,
+        "sha256": "7541ad6b08ccbf5248187d365860f5d15f9be60476d136da02f97819db74f8a7",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/codex-updated-query/response-0007.json",
+        "bytes": 2737,
+        "sha256": "f663633af87fa9519c15b6afe5dd6f9fb10a53f1609900dafdd695ff99fab20d",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/codex-updated-query/response-0008.json",
+        "bytes": 2741,
+        "sha256": "b1ee1962879476e3d3465067bcd61049c3e69d55264afa5e71c1307cb9dbdb12",
+        "size_matches": true,
+        "sha_matches": true
+      },
+      {
+        "path": "work/review-fixes-20260912/codex-updated-query/response-0009.json",
+        "bytes": 16931,
+        "sha256": "966946543a590dc0067343630d315c41ea77f4f0a9477e0c5332cf2f3a65aaf1",
+        "size_matches": true,
+        "sha_matches": true
+      }
+    ],
+    "existing_test_log_sums": [
+      {
+        "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/review-fixes-20260912/default-tests.log",
+        "sha256": "38303a8a6514b6a56beb6120f7e2860ee14491a864146ea486a847b6ce01d5d8",
+        "passed": 205,
+        "failed": 0,
+        "ignored": 1,
+        "blocks": 30,
+        "tests_run_by_reviewer": false
+      },
+      {
+        "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/review-fixes-20260912/all-feature-tests.log",
+        "sha256": "3d1da0beea2266ff51b19a7a7086c1c2a9dc9241d4ba32739ccdd5af9f04ba6d",
+        "passed": 292,
+        "failed": 0,
+        "ignored": 2,
+        "blocks": 34,
+        "tests_run_by_reviewer": false
+      },
+      {
+        "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/review-fixes-20260912/windows-tests-executed.stdout",
+        "sha256": "1dbdfb7e07603936e9a449650eba1dc4d85c7b0bc026c8d88c9340618b6f6db9",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "blocks": 1,
+        "tests_run_by_reviewer": false
+      }
+    ],
+    "scope": "Existing records only. No product tests, deployment, live process check or VM connection by reviewer."
+  },
+  "supplementary_historical_checks": {
+    "ledger_json_count": 4,
+    "before_after_hashes_equal": true,
+    "request_monitor_same_reservation": true,
+    "request_monitor_same_result": true,
+    "live_process_or_remote_file_state_rechecked": false
+  },
+  "reviewer_actions": {
+    "read_git_objects_and_existing_artifacts": true,
+    "wrote_audit_documents_only": true,
+    "product_source_modified": false,
+    "product_tests_or_cargo_executed": false,
+    "vm_connection_or_gui_operation": false,
+    "host_or_native_process_started": false,
+    "configuration_or_ledger_changed": false,
+    "codegraph_initialized": false,
+    "git_commit_or_push": false
+  }
+}

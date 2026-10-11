@@ -17,7 +17,8 @@
       "rwi-core"
     ],
     "rwi-macos": [
-      "rwi-core"
+      "rwi-core",
+      "rwi-pointer"
     ],
     "rwi-native-link": [
       "rwi-core",
@@ -28,7 +29,8 @@
     "rwi-js": [],
     "rwi-windows": [
       "rwi-core",
-      "rwi-imaging"
+      "rwi-imaging",
+      "rwi-pointer"
     ],
     "rwi-agent": [
       "rwi-core",
@@ -37,7 +39,8 @@
       "rwi-macos",
       "rwi-native-link",
       "rwi-windows"
-    ]
+    ],
+    "rwi-pointer": []
   },
   "existing_hotspot_ceilings": {
     "crates/rwi-core/src/lib.rs": 1026,
@@ -55,5 +58,12 @@
     "crates/rwi-native-link/src/transport/net.rs": 721,
     "crates/rwi-native-link/src/orchestration/control.rs": 1257,
     "crates/rwi-native-link/src/orchestration/worker.rs": 773
+  },
+  "presentation_only_packages": {
+    "rwi-pointer": {
+      "external_dependencies": [
+        "serde"
+      ]
+    }
   }
 }

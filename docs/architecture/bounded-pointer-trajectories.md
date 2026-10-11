@@ -16,8 +16,14 @@ first timestamp/offset zero, final timestamp 16..5000ms, and offset components
 within +/-16384 device physical desktop pixels. A separate string `value` is
 invalid. Coordinates are relative to the grounded native reference, not the
 Host screen, preview pixels or physical hardware outside the selected device.
-The Windows implementation is fixed-window, left-button only. Mac explicitly
-reports drag unsupported; no other platform support is inferred.
+The Windows implementation is fixed-window, left-button only. As of 2026-09-20,
+macOS also implements bounded, same-window left-button drag through addressed
+native events with release-only cleanup. The earlier 2026-09-12 macOS
+unsupported statement is superseded; no other platform support is inferred.
+This does not establish hidden/minimized/offscreen-window support, cross-window
+drag-and-drop, or background compatibility for every application. See the
+[2026-10-08 background-event research](../research/2026-10-08-macos-background-nsevent.md)
+for the distinction between event construction, reception and goal acceptance.
 
 The core validates the typed path and includes **every vertex and time** in the
 same durable request fingerprint as the original frame/element/intent. One path

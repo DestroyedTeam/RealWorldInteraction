@@ -23,17 +23,30 @@ def audit(workspace: Path, rules: dict) -> dict:
         for target in package.get("target", {}).values():
             dependencies.extend(target.get("dependencies", {}).items())
             dependencies.extend(target.get("build-dependencies", {}).items())
-        local = set()
+        local, external = set(), set()
         for key, value in dependencies:
             if not isinstance(value, dict):
+                external.add(key)
                 continue
             if value.get("workspace"):
                 value = manifest["workspace"].get("dependencies", {}).get(key, {})
             if isinstance(value, dict) and "path" in value:
                 local.add(value.get("package", key))
+            else:
+                external.add(value.get("package", key) if isinstance(value, dict) else key)
         forbidden = local - set(rules["allowed_production_dependencies"].get(name, []))
         if forbidden:
             errors.append(f"{name}: forbidden production dependencies {sorted(forbidden)}")
+        # Presentation leaves may not grow an OS/transport dependency through
+        # a registry package, renamed key, workspace alias or target/build edge.
+        # This manifest ratchet is not a proof of source-code purity.
+        presentation = rules.get("presentation_only_packages", {}).get(name)
+        if presentation is not None:
+            unexpected = external - set(presentation["external_dependencies"])
+            if unexpected:
+                errors.append(f"{name}: forbidden presentation dependencies {sorted(unexpected)}")
+            if package["package"].get("build") or (folder / "build.rs").exists():
+                errors.append(f"{name}: presentation package must not have a build script")
         for source in sorted((folder / "src").rglob("*.rs")):
             relative = source.relative_to(workspace).as_posix()
             lines = len(source.read_text().splitlines())

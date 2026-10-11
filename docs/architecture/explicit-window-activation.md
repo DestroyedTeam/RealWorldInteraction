@@ -47,3 +47,51 @@ SetForegroundWindow（`api_accepted=null`），lease 释放，截图证实窗口
 公开门禁：默认393通过／4忽略，全feature480通过／5忽略；fmt、严格clippy、Windows
 ARM64构建、架构ratchet通过。独立 reviewer 另跑36项定向回归。
 不将这些结果写成“所有焦点边界已解决”或“已与 Computer Use 全面打平”。
+
+
+## macOS 显式前台切窗（2026-10-09 源码候选）
+
+新增 `computer.focus_window`，与 Windows 的 lifecycle grant + `activate_window`
+分离；后台 click／drag／move 不调用它。用正常 typed calls 执行：
+
+1. 选中明确授权的窗口，fresh observe（≤10秒）并 resolve `kind=window`。
+2. 从 fresh `computer.targets` 读取 `current_foreground` 的
+   PID/window/process_start/native_epoch；缺失或未知就拒绝，不猜窗口、不给 null grant。
+3. claim 同一 desktop lease，指定 stable request ID 与完整 expected_foreground。
+4. 原生只对该 AXWindow 请求一次 `AXRaise`，必要时对所属 App 一次 `AXFrontmost=true`。
+   每次边界重验原／目标窗口、进程、会话、HID activity；最多 500ms 顺序 readback。
+   无快捷键、鼠标、warp、unhide/restore、隐式 replay 或重试。
+5. release；重新 observe/targets，核对精确目标前台。原 scene/ref aliases 均失效。
+
+`foreground_observed` 仅为采样到的精确前台状态，不是 app 业务目标，也不授予后续
+键盘/安全桌面权限。已在目标窗口的分支没有 native requests。API 返回、AX writable
+与动作存在不是效果保证；异常后可能有迟到效果，保留 uncertain/no-replay。
+Public API 依据：[AXRaise](https://developer.apple.com/documentation/applicationservices/kaxraiseaction)、
+[AXFrontmost](https://developer.apple.com/documentation/applicationservices/kaxfrontmostattribute)。
+
+本次这是新增 tool schema（39→40）的源码候选；当前 loaded adapter 仍 39 tools。
+正式 Host-native 验收必须在协调共享 Agent 更新和 MCP 重载后，通过 loaded tool
+操作专用 Receiver 完成，不用独立 stdio probe 替代实机 Host 验收。
+
+## 2026-10-10 实机：声明不等于参数路由已接通
+
+重启后Host实际40工具，own Receiver调用focus却unknown capability。共享catalog::validate
+漏了FocusWindowArgs分支，Gateway在Prepare前拒绝。已最小补齐并增加每个公布工具都有
+validator的ratchet、缺字段/类型检查及真实MCP child+mTLS单次转发测试。native身份/
+lease/foreground/HID/no-replay均保留。Agent/MCP已同稳定证书实际部署，新磁盘进程
+正确进行required-field校验；当前旧Host仍待重载、前台native goal未通过。
+不能仅用tools/list代替实际调用验收。
+
+## 2026-10-10：真实 loaded Host 验收与 Describe 易变字段
+
+40工具与 validator 现均确认。发现 owner catalog 的 foreground/HID age 缓存不能作为
+当前状态；Describe 利用已有独立 probe 对响应克隆中的 current_foreground 和
+user_input_recent_seconds 按同 desktop identity刷新，未知/null不沿用旧值。
+原binding/owner/selection/input_opt_in和native guard不变，Describe不等待executor锁。
+
+Agent-only同稳定签名部署，不需另一次Codex重启。两个own app真正A→B切换，
+fresh targets与独立fresh observation均是目标PID/CGWindow；already_foreground
+0 native requests和stale tuple0 dispatch也分别观察。只验收explicit native foreground，
+不推断后台AppKit key/order、physical-user连续性、通用hover或业务goal。
+
+报告：/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/validation/2026-10-10-fresh-foreground-facts-and-native-focus.md

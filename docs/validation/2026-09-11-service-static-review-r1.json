@@ -1,0 +1,479 @@
+{
+  "schema_version": 1,
+  "review": "rcu-service-static-review-r1",
+  "recorded_utc": "2026-09-11T15:38:47.193298+00:00",
+  "repository_root": "/Users/vincentadamnemessis/AI Projects/Real Computer Use",
+  "head": "979f6f0c84a55b9bf8c6534378f258501f055938",
+  "scope": "Concurrent uncommitted worktree; file-level excerpts and hashes, not an atomic repository snapshot.",
+  "decision": "Architecture direction aligned in inspected source; 4 P1 and 2 P2 open at cited snapshots; no runtime acceptance claim.",
+  "reference_identity": {
+    "repository": "alper-han/CrossMacro",
+    "source": "explicit user confirmation; prior architecture source review not rerun here"
+  },
+  "side_effects": {
+    "product_source_modified": false,
+    "mcp_called": false,
+    "vm_accessed": false,
+    "native_input_or_capture": false,
+    "installation_or_restart": false,
+    "codex_configuration_modified": false,
+    "product_tests_or_builds_executed": false,
+    "codegraph_initialized": false,
+    "git_commit_or_push": false,
+    "writes": "Review documents, evidence and user-delivery copies only."
+  },
+  "test_layers": {
+    "U": "Offline unit/service fixture",
+    "P": "Actual MCP process/stdio",
+    "H": "Real Host integration",
+    "N": "Native OS operation",
+    "M": "Actual model goal execution"
+  },
+  "findings": [
+    {
+      "id": "S01",
+      "priority": "P1",
+      "title": "Raw handle collisions silently route operation/cancel to another device",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 79,
+          "end": 95,
+          "sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 196,
+          "end": 200,
+          "sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/device/api.rs",
+          "start": 151,
+          "end": 155,
+          "sha256": "4e787d95f3868e534ee59d95cbac040e5d3e5af18b076b5e11f3fc7102bb6b3b"
+        }
+      ],
+      "test_layers": [
+        "U",
+        "P"
+      ],
+      "assertions": [
+        "Two devices may legally use the same caller-supplied operation_id.",
+        "After both explicit-device status replies, an ambiguous bare operation_id must not pick the last writer.",
+        "Cancellation must affect only the intended device/context/generation."
+      ],
+      "architecture_cases": [
+        "V07",
+        "V16"
+      ],
+      "status": "open_at_cited_source_snapshot",
+      "proof": "static_code_path_derivation",
+      "tests_executed_by_reviewer": false
+    },
+    {
+      "id": "S02",
+      "priority": "P1",
+      "title": "MCP request cancellation is not propagated to the device operation",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 352,
+          "end": 360,
+          "sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/device.rs",
+          "start": 148,
+          "end": 157,
+          "sha256": "5e3d5f1f58ff0d1c8f14c689289f70d7f78c83b11adc528fbb40a10b5cd4431b"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 375,
+          "end": 400,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        }
+      ],
+      "test_layers": [
+        "U",
+        "P"
+      ],
+      "assertions": [
+        "Observe RequestContext.ct for MCP notifications/cancelled.",
+        "No subsequent input batch after cancellation reaches cooperative checkpoints.",
+        "Do not report native resources released before pending native work actually completes.",
+        "Handle cancellation before registration and transport EOF without replay."
+      ],
+      "architecture_cases": [
+        "V04",
+        "V05",
+        "V08",
+        "V15"
+      ],
+      "status": "open_at_cited_source_snapshot",
+      "proof": "static_code_path_derivation",
+      "tests_executed_by_reviewer": false
+    },
+    {
+      "id": "S03",
+      "priority": "P1",
+      "title": "Device-wide durable uncertainty fence has no reconciliation/admission recovery path",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 41,
+          "end": 51,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 275,
+          "end": 281,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 404,
+          "end": 427,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/ledger.rs",
+          "start": 117,
+          "end": 121,
+          "sha256": "18a9def2db04df6f59071aac8b7d49212fc2a27838919757375dbd64a1ddc0f0"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/device.rs",
+          "start": 39,
+          "end": 45,
+          "sha256": "c1c77a4fb9bc26864af9b6f97238fbd3338fbed5c8ebaf8432c63f3042eaa6db"
+        }
+      ],
+      "test_layers": [
+        "U",
+        "P"
+      ],
+      "assertions": [
+        "Keep old uncertain operation IDs non-replayable across restart.",
+        "Record native conflict domain, executor generation and known dispatch phase.",
+        "New operation admission follows verified executor/resource reconciliation, not journal deletion or blind flag reset.",
+        "Unaffected device reads remain available."
+      ],
+      "architecture_cases": [
+        "V03",
+        "V08",
+        "V09",
+        "V18"
+      ],
+      "status": "open_at_cited_source_snapshot",
+      "proof": "static_code_path_derivation",
+      "tests_executed_by_reviewer": false
+    },
+    {
+      "id": "S04",
+      "priority": "P1",
+      "title": "Principal-scoped outer dedup collides with principal-free Core receipt keys",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/ledger.rs",
+          "start": 48,
+          "end": 56,
+          "sha256": "18a9def2db04df6f59071aac8b7d49212fc2a27838919757375dbd64a1ddc0f0"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 149,
+          "end": 159,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/executor.rs",
+          "start": 80,
+          "end": 101,
+          "sha256": "49408bbe3f51a6dd3d3ac0bfb5c18f8b2159ddb1545c3ee3c86c813110ebe412"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/lib.rs",
+          "start": 716,
+          "end": 719,
+          "sha256": "8b65d319fcf6e0706beca039a304422e0a04d0c964e24e1c198967e5ad1c1572"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/lib.rs",
+          "start": 752,
+          "end": 774,
+          "sha256": "8b65d319fcf6e0706beca039a304422e0a04d0c964e24e1c198967e5ad1c1572"
+        }
+      ],
+      "test_layers": [
+        "U",
+        "P"
+      ],
+      "assertions": [
+        "Two authenticated principals on the same native identity execute their independent same-named requests once each.",
+        "The same principal cannot replay the same logical operation after retry/reconnect/restart.",
+        "Do not break cross-principal native lease exclusion when separating receipt namespaces."
+      ],
+      "architecture_cases": [
+        "V06",
+        "V08",
+        "V16"
+      ],
+      "status": "open_at_cited_source_snapshot",
+      "proof": "static_code_path_derivation",
+      "tests_executed_by_reviewer": false
+    },
+    {
+      "id": "S05",
+      "priority": "P2",
+      "title": "Advertised capabilities do not match per-tool support and authorization",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 54,
+          "end": 89,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 263,
+          "end": 267,
+          "sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/device/catalog.rs",
+          "start": 33,
+          "end": 37,
+          "sha256": "33893cc19303a219b3ad444bb4d67016838183844dae1aecc76635239258a4a0"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-windows/src/native/service_policy.rs",
+          "start": 76,
+          "end": 85,
+          "sha256": "2311cc9c1193d0b42398c7824f4c325bd7698efc04eb7f92d45f1a508397c4ea"
+        }
+      ],
+      "test_layers": [
+        "U"
+      ],
+      "assertions": [
+        "Readonly principal must not be told claim is authorized when Invoke rejects it.",
+        "Separate implemented, available, authorized and fenced states.",
+        "Changing claim.writes alone must not inadvertently require a nonexistent mutation request_id."
+      ],
+      "architecture_cases": [
+        "V10",
+        "V21"
+      ],
+      "status": "open_at_cited_source_snapshot",
+      "proof": "static_code_path_derivation",
+      "tests_executed_by_reviewer": false
+    },
+    {
+      "id": "S06",
+      "priority": "P2",
+      "title": "Serial remote context close can delay graceful EOF without an overall deadline",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 236,
+          "end": 242,
+          "sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 400,
+          "end": 404,
+          "sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/device.rs",
+          "start": 15,
+          "end": 16,
+          "sha256": "5e3d5f1f58ff0d1c8f14c689289f70d7f78c83b11adc528fbb40a10b5cd4431b"
+        }
+      ],
+      "test_layers": [
+        "P"
+      ],
+      "assertions": [
+        "One unresponsive CloseContext does not serialize cleanup of other opened devices.",
+        "Graceful stdio EOF obeys an explicit whole-cleanup deadline.",
+        "A local cleanup timeout is not proof remote native execution stopped."
+      ],
+      "architecture_cases": [
+        "V02",
+        "V05"
+      ],
+      "status": "open_at_cited_source_snapshot",
+      "proof": "static_code_path_derivation",
+      "tests_executed_by_reviewer": false
+    }
+  ],
+  "snapshot_comparison": [
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+      "reviewed_sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178",
+      "final_read_sha256": "6a601907fe70d6f4ed63277003bf3bb13e21976f9e196c895491652020e84424",
+      "same_as_review_excerpt": false,
+      "initial_sha256": "57b6522ab3702c014ff37cdc78dd289b089974d52ccd548fa29733f6c8d3c178",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/device.rs",
+      "reviewed_sha256": "5e3d5f1f58ff0d1c8f14c689289f70d7f78c83b11adc528fbb40a10b5cd4431b",
+      "final_read_sha256": "5e3d5f1f58ff0d1c8f14c689289f70d7f78c83b11adc528fbb40a10b5cd4431b",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "5e3d5f1f58ff0d1c8f14c689289f70d7f78c83b11adc528fbb40a10b5cd4431b",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+      "reviewed_sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32",
+      "final_read_sha256": "69fd5f8b324032f490558e2408e46f6b04d032bbaf38abe2e7d781a187f8aa09",
+      "same_as_review_excerpt": false,
+      "initial_sha256": "e566a1f7e8a4c6101211c215b90df946ac1ecd82a9b2e1db67f5f8ef585b7c32",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/ledger.rs",
+      "reviewed_sha256": "18a9def2db04df6f59071aac8b7d49212fc2a27838919757375dbd64a1ddc0f0",
+      "final_read_sha256": "e25b7740e19e42d53dd088dc5ee4555277281981dab9aee80a38a0d193780022",
+      "same_as_review_excerpt": false,
+      "initial_sha256": "18a9def2db04df6f59071aac8b7d49212fc2a27838919757375dbd64a1ddc0f0",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/executor.rs",
+      "reviewed_sha256": "49408bbe3f51a6dd3d3ac0bfb5c18f8b2159ddb1545c3ee3c86c813110ebe412",
+      "final_read_sha256": "49408bbe3f51a6dd3d3ac0bfb5c18f8b2159ddb1545c3ee3c86c813110ebe412",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "49408bbe3f51a6dd3d3ac0bfb5c18f8b2159ddb1545c3ee3c86c813110ebe412",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/observed_backend.rs",
+      "reviewed_sha256": "38c8fd67af09b77adf2cb1049505318bda388dc642699560854182dae08badac",
+      "final_read_sha256": "38c8fd67af09b77adf2cb1049505318bda388dc642699560854182dae08badac",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "847683f73543293ee1bf82494ac36178f4bcc3e4ef1d4a294170671cf2e16e41",
+      "changed_from_initial_list": true
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/device.rs",
+      "reviewed_sha256": "c1c77a4fb9bc26864af9b6f97238fbd3338fbed5c8ebaf8432c63f3042eaa6db",
+      "final_read_sha256": "4b68030874a9d529d988932d78ebe3bf781197f337618968d0e7975a8f61a2de",
+      "same_as_review_excerpt": false,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/device/catalog.rs",
+      "reviewed_sha256": "33893cc19303a219b3ad444bb4d67016838183844dae1aecc76635239258a4a0",
+      "final_read_sha256": "3c569502706154d35f4f572925c69e43e557d8f61bdde1aa0315a5d06bc9cbc5",
+      "same_as_review_excerpt": false,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/device/api.rs",
+      "reviewed_sha256": "4e787d95f3868e534ee59d95cbac040e5d3e5af18b076b5e11f3fc7102bb6b3b",
+      "final_read_sha256": "249a5df95b09b4ddcae9fc78f4cc7635e810253a56208fdd6e38301151623223",
+      "same_as_review_excerpt": false,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/lib.rs",
+      "reviewed_sha256": "8b65d319fcf6e0706beca039a304422e0a04d0c964e24e1c198967e5ad1c1572",
+      "final_read_sha256": "7f82f19939cca38e82b11c4ca8f8f31c04893e0d387801b0ebb761344e029621",
+      "same_as_review_excerpt": false,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/checked_action.rs",
+      "reviewed_sha256": "4a258f3b46d0dcb55ed5e6d608ac3b2ec0f9aa2f6eba92aa4d5a352997bb215a",
+      "final_read_sha256": "4a258f3b46d0dcb55ed5e6d608ac3b2ec0f9aa2f6eba92aa4d5a352997bb215a",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "075214d81741d694e332bf1a7589b282725a471f3ef0dbaad54242f16223d2b1",
+      "changed_from_initial_list": true
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-windows/src/native/service_policy.rs",
+      "reviewed_sha256": "2311cc9c1193d0b42398c7824f4c325bd7698efc04eb7f92d45f1a508397c4ea",
+      "final_read_sha256": "2311cc9c1193d0b42398c7824f4c325bd7698efc04eb7f92d45f1a508397c4ea",
+      "same_as_review_excerpt": true,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-core/src/operation.rs",
+      "reviewed_sha256": "32ca72d6b101d327b92871ad45c1b7e62f6f456d0ed0459674bc41e86006ea6c",
+      "final_read_sha256": "32ca72d6b101d327b92871ad45c1b7e62f6f456d0ed0459674bc41e86006ea6c",
+      "same_as_review_excerpt": true,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/platform.rs",
+      "reviewed_sha256": "7084255f82a45dae83af1e07dbfa4c35014046f9bbb8106804d0119cd204b3f1",
+      "final_read_sha256": "7084255f82a45dae83af1e07dbfa4c35014046f9bbb8106804d0119cd204b3f1",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "7084255f82a45dae83af1e07dbfa4c35014046f9bbb8106804d0119cd204b3f1",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/tests/service.rs",
+      "reviewed_sha256": "532e0548c3811b01f062f3763d96ed7fe04cbc141eed210b5880d254adb83503",
+      "final_read_sha256": "532e0548c3811b01f062f3763d96ed7fe04cbc141eed210b5880d254adb83503",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "532e0548c3811b01f062f3763d96ed7fe04cbc141eed210b5880d254adb83503",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/Cargo.toml",
+      "reviewed_sha256": "c3b952311dbc706fbd27f6aecb315281e88746e3520c26766b37247ed10dd269",
+      "final_read_sha256": "c3b952311dbc706fbd27f6aecb315281e88746e3520c26766b37247ed10dd269",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "c3b952311dbc706fbd27f6aecb315281e88746e3520c26766b37247ed10dd269",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-native-link/src/lib.rs",
+      "reviewed_sha256": "759384866458774f324da9113e5f8ed553ca2b04d4d16bc05f125eaa7608cb43",
+      "final_read_sha256": "759384866458774f324da9113e5f8ed553ca2b04d4d16bc05f125eaa7608cb43",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "759384866458774f324da9113e5f8ed553ca2b04d4d16bc05f125eaa7608cb43",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/Cargo.toml",
+      "reviewed_sha256": "ef55a385b9c09264b8b984a6789e9577d8895f195b590269cfb57f7380c75fac",
+      "final_read_sha256": "ef55a385b9c09264b8b984a6789e9577d8895f195b590269cfb57f7380c75fac",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "ef55a385b9c09264b8b984a6789e9577d8895f195b590269cfb57f7380c75fac",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/main.rs",
+      "reviewed_sha256": "b693a67cd687e326a867e1c3ac40a66baa4eef714158b4ef77016e997059e773",
+      "final_read_sha256": "b693a67cd687e326a867e1c3ac40a66baa4eef714158b4ef77016e997059e773",
+      "same_as_review_excerpt": true,
+      "initial_sha256": "b693a67cd687e326a867e1c3ac40a66baa4eef714158b4ef77016e997059e773",
+      "changed_from_initial_list": false
+    },
+    {
+      "path": "/Users/vincentadamnemessis/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rmcp-1.7.0/src/service.rs",
+      "reviewed_sha256": "d71c47e862e66799deccb9a34c95532135dd1b92ded0aee86994e95e2f780db7",
+      "final_read_sha256": "d71c47e862e66799deccb9a34c95532135dd1b92ded0aee86994e95e2f780db7",
+      "same_as_review_excerpt": true,
+      "initial_sha256": null,
+      "changed_from_initial_list": false
+    }
+  ],
+  "correction": "The quick message incorrectly included observed_backend.rs among unchanged hashes. It changed from 847683f73543293ee1bf82494ac36178f4bcc3e4ef1d4a294170671cf2e16e41 to 38c8fd67af09b77adf2cb1049505318bda388dc642699560854182dae08badac and was re-read. checked_action.rs also changed from the initial inventory. runtime.rs, ledger.rs and gateway.rs retained their initial hashes in the cited excerpt capture.",
+  "artifact_integrity_verification": "Separate delivery manifest and zip CRC/member hash checks; these are not product tests."
+}

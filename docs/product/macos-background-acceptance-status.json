@@ -1,0 +1,2099 @@
+{
+  "schema_version": 1,
+  "updated": "2026-10-11",
+  "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+  "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
+  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/validation/2026-10-10-comprehensive-native-acceptance-and-public-readiness.md",
+  "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
+  "all_features_accepted": false,
+  "acceptance_layers": [
+    "construction",
+    "dispatch",
+    "application/window reception",
+    "view callback",
+    "client consumption/goal",
+    "physical-user continuity and restoration"
+  ],
+  "window_states": [
+    "inactive_on_screen",
+    "covered",
+    "offscreen",
+    "otherSpace",
+    "hidden",
+    "minimized"
+  ],
+  "this_turn_tested_state": "R16 stableAgent deployed, permissions unchanged. ActualColor34733 running->recovering/window_missing->running frames90->92->96 after caller explicitly restored ownApp; noLiveResume/rebind afterloss.8budget exhausted retained, own50..53closed0/6detach/12opclean.",
+  "foreground_extension": {
+    "tool": "computer.focus_window",
+    "state": "loaded40_validator_and_native_explicit_transition_accepted",
+    "schema_tools_candidate": 40,
+    "currently_loaded_tools": 42,
+    "route": "explicit AXRaise/AXFrontmost once; fresh expected foreground tuple; separate input authorization/lease/no replay",
+    "native_goal_accepted": true,
+    "catalog_process_exit": 0,
+    "agent_pid": 84167,
+    "agent_instance": "a72260d6-98b1-4f92-82a2-208a006b446a",
+    "new_installed_process_tools": 40,
+    "user_reload_response": "好的好的，已重启。",
+    "observed_readback": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/65-real-switch-observation-foreground.json",
+    "last_native_attempt": "foreground_observed; independently read back exact B",
+    "validator_fix_deployed": true,
+    "loaded_validator_fix": true,
+    "last_request_id": "own-freshfacts-two-apps-explicit-switch-20261010-01",
+    "current_host_probe": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/02-loaded-readonly-validator-probe.json",
+    "native_goal_scope": "explicit own-app foreground transition only; not background/tooltips/user continuity",
+    "volatile_facts_fix_deployed": true,
+    "negative_control": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/74-stale-guard-negative-receipt.json",
+    "system_keyboard": {
+      "tool": "computer.hotkey",
+      "source_implemented": true,
+      "stable_deployed": true,
+      "fresh_MCP_catalog_verified": 41,
+      "loaded_task_catalog": 40,
+      "native_GUI_accepted": true,
+      "expected_foreground_required": true,
+      "shared_desktop_lease_required": true,
+      "native_route": "CGEventPost(HID)",
+      "background_fallback": false,
+      "physical_human_origin_attested": false,
+      "next": "Retain completed Native14 (no replay); full remaining plan and nested rwi.call diagnostics; do not wait on parent catalog to repeat this accepted test",
+      "native_goal_accepted": true,
+      "native_effect_pending_Host_reload": false,
+      "fresh_host_loaded_tools": 41,
+      "parent_loaded_tools": 40,
+      "fresh_task_id": "01a1250e-25ec-71f3-9e1d-2ea6e7ce177d",
+      "native_evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/fresh-host-keyboard14/acceptance-result.json",
+      "parent_reopened_all_evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/ROOT_NATIVE14_INDEPENDENT_REOPEN.json",
+      "no_new_restart_required_for_this_accepted_case": true,
+      "native_acceptance_pending": false,
+      "loaded_tool_available_in_parent": true,
+      "current_parent_loaded_tools": 42
+    }
+  },
+  "features": [
+    {
+      "id": "F01",
+      "name": "NSEvent构造/roundtrip",
+      "difficulty_stars": 2,
+      "complexity": "medium",
+      "api_support": "公开构造API；不负责transport",
+      "scope": "macOS factory，非跨进程投递",
+      "completion_judgment": "windowNumber/base坐标、uptime、bridge null与字段读回；容易补构造层，不单独交付真后台",
+      "evidence_ids": [
+        "root-apple-d4e9b1767dbbb82b",
+        "NI-R01-CODE01"
+      ],
+      "current_state": "factory_and_roundtrip_implemented",
+      "implementation_evidence": "离线构造/字段读回；不是跨进程 goal",
+      "this_turn_native_evidence": "本轮未单独复跑 native constructor（既有证据保留）",
+      "remaining": "继续与真实 transport 按层对照，不能把 NSEvent factory 当后端"
+    },
+    {
+      "id": "F02",
+      "name": "PID/window click与key",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开CGEvent PID post＋部分SPI stamping",
+      "scope": "应用普通事件，不含全局hotkey/raw game",
+      "completion_judgment": "接收窗口/firstResponder、flags/timestamp及goal读回；void post不算消费ACK",
+      "evidence_ids": [
+        "auto-trycua-cua-file-4",
+        "NI-R02-CODE01",
+        "root-so-79530459"
+      ],
+      "current_state": "partial_native_accepted",
+      "implementation_evidence": "点击/文字/key 的当前正常路径已有源码及回归",
+      "this_turn_native_evidence": "native10 typed click/double and AXPress, native11 actualUnicode; left key receipt only, caret goal unverified; native25 Left caret consumption independently abcXd via subsequent X, not receipt alone",
+      "remaining": "其他应用/framework、全局 shortcut/非文本 key receiver 与全部窗口状态仍待覆盖"
+    },
+    {
+      "id": "F03",
+      "name": "SkyLight候选transport",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "私有SPI，无Apple公开稳定ABI契约",
+      "scope": "仅明确探测OS/arch/ABI的实验route",
+      "completion_judgment": "dlsym/null、private auth、no-raise恢复、一次派发及错误隔离；可受控实现，不全量默认替换",
+      "evidence_ids": [
+        "auto-trycua-cua-file-3",
+        "auto-trycua-cua-issue-2688"
+      ],
+      "current_state": "not_implemented",
+      "implementation_evidence": "SkyLight 只保留显式 SPI 候选设计",
+      "this_turn_native_evidence": "没有 native acceptance",
+      "remaining": "按 OS/arch/ABI 探测并隔离实验 route，不默默替换生产 CG transport"
+    },
+    {
+      "id": "F04",
+      "name": "完整drag/source状态",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开event/state/field；目标接受有条件",
+      "scope": "同window有界drag，不继承DnD",
+      "completion_judgment": "down/dragged/up、Quartz配对eventNumber/pressure/delta、source lifetime、release-only；优先补并禁止重发down",
+      "evidence_ids": [
+        "NI-R07-CODE01",
+        "root-apple-6eeaca7b1989a113",
+        "root-apple-9683e1ad62dba15a",
+        "NI-R03-ISSUE159"
+      ],
+      "current_state": "partial_native_accepted",
+      "implementation_evidence": "有界路径、source/event pairing、释放与 no-replay 已实现",
+      "this_turn_native_evidence": "R19 loaded own56 FG->BG during5s drag, firstBG1642.49ms,26FG/55BG,1/79/1. Real global cmdtab own57->56 AFTER drag. Separate deadline cancel1340ms/1/20/1/paired release/no orphan; original uncertain receipt immutable after idle HID+session0key0button recovery/noinput/noreplay. Stale global foreground tuple rejected before down; oldsource had also expired, not pure liveA/B isolation. Own56 expiry0 and own57 explicitclose0/2detach. R21 live own A/B only stale foreground tuple refused/no dispatch while both windows running; independent explicit focus; exact lease boundaries tested both directions. Actual correctly scoped own58 drag5s1/79/1/81FG, no orphan. Concurrent root chord with child lease rejected/never dispatched; controller4583ms queue cause not attested. All12 original requests terminal/released/no replay; explicit source58/59 close0, two detach.",
+      "remaining": "covered/offscreen、真实中途取消/介入、更多 client 仍待；不是跨 app DnD",
+      "last_native_evidence_date": "2026-10-11",
+      "R28_additional": "New signed Agent own67 trueinactive/keyfalse/systembackground1s drag1/16/1/all18 callbacks and blue pixels; own66 AXWindows25204 read refusal0effects, no replay; foreground fresh HIDyield0effects not positive."
+    },
+    {
+      "id": "F05",
+      "name": "typed move/hover/tooltip",
+      "difficulty_stars": 4,
+      "complexity": "high",
+      "api_support": "公开app-side tracking；非通用跨进程效果保证",
+      "scope": "callback/enter/exit/高亮/tooltip分开",
+      "completion_judgment": "active策略、nested loop、global poll、dwell/readback；应原创实现，不伪造tracking指针/把overlay当hover",
+      "evidence_ids": [
+        "auto-trycua-cua-file-9",
+        "root-apple-f2c9ebd40e801549",
+        "FW-S083"
+      ],
+      "current_state": "partial_native_view_callback_conditionally_accepted",
+      "implementation_evidence": "typed hover 已加载；工厂/派发 probe 可诊断",
+      "this_turn_native_evidence": "Native36 firstResponder hover: before/after inactive/keyfalse/frontmostfalse; one exact typed RWI hover maps660,374 ->2154,691, native point330,365/local306,27, App/window type5 subtype0 and real moved callback1. Native35 inactive default and Native37 active default firstResponder NSButton, App/window proper event but view0. Later Native36 type8/9+subtype3 events and counters115/enter1/exit1 are un-attributed, not RWI hover success.",
+      "remaining": "RWI-driven tracking enter/exit/highlight/tooltip and other real clients remain pending; calibration is own receiver-only, not production auto-focus or universal effect guarantee; no impossible claim.",
+      "last_native_evidence_date": "2026-10-11"
+    },
+    {
+      "id": "F06",
+      "name": "relative/raw游戏兼容",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "公开client raw API，无通用定向raw保证",
+      "scope": "确认实际framework/GameHub/Wine构建",
+      "completion_judgment": "event-local/global-poll、delta/GCMouse/capture；按client补，未知诚实报告，不静默warp",
+      "evidence_ids": [
+        "FW-S009",
+        "FW-S034",
+        "NI-R07-CODE01"
+      ],
+      "current_state": "partial_app_specific",
+      "implementation_evidence": "既有 Wine/GameHub canvas grounding 保留；非通用 raw",
+      "this_turn_native_evidence": "本轮不操作游戏，没有新 raw 验收",
+      "remaining": "relative delta/global polling/captured cursor 框架要分客户端实证"
+    },
+    {
+      "id": "F07",
+      "name": "key-focus接收与恢复",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "公开状态＋SPI focus，frontmost PID不足",
+      "scope": "用户前台输入不受干扰及目标AppKit key状态",
+      "completion_judgment": "记录key recipient、physical-input连续性、restore；CPS panel与normal window不同",
+      "evidence_ids": [
+        "auto-trycua-cua-file-3",
+        "root-article-philz-nonactivating",
+        "NI-R12-CODE01"
+      ],
+      "current_state": "partial_native_inactive_pointer_preservation_accepted",
+      "implementation_evidence": "loaded40 validator fixed, fresh Describe volatile facts deployed; own A->B explicit AX foreground independently accepted, not a no-raise background fix",
+      "this_turn_native_evidence": "R19 loaded own56 FG->BG during5s drag, firstBG1642.49ms,26FG/55BG,1/79/1. Real global cmdtab own57->56 AFTER drag. Separate deadline cancel1340ms/1/20/1/paired release/no orphan; original uncertain receipt immutable after idle HID+session0key0button recovery/noinput/noreplay. Stale global foreground tuple rejected before down; oldsource had also expired, not pure liveA/B isolation. Own56 expiry0 and own57 explicitclose0/2detach. R21 live own A/B only stale foreground tuple refused/no dispatch while both windows running; independent explicit focus; exact lease boundaries tested both directions. Actual correctly scoped own58 drag5s1/79/1/81FG, no orphan. Concurrent root chord with child lease rejected/never dispatched; controller4583ms queue cause not attested. All12 original requests terminal/released/no replay; explicit source58/59 close0, two detach.",
+      "remaining": "Full physical-origin/modifier/foreground conflicts and multi-client/window states remain; no more human coordination questions, continue scoped independent actors/tests.",
+      "last_native_evidence_date": "2026-10-11",
+      "R28_additional": "New signed Agent own67 trueinactive/keyfalse/systembackground1s drag1/16/1/all18 callbacks and blue pixels; own66 AXWindows25204 read refusal0effects, no replay; foreground fresh HIDyield0effects not positive."
+    },
+    {
+      "id": "F08",
+      "name": "covered/offscreen capture",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开SCK明确支持",
+      "scope": "单window流，非minimized连续刷新",
+      "completion_judgment": "non-on-screen枚举、SC status/dirty/scale/stride；RWI枚举与input mapping缺口应补",
+      "evidence_ids": [
+        "root-article-wwdc22-10155",
+        "FW-S069",
+        "NI-A19"
+      ],
+      "current_state": "partial_implemented",
+      "implementation_evidence": "精确 window SCK capture 已实现",
+      "this_turn_native_evidence": "own cover above primary and covering button point verified by native metadata; precise primary SCK image still includes covered button; capture confirmed, input authority not inferred",
+      "remaining": "本轮own covered capture已原生确认；offscreen/其他Space及minimized fresh pixels尚未证明，不外推单例",
+      "last_native_evidence_date": "2026-10-10"
+    },
+    {
+      "id": "F09",
+      "name": "window-local authority",
+      "difficulty_stars": 4,
+      "complexity": "high",
+      "api_support": "公开geometry/capture，input效果有条件",
+      "scope": "输入不依赖window完整落入一个display",
+      "completion_judgment": "identity/epoch、pixel-point-base、frame/content/负origin；可改架构，不直接删mapping/hit/lease",
+      "evidence_ids": [
+        "root-apple-5fe5b308649c51dd",
+        "FW-S102",
+        "auto-trycua-cua-file-2"
+      ],
+      "current_state": "partial_implemented",
+      "implementation_evidence": "Retina/window-local 变换和新鲜原生身份检查已有",
+      "this_turn_native_evidence": "本轮 original_to_desktop=0.5、虚拟屏负边界路径被拒绝",
+      "remaining": "single-display/offscreen limits remain; do not claim covered pointer preservation from successful count or unchanged system PID. Separate explicit semantic and synthetic routes."
+    },
+    {
+      "id": "F10",
+      "name": "minimized/hidden目标",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "minimized SCK pause已说明，renderer策略app依赖",
+      "scope": "语义动作与fresh pixels分别报告",
+      "completion_judgment": "paused/stale不可作fresh proof，不能自动unhide伪装后台；semantic-only/合作app另定义",
+      "evidence_ids": [
+        "root-article-wwdc22-10155",
+        "FW-S094",
+        "auto-trycua-cua-file-2"
+      ],
+      "current_state": "not_implemented_for_general_hidden_minimized",
+      "implementation_evidence": "当前仍明确不支持 hidden/minimized discovery",
+      "this_turn_native_evidence": "没有这两个状态的 native acceptance",
+      "remaining": "paused/stale 与 semantic-only 分开，禁止自动 unhide 把前台伪装后台"
+    },
+    {
+      "id": "F11",
+      "name": "AX语义/hover-like动作",
+      "difficulty_stars": 2,
+      "complexity": "medium",
+      "api_support": "公开AX，provider支持/效果需验证",
+      "scope": "仅advertised action/可写attribute",
+      "completion_judgment": "Press/ShowAlternateUI/SetValue不是pointer；可能no-op须goal读回，优先补且不连带禁其他route",
+      "evidence_ids": [
+        "NI-R14-CODE01",
+        "NI-R15-CODE01",
+        "auto-trycua-cua-issue-4864"
+      ],
+      "current_state": "partial_native_accepted_with_provider_failure",
+      "implementation_evidence": "advertised native action 与 pointer route 分离、错误保留 uncertainty",
+      "this_turn_native_evidence": "R15 covered Color AXPress really changed Wheel→Sliders; real floating panels do not block parent1; document-sheet parent refusal before dispatch, independent sheet count1/close1; unknown-source-hidden Font close refused before dispatch, not replayed.",
+      "remaining": "继续 provider/action 适配和独立 readback；动作存在、返回/error都不能当 goal 或自动 fallback",
+      "last_native_evidence_date": "2026-10-10",
+      "R28_additional": "Current signed Agent own66 AXSafe1; own67 sheet parent blocked proposal0/nativechildSafe1/Close1/parent0, exact identities, cleanup."
+    },
+    {
+      "id": "F12",
+      "name": "多window/popup Live",
+      "difficulty_stars": 4,
+      "complexity": "high",
+      "api_support": "公开catalog/AX/SCK，归属需证据",
+      "scope": "授权归属图，不是单PID硬门禁",
+      "completion_judgment": "single-window不带child/popup，OS dialog可不同PID；补聚合/重发现，不扩大secure-session授权",
+      "evidence_ids": [
+        "root-article-wwdc22-10155",
+        "NI-R02-ISSUE2650",
+        "auto-doc-selenium-windows"
+      ],
+      "current_state": "partial_implemented",
+      "implementation_evidence": "独立目标+共享物理桌面 lease、明确 popup 绑定与 Live 已有; R6 optional standard MCP Apps resource/presence route implemented; actual Host rendering/task switch not accepted",
+      "this_turn_native_evidence": "R33 real same-provider AXParent sheet composition visually verified in nativePIP; child closes back to one layer. SlowAX live663frames/relay1; foreground+background safe1, parent0. Native hide/resume/close independent effects verified; uncertain selfAX originals retained. No human request. See R32_R33_layered_live.",
+      "remaining": "Foreign-PID authorized system family, multi-source/window stacking and actual Host MCP Apps task-ID-bound rendering/hide/resume remain. Native active Close UI now independently accepted; it is not full task-binding.",
+      "last_native_evidence_date": "2026-10-11",
+      "R28_additional": "PureLive module extraction compiled/deployed, no new Live/render/presence/native-family acceptance this round; earlier evidence retained.",
+      "R34_additional": "Native same-provider Colors/Fonts/typography independent exact bindings; new bounded inventory recovery exercised, tab-mode change and virtual placement read back. Not attached sheets; no automatic same-PID family. Formal MCP Apps route protocol available but component unmounted/frame0 so rendering/task binding unaccepted."
+    },
+    {
+      "id": "F13",
+      "name": "跨window/app原生DnD",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "公开app-side session/pasteboard，不保证任意注入",
+      "scope": "与slider/canvas drag独立",
+      "completion_judgment": "MIME/destination/capture/enter/move/leave/drop与多资源scope；独立长阶段先自有fixture，未提供不等于不能做",
+      "evidence_ids": [
+        "FW-S088",
+        "FW-S089",
+        "FW-S101"
+      ],
+      "current_state": "not_implemented",
+      "implementation_evidence": "有界 same-window drag 不提供 native cross-app DnD session",
+      "this_turn_native_evidence": "没有 MIME/pasteboard/destination/drop 验收",
+      "remaining": "先独立双 own-app fixture；不能拿本轮 canvas blue path 当 DnD 完成"
+    },
+    {
+      "id": "F14",
+      "name": "browser内容独立route",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开browser协议，不是任意Mac input API",
+      "scope": "CDP/page/DOM，不含native toolbar/OS panels",
+      "completion_judgment": "context lifecycle、buttons/dragover/incognito；可显式整合，native route保留，不静默global fallback",
+      "evidence_ids": [
+        "auto-doc-pw-pages",
+        "auto-doc-pw-input",
+        "auto-doc-webdriver-spec"
+      ],
+      "current_state": "not_integrated_as_rwi_native_route",
+      "implementation_evidence": "browser protocol/page 与 native toolbar/OS route 边界已设计",
+      "this_turn_native_evidence": "本轮不操作浏览器",
+      "remaining": "显式 content route/lifecycle/incognito 独立实现；不接管用户已有页面"
+    },
+    {
+      "id": "F15",
+      "name": "hook/runloop/取消恢复",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开tap/runloop，权限和模式仍有约束",
+      "scope": "native source/observer/tap生命周期",
+      "completion_judgment": "common modes、callback retain、disabled/wake、cancel/up清理；迁移状态机而非global干扰",
+      "evidence_ids": [
+        "NI-A11",
+        "NI-A12",
+        "NI-R13-CODE01",
+        "NI-R12-CODE01"
+      ],
+      "current_state": "partial_native_accepted",
+      "implementation_evidence": "durable reservation/no-replay、lease/cancel/cleanup、own timer common modes 已有",
+      "this_turn_native_evidence": "R19 loaded own56 FG->BG during5s drag, firstBG1642.49ms,26FG/55BG,1/79/1. Real global cmdtab own57->56 AFTER drag. Separate deadline cancel1340ms/1/20/1/paired release/no orphan; original uncertain receipt immutable after idle HID+session0key0button recovery/noinput/noreplay. Stale global foreground tuple rejected before down; oldsource had also expired, not pure liveA/B isolation. Own56 expiry0 and own57 explicitclose0/2detach. R21 live own A/B only stale foreground tuple refused/no dispatch while both windows running; independent explicit focus; exact lease boundaries tested both directions. Actual correctly scoped own58 drag5s1/79/1/81FG, no orphan. Concurrent root chord with child lease rejected/never dispatched; controller4583ms queue cause not attested. All12 original requests terminal/released/no replay; explicit source58/59 close0, two detach.",
+      "remaining": "真实取消/丢失释放/任务 Live 生命周期和 physical input 连续性需专项测量",
+      "last_native_evidence_date": "2026-10-11"
+    },
+    {
+      "id": "F16",
+      "name": "capture性能/画质/Live",
+      "difficulty_stars": 3,
+      "complexity": "medium",
+      "api_support": "公开SCK metadata；需独立hardware测量",
+      "scope": "capture/convert/encode/MCP分层",
+      "completion_judgment": "bytesPerRow、dirty/contentRect/scale、fresh status/source调度；可做性能工程，不凭语言/上游benchmark推快",
+      "evidence_ids": [
+        "NI-A19",
+        "root-article-wwdc22-10155",
+        "FW-S069"
+      ],
+      "current_state": "partial_native_measured",
+      "implementation_evidence": "原图保留、2048预览、stage timings/compact output 已有",
+      "this_turn_native_evidence": "R16 deployed stable native recovery: actualsameSource frames90->92->96, noLiveResume afterloss,8limit/1s backoff. Font output priority/nativewalk optimization remains. R20 readonly degraded AXWindows read guards/process positive media and poison rejection, isError retained and no frame/view/input authority; MCP deployed4a29, current parent not reloaded. R21 exact own snapshots adapter187..231ms in selected samples and controller wrong-scope chord4583ms; no exact queue-cause/general speed claim.",
+      "remaining": "Raw native tool timing scope and Host/adapter/transport/Agent wait need measured separation; currently loaded formatter remains old. Full framework/capture/stress coverage and composite family remain.",
+      "last_native_evidence_date": "2026-10-11"
+    }
+  ],
+  "priority_order": [
+    "R19 observed background AXWindows cannotComplete: preserve error/unknown controls, exact-window read-only visual path without granting input or changing focus; add real MCP-process contract before deployment.",
+    "Autonomous own-app first-canvas-down triggered foreground actor; cannot rely on ChatGPT message/tool start timestamps; no human coordination.",
+    "Autonomous actual MCP-process queue localization; own-window continuous Live/control and retained AXPress uncertainty, no further human participation",
+    "F07 ordinary pointer preparation/down/client key-order isolation; physical-input continuity/restoration",
+    "F05 hover view/tracking route after exact App/Window foreground/background contrast",
+    "F08/F09 offscreen/window-local identity and state matrix",
+    "F12 multiwindow/popup/Live owner graph",
+    "F06 raw/client adaptation; F10 paused/hidden semantics; F13 native DnD; F14 explicit browser route",
+    "F15 cleanup/stress and F16 scoped performance across all paths",
+    "MCP tool description/schema timing-option consistency; do not advertise unavailable fields"
+  ],
+  "receipt_event_files": [
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/07-long-drag-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/14-bent-drag-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/19-boundary-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/22-hover-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/35-widget-text-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/38-widget-key-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/41-widget-scroll-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/43-widget-semantic-scroll-receipt.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/47-widget-semantic-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/48-widget-uncertain-query.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/52-widget-final-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-resume-acceptance/covered-receiver/12-ordered-before-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-resume-acceptance/covered-receiver/14-ordered-pointer-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-resume-acceptance/covered-receiver/22-semantic-before-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-resume-acceptance/covered-receiver/25-semantic-after-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-resume-acceptance/covered-receiver/18-ordered-final-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-resume-acceptance/covered-receiver/28-semantic-final-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-codex-restart-focus/12-focus-receipt.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-codex-restart-focus/14-independent-foreground-after.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-codex-restart-focus/17-after-refusal-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-codex-restart-focus/21-fixture-final-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-codex-restart-focus/23-loaded-adapter-readonly-validator-probe.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/61-own-real-switch-receipt.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/65-real-switch-observation-foreground.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/74-stale-guard-negative-receipt.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/70-hover-03-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/70-hover-04-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/81-own-03-final-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/post-validator-reload-acceptance/81-own-04-final-oracle.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/first-responder-r9/NATIVE36_USER_VISIBLE_HIDE_RESUME.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/first-responder-r9/NATIVE36_USER_CLOSE_FOLLOWUP.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/first-responder-r9/NATIVE36_AFTER_HOVER.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/first-responder-r9/NATIVE37_AFTER_HOVER.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-control-r11/NATIVE43_TYPED_EXECUTION.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-control-r11/NATIVE43B_TYPED_CALLS.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/compact-live-r12/NATIVE44_TYPED_CALLS.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/parallel-mcp-r13/NATIVE45_TYPED_CALLS.json",
+    "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/first-down-takeover-r14/TYPED_NATIVE_EVENTS_R14.json"
+  ],
+  "offline_gate": {
+    "all8_exit0": true,
+    "workspace": {
+      "passed": 733,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "receiver53": true,
+    "UI7": true,
+    "architecture_passed": true,
+    "existing_debt": 12
+  },
+  "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
+  "current_deployment": {
+    "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+    "original_hash": "ad99426c4176333fa3809daf4964c0b3a3fe4e19bfb7c83b2aa43b5bb4007e5a",
+    "installed_hash": "ee58916f3c53d4612a0c35b1483378d8b0189680f83d355718c5b5a3537e8fa0",
+    "candidate_hash": "f51cce43f40068a8af188d081ce4a08037ca512d9113bfb1f2ab32429e92b739",
+    "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+    "protected_public_config_hashes": {
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b"
+    },
+    "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-shared-panel-read-r34-20261011.app",
+    "retained_baseline_app": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/deployment/baseline/RWI Agent.app",
+    "certificate_replaced": false,
+    "pairing_replaced": false,
+    "recovery_invoked": false,
+    "mcp_binary_changed": false,
+    "input_sent_by_controller": false
+  },
+  "current_comprehensive_acceptance": {
+    "target": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "changed_symbols": [
+      "resolve_window_element_traced",
+      "exact_inventory_relay",
+      "inventory_retry_allowed"
+    ],
+    "offline": {
+      "all8_exit0": true,
+      "workspace": {
+        "passed": 733,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver53": true,
+      "UI7": true,
+      "architecture_passed": true,
+      "existing_debt": 12
+    },
+    "deployed": {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "original_hash": "ad99426c4176333fa3809daf4964c0b3a3fe4e19bfb7c83b2aa43b5bb4007e5a",
+      "installed_hash": "ee58916f3c53d4612a0c35b1483378d8b0189680f83d355718c5b5a3537e8fa0",
+      "candidate_hash": "f51cce43f40068a8af188d081ce4a08037ca512d9113bfb1f2ab32429e92b739",
+      "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "protected_public_config_hashes": {
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b"
+      },
+      "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-shared-panel-read-r34-20261011.app",
+      "retained_baseline_app": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/deployment/baseline/RWI Agent.app",
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "recovery_invoked": false,
+      "mcp_binary_changed": false,
+      "input_sent_by_controller": false
+    },
+    "loaded_agent_instance": "37225bb4-ce55-4bbe-a412-ab1389da737d",
+    "native_pid": 44439,
+    "permissions": {
+      "accessibility": true,
+      "listen_event": true,
+      "post_event": true,
+      "requests_permission": false,
+      "screen_capture": true,
+      "screenshot_api": true
+    },
+    "baseline77": {
+      "snapshots_failed_AXWindows_-25204": 2,
+      "exact_alias_candidate_count": 0,
+      "no_input_sent": true,
+      "visual_only_capture_no_input_authority": true,
+      "fixture_exit_status": 0,
+      "expiry": 1
+    },
+    "native78": {
+      "color_and_font_open_count": 1,
+      "two_shared_panel_snapshots_used_bounded_exact_AXWindows_read_after_alias_miss": true,
+      "color_sliders_visually_changed": true,
+      "typography_extra_window_discovered": true,
+      "typography_moved_from_builtin_to_virtual_confirmed_by_fresh_CG_catalog": true,
+      "panels_are_not_attached_sheets": true,
+      "fixture_exit_status": 0,
+      "expiry": 1,
+      "late_close_attempts_no_input_and_not_accepted": true,
+      "five_original_mutations_terminal_released": true
+    },
+    "native79": {
+      "colors_fonts_opened_and_separately_closed": true,
+      "CG_catalog_only_parent_before_parent_close": true,
+      "parent_explicit_close_exit_status": 0,
+      "expiry": 0,
+      "five_originals_terminal_released": true
+    },
+    "live": {
+      "negotiated_MCP_Apps_resource": true,
+      "browser_tab_not_used": true,
+      "host_component_rendering_accepted": false,
+      "expanded_apps_tabs": 0,
+      "captured_frames": 0,
+      "preview_visible": false,
+      "duration_expired": true,
+      "no_forged_presence_or_private_Codex_access": true
+    },
+    "same_input": {
+      "source_contract": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "complete_signed_bundle_same_DR": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pristine_hashes_restored_and_reapplied": true,
+      "production_rollback": false
+    },
+    "claim_limits": {
+      "initial_baseline77_same_conditions_not_repeated_after_deploy": true,
+      "native_shared_panels_recovery_new_path_positive": true,
+      "full_F12_or_full_goal_complete": false,
+      "foreign_PID_family_composition": false,
+      "general_performance_superiority": false,
+      "physical_human_origin": false
+    },
+    "original_pngs": [
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/01-baseline77-visual-no-input-authority.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE77_EXACT_VISUAL_WITHOUT_AX_INPUT_AUTHORITY.json",
+        "sha256": "0b79c45c695582fc3c07a63239f2817222e414ca308ce95e7ab4da70d3b118cf",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/02-colors-wheel.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_SHARED_COLORS_FONTS_SEPARATE_TARGET_SNAPSHOTS_R34.json",
+        "sha256": "cecc2963d0073185a4756aac9923d2355ad96ed1d8880da34a0f19f21d11c050",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/03-fonts-panel.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_SHARED_COLORS_FONTS_SEPARATE_TARGET_SNAPSHOTS_R34.json",
+        "sha256": "2f2a034262efe46dc47bb66cfa7580be92f8096a39b713d1e8daf755931d43ab",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/04-colors-sliders-actual-change.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_COLOR_SLIDERS_AND_TYPOGRAPHY_REAL_ACTIONS_R34.json",
+        "sha256": "a1e0143a388269ffbc49c0d14e95126f83a19391ebfb0f23a2aeb3d0bbf06650",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/05-typography-grounded-before-move.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_TYPOGRAPHY_ON_BUILTIN_SCREEN_GROUNDED_R34.json",
+        "sha256": "abef91aa00c8067201c9ecaf0f1a0081245aa40ba3a6e9f561f0e529b433cc82",
+        "original_bytes_unaltered": true
+      }
+    ]
+  },
+  "deployment_history": [
+    {
+      "label": "R6 original deployment before R7",
+      "state": {
+        "agent_binary_sha256": "8d90970f21245d4725a94c753af0adea610ef81acbf97a8b21efc7716f4c2645",
+        "mcp_sha256": "9f96321be0fb8c51d32f05129105542dd27b43c13f5a4230b3b738de032775e8",
+        "stable_designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+        "permissions_readback": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "certificate_replaced": false,
+        "pairing_replaced": false,
+        "agent_pid": 9721,
+        "agent_instance": "69c18019-b329-40b4-98ab-c77c37b7da96",
+        "mcp_binary_replaced_this_turn": true,
+        "signed_agent_sha256": "8d90970f21245d4725a94c753af0adea610ef81acbf97a8b21efc7716f4c2645",
+        "MCP_tools": 41,
+        "task_loaded_tools": 40,
+        "pending_Host_reload": true,
+        "permissions": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "stable_signing_pairing_config_unchanged": true,
+        "input_sent_this_global_keyboard_turn": false,
+        "fresh_tools_count": 41,
+        "permissions_still_valid": true,
+        "deployment_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/sheet-deployment/DEPLOYMENT.command_execution.json",
+        "unsigned_agent_release_sha256": "15c6d3126069e6a92b3b2002666bea7f52e1f3fdb3fce3c5fdc33c926932364d",
+        "Agent_restarted_this_turn": false,
+        "apps_negotiated_tools_count": 43,
+        "model_tools_count": 42
+      }
+    },
+    {
+      "agent_binary_sha256": "f7a28ff6460858898db7ddb9438441de45286be0ef9695e72de561ab8488552f",
+      "mcp_sha256": "9f96321be0fb8c51d32f05129105542dd27b43c13f5a4230b3b738de032775e8",
+      "stable_designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "permissions_readback": {
+        "accessibility": true,
+        "listen_event": true,
+        "post_event": true,
+        "requests_permission": false,
+        "screen_capture": true,
+        "screenshot_api": true
+      },
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "agent_pid": 36549,
+      "agent_instance": "4741ed85-d39d-4957-b521-07d0c6bb2862",
+      "mcp_binary_replaced_this_turn": false,
+      "signed_agent_sha256": "f7a28ff6460858898db7ddb9438441de45286be0ef9695e72de561ab8488552f",
+      "MCP_tools": 41,
+      "task_loaded_tools": 40,
+      "pending_Host_reload": true,
+      "permissions": {
+        "accessibility": true,
+        "listen_event": true,
+        "post_event": true,
+        "requests_permission": false,
+        "screen_capture": true,
+        "screenshot_api": true
+      },
+      "stable_signing_pairing_config_unchanged": true,
+      "input_sent_this_global_keyboard_turn": false,
+      "fresh_tools_count": 41,
+      "permissions_still_valid": true,
+      "deployment_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/deployment-r2/DEPLOYMENT.command_execution.json",
+      "unsigned_agent_release_sha256": "070c8bd661a67be21b40ab74a155c7df2ef62442ee59b518db530d8fdfc98f2c",
+      "Agent_restarted_this_turn": true,
+      "apps_negotiated_tools_count": 43,
+      "model_tools_count": 42
+    },
+    {
+      "label": "R10 before R11/R12",
+      "state": {
+        "agent_binary_sha256": "eb769ac87f3867a85c93b090a5f1d9f492867a591e5f1ed9cc10d5fec86fd490",
+        "mcp_sha256": "5ca2d986621cb93e1babe66dfff62a680871f6d891c20b3496090967db8f42b5",
+        "stable_designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+        "permissions_readback": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "certificate_replaced": false,
+        "pairing_replaced": false,
+        "agent_pid": 4544,
+        "agent_instance": "14d4ace3-ecd2-48c8-871a-4446c7d605bb",
+        "mcp_binary_replaced_this_turn": false,
+        "signed_agent_sha256": "eb769ac87f3867a85c93b090a5f1d9f492867a591e5f1ed9cc10d5fec86fd490",
+        "MCP_tools": 41,
+        "task_loaded_tools": 42,
+        "pending_Host_reload": true,
+        "permissions": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "stable_signing_pairing_config_unchanged": true,
+        "input_sent_this_global_keyboard_turn": false,
+        "fresh_tools_count": 41,
+        "permissions_still_valid": true,
+        "deployment_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/deployment-r8-placement/DEPLOYMENT.command_execution.json",
+        "unsigned_agent_release_sha256": "2440ec0dd55c1a837396cac0ed281840ec140bb665cee6bafa22875c61aa7153",
+        "Agent_restarted_this_turn": false,
+        "apps_negotiated_tools_count": 43,
+        "model_tools_count": 42,
+        "pending_reload_scope": "actual Host HTML c9 remains old; installed5ca has HTML6807 and schema-conditional guidance, fresh stdio verified; native API hide/resume accepted without restart",
+        "mcp_install_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-action/timings-guidance-r9/DEPLOYED.json"
+      }
+    },
+    {
+      "label": "R11",
+      "state": {
+        "agent_binary_sha256": "227e0539b392fbdc5b2d2435b03a58731fea8e7aa42783fa977a952e2a4c56ad",
+        "signed_agent_sha256": "227e0539b392fbdc5b2d2435b03a58731fea8e7aa42783fa977a952e2a4c56ad",
+        "unsigned_agent_release_sha256": "1611b45becfe4333b884952bef5edbe60d5e7fbf544bd4bd6eeccc2630650273",
+        "mcp_sha256": "5ca2d986621cb93e1babe66dfff62a680871f6d891c20b3496090967db8f42b5",
+        "stable_designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+        "permissions_readback": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "permissions": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "certificate_replaced": false,
+        "pairing_replaced": false,
+        "agent_pid": 68509,
+        "agent_instance": "3296be46-010e-4a0a-a2cf-cb14c19a2577",
+        "mcp_binary_replaced_this_turn": false,
+        "Agent_restarted_this_turn": true,
+        "fresh_tools_count": 41,
+        "MCP_tools": 41,
+        "apps_negotiated_tools_count": 43,
+        "model_tools_count": 42,
+        "task_loaded_tools": 42,
+        "pending_Host_reload": true,
+        "pending_reload_scope": "Old Host HTML c9 only; native R11/R12 fixes already tested using loaded tools. No restart needed for this native UI acceptance.",
+        "stable_signing_pairing_config_unchanged": true,
+        "permissions_still_valid": true,
+        "deployment_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-control-r11/deployment/DEPLOYMENT.command_execution.json"
+      }
+    },
+    {
+      "label": "R12",
+      "state": {
+        "agent_binary_sha256": "c2c116f112e750b0f5afd5a925ea3c89f567dd3beeacd706a5b8ca6076d5e43d",
+        "signed_agent_sha256": "c2c116f112e750b0f5afd5a925ea3c89f567dd3beeacd706a5b8ca6076d5e43d",
+        "unsigned_agent_release_sha256": "fbd9b5c2c07e199736a7f4da53ee92576f420bbb9018b835c9e8ed5834004cea",
+        "mcp_sha256": "5ca2d986621cb93e1babe66dfff62a680871f6d891c20b3496090967db8f42b5",
+        "stable_designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+        "permissions_readback": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "permissions": {
+          "accessibility": true,
+          "listen_event": true,
+          "post_event": true,
+          "requests_permission": false,
+          "screen_capture": true,
+          "screenshot_api": true
+        },
+        "certificate_replaced": false,
+        "pairing_replaced": false,
+        "agent_pid": 94874,
+        "agent_instance": "21e75450-c4f8-4af1-97db-6cdc13acdab6",
+        "mcp_binary_replaced_this_turn": false,
+        "Agent_restarted_this_turn": true,
+        "fresh_tools_count": 41,
+        "MCP_tools": 41,
+        "apps_negotiated_tools_count": 43,
+        "model_tools_count": 42,
+        "task_loaded_tools": 42,
+        "pending_Host_reload": true,
+        "pending_reload_scope": "Old Host HTML c9 only; native R11/R12 fixes already tested using loaded tools. No restart needed for this native UI acceptance.",
+        "stable_signing_pairing_config_unchanged": true,
+        "permissions_still_valid": true,
+        "deployment_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/compact-live-r12/deployment/DEPLOYMENT.command_execution.json"
+      }
+    },
+    {
+      "label": "R15/R12 before R16",
+      "state": {}
+    }
+  ],
+  "claim_correction_history": [
+    "Deployed and read back: no explicit system-frontmost request does not attest unchanged AppKit active/key/window order; target_appkit_state_unchanged_attested=false and window_order_unchanged_attested=false. No production no-raise behavior fix claimed.",
+    {
+      "date": "2026-10-11 R9",
+      "correction": "Native35 actual SIGABRT134, not timerclosed; standalone public tracking type8/9 subtype getter reproduces134, guarded getter0, rollback134/reapply0. Native36/37 actualclosed0. RWI hover attributed only frozen callback1; later unknown-source native events not attributed to RWI/user. Live Close expiry before reply is not UI Close acceptance."
+    }
+  ],
+  "evidence_time_rule": "Numbered historical evidence remains dated; R16 fields/deployment describe latest; no full-completion inference.",
+  "R15_system_panels": {
+    "scope": "Allocated own Receiver49 + real AppKit shared color/font panels + document sheet; loaded typed RWI only for native GUI; no physical-human witness",
+    "production_Agent_MCP_CA_TCC_unchanged": true,
+    "real_windows": {
+      "parent": 34192,
+      "color": 34197,
+      "font": 34206,
+      "sheet": 34237,
+      "pid": 95099
+    },
+    "independent_targets": 4,
+    "same_pid_is_not_owner_proof": true,
+    "color_font_started_on_builtin_and_actual_RWI_moved_virtual4": true,
+    "covered_color_AXPress_changed_real_wheel_to_sliders": true,
+    "floaters_do_not_block_parent_count1": true,
+    "real_document_sheet_blocks_only_parent_attempt_refused_before_native": true,
+    "sheet_action_count1_main_unchanged1": true,
+    "real_color_live_after_explicit_resume": true,
+    "color_native_preview_bounds": [
+      1524,
+      701,
+      252,
+      420
+    ],
+    "parent_native_preview_bounds": [
+      1356,
+      735,
+      420,
+      386
+    ],
+    "separate_native_window_previews_not_composited_family": true,
+    "remaining_findings": [
+      "First Color Live paused window_missing with source present on later exact PID discovery; explicit read-only Resume captured same source without rebind/focus/input. Transient recovery not fixed by this fixture patch.",
+      "After actual viewer close, own app active/frontmost false; AppKit panel isVisible stayedtrue but on-screen discovery omitted both panels, so missing on-screen is not destruction. Font close refused before native; not repeated.",
+      "Parent-only exact-window Live excluded separate sheet and floaters; no composited all-layer/family acceptance.",
+      "Two CUA-created compatibility IAB pages could both publish visibility; switching their tabs is not an attested Codex task switch.",
+      "Font snapshot walked1.5s and returned many out-of-viewport unnamed rows; selecting limit8 reduces returned tokens, not native walk time. Output/AX ranking optimization remains."
+    ],
+    "parent_live_terminal": "duration_expired; not requestedClose acceptance",
+    "color_live_terminal": "requested; worker_done/cleared/no pending",
+    "all12_original_operations_terminal_released_no_replay": true,
+    "all7_attachments_detached": true,
+    "source_actual_exit": 0,
+    "retained_framework_panels_cleaned_on_own_source_close": true,
+    "temporary_CUA_tabs_closed": [
+      3,
+      4
+    ],
+    "human_coordination_requested": false,
+    "all_A01_A07_F01_F16_complete": false,
+    "images": [
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15BeforeSnapshot49_ORIGINAL.png",
+        "sha256": "600f3105cd6a7cfd8b904ed8119772581fc0d463f948d4cbc3d9d0f0cc8c0b5f"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ColorSnapshot49_ORIGINAL.png",
+        "sha256": "2c9761d25a6a76c7d980f26534cda9847d083cfc2160dc58b42f7c100517cb1a"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ParentWithColorSnapshot49_ORIGINAL.png",
+        "sha256": "45e071ad88d3963544a8eb8b2f6b70854827ec9a586457b41e15cc499256114a"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15FontSnapshot49_ORIGINAL.png",
+        "sha256": "a2b97a1c500f15edfdb57f88ea3e14238b8c1c6268df36c8696f440d2ba970a4"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ColorCoveredByFontSnapshot49_ORIGINAL.png",
+        "sha256": "2c9761d25a6a76c7d980f26534cda9847d083cfc2160dc58b42f7c100517cb1a"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ParentWithFloatersSnapshot49_ORIGINAL.png",
+        "sha256": "c4825c0b71623e01d2591b6142b80880fbca7a05ff2cd905a387196db42a927e"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ColorSlidersSnapshot49_ORIGINAL.png",
+        "sha256": "5424431023a4cd8b9da6ef7a096b8f5419cd86f74f5194225cd41ab06ec71fdb"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ParentBeforeSheetSnapshot49_ORIGINAL.png",
+        "sha256": "b0ecae039883a03c34f25ccae62b7ba5fdce6a679e5e1bc1ef9367264cb83d7b"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ParentWithSheetSnapshot49_ORIGINAL.png",
+        "sha256": "a52cfa3482695e3a3ce220913917b9b5da57efd7c9088574a33f8a217755434b"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15SheetSnapshot49_ORIGINAL.png",
+        "sha256": "af24400509045f2f205b544184e8e5a8fd2a56be8d768c469f34b6af067ffa32"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ParentPreviewSnapshot49_ORIGINAL.png",
+        "sha256": "704e8c0ae8df3475d171c256ad9b66f9099e05bb12d40003932b28e1a66e913a"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ColorPreviewSnapshot49_ORIGINAL.png",
+        "sha256": "270bdced8a826df1d473174515aa4521eb390d8e72eab721d9d83667d2991210"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15SheetBeforeCloseSnapshot49_ORIGINAL.png",
+        "sha256": "6537b760a201a01203c92f65651cd5cc2c73ad88548879fce9b18c1ffd204b07"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ColorRunningPreviewSnapshot49_ORIGINAL.png",
+        "sha256": "ef29e96293f56a40cd1b0c6635cd21b3714602597ffc29d869c36a0951daf128"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15FontBeforeCloseSnapshot49_ORIGINAL.png",
+        "sha256": "a2b97a1c500f15edfdb57f88ea3e14238b8c1c6268df36c8696f440d2ba970a4"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-system-panels/r15ParentBeforeSourceClose49_ORIGINAL.png",
+        "sha256": "9e5ffc6a0d3f1e43d434d224216240a826f40250b012b7bd0fedae4090d11f81"
+      }
+    ]
+  },
+  "R16_live_source_recovery": {
+    "scope": "Loaded typed RWI, explicitly allocated virtual4 own Receivers50/51/52/53; actual compatibility IAB5/6 only; machine origin, no physical human claim",
+    "stable_native_deployment": {
+      "agent_pid": 26064,
+      "agent_instance": "b4e398bb-4d5b-4bd5-ba67-5e45447bdfa3",
+      "signed_sha256": "226c1675a3481b156e967b544e87d2c5cb2a990dbcc3146f23b9718d57c020b3",
+      "MCP_CA_profile_cert_unchanged": true,
+      "TCC4_true": true,
+      "no_Codex_restart": true
+    },
+    "source": {
+      "pid": 31880,
+      "parent": 34732,
+      "color": 34733,
+      "companion_pid": 31861,
+      "companion": 34726
+    },
+    "baseline_native_R15": "Temporary missing source permanently paused until explicitResume",
+    "first_case": "Actual recovering attempts1..4;8 exhausted ->paused, no unhide/focus/input by worker. Stale pre-focus view refused unknown_frame before native; not replayed. A distinct fresh-view drag1/79/1 later returned ownsource via explicit own first-down actor, but budget alreadyexhausted; not auto-recovery acceptance.",
+    "second_case": "ExplicitResume RESET occurred BEFORE this separate loss. Actual caller focus52->53 hid panel, workerrecovering/window_missing attempts1. Caller explicit focus53->52 restores ownApp; NO liveResume/rebind/focus/input replay by recovery between observedloss and frame return. Worker automatically running frames90->92->96, same CG34733, retrycount0, requestedbuiltin preview. Not hidden-window capture or automatic app activation.",
+    "same_window_automatically_recaptured": true,
+    "after_observed_second_loss_live_resume_or_rebind": false,
+    "actual_down_moves_up": [
+      1,
+      79,
+      1
+    ],
+    "actor_requests": 1,
+    "drag_callback_background_count": 16,
+    "drag_callback_foreground_count": 65,
+    "all_sources_exit0": true,
+    "all12_original_operations_terminal_released_no_replay": true,
+    "all6_bound_targets_detached": true,
+    "Live52_stop_requested_worker_done_cleared_no_pending": true,
+    "Live50_expired_not_requested_close": true,
+    "original_unknown_frame_request_unknown_not_effect_absence_inference": true,
+    "temporary_CUA_tabs_closed": [
+      5,
+      6
+    ],
+    "no_human_question": true,
+    "remaining": [
+      "No composite parent+sheet+float family Live acceptance",
+      "Actual Host/MCP Apps task binding/newHTML remains incomplete; IAB real visibility only",
+      "Read-only AXWindows -25204 provider failure on51 recovered on fresh observation; invalid dependent resolve request retained, no input",
+      "Color fresh attachment catalog_expired refused before native; changed fresh discover/attach verified",
+      "Font output/ranking/native walk optimization still pending",
+      "Full F01-F16/publication audit/PR/push/open-source goal incomplete"
+    ],
+    "images": [
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16BeforeColorSnapshot50_ORIGINAL.png",
+        "sha256": "df4b1736e73964feb89075910cbea9dc18d7dd6b7ef7c5d107931216f3b549cc"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16Source50BeforeSetupFocus_ORIGINAL.png",
+        "sha256": "723f5a10dd0cda07a8a6274feab7399c63e2e26bb397539ea298c21f28ec9db1"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16ColorBeforeLiveSnapshot50_ORIGINAL.png",
+        "sha256": "2c9761d25a6a76c7d980f26534cda9847d083cfc2160dc58b42f7c100517cb1a"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16BeforeActualRecoveryDrag50_ORIGINAL.png",
+        "sha256": "4d297fe4dac5223f731d9d7518bdf47a945baa49859e2e932737d5beb8c0982e"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16CompanionFreshReadAfterProviderError51_ORIGINAL.png",
+        "sha256": "d3f8370daa58aa98cc954af9eede7609ea9fa6c871dd0800dc709588b01ee183"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16CleanupSnapshot50_ORIGINAL.png",
+        "sha256": "4d297fe4dac5223f731d9d7518bdf47a945baa49859e2e932737d5beb8c0982e"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16CleanupSnapshot51_ORIGINAL.png",
+        "sha256": "eff466660b5d08c58d59d9ae282cf76e8baa471b1aa6faff0ae46cf5f4a7e646"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16InitialSnapshot52_ORIGINAL.png",
+        "sha256": "72ef9eef4276b3dc389e1d89c79b146dde6ca402289114965a1de5fed2c1577b"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16Source52SetupSnapshot_ORIGINAL.png",
+        "sha256": "515bad24d25f8871558a3b6c4d88c768e423a0c927a836e2734ec829eae74134"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16BeforeControlledDragSnapshot52_ORIGINAL.png",
+        "sha256": "79d6418211a0d3c301f53efbcab0113de2b63d3bb6dcff93944784448d95f5c4"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16CompanionBeforeControlledLoss53_ORIGINAL.png",
+        "sha256": "ed658a9de8bb814657d1257d298fa61817cc95c63f83daa7a68fa3a1b84247c3"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16FreshAfterForegroundInvalidation52_ORIGINAL.png",
+        "sha256": "9ee5540e68653da3207f41f86343f604dbb804e9513f62c7a851537eecdd93b5"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16Case2CompanionSnapshot53_ORIGINAL.png",
+        "sha256": "ed658a9de8bb814657d1257d298fa61817cc95c63f83daa7a68fa3a1b84247c3"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16Case2SourceReturnSnapshot52_ORIGINAL.png",
+        "sha256": "b5459a33359f9b9a84905a72b832164e22056b11e56e5d371173534fdc041cf8"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16AfterActualDragSnapshot52_ORIGINAL.png",
+        "sha256": "3509c721ad8c106afcc77515d50b787fb0b33e2773bc58ed05bd6a4896f14d45"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16FinalCleanupSnapshot52_ORIGINAL.png",
+        "sha256": "3509c721ad8c106afcc77515d50b787fb0b33e2773bc58ed05bd6a4896f14d45"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/png",
+        "original_png": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-live-source-recovery/r16FinalCleanupSnapshot53_ORIGINAL.png",
+        "sha256": "78dec074280ac63bb3d914855f105d70fb3cfcaf0b9b3220a762d88df9dc1b27"
+      }
+    ],
+    "raw_drag_record_actions": {
+      "fixture_system_color_open_action": 1,
+      "nsresponder_mouse_callback": 81,
+      "fixture_own_foreground_requested": 1,
+      "window_closed": 1
+    }
+  },
+  "deployment": {
+    "agent_binary_sha256": "226c1675a3481b156e967b544e87d2c5cb2a990dbcc3146f23b9718d57c020b3",
+    "signed_agent_sha256": "226c1675a3481b156e967b544e87d2c5cb2a990dbcc3146f23b9718d57c020b3",
+    "unsigned_agent_release_sha256": "fc5eae915ffaa5f45cbdc166456963fa5464b841e7802721b936491c2e5fa0b3",
+    "agent_pid": 26064,
+    "agent_instance": "b4e398bb-4d5b-4bd5-ba67-5e45447bdfa3",
+    "deployment_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/source-recovery-r16/DEPLOYMENT_DISPATCH.command_execution.json",
+    "certificate_replaced": false,
+    "pairing_replaced": false,
+    "mcp_binary_replaced_this_turn": false,
+    "Agent_restarted_this_turn": true,
+    "permissions": {
+      "accessibility": true,
+      "listen_event": true,
+      "post_event": true,
+      "requests_permission": false,
+      "screen_capture": true,
+      "screenshot_api": true
+    },
+    "permissions_still_valid": true,
+    "stable_signing_pairing_config_unchanged": true,
+    "pending_reload_scope": "Old HTML UI only; nativeR16 verified with loaded tools, noCodex restart for this case"
+  },
+  "R17_control_priority": {
+    "changed_symbol": "compact_controls; compact_controls_in_order preserves retained page order",
+    "default_projection": "collapse only unnamed unavailable/occluded AXRow/AXColumn/AXGroup/AXToolbar without selected=true or nonempty string value; fallback to original if no preferred controls; anonymous buttons preserved",
+    "full_controls_and_count_retained": true,
+    "same_input_exits": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "original_two_hashes_restored": true,
+    "workspace": {
+      "passed": 714,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "actual_MCP_process_fixture_contract": "65 originals; wide default summary1close; complete retained16-item paging; partial coverage and no native input",
+    "actual_process_scope_not_native_GUI": true,
+    "MCP_installed_sha256": "69fa4e2652952bfe29ef5e7cec7fac7918c47e9674cd10f8453fd3b510463f8f",
+    "current_parent_MCP_reload_requested": false,
+    "current_parent_new_formatter_native_attested": false,
+    "AX_walk_performance_improvement_claimed": false,
+    "record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/control-priority-r17/SAME_INPUT_RESULT_R17.json"
+  },
+  "R18_small_live": {
+    "changed_symbols": [
+      "panel_size",
+      "preview_control_icon",
+      "button_symbol"
+    ],
+    "max_points_per_edge": 360,
+    "native_same_source_old_points": [
+      420,
+      386
+    ],
+    "native_same_source_new_points": [
+      360,
+      336
+    ],
+    "native_area_reduction_percent": 25.39,
+    "source_capture_pixels": [
+      1320,
+      1104
+    ],
+    "capture_quality_reduced": false,
+    "glyphs": [
+      "eye.slash",
+      "xmark"
+    ],
+    "labels": [
+      "隐藏预览",
+      "关闭预览"
+    ],
+    "hit_size_points": [
+      28,
+      28
+    ],
+    "native_hidden_resumed_closed_observed": true,
+    "original_self_AX_receipts_still_uncertain_minus25200": true,
+    "input_replayed": false,
+    "source_closed_separately_exit": 0,
+    "same_input_exits": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "original_three_dependency_hashes_restored": true,
+    "same_signature_DR_copy_exits": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "workspace": {
+      "passed": 716,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/small-live-r18/SMALL_LIVE_ACCEPTANCE_R18.json",
+    "true_Host_task_switch_complete": false
+  },
+  "human_coordination_policy": "User asleep/unavailable; no restart, authorization, expand, task-switch or manual test questions. Allocate own virtual-screen fixtures. Human origin, true Host task identity and unsupported secure-state effects remain unverified, not substituted.",
+  "R19_foreground_conflict": {
+    "native_record": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/foreground-conflict-r19/FOREGROUND_CONFLICT_ACCEPTANCE_R19.json",
+    "fg_to_bg_drag": {
+      "requested_duration_ms": 5000,
+      "received": [
+        1,
+        79,
+        1
+      ],
+      "foreground_callbacks": 26,
+      "background_callbacks": 55,
+      "first_BG_after_down_ms": 1642.4915829556994,
+      "continuous_same_window": true,
+      "orphans": 0
+    },
+    "global_CmdTab": {
+      "posted_events": 4,
+      "paired_release": true,
+      "before_pid": 96504,
+      "after_independent_pid": 92593,
+      "occurred_during_drag": false,
+      "human_origin_attested": false
+    },
+    "deadline_cancel": {
+      "requested_duration_ms": 5000,
+      "js_timeout_ms": 1500,
+      "native_elapsed_ms": 1340,
+      "received_delta": {
+        "downs": 1,
+        "moves": 20,
+        "ups": 1,
+        "completed": 1,
+        "orphan_moves": 0,
+        "orphan_ups": 0
+      },
+      "last_endpoint": [
+        118.72000122070312,
+        96.1199951171875
+      ],
+      "expected_full_endpoint": [
+        281,
+        190
+      ],
+      "partial_not_full_goal": true,
+      "release_only_after_cancel": true,
+      "no_orphan": true,
+      "uncertain_original_result_unchanged_after_recovery": true,
+      "old_replay_allowed": false,
+      "receipt": {
+        "correlation_id": null,
+        "deduplicated": false,
+        "dispatch": "uncertain",
+        "dispatch_error": {
+          "code": "operation_cancelled",
+          "diagnostic": {
+            "original_diagnostic": null,
+            "release_error": null,
+            "trajectory": {
+              "elapsed_ms": 1340,
+              "interpolation_interval_ms": 64,
+              "moves_inserted": 20,
+              "release_inserted": true,
+              "samples_planned": 80
+            }
+          },
+          "next_step": "Reobserve on resume; never replay uncertain input."
+        },
+        "frame": "d1200e27-6aae-4d91-87b3-ec889c313d46",
+        "goal_verified": false,
+        "input_domain_fenced": true,
+        "native_dispatch_entered": true,
+        "operation": {
+          "cancel_requested": true,
+          "finish_requested": true,
+          "native_call_depth": 0,
+          "native_call_pending": false,
+          "phase": "finished",
+          "resource_release_uncertain": false,
+          "resources_released": true,
+          "stage": "finished",
+          "strong_native_preemption": false,
+          "terminal": true
+        },
+        "operation_ref": {
+          "agent_instance": "ad37bc3a-2686-4241-8792-1377e1154759",
+          "context_generation": "b62dc6fa-5f94-4776-bc22-5a17bde76118",
+          "device_id": "mac-host",
+          "execution_nonce": "a3:e63b4066-6693-4205-88a1-b9133b1e36bd",
+          "ref_version": 1
+        },
+        "receipt_ref": {
+          "device_id": "mac-host",
+          "request_id": "own-mid-drag-cancel-20261011-56"
+        },
+        "replay": "forbidden",
+        "request_id": "own-mid-drag-cancel-20261011-56",
+        "scope": {
+          "element": null,
+          "pid": 92593,
+          "window": "cgwindow:35390"
+        },
+        "system_accepted": null
+      }
+    },
+    "recovery_readonly_input_sent_false": true,
+    "original_cancel_result_unchanged": true,
+    "stale_foreground_key_guard": {
+      "old_source_window_had_also_expired": true,
+      "dispatch": "rejected_before_dispatch",
+      "code": "foreground_changed",
+      "native_dispatch_entered": false,
+      "current_peer_remained": 96504,
+      "not_a_live_A_B_only_isolation_case": true
+    },
+    "AX_background_read_problem": {
+      "background_AXWindows_failures": 2,
+      "ax_error": -25204,
+      "exact_same_window_response_only_SCK_capture_succeeded": true,
+      "active_own57_AX_snapshot_succeeded": true,
+      "automatic_focus_or_input_fallback_performed": false,
+      "explicit_new_return_chord_never_sent": "Own56 not current; operator guard stopped before any lease/input; source timer had expired",
+      "root_cause_not_attested": true
+    },
+    "sources_closed_exit0": [
+      56,
+      57
+    ],
+    "source56_expiry_not_UI_close": true,
+    "bindings_detached": 2,
+    "new_product_deployment": false,
+    "human_coordination_requested": false,
+    "full_scope_complete": false
+  },
+  "R20_degraded_snapshot": {
+    "changed_symbols": [
+      "computer.snapshot errored observe branch",
+      "completed_native_read",
+      "read_only_ax_visual_candidate",
+      "degraded_ax_snapshot"
+    ],
+    "native_diagnostic": "AXUIElementCopyAttributeValue AXWindows -25204 read only",
+    "guard": "explicit terminal/released/no pending/no cleanup uncertainty/no native input dispatch facts; missing is unknown",
+    "attempt": "one separate capture_visual of current exact bound target/max_edge/feedback exclude",
+    "original_AX_error_kept": true,
+    "controls_unknown_not_absent": true,
+    "frame_view_mapping": null,
+    "input_authority_granted": false,
+    "input_replayed": false,
+    "media": "only non-error terminal/released visual with explicit no-frame/no-authority and attached image; poison/error/pending images discarded",
+    "actual_process_tests": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/degraded-observation-r20/FINAL_SAFETY_PROCESS_TESTS.command_execution.json",
+    "same_input_source_exit_statuses": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "restored_preceding_2_source_hashes_equal": true,
+    "workspace_counts": {
+      "passed": 722,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "seven_gates_exit_statuses": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "installed_MCP_sha256": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b",
+    "binary_startup_rollback_exit_statuses": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "same_Agent_certificate_CA_profile_permissions_preserved": true,
+    "current_loaded_Host_formatter_updated": false,
+    "Host_native_new_formatter_accepted": false,
+    "scope": "real MCP process/authenticated synthetic peer and independent readonly native Describe only; fixture image not native GUI"
+  },
+  "R21_live_window_isolation": {
+    "report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-tuple-and-keyboard-r21/LIVE_WINDOW_ISOLATION_ACCEPTANCE_R21.json",
+    "two_live_own_windows": [
+      50098,
+      50125
+    ],
+    "old_foreground_tuple_refused_before_native": true,
+    "original_reference_stale_refusal_preserved": true,
+    "new_fresh_explicit_focus_proposals_independently_read_back": true,
+    "exact_target_lease_required": true,
+    "root_lease_does_not_authorize_child_input": true,
+    "child_lease_does_not_authorize_root_keyboard": true,
+    "actual_system_cmd_tab_separate_A_to_B": true,
+    "actual_cmd_tab_during_drag": false,
+    "drag_receiving": [
+      1,
+      79,
+      1
+    ],
+    "drag_native_elapsed_ms": 4986.726166040171,
+    "foreground_callbacks": 81,
+    "background_callbacks": 0,
+    "no_orphans": true,
+    "wrong_scope_chord_during_drag_requested_but_not_dispatched": true,
+    "wrong_scope_chord_controller_wall_ms": 4583,
+    "exact_queue_layer_unproven": true,
+    "all_12_original_requests_terminal_released": true,
+    "source_exits": [
+      0,
+      0
+    ],
+    "source_close_not_timer_expiry": true,
+    "bindings_detached": 2,
+    "pointer_feedback_hidden": true,
+    "live_preview_started": false,
+    "physical_human_origin_attested": false,
+    "new_product_source_changes": false,
+    "input_replayed": false
+  },
+  "R20_offline_gate": {
+    "workspace": {
+      "passed": 722,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "receiver": 51,
+    "live_ui": 7,
+    "all_seven_exit_statuses": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/degraded-observation-r20/GATES_R20.json"
+  },
+  "R22_schema_contract": {
+    "actual_current_installed_MCP_tools": 41,
+    "direct_tool_description_timing_mismatches": 0,
+    "global_initialize_guidance": "Add include_timings only if exposed by the tool input schema",
+    "real_readonly_targets_with_undeclared_flag": "invalid_arguments/unknown field include_timings, expected device_id",
+    "actual_probe_exit": 0,
+    "source_already_implemented_no_patch_needed": true,
+    "old_loaded_Host_guidance_not_updated": true,
+    "native_input": false,
+    "screen_capture": false,
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/timing-description-r22/MATCHING_BASELINE_RESULT_R22.json"
+  },
+  "R23_publication_preflight": {
+    "report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/publication-audit-r23/PUBLICATION_PREFLIGHT_RESULT_R23.json",
+    "gitleaks_all_history": 0,
+    "gitleaks_current_directories": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "regex_72_all_nonsecret_checked": true,
+    "SPDX_gate": 0,
+    "license_warnings": 2,
+    "existing_GPL_only_preserved": true,
+    "architecture_gate": 1,
+    "architecture_finding_count": 19,
+    "current_untracked_source_review_pending": true,
+    "repo_visibility": "PRIVATE",
+    "PR": "OPEN/MERGEABLE",
+    "new_commit_push_visibility": false,
+    "full_clearance": false,
+    "README_verified_current_state": true
+  },
+  "R24_computer_use_actor": {
+    "report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/system-command-tab-r24/COMPUTER_USE_COMPARISON_ACCEPTANCE_R24.json",
+    "actual_actor_CmdTab_switch": false,
+    "documented_super_tab_native_foreground_unchanged": true,
+    "CMD_alias_tool_error": true,
+    "no_RWI_drag_started": true,
+    "no_human_prompt": true,
+    "sources_explicitly_closed_exits": [
+      0,
+      0
+    ],
+    "binding_detach": 2,
+    "original_3_RWI_requests_released": true,
+    "input_replayed": false
+  },
+  "architecture_reconstruction_r25_r26": {
+    "status": "partial_not_full_acceptance",
+    "rounds": [
+      "R25",
+      "R26"
+    ],
+    "workspace_passed": 722,
+    "workspace_after_final_test_only_import_removal_rerun": false,
+    "final_focused_MCP_passed": 110,
+    "ignored": 1,
+    "final_Clippy_all_targets_all_features": 0,
+    "actual_catalog_tools": 41,
+    "full_catalog_equal": true,
+    "size_same_input": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "architecture_before": 19,
+    "architecture_after": 13,
+    "architecture_exit": 1,
+    "architecture_rules_unchanged": true,
+    "baseline_entries": 116,
+    "production_deployment_changed": false,
+    "human_requests": false,
+    "next": "R27 core extraction pending; full native/Live/system keyboard/PR/publication plan unchanged"
+  },
+  "R27_R28_R29": {
+    "scope": "partial/full_goal_not_complete",
+    "workspace": {
+      "passed": 722,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "Core197": true,
+    "Mac159": true,
+    "all8gate_exits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "engineering_tests": 8,
+    "manifest_size_ratchet": 0,
+    "architecture_complete": false,
+    "ceilings_unchanged": true,
+    "managed_paths": 137,
+    "newAgent": "6290541c-f3d6-4286-bd3c-051e4c9a16a5",
+    "newAgentPID": 74849,
+    "newAgentSignedSHA": "02daaea545277e529eacfe75182949d08a593c93d583f4c88ba8234eaa4b972e",
+    "MCPinstalled": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b",
+    "MCPcandidateOnly": "ad0ce12121122b882a393e4971f440a2e507b9e569bf792a51ac407779a16910",
+    "TCC4": true,
+    "permissions_requested": false,
+    "source66_AXWindow_failure_beforeInput": true,
+    "source67_BG1_16_1_AllInactiveKeyFalse": true,
+    "modalParentIsolation": true,
+    "foreground_positive": false,
+    "Live_started": false,
+    "requests_terminal_released": 11,
+    "closed_exits": [
+      0,
+      0
+    ],
+    "expired": [
+      0,
+      0
+    ],
+    "detached": 3,
+    "next": "R30 exact AX alias read candidate, not input retry; full native/Live/framework/publication plan retained"
+  },
+  "R30_exact_ax_relay": {
+    "TARGET": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "changed_method": "NativeMac::resolve_window_element_traced",
+    "changed_field": "coverage.window_resolution_recovery",
+    "source_contract": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "full8_gate_exits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "workspace": {
+      "passed": 723,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "fixture_tests": 53,
+    "current_provider_clippy_exit": 0,
+    "provider_delay_ms": 120,
+    "actual_AXWindows_error": -25204,
+    "recovery": "exact AXMainWindow with type/PID/CGWindowID/role/rect; original diagnostic retained; no focus/rebind/input replay",
+    "safe69_before_after": [
+      0,
+      1
+    ],
+    "genuine_background_drag69": [
+      1,
+      14,
+      1
+    ],
+    "all16_mouse_callbacks_AppInactive_KeyFalse_SystemBackground": true,
+    "orphans": [
+      0,
+      0
+    ],
+    "parent_sheet_isolation": true,
+    "sheet_same_time_RWI_snapshot": "AXWindows/-25204/exact_relay_candidate0/no dispatch/no input authority",
+    "CUA_comparison_sheet_close_actions": 1,
+    "CUA_comparison_not_RWI_acceptance": true,
+    "explicit_focus69_independent_receiver_frontmost": true,
+    "RWI_global_command_tab": "Own69/PID14432 -> Own68/PID14408, actual independent targets+both receiving oracles, four balanced posts/paired release",
+    "native_keyboard_receipt_after_before_async": [
+      "14432",
+      "14432"
+    ],
+    "preview_native_points": [
+      360,
+      336
+    ],
+    "preview_native_pixels": [
+      720,
+      672
+    ],
+    "source_native_pixels": [
+      1320,
+      1104
+    ],
+    "Live_real_browser_hide_resume_readback": true,
+    "Live_API_hide_resume_readback": true,
+    "native_Live_button_CUA_click_effect_observed": false,
+    "native_button_callback_entry_not_attested": true,
+    "MCP_Apps_tab_list": [],
+    "authenticated_Host_task_switch_acceptance_this_round": false,
+    "browser_close_cause_inconclusive_due_to_duration_expired": true,
+    "Live_terminal_stop_reason": "duration_expired",
+    "terminal_resume_remained_stopped": true,
+    "original_requests_released": 8,
+    "source_exits": [
+      0,
+      0
+    ],
+    "source_expiry_closes": [
+      0,
+      1
+    ],
+    "source68_explicit_AX_close": true,
+    "source69_explicit_close_control_not_in_partial_RWI_or_CUA_AX_tree": true,
+    "source69_mutation_not_attempted_when_close_control_unknown": true,
+    "detached_targets": 4,
+    "pointer_hidden": true,
+    "Agent_PID": 13847,
+    "Agent_instance": "96e02335-0043-4e15-99ac-c60781b6b858",
+    "Agent_signed": "36686a66064d877da38fc9cceed036e9db64086fd9e860a43a2010fbaf6976ce",
+    "MCP_profile_CA_code_cert_unchanged": true,
+    "TCC4_true": true,
+    "human_participation_requested": false,
+    "all_four_roles_same_identity": true,
+    "managed_paths": 139,
+    "new_commit_push_public": false,
+    "full_goal_complete": false,
+    "remaining": [
+      "Slow AX provider owned sheet resolution",
+      "Actual native preview button callback route",
+      "Host-rendered MCP Apps task-switch behavior",
+      "During-gesture explicit global chord/cooperative lease scheduling with genuine native evidence",
+      "Architecture12debt, full A01-A07/F01-F16 and publication plan remain retained"
+    ]
+  },
+  "R31_exact_top_level_sheet": {
+    "TARGET": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "modified_branch": "NativeMac::resolve_window_element_traced",
+    "modified_helper": "focused_provider_matches",
+    "trace_field": "coverage.window_resolution_recovery.resolved_attribute",
+    "trace_value": "AXFocusedUIElement.AXTopLevelUIElement",
+    "source_contract": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "same_DR_bundle": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "full8_gate_exits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "workspace": {
+      "passed": 724,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "receiver_tests": 53,
+    "forced_provider_delay_ms": 120,
+    "actual_getter_calls": 29,
+    "actual_AXWindows_error": -25204,
+    "exact_main_CG": 37665,
+    "exact_sheet_CG": 37670,
+    "sheet_image_pixels": [
+      720,
+      300
+    ],
+    "root_pid": 59620,
+    "sheet_safe": [
+      0,
+      1
+    ],
+    "parent_safe_stayed": 0,
+    "parent_blocked_before_native_input": true,
+    "sheet_close": 1,
+    "sheet_no_longer_attached": true,
+    "native_preview_points": [
+      360,
+      336
+    ],
+    "native_preview_AX_hide_effect_verified": true,
+    "native_preview_API_resume_verified": true,
+    "native_preview_AX_close_effect_verified": true,
+    "native_preview_close_stops_and_clears": true,
+    "two_self_AX_25200_uncertain_receipts_preserved": true,
+    "receipt_not_reclassified_as_goal_or_ACK": true,
+    "input_replayed": false,
+    "MCPApps_tabs": [],
+    "public_Host_navigation_ack_not_rendered_task_attestation": true,
+    "public_Host_navigation_preview_stayed_visible": true,
+    "current_Host_task_switch_binding_proof": false,
+    "native_Host_task_ID_attestation": false,
+    "source_exit": 0,
+    "source_expiry_close": 0,
+    "original_requests_terminal_released": 7,
+    "detached_targets": 3,
+    "pointer_hidden": true,
+    "Agent_PID": 57562,
+    "Agent_instance": "4be7b9d3-6c37-4635-b25e-4543e76ad8e3",
+    "Agent_signed": "ff542ac10fe2d58304141b45e48b0bf5801bfbdc6f740f9c9198f694532b90e7",
+    "MCP_CA_profile_code_cert_unchanged": true,
+    "TCC4": true,
+    "human_asks": 0,
+    "native_GUI_through_loaded_RWI": true,
+    "same_role_set_managed_paths": 139,
+    "original97_baseline_values_unchanged": true,
+    "full_A01_A07_F01_F16_plan_retained": true,
+    "full_goal_complete": false,
+    "new_commit_push_public": false,
+    "next_priority": "F12 layered Live exact owned sheet/family visual gap; actual Host binding remains distinct, F13/F14 and remaining full plan retained",
+    "all_recorded_source_NSButton_actions_AppInactive_SystemBackground": true,
+    "parent_and_sheet_KeyFalse_final_readback": true,
+    "per_action_window_key_not_recorded": true
+  },
+  "R31_claim_precision": "NSButton callback lacks window_key; only final independent window/sheet KeyFalse samples. Live goal observed separately, two original AX uncertainties immutable.",
+  "R32_R33_layered_live": {
+    "target": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "source_sites": [
+      "NativeMac::live_visual_capture",
+      "LiveFamilyCapture::root",
+      "live::worker::run_loop"
+    ],
+    "offline_gates": {
+      "all8_exit_statuses": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "workspace": {
+        "passed": 732,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver_tests": 53,
+      "ui_tests": 7
+    },
+    "deployed": {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "original_hash": "817bfcaa2084d375023ede60b2968b3bcb67b310a544bd4156639bfc2fd5124d",
+      "installed_hash": "ad99426c4176333fa3809daf4964c0b3a3fe4e19bfb7c83b2aa43b5bb4007e5a",
+      "candidate_hash": "b4238f5888c406cc6d3043a57b6e59724bf0c7ebf2db59a1d216b2a33f398ea7",
+      "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "protected_public_config_hashes": {
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b"
+      },
+      "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-live-owner-pressure-r33-20261011.app",
+      "retained_baseline_app": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/deployment/baseline/RWI Agent.app",
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "recovery_invoked": false,
+      "mcp_binary_changed": false,
+      "input_sent_by_controller": false
+    },
+    "native": {
+      "source74_exit": 0,
+      "source75_exit": 0,
+      "source76_exit": 0,
+      "all_closures_explicit_not_expiry": true,
+      "source74_modal_safe": 1,
+      "source76_modal_safe": 1,
+      "source74_parent_safe": 0,
+      "source76_parent_safe": 0,
+      "source76_background_oracle": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE76_SAFE1_BACKGROUND_ORACLE.json",
+      "foreground_focus_request": "already_foreground; native_requests=0; not a performed switch",
+      "native_pip_sheet_pixels_verified": true,
+      "native_pip_child_removal_pixels_verified": true,
+      "preview_bounds": [
+        1416,
+        785,
+        360,
+        336
+      ],
+      "source_image_size": [
+        1320,
+        1104
+      ],
+      "native_hide_verified": true,
+      "resume_verified": true,
+      "native_close_requested_clear_worker_done_verified": true,
+      "native_ui_originals_uncertain_preserved": 2,
+      "source74_frames": 663,
+      "source74_root_relay_attempts": 1,
+      "all13_originals_terminal_released": true,
+      "replayed_input": false
+    },
+    "claim_limits": {
+      "full_F12_accepted": false,
+      "strong_Host_task_binding_accepted": false,
+      "foreign_pid_family_accepted": false,
+      "all_F01_F16_A01_A07_complete": false,
+      "universal_performance_causality": false,
+      "physical_user_switch": false,
+      "per_action_window_key_attestation": false,
+      "original_R32_live_input_failure_retained": true
+    },
+    "evidence": [
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE74_NATIVE_PIP_ACTUAL_SHEET1_SNAPSHOT_R33.json",
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE74_MODAL_NEGATIVE_SHEET_CLOSE_AND_PIP_SINGLE_LAYER_R33.json",
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE74_NATIVE_CLOSE_CLEARED_AND_WINDOWSERVER_ABSENT_R33.json",
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE76_TRUE_BACKGROUND_SHEET_SAFE_AND_LIVE_R33.json",
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE76_BACKGROUND_NATIVE_PIP_SHEET1_R33.json",
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/NATIVE75_76_EXPLICIT_CLOSE_ALL_ORIGINALS_TERMINAL_CLEANUP_R33.json",
+      "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-owner-pressure-r33/CHRONOLOGICAL_ORIGINAL_PNGS_R33.json"
+    ]
+  },
+  "R34_exact_inventory_and_shared_panels": {
+    "target": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "changed_symbols": [
+      "resolve_window_element_traced",
+      "exact_inventory_relay",
+      "inventory_retry_allowed"
+    ],
+    "offline": {
+      "all8_exit0": true,
+      "workspace": {
+        "passed": 733,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver53": true,
+      "UI7": true,
+      "architecture_passed": true,
+      "existing_debt": 12
+    },
+    "deployed": {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "original_hash": "ad99426c4176333fa3809daf4964c0b3a3fe4e19bfb7c83b2aa43b5bb4007e5a",
+      "installed_hash": "ee58916f3c53d4612a0c35b1483378d8b0189680f83d355718c5b5a3537e8fa0",
+      "candidate_hash": "f51cce43f40068a8af188d081ce4a08037ca512d9113bfb1f2ab32429e92b739",
+      "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "protected_public_config_hashes": {
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b"
+      },
+      "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-shared-panel-read-r34-20261011.app",
+      "retained_baseline_app": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/deployment/baseline/RWI Agent.app",
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "recovery_invoked": false,
+      "mcp_binary_changed": false,
+      "input_sent_by_controller": false
+    },
+    "loaded_agent_instance": "37225bb4-ce55-4bbe-a412-ab1389da737d",
+    "native_pid": 44439,
+    "permissions": {
+      "accessibility": true,
+      "listen_event": true,
+      "post_event": true,
+      "requests_permission": false,
+      "screen_capture": true,
+      "screenshot_api": true
+    },
+    "baseline77": {
+      "snapshots_failed_AXWindows_-25204": 2,
+      "exact_alias_candidate_count": 0,
+      "no_input_sent": true,
+      "visual_only_capture_no_input_authority": true,
+      "fixture_exit_status": 0,
+      "expiry": 1
+    },
+    "native78": {
+      "color_and_font_open_count": 1,
+      "two_shared_panel_snapshots_used_bounded_exact_AXWindows_read_after_alias_miss": true,
+      "color_sliders_visually_changed": true,
+      "typography_extra_window_discovered": true,
+      "typography_moved_from_builtin_to_virtual_confirmed_by_fresh_CG_catalog": true,
+      "panels_are_not_attached_sheets": true,
+      "fixture_exit_status": 0,
+      "expiry": 1,
+      "late_close_attempts_no_input_and_not_accepted": true,
+      "five_original_mutations_terminal_released": true
+    },
+    "native79": {
+      "colors_fonts_opened_and_separately_closed": true,
+      "CG_catalog_only_parent_before_parent_close": true,
+      "parent_explicit_close_exit_status": 0,
+      "expiry": 0,
+      "five_originals_terminal_released": true
+    },
+    "live": {
+      "negotiated_MCP_Apps_resource": true,
+      "browser_tab_not_used": true,
+      "host_component_rendering_accepted": false,
+      "expanded_apps_tabs": 0,
+      "captured_frames": 0,
+      "preview_visible": false,
+      "duration_expired": true,
+      "no_forged_presence_or_private_Codex_access": true
+    },
+    "same_input": {
+      "source_contract": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "complete_signed_bundle_same_DR": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pristine_hashes_restored_and_reapplied": true,
+      "production_rollback": false
+    },
+    "claim_limits": {
+      "initial_baseline77_same_conditions_not_repeated_after_deploy": true,
+      "native_shared_panels_recovery_new_path_positive": true,
+      "full_F12_or_full_goal_complete": false,
+      "foreign_PID_family_composition": false,
+      "general_performance_superiority": false,
+      "physical_human_origin": false
+    },
+    "original_pngs": [
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/01-baseline77-visual-no-input-authority.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE77_EXACT_VISUAL_WITHOUT_AX_INPUT_AUTHORITY.json",
+        "sha256": "0b79c45c695582fc3c07a63239f2817222e414ca308ce95e7ab4da70d3b118cf",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/02-colors-wheel.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_SHARED_COLORS_FONTS_SEPARATE_TARGET_SNAPSHOTS_R34.json",
+        "sha256": "cecc2963d0073185a4756aac9923d2355ad96ed1d8880da34a0f19f21d11c050",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/03-fonts-panel.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_SHARED_COLORS_FONTS_SEPARATE_TARGET_SNAPSHOTS_R34.json",
+        "sha256": "2f2a034262efe46dc47bb66cfa7580be92f8096a39b713d1e8daf755931d43ab",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/04-colors-sliders-actual-change.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_COLOR_SLIDERS_AND_TYPOGRAPHY_REAL_ACTIONS_R34.json",
+        "sha256": "a1e0143a388269ffbc49c0d14e95126f83a19391ebfb0f23a2aeb3d0bbf06650",
+        "original_bytes_unaltered": true
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-shared-system-panels/05-typography-grounded-before-move.png",
+        "source": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/NATIVE78_TYPOGRAPHY_ON_BUILTIN_SCREEN_GROUNDED_R34.json",
+        "sha256": "abef91aa00c8067201c9ecaf0f1a0081245aa40ba3a6e9f561f0e529b433cc82",
+        "original_bytes_unaltered": true
+      }
+    ]
+  },
+  "R36_R37_live_compact_and_control_names": {
+    "date": "2026-10-11",
+    "R36_result": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/compact-live-r36/NATIVE_ACCEPTANCE_RESULT_R36.json",
+    "R37_result": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/window-control-labels-r37/NATIVE_ACCEPTANCE_RESULT_R37.json",
+    "current_workspace_counts": {
+      "passed": 735,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "native_preview_points": [
+      320,
+      303
+    ],
+    "source_pixels": [
+      1320,
+      1104
+    ],
+    "exact_subrole_control_names": true,
+    "no_human_coordination": true,
+    "formal_host_task_binding_accepted": false,
+    "all_features_accepted": false,
+    "publication_sensitive_current_and_history": "R35 actual scans0; no allowlist",
+    "commit_split": "8 source trees check-compiled, commits/push pending",
+    "repository_public_observed": true,
+    "repository_url": "https://github.com/DestroyedTeam/RealWorldInteraction",
+    "immutable_source_trees_checked": 8
+  }
+}

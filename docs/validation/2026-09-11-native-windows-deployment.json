@@ -1,0 +1,231 @@
+{
+  "schema": "rcu.native_windows_deployment_validation.v1",
+  "date": "2026-09-11",
+  "overall_native_codex_input_save_acceptance": false,
+  "work_cleanup_summary": "docs/validation/2026-09-11-work-cleanup.json",
+  "deployment": {
+    "ordinary_install_verified": true,
+    "ordinary_native_tls_control_verified": true,
+    "real_native_mcp_initialize_and_19_schema_verified": true,
+    "ordinary_package_preflight_passed": false,
+    "admin_directory_pin_probe_verified": true,
+    "admin_deployment_verified": true,
+    "global_settings_changed_by_agent": false,
+    "firewall_rule_added": false,
+    "admin_bootstrap_passed": true,
+    "admin_preflight_passed": true,
+    "native_launch_accepted": true,
+    "native_launch_single_candidate_verified": true,
+    "admin_activate_passed": true,
+    "ready_for_model_attachment": true
+  },
+  "integration": {
+    "actual_codex_plugin_installed_in_isolated_home": true,
+    "actual_codex_skill_discovered": true,
+    "held_task_mcp_startup_rejected": true,
+    "native_model_ready": false,
+    "native_model_input_dispatch_count": 0,
+    "native_model_save_verified": false,
+    "external_model_inference_used": false,
+    "chatgpt_app_registered": false
+  },
+  "ordinary_directory_pin": {
+    "acl_or_privileges_changed": false,
+    "diagnostic": "directory_pin_probe_v1",
+    "input_sent": false,
+    "privilege": {
+      "app_container": false,
+      "elevated": false,
+      "elevation_type": 3,
+      "integrity_rid": 8192,
+      "ui_access": false
+    },
+    "rows": [
+      {
+        "desired_access": 32,
+        "owned_temp_rename_error": 32,
+        "owned_temp_rename_while_pin": false,
+        "share_mode": 1,
+        "target_readonly": {
+          "hresult": "0x80070005",
+          "opened": false
+        }
+      },
+      {
+        "desired_access": 128,
+        "owned_temp_rename_error": null,
+        "owned_temp_rename_while_pin": true,
+        "share_mode": 1,
+        "target_readonly": {
+          "attributes": 16,
+          "information_ok": true,
+          "opened": true
+        }
+      },
+      {
+        "desired_access": 0,
+        "owned_temp_rename_error": null,
+        "owned_temp_rename_while_pin": true,
+        "share_mode": 1,
+        "target_readonly": {
+          "attributes": 16,
+          "information_ok": true,
+          "opened": true
+        }
+      }
+    ],
+    "target_mutated": false
+  },
+  "admin_directory_pin": {
+    "acl_or_privileges_changed": false,
+    "diagnostic": "directory_pin_probe_v1",
+    "input_sent": false,
+    "privilege": {
+      "app_container": false,
+      "elevated": true,
+      "elevation_type": 2,
+      "integrity_rid": 12288,
+      "ui_access": false
+    },
+    "rows": [
+      {
+        "desired_access": 32,
+        "owned_temp_rename_error": 32,
+        "owned_temp_rename_while_pin": false,
+        "share_mode": 1,
+        "target_readonly": {
+          "attributes": 16,
+          "information_ok": true,
+          "opened": true
+        }
+      },
+      {
+        "desired_access": 128,
+        "owned_temp_rename_error": null,
+        "owned_temp_rename_while_pin": true,
+        "share_mode": 1,
+        "target_readonly": {
+          "attributes": 16,
+          "information_ok": true,
+          "opened": true
+        }
+      },
+      {
+        "desired_access": 0,
+        "owned_temp_rename_error": null,
+        "owned_temp_rename_while_pin": true,
+        "share_mode": 1,
+        "target_readonly": {
+          "attributes": 16,
+          "information_ok": true,
+          "opened": true
+        }
+      }
+    ],
+    "target_mutated": false
+  },
+  "failed_deployments": [
+    {
+      "file": "failed-installation-archive.json",
+      "previous_journal_head": "b33233323913e67e2600ee506541626b08e498209e0ee72efb47bb2074e671bb",
+      "hold_preserved": true,
+      "operation_replayed": false
+    },
+    {
+      "file": "retry-archive-result.json",
+      "previous_journal_head": "a2d0a079006426959135d4a971ea1d1fcfd7832e4ec68f051697aa4c916e2d6f",
+      "hold_preserved": true,
+      "operation_replayed": false
+    },
+    {
+      "file": "ordinary-failure-archive-result.json",
+      "previous_journal_head": "b0dd35e14d50c6cc9243b1ad7e5e045fb16a1110aef7b4a91498ef3bf2beba1c",
+      "hold_preserved": true,
+      "operation_replayed": false
+    }
+  ],
+  "latest_blocker": "Actual Codex Host now loads the 19 recorded diagnostic tools and computer.targets reports native_session_unavailable. The native admin5 Notepad task remains HOLD. A process-cleanup scope and independent process oracle are not implemented by this file-task workflow; CrossMacro cleanup has not been executed.",
+  "recovery": "Fresh task and fresh pairing per archived failure; all HOLD journals preserved. No operation replay; retained exact path/birth/SHA agent handles used only for authorized operator stop.",
+  "regression": {
+    "selection-default-tests.log": {
+      "passed": 230,
+      "failed": 0,
+      "ignored": 1
+    },
+    "selection-all-feature-tests.log": {
+      "passed": 272,
+      "failed": 0,
+      "ignored": 2
+    }
+  },
+  "evidence_files": [
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/retry-preflight-failure.stdout",
+      "sha256": "d420cb50a75851ec7b5e08bcb2fb4981f6890fb656da387f1c52b80fd2f5f034"
+    },
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/attempt3-preflight-native-error.stdout",
+      "sha256": "525883bad3985abec9ba54bff263aef6347d207b90957fff44f4784dbd407304"
+    },
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/ordinary-directory-pin-probe.stdout",
+      "sha256": "8285a2f8e0a1f181cd3d331759881b8f7c0cf71011e711a6a19f85aac8c46246"
+    },
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/admin-probe-result.stdout",
+      "sha256": "f7ee800cd6d986498204b75ebdd497f2157550d270c4838f7b9bcec9357fb82f"
+    },
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/admin-target-preparation-uac.stderr",
+      "sha256": "abc0f50581899fd3f5f2152a695cd2ed7ec38e54f1f436cf1d80d3758aeb10f2"
+    },
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/retry-host-evidence/response-0002.json",
+      "sha256": "ff8ea995874df567fa90ec5fc3b3577e3cb3a5d9a206544bfc601ef932631d35"
+    },
+    {
+      "local_relative_path": "work/windows-native-plugin-20260911/retry-host-evidence/response-0004.json",
+      "sha256": "a1895e035ba16ef77e116ad84d15e872590d2c49a56eda11f4371f2e9cdbbb7e"
+    }
+  ],
+  "real_user_codex_installation": {
+    "installed": true,
+    "existing_rcu_m1_local": "macOS ARM64 executable with --state-dir only; no Windows transport configuration",
+    "existing_configuration_modified": false,
+    "installer": "/Applications/ChatGPT.app/Contents/Resources/codex",
+    "installer_version": "0.153.4",
+    "next": "Obtain explicit project trust confirmation, then verify the effective server and refreshed current task tools without a competing Host connection.",
+    "installation_scope": "project MCP + project Skill; plugin bundle exported only",
+    "effective_mcp_loaded": false,
+    "skill_discovered_by_actual_codex": true,
+    "global_config_modified": true,
+    "task_entry_enabled": true,
+    "project_trust_explicitly_approved": true,
+    "project_trust_verified": true,
+    "effective_config_entry_present": true,
+    "global_config_change_scope": "Only the exact RCU project trust_level; other configuration semantically identical",
+    "entry_enablement_policy": "User explicitly requires the MCP entry remain enabled. Runtime HOLD is separate.",
+    "enablement_restored_by": "CONTROL CENTER",
+    "enablement_evidence": "work/coordination/rcu-native-enabled-restored-20260911.json",
+    "required": true,
+    "diagnostic_entry_deployed": true,
+    "actual_codex_host_tool_catalog_count": 19,
+    "actual_codex_host_targets_result": "native_session_unavailable; diagnostic_only",
+    "current_conversation_tool_loading_verified": false,
+    "process_cleanup_executed": false,
+    "generic_process_goal_supported": false
+  },
+  "background_agent": {
+    "windows_pe_subsystem": 2,
+    "native_binding_diagnostic_passed": true,
+    "live_agent_replaced": true,
+    "live_agent_pe_subsystem": 2,
+    "reason": "Avoid replacing image-pinned resident agent during its prepared task.",
+    "live_pid": 1260,
+    "old_pid": 2276,
+    "user_requested_force_stop": true,
+    "mtls_status_readback_passed": true,
+    "task_hold_reason": "agent_restart_unfinished_task",
+    "old_image_and_config_backed_up": true
+  }
+}
