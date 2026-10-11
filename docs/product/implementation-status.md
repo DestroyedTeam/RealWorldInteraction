@@ -1758,3 +1758,15 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 真实 loaded MCP 在自有116（虚拟4）系统后台接受显式 background_window；App/Window 收到精确MouseMoved、hit hover_zone，但view/enter/tooltip仍0、无校准/按钮，不升级成全后台hover完成。随后拖拽两次都在snapshot阶段 AXWindows/-25204 停止，未调用 drag、不重放。capture_visual 能返回真实图片；CUA对同自有116只读也timeoutReached/-10005，因此不武断认定只属于RWI。采样main stack在environment_sampled→flush_sampled→NSString/CFString创建；只是一秒样本，不足以认定死锁或锁屏。PID1588实际是iStat Menus而非loginwindow。
 - 114–117均实际lifetime到期、closed、进程exit0；不是显式RWI Close验收。相关source绑定已退役、唯一实际BG move原请求terminal/released/no replay。source配置BASELINE false1/MODIFIED true0/独立copy ROLLBACK false1精确4hash恢复/REAPPLIED true0，原97 baseline与同四角色保持。
 - 前台R52、实际v2 Live和R47执行中切窗结果保留，不复演。完整F01–F16仍未完成；下一步继续隔离环境采样与AX消息可用性，并处理真正后台tracking、系统菜单等。
+
+
+## 2026-10-11 · R54：AX只读失败仍保留画面，不授予输入
+
+- `ax_unavailable_for_visual` 仅为精确AXWindows只读CannotComplete(-25204)、unsupported/no-value或完整无歧义AX搜索放行独立CG/SCK画面；原三次settle保留，权限、身份、其它属性、action/replay错误仍拒绝。`visual_only_consistency` 保留原Fault及三次attempts，不将timeout解释成AX不存在；binding、mapping、controls、mutation_ready均不生成。
+- 新focused基线assert失败101，首次候选u8/usize编译101保留，修正后同命令1pass/0。当前全部11门exit0，workspace755/0/11/42、Receiver63/UI7、fmt/全targets/features Clippy-Dwarnings、release及架构门通过。匹配source配置1/0/1/0，独立copy执行rollback恢复精确四hash再重应用；不是生产回滚或后台业务成功。
+- 同证书/DR原子部署Agent46538 / a05ac614-8360-4dc5-8a59-e44c7d3a40ea；排他原inode lease与当前durable终态门先通过，CA/profile/MCP/四项权限未变，没有Host重启或人工请求。
+- loaded MCP实际own119及独立second cover121在真实AXWindows25204/三次attempts后返回各自原生画面；pixel/window resolve两次都target_binding_unknown/native_execution=false。own120正常alias路径在部署前后均7controls，不能说是本轮修好了AX provider；后续fresh own120又变visual-only，drag未调用，不重放。
+- 去掉environment sampling的own118仍25204，因此它不是充分根因解释；一秒采样255/no-longer-running原结果保留，不能认定deadlock或锁屏。own118–121均到期closed/expiry1/进程exit0而非显式Close，safe/drag输入全0；独立PID检查均不再运行，所有新binding已detached。
+- 真实顺序图片保存在 `outputs/validation/r54-readonly-ax-2026-10-11/`；03是原1320×1104，不将显示缩放当源分辨率。Live既有320×303pt、eye.slash/play.fill/xmark、真实v2任务隐藏/恢复/关闭继续保留，不复演已完成操作。
+- Apple的CannotComplete说明是消息失败/未响应，不能当AX缺失（https://developer.apple.com/documentation/applicationservices/1462091-axuielementperformaction）；API timeout可按对象设定（https://developer.apple.com/documentation/applicationservices/1459345-axuielementsetmessagingtimeout）。本轮只重试read、不重发action。
+- 完整F01–F16仍未完成，尤其真正后台tracking/tooltips、系统共享菜单、隐藏/最小化、跨应用DnD等；用户休息期间不再请求切窗、展开、密码或权限。唯一源根及同四角色不变；基线从155扩为156，新增此前未纳入的native visual源，原97全部不变。首次重构副本漏文件的验收失败1保留，修正后重跑。

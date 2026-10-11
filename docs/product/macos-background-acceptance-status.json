@@ -516,23 +516,24 @@
     "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/first-down-takeover-r14/TYPED_NATIVE_EVENTS_R14.json"
   ],
   "offline_gate": {
-    "all8_exit0": true,
+    "all11_exit0": true,
     "workspace": {
-      "passed": 733,
+      "passed": 755,
       "failed": 0,
       "ignored": 11,
       "suites": 42
     },
-    "receiver53": true,
+    "receiver63": true,
     "UI7": true,
     "architecture_passed": true,
-    "existing_debt": 12
+    "existing_debt": 12,
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-no-sampler-isolation-r54/final-gates/GATES_EVIDENCE_AGGREGATE.json"
   },
   "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
   "current_deployment": {
-    "agent_pid": 46886,
-    "agent_instance": "70635301-549b-4a30-b6ad-012de8a8d4f0",
-    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/deployment-composite/DEPLOYED.json",
+    "agent_pid": 46538,
+    "agent_instance": "a05ac614-8360-4dc5-8a59-e44c7d3a40ea",
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-no-sampler-isolation-r54/deployment/DEPLOYED.json",
     "stable_signing_and_pairing": true
   },
   "current_comprehensive_acceptance": {
@@ -2679,5 +2680,92 @@
     ],
     "production_rolled_back": false,
     "full_goal_complete": false
+  },
+  "R54_readonly_AX_failure": {
+    "scope": "read-only exact-window feedback after AXWindows read failure; not generic background-input acceptance",
+    "changed_symbols": [
+      "native::visual::ax_unavailable_for_visual",
+      "native::visual::visual_only_consistency",
+      "NativeMac::observe_visual_only",
+      "NativeMac::observe"
+    ],
+    "exact_failure": "AXWindows/-25204 read after original bounded three attempts; original Fault retained",
+    "observed_loaded_MCP": "own119 and independently bound second own cover121 returned real visual-only snapshots with original AX error",
+    "resolve_refusals": "cached pixel and window resolve on degraded own121 frame both target_binding_unknown/native_execution=false",
+    "no_authority": {
+      "binding": false,
+      "controls": false,
+      "view_id": null,
+      "mutation_ready": false,
+      "input_sent": false
+    },
+    "normal_path": "own120 same PID46221/CG42258 before and after deployed Agent had 7 controls and original AXMainWindow alias recovery; not evidence of a repaired provider",
+    "drag": "not dispatched: fresh own120 snapshot degraded and had no usable input reference",
+    "source_same_input_exit_status": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "source_rollback_only": true,
+    "workspace": {
+      "passed": 755,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "eleven_current_gates_exit_zero": true,
+    "current_agent_pid": 46538,
+    "current_agent_instance": "a05ac614-8360-4dc5-8a59-e44c7d3a40ea",
+    "same_cert_CA_profile_and_installed_MCP": true,
+    "human_cooperation_requested": false,
+    "cleanup": {
+      "118": {
+        "pid": 35296,
+        "window": 42225,
+        "status": "closed",
+        "expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false,
+        "input_received": false,
+        "output_error": null,
+        "cover_visible": null
+      },
+      "119": {
+        "pid": 44977,
+        "window": 42255,
+        "status": "closed",
+        "expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false,
+        "input_received": false,
+        "output_error": null,
+        "cover_visible": null
+      },
+      "120": {
+        "pid": 46221,
+        "window": 42258,
+        "status": "closed",
+        "expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false,
+        "input_received": false,
+        "output_error": null,
+        "cover_visible": null
+      },
+      "121": {
+        "pid": 48042,
+        "window": 42262,
+        "status": "closed",
+        "expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false,
+        "input_received": false,
+        "output_error": null,
+        "cover_visible": false
+      }
+    },
+    "full_goal_complete": false,
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-no-sampler-isolation-r54"
   }
 }
