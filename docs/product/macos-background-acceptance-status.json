@@ -2145,5 +2145,35 @@
       "suites": 42
     },
     "full_eight_gates_exit_zero": true
+  },
+  "R38_ci_examples": {
+    "date": "2026-10-11",
+    "remote_preceding_run": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38112670187",
+    "preceding_remote_macos": "success",
+    "preceding_remote_windows": "failure",
+    "coords_errors": 4,
+    "changed_sites": [
+      "coords::main target_os guards",
+      "receiver_fixture::Store::create Unix-only mutable DirBuilder"
+    ],
+    "same_input_windows_package_clippy": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "restored_file_hashes_match": true,
+    "full_eight_mac_gates_exit_zero": true,
+    "workspace": {
+      "passed": 735,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "local_full_workspace_windows_cross_clippy_exit_status": 101,
+    "local_full_workspace_windows_cross_clippy_error": "ring C build lacks Windows assert.h on this Mac; not a remote Windows result",
+    "new_remote_ci_acceptance_pending": true,
+    "agent_redeploy_required": false,
+    "human_requests": false
   }
 }

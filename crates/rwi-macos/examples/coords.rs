@@ -9,6 +9,7 @@
 //!   * Cocoa/AppKit screen space: origin = bottom-left of the primary screen,
 //!     y grows upward. Flip: cocoa_y = primary_height - cg_y.
 //!   * Retina: points != pixels; scale = CGDisplayPixelsWide / bounds.width.
+#[cfg(target_os = "macos")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use core_graphics::display::CGDisplay;
 
@@ -70,4 +71,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         img_h_px / win_h_pt
     );
     Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Err("coords probes Apple display APIs and is only available on macOS".into())
 }

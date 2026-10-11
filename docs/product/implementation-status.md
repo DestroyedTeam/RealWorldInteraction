@@ -1,3 +1,11 @@
+## 2026-10-11 · R38 第二轮 CI 修正：平台例程与 Unix 私有目录
+
+远程 run [38112670187](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38112670187) 的 macOS job 成功，但 Windows 默认 workspace 测试实际又报4个 `coords.rs` 编译错误，未以第一轮 lib.rs 修正冒称全 CI 已通过。现对 coords 的 Apple API main 补 macOS gate，非 macOS 明确返回 unsupported；receiver Store::create 仅 Unix 可变 DirBuilder，保留0700与新建目录语义，不用 lint allow 掩盖 Windows unused_mut。
+
+同一 Windows all-target/all-feature Clippy：BASELINE101、MODIFIED0、独立副本可执行 ROLLBACK101、REAPPLIED0，两文件 baseline hash 精确恢复。修改后本机八门禁全部0、workspace735/0/11/42、receiver53/UI7、architecture0（既有12debt未清除）、负例8tests0。追加的全 workspace Windows cross-Clippy 在本机因 ring C 构建缺少 Windows `assert.h` 实际101；此结果保留，不排除依赖或据此宣称 Windows 原生通过，等待新 head 的真实远程 Windows job。
+
+Mac Agent 不受这两处例程平台编译修正影响，未重启/部署、不请求人工。320点宽 Live 及其已观察隐藏/恢复/关闭证据保留；正式 Host 挂载/强任务绑定仍未验收。重新打开的 [official Computer Use documentation](https://learn.chatgpt.com/docs/computer-use) 未给出浮层精确尺寸/按钮视觉规范，不宣称逐像素复刻。
+
 ### R38 本机修正门禁完成，等待新 head 的 Windows CI
 
 三项macOS cfg修正后的完整八门禁均0，workspace735/0/11/42、receiver53/UI7；architecture0/既有12debt、负例8tests0。Windows target cross-check同输入101→0→rollback101→reapply0，原文件hash恢复，仅作用于独立验证归档。没有以本机cross-check代替Windows job执行，也没有部署/重启不受此修改影响的Mac Agent。
