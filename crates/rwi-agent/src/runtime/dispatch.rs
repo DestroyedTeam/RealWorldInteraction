@@ -233,11 +233,18 @@ impl Runtime {
         if entry.tool == "computer.live" && entry.arguments["action"] != "start" {
             return self.dispatch_live(context, entry, finish).await;
         }
-        let Ok(permit) = context.gate.clone().try_acquire_owned() else {
-            return DeviceResult::error(
-                "context_busy",
-                "Only this context is busy; this execution was not dispatched.",
-            );
+        let permit = match read_admission::acquire(
+            context.gate.clone(),
+            context.read_waiters.clone(),
+            read_admission::eligible(&entry.tool, entry.writes),
+            &finish.0,
+            &context.closed,
+            read_admission::WAIT,
+        )
+        .await
+        {
+            Ok(permit) => permit,
+            Err(error) => return error,
         };
         if context.closed.load(Ordering::Acquire) {
             return DeviceResult::error("context_closed", "No dispatch after context closure.");

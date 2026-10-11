@@ -5,6 +5,7 @@ mod dispatch_tests;
 mod execution;
 mod live_control;
 mod namespace;
+mod read_admission;
 #[cfg(all(test, feature = "fixture"))]
 mod visual_tests;
 #[cfg(all(test, feature = "fixture"))]
@@ -47,6 +48,7 @@ struct Context {
     principal: String,
     executor: Arc<Mutex<Executor>>,
     gate: Arc<tokio::sync::Semaphore>,
+    read_waiters: Arc<tokio::sync::Semaphore>,
     registry: Arc<Registry>,
     live_gate: Arc<tokio::sync::Semaphore>,
     live_controls: Arc<Mutex<rwi_core::LiveControllers>>,
@@ -280,6 +282,7 @@ impl Runtime {
                         executor: Arc::new(Mutex::new(executor)),
                         target_catalog,
                         gate: Arc::new(tokio::sync::Semaphore::new(1)),
+                        read_waiters: Arc::new(tokio::sync::Semaphore::new(read_admission::LIMIT)),
                         registry: Arc::new(Registry::default()),
                         live_gate: Arc::new(tokio::sync::Semaphore::new(1)),
                         live_controls,
