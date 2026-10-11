@@ -2310,5 +2310,31 @@
     "human_requests": false,
     "new_exact_head_CI_pending": true,
     "full_goal_complete": false
+  },
+  "R43_architecture_utf8": {
+    "date": "2026-10-11",
+    "preceding_remote_ci": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38116812011",
+    "preceding_macos": "success",
+    "preceding_windows_default_tests": "success",
+    "preceding_windows_all_feature_lint": "success",
+    "preceding_windows_architecture": "CP1252 UnicodeDecodeError on UTF8 source",
+    "changed_sites": "four Path.read_text encoding=utf-8; two strict encoding regressions",
+    "same_input_real_audit_CP1252_default_shim": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "original_two_hashes_restored": true,
+    "architecture_audit_exit_status": 0,
+    "existing_debt": 12,
+    "architecture_regression_tests": 10,
+    "thresholds_rules_Rust_sources_and_fixture_bytes_unchanged": true,
+    "invalid_UTF8_ignored_or_replaced": false,
+    "R42_Rust_mandatory_gates_reused_source_unchanged": true,
+    "native_runtime_installation_changed": false,
+    "human_requests": false,
+    "new_exact_head_CI_pending": true,
+    "full_goal_complete": false
   }
 }

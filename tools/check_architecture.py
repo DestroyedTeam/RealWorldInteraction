@@ -11,11 +11,11 @@ import tomllib
 
 
 def audit(workspace: Path, rules: dict) -> dict:
-    manifest = tomllib.loads((workspace / "Cargo.toml").read_text())
+    manifest = tomllib.loads((workspace / "Cargo.toml").read_text(encoding="utf-8"))
     errors, hotspots, crates = [], [], {}
     for member in manifest["workspace"]["members"]:
         folder = workspace / member
-        package = tomllib.loads((folder / "Cargo.toml").read_text())
+        package = tomllib.loads((folder / "Cargo.toml").read_text(encoding="utf-8"))
         name = package["package"]["name"]
         crates[name] = package
         dependencies = list(package.get("dependencies", {}).items())
@@ -49,7 +49,7 @@ def audit(workspace: Path, rules: dict) -> dict:
                 errors.append(f"{name}: presentation package must not have a build script")
         for source in sorted((folder / "src").rglob("*.rs")):
             relative = source.relative_to(workspace).as_posix()
-            lines = len(source.read_text().splitlines())
+            lines = len(source.read_text(encoding="utf-8").splitlines())
             limit = rules["existing_hotspot_ceilings"].get(relative, rules["new_file_line_limit"])
             if lines > limit:
                 errors.append(f"{relative}: {lines} lines exceeds {limit}; split by responsibility")
@@ -68,7 +68,7 @@ def main() -> int:
     parser.add_argument("--workspace", required=True, type=Path)
     parser.add_argument("--rules", required=True, type=Path)
     args = parser.parse_args()
-    report = audit(args.workspace, json.loads(args.rules.read_text()))
+    report = audit(args.workspace, json.loads(args.rules.read_text(encoding="utf-8")))
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if report["passed"] else 1
 

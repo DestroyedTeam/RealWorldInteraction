@@ -1,3 +1,11 @@
+## 2026-10-11 · R43：Windows 工程检查显式 UTF‑8
+
+第七次真实远程 run [38116812011](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38116812011)：Mac全部成功；Windows默认tests及all-feature compile/lint均成功，随后architecture检查按系统CP1252默认编码读取UTF‑8 Rust源码，在0x9d处UnicodeDecodeError。该阶段不是Rust编译/GUI失败。
+
+只对workspace/package Cargo.toml、Rust源码、rules JSON四处read_text显式 `encoding="utf-8"`。本机以CP1252默认decoder shim跑真实完整architecture CLI，baseline同codec/0x9d错误，modified0；独立copy可执行rollback原2hash→1→reapply0。原rules/阈值/12debt不变；不忽略、不替换非法字节。新增中文/emoji源码与manifest跨ANSI默认正例、非法UTF‑8仍拒绝负例，architecture10tests0（原8保留），真实audit0/12debt。
+
+Rust源码、固定fixture原字节及本机运行Agent/MCP未改，R42已完成fmt/workspace736/all-target-all-featureClippy三门禁按相同源码保留，不冒称这次重跑。没有把UTF‑8 shim当Windows原生job；新head仍需真实CI。仍不把工程检查通过当Live Host强任务绑定/完整native矩阵通过，用户无需配合。
+
 ## 2026-10-11 · R42：旧 Windows 诊断 CLI 接上严格进程出生校验
 
 第六次真实远程 run [38116056021](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38116056021)：Mac成功，Windows默认unit tests已通过（R41证据换行问题消失）；all-feature compile实际暴露旧rwi-native-agent引用不存在的 `rwi_windows::process_inventory::identity`。

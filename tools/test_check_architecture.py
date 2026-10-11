@@ -2,6 +2,7 @@
 import tempfile
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 from check_architecture import audit
 
 
@@ -21,6 +22,34 @@ class ArchitectureTests(unittest.TestCase):
 
     def test_small_leaf_passes(self):
         self.assertTrue(audit(self.root, self.rules)["passed"])
+
+    def test_utf8_source_and_manifests_ignore_windows_ansi_default(self):
+        self.source.write_text("// \u9f20\u6807\u60ac\u505c \u2192 \U0001f680\n", encoding="utf-8")
+        self.manifest.write_text('[package]\nname="core"\n# \u63a7\u4ef6\n', encoding="utf-8")
+        (self.root / "Cargo.toml").write_text(
+            '[workspace]\nmembers=["core"]\n# \u7a97\u53e3\n', encoding="utf-8")
+        original = Path.read_text
+
+        def ansi_default(path, *args, **kwargs):
+            if not args and kwargs.get("encoding") is None:
+                kwargs["encoding"] = "cp1252"
+            return original(path, *args, **kwargs)
+
+        with patch.object(Path, "read_text", ansi_default):
+            self.assertTrue(audit(self.root, self.rules)["passed"])
+
+    def test_invalid_utf8_is_not_ignored_replaced_or_ansi_decoded(self):
+        self.source.write_bytes(b"// invalid UTF-8: \xff\n")
+        original = Path.read_text
+
+        def ansi_default(path, *args, **kwargs):
+            if not args and kwargs.get("encoding") is None:
+                kwargs["encoding"] = "cp1252"
+            return original(path, *args, **kwargs)
+
+        with patch.object(Path, "read_text", ansi_default):
+            with self.assertRaises(UnicodeDecodeError):
+                audit(self.root, self.rules)
 
     def test_platform_dependency_fails(self):
         with self.manifest.open("a") as stream:
