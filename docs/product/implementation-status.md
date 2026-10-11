@@ -1,3 +1,15 @@
+## 2026-10-11 · R44：无人配合验收与 Live 预加载声明
+
+- 延续原生320点浮层和隐藏/恢复/关闭证据；不改变capture2048，不宣称逐像素复制官方Computer Use。官方插件reference允许资源在加载前声明 `openai/ui.availableDisplayModes`；本轮为控制组件声明fullscreen-only（不是把原生视频浮层放大），initialize同样声明，资源cache key升级v2，v1保持可读。closed-network CSP、实际DOM可见性门禁、单次不重放关闭、presence TTL均保留。参考：https://developers.openai.com/plugins/reference 。
+- 首工作区回归实际101：集成test仍期望v1 catalog；修正为v2并新增v1内容/安全metadata相同断言，未删除权限负例。之后八门禁均0：fmt、workspace736/0/11/42、全target/featureClippy、receiver build/53tests、UI7、MCP/Agent release。错误的`--lib`调用101亦保留，并改为真实bin test。
+- 实际MCP进程同输入initialize+read v1：BASELINE探针1（未声明模式，server0）→MODIFIED0（资源及组件均fullscreen，server0）→独立copy可执行ROLLBACK1（恢复原binary SHA，server0）→REAPPLIED0；四源码hash亦回滚恢复，生产没有回滚。
+- 新MCP二进制5cf842…已原子部署；配对/profile/cert/key等7文件hash不变，Agent25946未重启，也未杀其他会话的六个adapter。安装路径启动的真实新进程协议验收0。现有Host资源列表仍v1，**不冒称本任务已刷新、正式组件挂载或强任务绑定成功**；不请休息中的用户重启/展开。
+- 专用84/85仅在virtual4：RWI显式focus85→84，系统前台元组独立回读；Computer Use在84发一次super+Tab后只把应用内焦点Colors→Fonts，原生前台仍84。该调用不等于系统Command+Tab，不能充当执行中切窗/真实人类来源的验收。
+- RWI对后台85一次5秒拖拽返回，独立receiver收到1down/77move/1up、completed1、orphan0；当时系统前台为另一个应用，未因这次拖拽切到85。实际截图前后空白→蓝线，不把receipt当应用效果或把77强称79。没有操作游戏/已有文档输入。
+- 85具名Close window一次AXPress，process0/closed/lifetime expiry0。84此后系统Window sharing控件替代交通灯；RWI与CUA都观察不到Close，缺失不等于RWI漏名。清理用途的显式focus84遇到recent/unknown HID `user_active`，dispatch前拒绝；不禁用yield、不重放、不用其他通道绕过。84随后由600s硬寿命关闭，实际process0/lifetime_close_requests1；这不计为RWI关闭控件成功。两个自有PID均已独立discover0窗并detach，其他应用不动。没有让用户配合，也没有伪造物理人类证据。
+
+完整后台/前台矩阵、formal Host强任务绑定、foreign-PID窗口族、hidden/minimized/offscreen及系统跨应用DnD仍按原计划partial/unsupported保留。用户现在无需配合；源码/UI协议通过不等同整计划封版。
+
 ## 2026-10-11 · 当前：macOS／Windows 真实 CI 全部通过
 
 已确认源码head `e0afa0f2dbfb4f0b5685d8bc68be77dcc6cc08ab` 的 [真实CI](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38117287848)：macOS与Windows两项job均success，Format、默认tests、all-feature compile/lint、architecture、architecture负例全部完成0。此前7次实际失败、监听unexpected EOF及每次最小修正都保留，未移除测试/改SHA/放宽规则。当前本机Rust736/0/11/42、独立selector4、architecture10；各层范围分开，不把CI等同native GUI。下面旧“pending”段落为历史步骤，已由这次实际结果替代。
