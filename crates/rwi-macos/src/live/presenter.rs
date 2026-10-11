@@ -120,7 +120,7 @@ fn rect(x: f64, y: f64, width: f64, height: f64) -> NSRect {
 }
 
 /// On Retina, roughly two captured pixels fill each panel point, up to a compact
-/// 360-point overview. Capture detail must not enlarge the panel indefinitely.
+/// 320-point overview. Capture detail must not enlarge the panel indefinitely.
 /// Display margins and compact chrome remain bounded. Match the source aspect
 /// ratio instead of surrounding wide windows with a dark 16:9 letterbox.
 fn panel_size(
@@ -135,7 +135,7 @@ fn panel_size(
         .unwrap_or(2.);
     let max_height = (display_height - 96.).min(360.);
     let mut width = (f64::from(max_edge) / 2. + 16.)
-        .clamp(200., 360.)
+        .clamp(200., 320.)
         .min(display_width - 48.);
     if (width - 16.) / aspect + CHROME_HEIGHT > max_height {
         width = ((max_height - CHROME_HEIGHT) * aspect + 16.)
@@ -501,13 +501,13 @@ mod panel_size_tests {
     #[test]
     fn preview_follows_capture_aspect_without_leaving_allocated_display() {
         let wide = panel_size(2048, 1920., 1080., Some([2048, 942]));
-        assert_eq!(wide.0, 360.);
-        assert!((wide.1 - 206.2265625).abs() < 0.000001);
-        assert_eq!(panel_size(2048, 1920., 1080., None), (360., 220.));
-        assert_eq!(panel_size(1024, 1920., 1080., None), (360., 220.));
-        assert_eq!(panel_size(640, 1920., 1080., None), (336., 208.));
+        assert_eq!(wide.0, 320.);
+        assert!((wide.1 - 187.828125).abs() < 0.000001);
+        assert_eq!(panel_size(2048, 1920., 1080., None), (320., 200.));
+        assert_eq!(panel_size(1024, 1920., 1080., None), (320., 200.));
+        assert_eq!(panel_size(640, 1920., 1080., None), (320., 200.));
         assert_eq!(panel_size(2048, 300., 300., None), (252., 166.));
-        assert_eq!(panel_size(2048, 500., 350., None), (360., 220.));
+        assert_eq!(panel_size(2048, 500., 350., None), (320., 200.));
     }
 }
 
@@ -518,7 +518,7 @@ mod compact_preview_acceptance {
     fn detailed_capture_keeps_native_preview_compact() {
         let (width, height) = panel_size(2048, 1800., 1169., Some([1320, 1104]));
         assert!(
-            width <= 360.,
+            width <= 320.,
             "high-detail capture must not occupy most of the screen: {width}"
         );
         assert!(
@@ -526,12 +526,12 @@ mod compact_preview_acceptance {
             "source-aspect overview must remain compact: {height}"
         );
         let wide = panel_size(2048, 1920., 1080., Some([2048, 942]));
-        assert!(wide.0 <= 360. && wide.1 <= 220.);
+        assert!(wide.0 <= 320. && wide.1 <= 200.);
     }
     #[test]
     fn portrait_preview_shrinks_without_extra_letterbox() {
         let (width, height) = panel_size(2048, 1800., 1169., Some([252, 420]));
-        assert!(width <= 360. && height <= 360.);
+        assert!(width <= 320. && height <= 360.);
         assert!(((width - 16.) / (height - super::CHROME_HEIGHT) - 0.6).abs() < 0.000001);
     }
     #[test]
