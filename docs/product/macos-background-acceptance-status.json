@@ -2936,5 +2936,23 @@
     ],
     "full_goal_complete": false,
     "human_cooperation_requested": false
+  },
+  "R57_exact_missing_window_context": {
+    "date": "2026-10-12",
+    "native_same_source_verified": true,
+    "diagnostic_only": true,
+    "on_screen_absence_not_destruction": true,
+    "optional_fields_stay_unknown": true,
+    "input_authority": false,
+    "replay_allowed": false,
+    "report": "outputs/validation/r57-window-missing-context-2026-10-12/REPORT.md",
+    "current_workspace_tests": {
+      "passed": 760,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "agent_deployed_same_stable_certificate": true,
+    "full_goal_complete": false
   }
 }

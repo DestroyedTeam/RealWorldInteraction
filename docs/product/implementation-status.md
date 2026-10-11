@@ -1792,3 +1792,14 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 清理时两panel再次window_missing，未点不存在的Close；只对fresh parent/peer执行各一次AXClose，124/125 closed/expiry0/进程0，retained panels isVisiblefalse。123是到期expiry1而非显式Close。13原durable请求全部terminal/released/no pending/no uncertainty/no replay，所有6相关binding退役。
 - 生产Agent/MCP/四项权限不改、不需要Host重启。源配置BASELINE1/MODIFIED0/独立copy ROLLBACK1精确3hash恢复/REAPPLIED0，原四角色继续扩展；不将source配置试验当生产回滚效果。完整F01–F16仍未完成，background hover、foreign-provider menu、hidden/minimized输入、跨应用DnD等保留。
 - 主源：Apple hidesOnDeactivate（https://developer.apple.com/documentation/appkit/nswindow/hidesondeactivate）与Quartz描述指定IDs（https://developer.apple.com/documentation/coregraphics/quartz-window-services）；正式报告/原图在 `outputs/validation/r56-layered-panels-2026-10-11/`。
+
+
+## 2026-10-12 · R57：精确缺窗诊断部署及同源原生对照
+
+- NativeMac::window_record / visual_window仅在精确on-screen lookup miss后，以public CGWindowListCreateDescriptionFromArray查询一枚pointer-sized ID，核对PID/id；CF Create由RAII释放。window_record_probe::missing保持window_missing，同时报告native_record_present/owner_matches/native_onscreen；hidden/destroyed未分类保持null。不返回Window/图像/frame/reference，不激活/unhide/fallback/replay；AX visual-only策略不因此扩大。
+- 新wiring测试真实基线101→修改0，四projection测试0。首次Clippy len_zero101保留，is_empty修正后当前完整11门exit0，workspace760/0/11/42、Receiver64/UI7、fmt和全targets/features Clippy-Dwarnings、两个release和架构门均通过。
+- 使用既有成功控制器模板，gate路径纠正为final-gates-current；持有原inode排他lease，旧instance全部durable资源终态后原子交换同签名Agent。新PID34800 / instance84129a56-ab4a-4672-91dc-0b18ef867255；installed SHA256 abc4f24b8bea2bbbb656cd5b8a5f2107383ffba02f43b28bd475832aa07e0cb1。稳定证书/DR、MCP5cf8424、CA/profile/config及四权限不变，无Host重启/人工请求。
+- 自有126/CG43051与Colors CG43059在Agent交换前后同一原生实例：旧snapshot/capture_visual只报window_missing；新两路径仍错误，无新pixels/输入binding，但准确读出same-owner native_record_present=true、native_onscreen=null。fixture getter isVisible=true/hidesOnDeactivate=true、inactive，说明不可把该getter或catalog absence当呈现/销毁证明。显式focus与独立rediscovery是单独的新动作；不隐藏focus后再次退到后台导致的新miss。
+- 原Colors AXPress/-25204仍uncertain，早期计数0、晚期计数1；没有重放。七原请求全部terminal/released/no pending/no uncertainty/no replay。126与127各fresh AXClose一次，closed/expiry0/进程exit0，six bindings detached；没有点击隐藏panel的Close。顺序原图、hash和结果在outputs/validation/r57-window-missing-context-2026-10-12/。
+- 同输入source配置BASELINE false1→MODIFIED true0→独立copy ROLLBACK false1/三个hash+module absence精确恢复→REAPPLIED true0。沿用同四角色从156扩为158，原97immutable基线不改；不称生产回滚。Live已部署320pt紧凑比例与eye.slash/play.fill/xmark，R48真实v2显隐/返回/close证据保留；官方页面未给私有UI精确像素规格。
+- 完整F01–F16未完成；继续background cold tracking、window-local/offscreen、foreign-provider菜单、隐藏/最小化、跨应用DnD等。用户休息，不请求人工配合；不以本次诊断补齐代替后续原生实现。
