@@ -132,6 +132,25 @@ fn process_birth(process: &str, pid: u32) -> Result<u64> {
         })
 }
 
+// A response-only record is separate from input eligibility.
+fn record_for_visual(
+    identity: &Identity,
+    window: &Window,
+    process: String,
+    displays: &[Display],
+) -> Result<WindowRecord> {
+    // Exact-window SCK capture owns its point/pixel scale. A containing display
+    // is descriptive only here; absence must not invent one or grant input.
+    // Native session, process, on-screen identity and pre/post topology guards
+    // remain at the caller. Normal metadata/input still require valid mapping.
+    WindowRecord::from_native(
+        identity,
+        window,
+        process,
+        containing_display(displays, window.rect),
+    )
+}
+
 impl NativeMac {
     #[cfg(test)]
     pub(crate) fn fixture_for_live() -> Self {
@@ -225,18 +244,7 @@ impl NativeMac {
                 "More than one native row matched the bound window; no image was returned.",
             ));
         }
-        let display = containing_display(&displays, window.rect).ok_or_else(|| {
-            fault(
-                "visual_display_unknown",
-                "The complete window must fit one unrotated active display.",
-            )
-        })?;
-        let record = WindowRecord::from_native(
-            &self.identity,
-            &window,
-            self.process.clone(),
-            Some(display),
-        )?;
+        let record = record_for_visual(&self.identity, &window, self.process.clone(), &displays)?;
         Ok(VisualWindow {
             record,
             displays,
@@ -320,6 +328,8 @@ impl NativeMac {
                 "source_space":"macos_desktop_points",
                 "title": before.record.title,
                 "display": before.record.display,
+                "capture_scope": "exact_window_local",
+                "containing_display_required": false,
                 "ax_walk": false,
                 "input_authority": false,
                 "frame_created": false,
@@ -499,5 +509,74 @@ mod tests {
             "ax_attribute_unavailable",
             "no diagnostic"
         )));
+    }
+}
+
+#[cfg(test)]
+mod window_local_visual_contract {
+    use super::*;
+    fn identity() -> Identity {
+        Identity {
+            host: "offline".into(),
+            guest: None,
+            session: "own".into(),
+            seat: "seat".into(),
+            desktop: "desktop".into(),
+        }
+    }
+    fn display() -> Display {
+        Display {
+            id: 4,
+            uuid: Some("own-virtual".into()),
+            built_in: false,
+            rect: Rect {
+                x: 1800.,
+                y: 0.,
+                w: 1920.,
+                h: 1080.,
+            },
+            pixels: [1920, 1080],
+            rotation: 0.,
+        }
+    }
+    fn window(x: f64) -> Window {
+        Window {
+            id: 128,
+            pid: 42,
+            rect: Rect {
+                x,
+                y: 24.,
+                w: 660.,
+                h: 552.,
+            },
+            alpha: 1.,
+            title: Some("own".into()),
+        }
+    }
+    #[test]
+    fn window_local_visual_record_does_not_require_single_display_input_mapping() {
+        let screens = [display()];
+        let own = window(3600.);
+        assert!(containing_display(&screens, own.rect).is_none());
+        let record = record_for_visual(&identity(), &own, "42:100:1".into(), &screens)
+            .expect("exact-window visual metadata must not require full-screen containment");
+        assert!(record.display.is_none());
+        assert_eq!(record.window, "cgwindow:128");
+        assert_eq!(record.pid, 42);
+    }
+    #[test]
+    fn window_local_visual_record_retains_single_display_and_invalid_geometry_checks() {
+        let screens = [display()];
+        let own = window(1824.);
+        let record = record_for_visual(&identity(), &own, "42:100:1".into(), &screens).unwrap();
+        assert_eq!(record.display.unwrap().id, 4);
+        let bad = Window {
+            rect: Rect {
+                w: f64::NAN,
+                ..own.rect
+            },
+            ..own
+        };
+        assert!(record_for_visual(&identity(), &bad, "42:100:1".into(), &screens).is_err());
     }
 }
