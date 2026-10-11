@@ -1712,3 +1712,17 @@ RWI拖动把第三行企鹅头像从50×48改为48×48；尺寸提示由CUA新�
 - 修正Execution::retirable_at/Runtime::resolve_execution_at，用私有显式query时钟做确定性测试；生产入口仍真实Instant::now，TTL常量/owner/session/principal/ref/cleanup/fence/no-replay都保持。测试改为完成时刻向前推进，验证截止前不退休、截止时stale，并额外确认未来query clock也不能退休pending native资源；不跳过、减弱断言或等待5分钟。
 - 首个focused cargo调用没有fixture feature，因此实际0 tests，不能算通过；纠正命令加--features fixture并保留原结果。R49匹配source配置probe1/0/1/0，独立副本ROLLBACK原hash完全恢复后重应用，非Windows原生证明；真实新头Windows job仍须重跑验收。
 - R49实际11项本地门禁均0，workspace737/0/11/42、Receiver63、UI7与strict Clippy通过；focused fixture case实际1 passed。结果见 `/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/execution-retention-clock-r49/final-gates/GATES_EVIDENCE_AGGREGATE.json` 为准，不宣称旧737覆盖新源。完整A01–A07/F01–F16仍保留；新Host专项见 `/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-mcpapps-v2-receiver106-2026-10-11/SUMMARY.md`。
+
+
+## 2026-10-11 · R50：只读截图有界排队，复合预览实机闭环
+
+- `Context::read_waiters` / `Runtime::dispatch` / `read_admission::acquire`：明确仅 `computer.observe`、`computer.capture_visual`、`computer.image` 可在同一上下文内等待；队列最多 8 项、等待最多 5 秒。执行器仍串行；输入、绑定、恢复等保持立即拒绝，不排队、不重放。取消、关闭和丢弃 future 释放队列名额。
+- 实际加载 MCP、同规格专用虚拟屏窗口：旧版 8 次并发 snapshot 成功 1 次、7 次 context_busy；首个候选虽修复 observe，但预览 image 仍忙，依旧 1/8，失败证据保留。补齐 image 后最终 8/8 同时返回画面和 7 个控件，整批 2452ms。不是把快速报错当“性能好”，也不声称并发执行原生 API。
+- 探索性 n=8：串行 snapshot512 中位 247.5ms；缓存 controls 中位 7ms；纯视觉 capture_visual512 中位 98.5ms。均为 Host/tool wall time，非原生 CPU；纯视觉不提供语义控件或输入帧，不能与 snapshot 等价比较；不足以估计稳定尾延迟或通用应用性能。
+- 7 个 admission 测试包括 Runtime 的 8 路 observe→image 复合链、独立输入许可未使用、终态和资源回收。当前完整 11 门禁 exit0：workspace 744 passed / 0 failed / 11 ignored / 42 suites；Receiver 63、Live UI 7；fmt、严格 Clippy、发布构建及架构棘轮通过。旧字段误接编译101、错误 finish 前验收断言101、无PNG测试 fixture 参数101均保留并修正，不记作通过。
+- 两轮 Agent 用既有签名身份原子部署；最终 Agent PID46886 / instance70635301-549b-4a30-b6ad-012de8a8d4f0。MCP、配对 CA/profile、签名证书/DR、四项权限不变，不要求用户授权或重启。Receiver108/109 均由实际 AXClose 关闭、进程0、expiry0、已解绑；不操作用户游戏或文档。
+- Live 已有真实 Host v2 验收：320×303pt、无经典标题栏三按钮，隐藏 eye.slash／恢复 play.fill／关闭 xmark，原生 tooltip 和可访问动作名。当前复核 Apple Buttons 主源（https://developer.apple.com/design/human-interface-guidelines/buttons）；不是私有 Codex 资产克隆，也不把当前旧缓存 v1 的失败改写为成功。
+- 本轮源文件配置验收 BASELINE false/exit1 → MODIFIED true/exit0 → separate-copy ROLLBACK false/exit1 → REAPPLIED true/exit0；精确恢复原始哈希/新文件不存在。不是生产服务回滚后的性能验收。四角色继续沿用原事务。
+- 证据：`work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/`。完整 F01–F16 仍保留；hover tracking/tooltips、隐藏/最小化等窗口状态及跨应用 DnD 等未完成项不冒充验收。用户休息期间不再请求配合，只用已分配 own fixture 自主推进。
+
+R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib read_admission` 实际发现 fixture 测试未加 feature 条件（exit101），已为仅测试的 RasterFixture/复合测试补齐 cfg；同命令现 6 passed。最终重跑全部11门禁仍 744/0/11/42；发布 Agent、MCP 和 Receiver 三个二进制哈希与已实机验收版本完全相同，故不重复部署或重放输入。

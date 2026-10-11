@@ -440,27 +440,10 @@
   },
   "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
   "current_deployment": {
-    "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
-    "original_hash": "ad99426c4176333fa3809daf4964c0b3a3fe4e19bfb7c83b2aa43b5bb4007e5a",
-    "installed_hash": "ee58916f3c53d4612a0c35b1483378d8b0189680f83d355718c5b5a3537e8fa0",
-    "candidate_hash": "f51cce43f40068a8af188d081ce4a08037ca512d9113bfb1f2ab32429e92b739",
-    "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
-    "protected_public_config_hashes": {
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
-      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "4a29eebfd74b705e00307ca6c252951f7180b937b50a2233c13d615b45c9ad9b"
-    },
-    "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-shared-panel-read-r34-20261011.app",
-    "retained_baseline_app": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/shared-panel-family-r34/deployment/baseline/RWI Agent.app",
-    "certificate_replaced": false,
-    "pairing_replaced": false,
-    "recovery_invoked": false,
-    "mcp_binary_changed": false,
-    "input_sent_by_controller": false
+    "agent_pid": 46886,
+    "agent_instance": "70635301-549b-4a30-b6ad-012de8a8d4f0",
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/deployment-composite/DEPLOYED.json",
+    "stable_signing_and_pairing": true
   },
   "current_comprehensive_acceptance": {
     "target": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
@@ -2348,5 +2331,110 @@
     "non_desktop_scope_only": true,
     "full_native_Host_goal_complete": false,
     "following_change": "documentation only, tested source unchanged"
+  },
+  "R50_readonly_pressure": {
+    "result": {
+      "snapshot_burst": {
+        "n": 8,
+        "success": 8,
+        "errors": 0,
+        "host_burst_wall_ms": 2452,
+        "host_p50_ms": 2386.0
+      },
+      "serial_measurements": {
+        "snapshot512_serial": {
+          "n": 8,
+          "success": 8,
+          "host_p50_ms": 247.5,
+          "host_nearest_rank_p95_ms": 423,
+          "scope": "exploratory n8 Host/tool wall time, not nativeCPU or stable tail estimate"
+        },
+        "cached_controls": {
+          "n": 8,
+          "success": 8,
+          "host_p50_ms": 7.0,
+          "host_nearest_rank_p95_ms": 10,
+          "scope": "exploratory n8 Host/tool wall time, not nativeCPU or stable tail estimate"
+        },
+        "capture_visual512_serial": {
+          "n": 8,
+          "success": 8,
+          "host_p50_ms": 98.5,
+          "host_nearest_rank_p95_ms": 258,
+          "scope": "exploratory n8 Host/tool wall time, not nativeCPU or stable tail estimate"
+        }
+      },
+      "native_pid": 47085,
+      "window": "cgwindow:40809",
+      "display_uuid": "13E4E9B0-47F2-4043-9CDC-878D5441BD41",
+      "agent": [
+        {
+          "id": "mac-host",
+          "instance": "70635301-549b-4a30-b6ad-012de8a8d4f0",
+          "pid": 46886,
+          "permissions": {
+            "accessibility": true,
+            "listen_event": true,
+            "post_event": true,
+            "requests_permission": false,
+            "screen_capture": true,
+            "screenshot_api": true
+          }
+        }
+      ],
+      "only_own_fixture_target": true,
+      "no_fixture_safe_or_drag_actions": true,
+      "source_explicit_close": true,
+      "lifetime_expiry": 0,
+      "process_exit": 0,
+      "original_close_operation": {
+        "cancel_requested": false,
+        "finish_requested": true,
+        "native_call_depth": 0,
+        "native_call_pending": false,
+        "phase": "finished",
+        "resource_release_uncertain": false,
+        "resources_released": true,
+        "stage": "finished",
+        "strong_native_preemption": false,
+        "terminal": true
+      },
+      "detached": true,
+      "input_replay": false,
+      "claim": "bounded concurrent success improvement, not faster native dispatch or universal app compatibility",
+      "full_goal_complete": false
+    },
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/NATIVE_RESULT_R50.json",
+    "baseline": {
+      "concurrent_snapshots": 8,
+      "success": 1,
+      "context_busy": 7
+    },
+    "first_candidate": {
+      "success": 1,
+      "snapshot_preview_failed": 7
+    },
+    "allowlist": [
+      "computer.observe",
+      "computer.capture_visual",
+      "computer.image"
+    ],
+    "queue_capacity": 8,
+    "queue_budget_ms": 5000,
+    "inputs_queued": false,
+    "source_rollback_scope": "configuration only; not native production benchmark",
+    "gates": {
+      "passed": 744,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "isolated_no_fixture_tests": {
+      "initial_exit": 101,
+      "modified_exit": 0,
+      "passed": 6,
+      "test_only_cfg_production_artifacts_identical": true,
+      "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-readonly-pressure-r50/FEATURE_SCOPED_PRODUCTION_HASH_COMPARISON.json"
+    }
   }
 }
