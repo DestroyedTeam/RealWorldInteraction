@@ -1,10 +1,12 @@
 //! MCP adapter: tool routing, bounded execution and SDK responses.
 //! No native target construction or process bootstrap lives here.
 mod parameters;
+mod views;
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use parameters::*;
+use views::{StoredView, make_view};
 #[cfg(test)]
 mod tests;
-use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rmcp::{
     ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -16,7 +18,6 @@ use rwi_core::operation::{CancelOnDrop, Registry};
 use rwi_core::{Engine, Locator, Result as CoreResult, fault};
 #[cfg(test)]
 use rwi_core::{Intent, Predicate};
-use rwi_imaging::{Rect, ViewMapping};
 use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
@@ -32,13 +33,6 @@ pub(crate) struct Server {
     operations: Arc<Registry>,
     views: Arc<Mutex<VecDeque<(String, StoredView)>>>,
     tool_router: ToolRouter<Self>,
-}
-#[derive(Clone)]
-struct StoredView {
-    target: String,
-    frame: String,
-    artifact_id: String,
-    mapping: ViewMapping,
 }
 impl Server {
     pub(crate) fn new(engine: Engine) -> Self {
@@ -164,71 +158,6 @@ fn value<T: serde::Serialize>(v: T) -> CoreResult<CallToolResult> {
         serde_json::to_value(v)
             .map_err(|_| fault("serialization_error", "Inspect server diagnostics."))?,
     ))
-}
-
-fn make_view(
-    e: &Engine,
-    views: &Mutex<VecDeque<(String, StoredView)>>,
-    a: &ImageArgs,
-) -> CoreResult<CallToolResult> {
-    let (original, scene) = e.original(&a.target, &a.frame, &a.artifact_id)?;
-    let crop = a
-        .crop
-        .map(|[x, y, width, height]| -> CoreResult<Rect> {
-            Ok(Rect {
-                x: i32::try_from(x).map_err(|_| fault("invalid_crop", "Crop x is too large."))?,
-                y: i32::try_from(y).map_err(|_| fault("invalid_crop", "Crop y is too large."))?,
-                width,
-                height,
-            })
-        })
-        .transpose()?;
-    let (png, mapping) = rwi_imaging::view(original, crop, a.max_edge, scene.pixel_to_desktop)?;
-    if mapping.original_size != scene.image_size {
-        return Err(fault(
-            "artifact_dimension_mismatch",
-            "Original PNG dimensions do not match this frame metadata; do not resolve its pixels.",
-        ));
-    }
-    // A visual-only scene deliberately has no binding or pixel-to-desktop
-    // input mapping. Its original artifact and cropped tiles stay readable,
-    // but no resolve_view-capable ID is issued or retained.
-    let id = if scene.binding.is_some() && scene.pixel_to_desktop.is_some() {
-        let id = rwi_core::digest(
-            serde_json::to_string(&(&a.target, &a.frame, &a.artifact_id, &mapping))
-                .unwrap()
-                .as_bytes(),
-        );
-        let mut views = views.lock().map_err(|_| {
-            fault(
-                "view_registry_unavailable",
-                "Reobserve in a new connection.",
-            )
-        })?;
-        views.retain(|(key, _)| key != &id);
-        views.push_back((
-            id.clone(),
-            StoredView {
-                target: a.target.clone(),
-                frame: a.frame.clone(),
-                artifact_id: a.artifact_id.clone(),
-                mapping: mapping.clone(),
-            },
-        ));
-        while views.len() > 64 {
-            views.pop_front();
-        }
-        Some(id)
-    } else {
-        None
-    };
-    let input_reference_available = id.is_some();
-    let mut r = value(
-        json!({"view_id":id,"target":a.target,"frame":a.frame,"original_artifact_id":a.artifact_id,"original_sha256":rwi_core::digest(original),"original_bytes":original.len(),"view_sha256":rwi_core::digest(&png),"view_bytes":png.len(),"mapping":mapping,"original_unchanged":true,"resolve_tool":input_reference_available.then_some("computer.resolve_view"),"input_reference_available":input_reference_available}),
-    )?;
-    r.content
-        .push(Content::image(STANDARD.encode(png), "image/png"));
-    Ok(r)
 }
 
 #[tool_router]
