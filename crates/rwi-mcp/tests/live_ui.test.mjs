@@ -127,10 +127,10 @@ test('stopped preview ends heartbeat and cannot misleadingly resume a terminal o
   assert.match(h.nodes.get('state').textContent, /新建观察/);
 });
 
-test('component declares independent expansion and explains the actual native viewer location', async () => {
+test('component declares fullscreen before mount and explains the actual native viewer location', async () => {
   const h = harness();
   const init = h.sent.find(m => m.method === 'ui/initialize');
-  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['inline', 'fullscreen']);
+  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['fullscreen']);
   await h.init();
   await h.deliver({ method: 'ui/notifications/tool-result', params: {
     _meta: { 'rwi/live_panel': { view_key: 'a'.repeat(32), page: 'b'.repeat(32) } },

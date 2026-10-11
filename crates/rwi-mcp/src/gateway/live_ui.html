@@ -158,7 +158,7 @@
       const heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
       request('ui/initialize', {
         protocolVersion: '2026-01-26', appInfo: { name: 'RWI Live', version: '1' },
-        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] }
+        appCapabilities: { availableDisplayModes: ['fullscreen'] }
       }).then(result => {
         if (result?.protocolVersion !== '2026-01-26') { finish('Host UI 协议未确认 · 不发布可见性'); return; }
         ready = true;
