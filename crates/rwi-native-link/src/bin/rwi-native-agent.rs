@@ -7,6 +7,27 @@ use rwi_native_link::{invalid, runtime::Runtime, server};
 use rwi_native_link::{private::read_private, sha};
 use std::{io, path::PathBuf};
 
+#[cfg(any(windows, test))]
+fn process_selector(args: &[std::ffi::OsString]) -> io::Result<(u32, u64)> {
+    if args.len() != 3 || args[0] != "--inspect-process" {
+        return Err(invalid("usage: --inspect-process PID CREATION_FILETIME"));
+    }
+    let pid = args[1]
+        .to_str()
+        .ok_or_else(|| invalid("native_pid"))?
+        .parse::<u32>()
+        .map_err(|_| invalid("native_pid"))?;
+    let expected_created = args[2]
+        .to_str()
+        .ok_or_else(|| invalid("native_process_birth"))?
+        .parse::<u64>()
+        .map_err(|_| invalid("native_process_birth"))?;
+    if pid == 0 || expected_created == 0 {
+        return Err(invalid("positive_pid_and_process_birth_required"));
+    }
+    Ok((pid, expected_created))
+}
+
 fn self_image(runtime: &Runtime) -> io::Result<()> {
     let expected = &runtime.config.agent_image;
     #[cfg(windows)]
@@ -43,13 +64,9 @@ fn self_image(runtime: &Runtime) -> io::Result<()> {
 async fn run() -> io::Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     #[cfg(windows)]
-    if args.len() == 2 && args[0] == "--inspect-process" {
-        let pid = args[1]
-            .to_str()
-            .ok_or_else(|| invalid("native_pid"))?
-            .parse::<u32>()
-            .map_err(|_| invalid("native_pid"))?;
-        let identity = rwi_windows::process_inventory::identity(pid)
+    if args.first().is_some_and(|arg| arg == "--inspect-process") {
+        let (pid, expected_created) = process_selector(&args)?;
+        let identity = rwi_windows::agent_binding::inspect_process(pid, expected_created)
             .map_err(rwi_native_link::private::core_error)?;
         println!("{}", serde_json::to_string(&identity)?);
         return Ok(());
@@ -101,7 +118,7 @@ async fn run() -> io::Result<()> {
     }
     if args.len() != 2 || args[0] != "--config" {
         return Err(invalid(
-            "usage: rwi-native-agent --config ABS_PRIVATE_agent.json | --binding",
+            "usage: rwi-native-agent --config ABS_PRIVATE_agent.json | --binding | --inspect-process PID CREATION_FILETIME | --inspect-window PID",
         ));
     }
     let path = PathBuf::from(&args[1]);
@@ -134,5 +151,58 @@ fn main() {
     if let Err(e) = result {
         eprintln!("native-agent: {e}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn args(values: &[&str]) -> Vec<std::ffi::OsString> {
+        values.iter().map(std::ffi::OsString::from).collect()
+    }
+    #[test]
+    fn inspection_selector_retains_explicit_pid_and_exact_birth() {
+        assert_eq!(
+            process_selector(&args(&["--inspect-process", "42", "134335198145995687"])).unwrap(),
+            (42, 134335198145995687)
+        );
+    }
+    #[test]
+    fn inspection_never_falls_back_to_pid_only_or_another_mode() {
+        for input in [
+            vec!["--inspect-process"],
+            vec!["--inspect-process", "42"],
+            vec!["--inspect-window", "42", "7"],
+            vec!["--inspect-process", "42", "7", "extra"],
+        ] {
+            assert!(process_selector(&args(&input)).is_err());
+        }
+    }
+    #[test]
+    fn inspection_rejects_zero_negative_overflow_and_noninteger_fields() {
+        for (pid, birth) in [
+            ("0", "7"),
+            ("42", "0"),
+            ("-1", "7"),
+            ("42", "-7"),
+            ("4294967296", "7"),
+            ("42", "18446744073709551616"),
+            ("42", "7.0"),
+            ("NaN", "7"),
+        ] {
+            assert!(process_selector(&args(&["--inspect-process", pid, birth])).is_err());
+        }
+    }
+    #[test]
+    fn inspection_preserves_native_integer_width_without_truncation() {
+        assert_eq!(
+            process_selector(&args(&[
+                "--inspect-process",
+                "4294967295",
+                "18446744073709551615"
+            ]))
+            .unwrap(),
+            (u32::MAX, u64::MAX)
+        );
     }
 }

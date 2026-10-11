@@ -2277,5 +2277,38 @@
     "human_requests": false,
     "new_exact_head_remote_ci_pending": true,
     "full_goal_complete": false
+  },
+  "R42_legacy_process_diagnostic": {
+    "date": "2026-10-11",
+    "preceding_remote_ci": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38116056021",
+    "preceding_macos": "success",
+    "preceding_windows_default_tests": "success",
+    "preceding_windows_all_feature_lint": "missing process_inventory module",
+    "changed_call": "agent_binding::inspect_process(pid, expected_created)",
+    "required_selector": "positive explicit PID and exact creation FILETIME; no PID-only fallback",
+    "same_input_actual_Windows_API_expression_typecheck": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "separate_copy_original_hash_restored": true,
+    "first_missing_host_procmacro_probe_error_retained_and_corrected": true,
+    "selector_tests": {
+      "passed": 4,
+      "failed": 0
+    },
+    "fresh_mandatory_gates_exit_zero": true,
+    "workspace": {
+      "passed": 736,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "actual_Windows_API_or_GUI_executed": false,
+    "native_runtime_installation_changed": false,
+    "human_requests": false,
+    "new_exact_head_CI_pending": true,
+    "full_goal_complete": false
   }
 }

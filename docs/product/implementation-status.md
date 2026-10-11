@@ -1,3 +1,11 @@
+## 2026-10-11 · R42：旧 Windows 诊断 CLI 接上严格进程出生校验
+
+第六次真实远程 run [38116056021](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38116056021)：Mac成功，Windows默认unit tests已通过（R41证据换行问题消失）；all-feature compile实际暴露旧rwi-native-agent引用不存在的 `rwi_windows::process_inventory::identity`。
+
+没有新造一个宽泛PID查询/后端bridge或退回当前进程；使用已经实现的 `agent_binding::inspect_process(pid, expected_created)`，要求 `--inspect-process PID CREATION_FILETIME`，正数/整数/原生宽度严格解析，PID-only与错误模式不fallback。现有API保留handle并检查birth、alive、image、token/privilege前后相同；只读，无launch/input/权限变更。源码搜索没有旧命令消费者，usage已一并补齐。
+
+真实Windows rustc对当前源码call expression、真实rwi-windows metadata执行同输入BASELINE1→MODIFIED0→独立copy可执行ROLLBACK1/hash恢复→REAPPLIED0。首probe少了host proc-macro依赖目录的E0463保留；校正-L后真正复现remote E0433，而非把任意失败当baseline。此probe不等于完整Windows native-link build/API执行或GUI验收。新增selector4tests0；fresh fmt/workspace test/all-feature all-targetClippy三强制门禁0、workspace736/0/11/42；不把额外4tests冒加到默认workspace总数。其他未改源码的R40证据保留，新head必须真实CI。Mac Agent/MCP、CA/profile/授权不动，无人工配合或旧输入重放。
+
 ## 2026-10-11 · R41：固定证据原始字节跨平台 checkout
 
 第五次真实远程 run [38115460661](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38115460661) 的 Mac job 成功；Windows进入unit tests（此前编译错误已消失），rwi-windows91passed/7failed。7项均在固定r5证据PREFLIGHT原字节SHA处失败，实际eaf690…而expected76c36b…。
