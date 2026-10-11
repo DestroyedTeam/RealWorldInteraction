@@ -2116,5 +2116,34 @@
       "merged": false,
       "remaining_native_host_limits_preserved": true
     }
+  },
+  "R38_formal_host_and_non_macos_ci": {
+    "date": "2026-10-11",
+    "formal_Host_component_mounted": false,
+    "formal_native_frames": 0,
+    "83_explicit_close_exit_status": 0,
+    "83_timer_expiry": false,
+    "original_requests_replayed": false,
+    "remote_baseline_ci": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38111301651",
+    "baseline_windows_errors": 26,
+    "changed_sites": [
+      "macos::background",
+      "macos::overlay",
+      "macos::NativeMacDesktop reexport"
+    ],
+    "local_windows_check_same_input": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "new_remote_ci_acceptance_pending": true,
+    "local_gates": {
+      "passed": 735,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "full_eight_gates_exit_zero": true
   }
 }

@@ -1,3 +1,17 @@
+### R38 本机修正门禁完成，等待新 head 的 Windows CI
+
+三项macOS cfg修正后的完整八门禁均0，workspace735/0/11/42、receiver53/UI7；architecture0/既有12debt、负例8tests0。Windows target cross-check同输入101→0→rollback101→reapply0，原文件hash恢复，仅作用于独立验证归档。没有以本机cross-check代替Windows job执行，也没有部署/重启不受此修改影响的Mac Agent。
+
+## 2026-10-11 · R38：正式 Live 未挂载与 Windows CI 实际错误修正
+
+- 延续而非重做：R36/R37实机与10条已推送commit、PUBLIC仓库/标准PR1均保留。
+- 原82启动确实创建了fixture prepared，但之后两个精确PID已不存在（ps exit1、discovery0窗），不虚构原生exit/cause。新83经tracked exec运行；首命令相对state-dir的实际exit1保留，改绝对路径后真实窗口在virtual4后台出现。
+- loaded `computer.show_live` 真协商MCP Apps resource_uri、无browser URL；本轮全文结果也已回读。MCP Apps sidepanel列表仍为空、native frames0/hidden，最终duration_expired。仅接受协议/失去presence后的清图，不接受Host渲染或强任务绑定；不绕过Codex原生访问限制、不伪造UI-only事件、不要求人工，也不以兼容浏览器替代这项。
+- 83首次只读snapshot AXWindows/-25204（inventory retry也失败）保留；独立新read成功后只发一次具名Close window，originalterminal/resources_released、detach、pointerhidden、process exit0/nonexpiry。没有重放输入。
+- 真实GitHub run38111301651（head72bcf2c…）macOS成功、Windows默认workspace测试失败，26个编译错误来自rwi-macos的background、overlay、NativeMacDesktop reexport没有macOS cfg，而FFI与依赖已有平台gate；并非继续把失败归因私有账单。
+- 最小产品修正仅在上述三项补 `#[cfg(target_os = "macos")]`。不移除测试、不增加Windows的Apple依赖、不改变Mac输入/权限/lease行为。已用现有Windows target与cached dependencies本机重现baseline101；独立Git验证归档同命令baseline101→modified0→可执行独立copy rollback101→reapply0，原lib.rs hash恢复。本机cross-check不是Windows执行/桌面验收，最终远程Windows job仍需新head实跑。
+- 官方UI参考只作为协议事实： https://developers.openai.com/plugins/deploy/troubleshooting 、 https://developers.openai.com/plugins/reference 。文档中的session correlation不是当前任务可见性的证明，不把同MCP连接当active session。
+
 ## 2026-10-11 · 标准 PR 已推送，仓库已公开
 
 - 9条合理拆分的commit已正常推送，源码HEAD `8103793c5f4563ecc6b62a95bb5ac92dbc73912a` 与GitHub PR1回读一致；PR为OPEN/MERGEABLE，未merge、未force-push、未tag/release。

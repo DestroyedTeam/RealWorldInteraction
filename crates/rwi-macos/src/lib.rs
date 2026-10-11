@@ -1,6 +1,7 @@
 //! Native macOS backend, linked directly to Apple frameworks. No subprocess runtime.
 #[cfg(target_os = "macos")]
 mod activity;
+#[cfg(target_os = "macos")]
 mod background;
 #[cfg(target_os = "macos")]
 mod capture;
@@ -18,6 +19,7 @@ mod live;
 mod native;
 #[cfg(all(test, target_os = "macos"))]
 mod nsevent_probe;
+#[cfg(target_os = "macos")]
 pub mod overlay;
 #[cfg(target_os = "macos")]
 mod recovery;
@@ -25,6 +27,7 @@ mod recovery;
 mod session;
 #[cfg(target_os = "macos")]
 pub use catalog::AuthorizedDisplay;
+#[cfg(target_os = "macos")]
 pub use desktop::NativeMacDesktop;
 #[cfg(target_os = "macos")]
 pub use native::*;
