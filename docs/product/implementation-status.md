@@ -1,3 +1,16 @@
+## 2026-10-11 · R45：执行中系统切窗的自主测试程序（尚未验完）
+
+上一轮head f175181的实际CI38119325985已回读：Mac与Windows均success，不把这个结果冒用于下述新源码。
+
+- 添加默认关闭的两自有fixture固定Command+Tab actor：只由实际后台canvas down武装一次common-mode timer；绑定peer PID、同UID内核出生时间、bundle与精确CG窗口bounds/title/观测layer；使用现有post/listen授权，未知HID/持键/前台变化时不继续down，异常时只尝试自身配对up。无权限请求、激活fallback、输入重放或新后端bridge。`--check-only`只验证配置、不创建目录/GUI/输入。
+- 首编译E0624/101保留，finite仅对同fixture模块开放后通过。初8项actor测试0、后新增kernel-birth用例9项0；原53项receiver保留。首次实机发现直接启动.app的NSRunningApplication.launchDate为nil，改用与RWI绑定同类proc_pidinfo原生birth/UID严格检查，而非PID-only。
+- 第二次实机发现旧layer0筛选错过显式peer窗口，改为精确CGID/PID选择并固定实际观测layer；不猜layer数值。曾经“setLevel”搜索无匹配exit1使&&后的首patch未执行，已更换命令纠正，不能把该次记录算已修改。
+- 最终90/91原生启动，actor已有post/listen/screen三项权限、绑定初始化error=null。但loaded RWI准备focus90时user_active/HIDrecent拒绝于dispatch之前；未发Command+Tab、未跑拖拽，不能计为系统切窗成功，不用别的通道绕过，不要求用户配合。
+- 86–91每个实际process终止0：87具名Close一次、其他受限/超时者由显式寿命timer关闭；无快捷键或down输入，actor post_calls0。90/91已detach，其他应用未发送输入。
+- 同输入配置检查BASELINE1（旧版不认识check-only）→MODIFIED0（JSON明确no GUI/input/native binding）→独立copy executable ROLLBACK1并恢复原binary hash→REAPPLIED0。四源码hash与新增module缺席状态回滚恢复，仅独立copy，生产不回滚。此结果不是快捷键/Host验收。
+
+最终11项工程命令全部0：fmt apply/check、workspace736/0/11/42、all-target/all-featureClippy、receiver build/62tests、UI7、MCP/Agent release、architecture0/原12debt、10正负例。9项actor含在62 receiver中，不加进默认workspace736。Agent/MCP安装、配对与证书不变；该fixture候选尚未因本轮对话而提交，不把配置probe/绿色源码测试当实机完成。正式Live强任务绑定、真实人类来源、完整窗口族和F01–F16缺口保持原范围。
+
 ## 2026-10-11 · R44：无人配合验收与 Live 预加载声明
 
 - 延续原生320点浮层和隐藏/恢复/关闭证据；不改变capture2048，不宣称逐像素复制官方Computer Use。官方插件reference允许资源在加载前声明 `openai/ui.availableDisplayModes`；本轮为控制组件声明fullscreen-only（不是把原生视频浮层放大），initialize同样声明，资源cache key升级v2，v1保持可读。closed-network CSP、实际DOM可见性门禁、单次不重放关闭、presence TTL均保留。参考：https://developers.openai.com/plugins/reference 。
@@ -1667,3 +1680,16 @@ RWI拖动把第三行企鹅头像从50×48改为48×48；尺寸提示由CUA新�
 - 新MCPApps tabs=[]；public navigate ack=true仍非实际可见任务证明，跨参考任务后预览仍visible，不能说task绑定通过，也不尝试绕过Codex原生访问限制。只创建/关闭自己的IAB15，不读取参考任务内容或操作游戏/文档。
 - source70显式AX关闭exit0/expiry0，7原请求terminal/released/no pending/no uncertainty，3detach/pointer隐藏。原97baseline不变、139同四角色延展；完整A01–A07/F01–F16、架构12债务、PR/push/public未完成。
 - 下一项回归原计划F12：真实分配71确认parent/owned sheet多层画面和精确关系，补齐layered Live；F13原生跨窗DnD、F14浏览器、其他范围均保留，不把一个alias修复当封版。
+
+
+### 2026-10-11 R47 · 无需人工的执行中系统切窗与小型 Live 复验
+
+- 唯一产品源仍为本仓库。本轮只修改 Rust 接收靶场的 `Options.command_tab` / `State.command_tab` 与默认关闭的 `command_tab::native::Actor::post_once`；不是新增生产后台桥。两个显式分配的虚拟屏靶场，由 loaded RWI 建立精确窗绑定及前台顺序；第一次真实后台 canvas down 触发一次原生系统 Command+Tab，拒绝/部分输入不重试。
+- 保留 R46 的启动顺序/CG 发布延迟及慢 AX provider 失败；不把首个 PID 窗口误当主窗。按 UID、kernel birth、bundle、exact CG ID/geometry/title/layer 绑定；running 文件不等于 WindowServer 已发布，任何按键之前必须确认真实 peer surface。
+- R47/102 暴露靶场自身 guard 错误：先误挡 combined-only 残留 key12，再把自己发出的 Command 误作 HID 外部键；真实只发 Command-down/up（2 调用），没有切窗。改成与生产 `native/hotkey.rs` 相同的分段：首次 down 前 held-resource preflight，之后仍逐 down 检查权限/foreground/peer/最近 HID；不把全局表当持续人类来源证明，不取消真实让步。失败的蓝线不重放，104 是新分配/新请求。
+- R47/104 实机：固定系统 chord 4 调用及配对释放；同 CG40524 的5秒拖拽 1 down/78 dragged/1 up，18后台/62前台 callback，首次前台接收在 down 后1211.197ms，实际手势4970.729ms，completed1/orphan0。原生 NSWorkspace/接收记录独立确认30164→33600；receipt里的瞬时 after 仍是30164，未拿它替代成功。是机器系统切换，不是真人抢占证明。
+- 当前已部署 Live 实际320×303点／截图640×606，源高清1320×1104未下降；原生圆形隐藏eye.slash、关闭xmark，AX名称明确，无经典三色窗口按钮。实际 Hide→清图/移除，显式Resume→恢复，活动Close→requested stop/worker done/清图，关闭时源仍running。两次自身AXPress仍返回-25200/uncertain，独立状态确认效果但不篡改回执、不重发。
+- 兼容 viewer 先真实 queued，再通过公开任务导航显示，原生采集29帧/正确内建屏后才称可见；没有伪造 presence。它仍是实际 browser-panel visibility，不是正式 MCP Apps/Host task-ID 绑定。官方文档未给 PiP 精确尺寸，未声称1:1复制其私有界面。
+- 102/103/104均真实 named-close、lifetime_close_requests0、进程exit0；11原请求全部terminal/released/no pending/no replay，两条AX effect uncertain如实保留。12个本轮及过期自有 binding detach；只读恢复观测0 keys/0 buttons/flags0、stale session key12保留，input_sent=false，无全局自动释放。
+- 同一 CLI/input：BASELINE1（没有--check-only）、MODIFIED0（配置合法/noGUI/noinput/native binding false）、独立 binary copy执行ROLLBACK后1且SHA等于原始、重应用0。不能把纯配置检查当native成功。完整四角色继续沿用原150路径与原97基线；R47实际11门全部0：workspace736/0/11/42、Receiver63、UI7；fmt/全targets/features Clippy-Dwarnings、release Agent/MCP 与架构门通过（旧12债务仍保留），不借旧R45绿灯。
+- 正式 Host 任务绑定、真人竞争输入、完整 F01–F16/其它应用覆盖仍未完成；小浮层是已有部署的实机复核，不是本轮新部署。证据：`/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/command-tab-native-r46`；截图按真实顺序保存在 `/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/2026-10-11-rwi-autonomous-native-r47`。用户休息期间不请求展开/切窗/重启/权限；不能自动代替管理员/系统授权。
