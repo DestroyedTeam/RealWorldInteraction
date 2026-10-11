@@ -44,12 +44,10 @@ pub(crate) fn activate_background_window(pid: u32, window: u32) -> bool {
     };
     event.set_integer_value_field(EventField::EVENT_TARGET_UNIX_PROCESS_ID, i64::from(pid));
     event.set_integer_value_field(TARGET_WINDOW_NUMBER_FIELD, i64::from(window));
-    event.set_integer_value_field(PRIVATE_WINDOW_ROUTING_FIELD, 1);
     event.post_to_pid(pid as libc::pid_t);
     true
 }
 const TARGET_WINDOW_NUMBER_FIELD: u32 = 51;
-const PRIVATE_WINDOW_ROUTING_FIELD: u32 = 58;
 #[derive(Clone, Copy)]
 pub(crate) struct Delivery {
     pub pid: u32,
@@ -78,7 +76,9 @@ fn stamp(event: &CGEvent, delivery: &Delivery, pointer: bool) {
         i64::from(delivery.pid),
     );
     event.set_integer_value_field(TARGET_WINDOW_NUMBER_FIELD, i64::from(delivery.window));
-    event.set_integer_value_field(PRIVATE_WINDOW_ROUTING_FIELD, 1);
+    // Field 58 aliases CGEventGetTimestamp on this native runtime. It is not a
+    // routing flag: writing 1 corrupted caller timestamps. Keep the event clock
+    // intact; exact PID/window fields and window-local coordinates carry routing.
     if pointer {
         // Pointer intents currently have no modifier argument. Never inherit
         // a user's Alt/Command/Shift held in another application.
@@ -142,7 +142,6 @@ mod tests {
         assert_eq!(event.get_flags(), CGEventFlags::empty());
         let read = |field: u32| event.get_integer_value_field(field);
         assert_eq!(read(TARGET_WINDOW_NUMBER_FIELD), 10656);
-        assert_eq!(read(PRIVATE_WINDOW_ROUTING_FIELD), 1);
         assert_eq!(read(EventField::EVENT_TARGET_UNIX_PROCESS_ID), 514);
         assert_eq!(
             read(EventField::MOUSE_EVENT_WINDOW_UNDER_MOUSE_POINTER),
@@ -167,6 +166,7 @@ mod tests {
         };
         let event = event();
         event.set_flags(CGEventFlags::CGEventFlagCommand);
+        let original_timestamp = event.get_integer_value_field(58);
         stamp(&event, &delivery, false);
         assert_eq!(event.get_flags(), CGEventFlags::CGEventFlagCommand);
         assert_eq!(
@@ -177,9 +177,32 @@ mod tests {
             event.get_integer_value_field(TARGET_WINDOW_NUMBER_FIELD),
             10656
         );
-        assert_eq!(
-            event.get_integer_value_field(PRIVATE_WINDOW_ROUTING_FIELD),
-            1
-        );
+        assert_eq!(event.get_integer_value_field(58), original_timestamp);
+    }
+    #[test]
+    fn background_stamp_preserves_sender_event_timestamp() {
+        #[link(name = "CoreGraphics", kind = "framework")]
+        unsafe extern "C" {
+            fn CGEventGetTimestamp(event: ffi::Ref) -> u64;
+            fn CGEventSetTimestamp(event: ffi::Ref, timestamp: u64);
+        }
+        let e = mouse_event();
+        unsafe {
+            CGEventSetTimestamp(e.as_ptr().cast(), 123_456_789);
+        }
+        let before = unsafe { CGEventGetTimestamp(e.as_ptr().cast()) };
+        assert_eq!(before, 123_456_789);
+        let delivery = Delivery {
+            pid: 514,
+            window: 10656,
+            frame: Rect {
+                x: 0.,
+                y: 0.,
+                w: 100.,
+                h: 100.,
+            },
+        };
+        stamp(&e, &delivery, true);
+        assert_eq!(unsafe { CGEventGetTimestamp(e.as_ptr().cast()) }, before);
     }
 }
