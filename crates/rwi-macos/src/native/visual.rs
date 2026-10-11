@@ -12,10 +12,10 @@ pub(super) struct VisualWindow {
     pub(super) rect: Rect,
 }
 
-/// AX absence is not a general observation retry policy. Timeouts, denied
-/// permissions, ambiguous AX matches and native identity failures stay errors.
-/// Only a completed AX search with no matching window, or an explicitly
-/// unsupported/missing AXWindows attribute, can use a fresh CG/SCK visual.
+/// A failed read is not AX absence or input authority. Only an exact AXWindows
+/// read failure or a completed, unambiguous AX search can use fresh CG/SCK pixels.
+/// CannotComplete (-25204) retains the bounded settle attempts in observe and
+/// the original diagnostic; permissions, identity and action failures stay errors.
 pub(super) fn ax_unavailable_for_visual(error: &Fault) -> bool {
     if error.code == "window_missing" {
         return error.diagnostic.as_ref().is_some_and(|d| {
@@ -28,10 +28,21 @@ pub(super) fn ax_unavailable_for_visual(error: &Fault) -> bool {
         && error.diagnostic.as_ref().is_some_and(|d| {
             d["api"] == "AXUIElementCopyAttributeValue"
                 && d["attribute"] == "AXWindows"
-                && matches!(d["ax_error"].as_i64(), Some(-25205 | -25212))
+                && matches!(d["ax_error"].as_i64(), Some(-25204 | -25205 | -25212))
                 && d["operation_kind"] == "read"
                 && d["replay_allowed"] == false
         })
+}
+
+fn visual_only_consistency(ax_error: &Fault, attempts: u8, capture_ms: u64) -> serde_json::Value {
+    json!({
+        "scope":"last_observe", "visual_only":true, "window_context_stable":true,
+        "pixel_semantic_atomic":false, "controls_source":"unavailable",
+        "input_reference_available":false, "input_revalidation_required":true,
+        "attempts":attempts, "capture_ms":capture_ms,
+        "ax_coverage_after":{"complete":false,"reason":"ax_read_failed"},
+        "ax_error":ax_error
+    })
 }
 
 fn visual_only_scene(
@@ -173,10 +184,12 @@ impl NativeMac {
     /// check are independent of the failed AX lookup. No Binding, transform or
     /// controls are created, so neither this frame nor its image tiles can
     /// become an input reference.
-    pub(super) fn observe_visual_only(&self, ax_error: &Fault) -> Result<Scene> {
+    pub(super) fn observe_visual_only(&self, ax_error: &Fault, attempts: u8) -> Result<Scene> {
         operation::checkpoint("macos_visual_only_begin")?;
         let before = self.visual_window()?;
+        let phase = Instant::now();
         let capture = self.capturer.capture(self.pid, self.window, before.rect)?;
+        let capture_ms = phase.elapsed().as_millis() as u64;
         operation::checkpoint("macos_visual_only_post_capture")?;
         let after = self.visual_window()?;
         if before.record != after.record || before.displays != after.displays {
@@ -184,6 +197,9 @@ impl NativeMac {
                 "visual_window_changed",
                 "Window identity, geometry or display topology changed during visual-only capture; discard this image.",
             ));
+        }
+        if let Ok(mut saved) = self.last_observation.lock() {
+            *saved = visual_only_consistency(ax_error, attempts, capture_ms);
         }
         Ok(visual_only_scene(self.identity.clone(), capture, ax_error))
     }
@@ -330,10 +346,10 @@ mod tests {
     }
 
     #[test]
-    fn visual_only_fallback_requires_completed_ax_absence_not_timeout_or_identity_loss() {
+    fn visual_only_fallback_requires_exact_read_failure_not_identity_or_action_loss() {
         assert!(ax_unavailable_for_visual(&ax_failure("AXWindows", -25205)));
         assert!(ax_unavailable_for_visual(&ax_failure("AXWindows", -25212)));
-        assert!(!ax_unavailable_for_visual(&ax_failure("AXWindows", -25204)));
+        assert!(ax_unavailable_for_visual(&ax_failure("AXWindows", -25204)));
         assert!(!ax_unavailable_for_visual(&ax_failure(
             "AXChildren",
             -25205
@@ -436,5 +452,53 @@ mod tests {
         assert!(process_birth("43:1790246422:436437", 42).is_err());
         assert!(process_birth("42:1790246422:1000000", 42).is_err());
         assert!(process_birth("42:0:0", 42).is_err());
+    }
+    #[test]
+    fn visual_only_keeps_observation_available_for_exact_read_timeout_without_input_authority() {
+        let timeout = ax_failure("AXWindows", -25204);
+        assert!(ax_unavailable_for_visual(&timeout));
+        let scene = visual_only_scene(
+            NativeMac::fixture_for_live().identity,
+            crate::capture::Capture {
+                png: vec![1, 2, 3],
+                size: [2, 2],
+                native_size: [2, 2],
+                content_sha: String::new(),
+            },
+            &timeout,
+        );
+        assert!(scene.binding.is_none());
+        assert!(scene.pixel_to_desktop.is_none());
+        assert!(!scene.mutation_ready);
+        assert!(scene.elements.is_empty());
+        let consistency = visual_only_consistency(&timeout, 3, 42);
+        assert_eq!(consistency["ax_error"], json!(timeout));
+        assert_eq!(consistency["ax_error"]["diagnostic"]["ax_error"], -25204);
+        assert_eq!(consistency["ax_coverage_after"]["complete"], false);
+        assert_eq!(consistency["input_reference_available"], false);
+        assert_eq!(consistency["attempts"], 3);
+    }
+
+    #[test]
+    fn read_timeout_visual_policy_rejects_unknown_attribute_action_and_replay() {
+        assert!(!ax_unavailable_for_visual(&ax_failure(
+            "AXChildren",
+            -25204
+        )));
+        assert!(!ax_unavailable_for_visual(&ax_failure("AXWindows", -25211)));
+        for (key, value) in [
+            ("api", json!("AXUIElementPerformAction")),
+            ("attribute", json!("AXFocusedWindow")),
+            ("operation_kind", json!("action")),
+            ("replay_allowed", json!(true)),
+        ] {
+            let mut timeout = ax_failure("AXWindows", -25204);
+            timeout.diagnostic.as_mut().unwrap()[key] = value;
+            assert!(!ax_unavailable_for_visual(&timeout), "{key}");
+        }
+        assert!(!ax_unavailable_for_visual(&fault(
+            "ax_attribute_unavailable",
+            "no diagnostic"
+        )));
     }
 }

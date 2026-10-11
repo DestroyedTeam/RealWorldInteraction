@@ -127,9 +127,6 @@ impl Backend for NativeMac {
             })();
             match result {
                 Ok(scene) => return Ok(scene),
-                Err(error) if visual::ax_unavailable_for_visual(&error) => {
-                    return self.observe_visual_only(&error);
-                }
                 Err(error)
                     if attempt < 2
                         && (error.code == "capture_binding_changed"
@@ -137,6 +134,9 @@ impl Backend for NativeMac {
                 {
                     settled = Some(error);
                     std::thread::sleep(std::time::Duration::from_millis(150));
+                }
+                Err(error) if visual::ax_unavailable_for_visual(&error) => {
+                    return self.observe_visual_only(&error, attempt + 1);
                 }
                 Err(error) => return Err(error),
             }
