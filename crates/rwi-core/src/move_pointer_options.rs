@@ -39,6 +39,17 @@ impl MovePointerOptions {
         matches!(self, Self::ForegroundSystem { .. })
     }
     pub fn require_capability(&self, capabilities: &serde_json::Value) -> Result<()> {
+        // Explicit background selection is not the same as omitting options.
+        // An unadvertised device must never reinterpret it as its native route.
+        if matches!(self, Self::BackgroundWindow {})
+            && (capabilities["pointer_move"]["implemented"] != true
+                || capabilities["pointer_move"]["default_delivery"] != "background_window")
+        {
+            return Err(fault(
+                "capability_unavailable",
+                "This backend does not advertise window-addressed background pointer delivery; no fallback.",
+            ));
+        }
         if self.requires_foreground()
             && capabilities["pointer_move"]["foreground_system"]["implemented"] != true
         {
@@ -107,7 +118,8 @@ mod tests {
         );
         assert!(
             MovePointerOptions::BackgroundWindow {}
-                .require_capability(&serde_json::json!({}))
+                .require_capability(&serde_json::json!({"pointer_move":{
+                    "implemented":true,"default_delivery":"background_window"}}))
                 .is_ok()
         );
     }
@@ -139,6 +151,65 @@ mod tests {
         );
         assert_eq!(result.unwrap_err().code, "capability_unavailable");
         assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        engine.release(&lease).unwrap();
+    }
+    #[test]
+    fn pointer_options_explicit_background_needs_its_own_advertised_route() {
+        let options =
+            MovePointerOptions::parse(Some(r#"{"delivery":"background_window"}"#)).unwrap();
+        for unadvertised in [
+            serde_json::json!({}),
+            serde_json::json!({"pointer_move":{"implemented":true}}),
+            serde_json::json!({"pointer_move":{"implemented":true,"default_delivery":"foreground_system"}}),
+            serde_json::json!({"pointer_move":{"implemented":false,"default_delivery":"background_window"}}),
+        ] {
+            assert_eq!(
+                options.require_capability(&unadvertised).unwrap_err().code,
+                "capability_unavailable"
+            );
+        }
+    }
+    #[cfg(feature = "fixture")]
+    #[test]
+    fn pointer_options_explicit_background_refuses_but_bare_move_keeps_legacy_backend_route() {
+        let dir = tempfile::tempdir().unwrap();
+        let fixture = crate::fixture::Fixture::default();
+        let mut engine = crate::Engine::new(dir.path().into()).unwrap();
+        engine
+            .register("fixture".into(), Box::new(fixture.clone()))
+            .unwrap();
+        let frame = engine.observe("fixture").unwrap().frame;
+        let reference = engine
+            .resolve(
+                "fixture",
+                &frame,
+                crate::Locator::Element { id: "Input".into() },
+            )
+            .unwrap();
+        let lease = engine.claim("fixture", 5000).unwrap();
+        let refused = engine.act(
+            "fixture",
+            &reference.reference,
+            &lease,
+            "explicit-background",
+            crate::Intent::MovePointer,
+            Some(r#"{"delivery":"background_window"}"#.into()),
+        );
+        assert_eq!(refused.unwrap_err().code, "capability_unavailable");
+        assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        let bare = engine
+            .act(
+                "fixture",
+                &reference.reference,
+                &lease,
+                "bare-default",
+                crate::Intent::MovePointer,
+                None,
+            )
+            .unwrap();
+        assert_eq!(bare.dispatch, "returned");
+        assert!(!bare.goal_verified);
+        assert_eq!(fixture.0.lock().unwrap().calls, 1);
         engine.release(&lease).unwrap();
     }
 }

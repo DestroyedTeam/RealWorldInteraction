@@ -178,7 +178,7 @@ impl Engine {
             return Ok(result);
         }
         operation::checkpoint("before_revalidation")?;
-        if matches!(intent, Intent::MovePointer) {
+        if matches!(intent, Intent::MovePointer) && value.is_some() {
             MovePointerOptions::parse(value.as_deref())?
                 .require_capability(&self.backend(target)?.capabilities())?;
         }
