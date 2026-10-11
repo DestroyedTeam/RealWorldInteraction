@@ -279,6 +279,17 @@ production RWI route or an automatic fallback. Read back foreground; do not assu
 
 ## Explicit own document-modal controls
 
+Shared Colors/Fonts diagnostics distinguish AppKit `isVisible` from actual
+presentation. Only an explicitly opened, retained own panel records
+`hides_on_deactivate`, `on_active_space`, `occlusion_state`, and
+`quartz_description`. The latter uses the public
+`CGWindowListCreateDescriptionFromArray` API for that one pointer-encoded ID,
+checks the exact current PID/window before returning fields, and does not query
+other window titles, capture pixels, activate, change panel policy, or grant
+input. Unopened/unread properties stay null. A zero-row or failed description
+is not proof of an onscreen surface or a specific cause; cross-check discovery.
+
+
 `--modal-controls` is off by default and requires the complete own-window allocation. It adds
 Open own sheet / Modal safe count / Close sheet controls. They use public `NSWindow.beginSheet`
 and `endSheet` on a retained **own** NSPanel, with a correctly typed nil Block completion handler.

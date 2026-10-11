@@ -738,6 +738,27 @@ pub struct SystemPanelOracle {
     pub display_id: Option<u32>,
     pub is_sheet: Option<bool>,
     pub attached_to_own_parent: Option<bool>,
+    /// AppKit visibility alone is not a WindowServer onscreen assertion.
+    pub hides_on_deactivate: Option<bool>,
+    pub on_active_space: Option<bool>,
+    pub occlusion_state: Option<usize>,
+    /// Exact retained panel ID only; no desktop capture or input authority.
+    pub quartz_description: Option<serde_json::Value>,
+}
+
+#[cfg(test)]
+#[test]
+fn shared_panel_visibility_diagnostics_remain_unknown_until_native_readback() {
+    let data = serde_json::to_value(SystemPanelOracle::default()).unwrap();
+    for key in [
+        "hides_on_deactivate",
+        "on_active_space",
+        "occlusion_state",
+        "quartz_description",
+    ] {
+        assert!(data.get(key).is_some(), "missing diagnostic {key}");
+        assert!(data[key].is_null(), "unobserved {key} must not mean false");
+    }
 }
 #[derive(Default, Serialize)]
 pub struct SystemPanels {

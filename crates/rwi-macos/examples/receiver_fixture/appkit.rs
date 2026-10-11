@@ -692,7 +692,78 @@ fn sample_system_panel(
         observed.is_sheet = Some(msg_send![panel, isSheet]);
         let parent: *mut AnyObject = msg_send![panel, sheetParent];
         observed.attached_to_own_parent = Some(std::ptr::eq(parent.cast_const(), own_parent));
+        observed.hides_on_deactivate = Some(msg_send![panel, hidesOnDeactivate]);
+        observed.on_active_space = Some(msg_send![panel, isOnActiveSpace]);
+        observed.occlusion_state = Some(msg_send![panel, occlusionState]);
     }
+    observed.quartz_description = observed.window_number.and_then(|number| {
+        u32::try_from(number)
+            .ok()
+            .filter(|id| *id != 0)
+            .map(own_panel_quartz_description)
+    });
+}
+
+/// Query only the retained panel ID, not a desktop-wide inventory. Neither a
+/// property nor this non-atomic read grants capture, activation or input.
+fn own_panel_quartz_description(window: u32) -> serde_json::Value {
+    use core_foundation::{
+        array::CFArray,
+        base::{CFType, TCFType},
+        boolean::CFBoolean,
+        dictionary::CFDictionary,
+        number::CFNumber,
+        string::CFString,
+    };
+    use serde_json::json;
+
+    // CGWindowIDs in this CFArray are pointer-sized encoded values, not
+    // CFNumbers or a packed u32 slice. Null retain/release callbacks are used.
+    let ids = CFArray::from_copyable(&[window as usize]);
+    let raw = unsafe {
+        core_graphics::window::CGWindowListCreateDescriptionFromArray(ids.as_concrete_TypeRef())
+    };
+    let mut data = json!({"scope":"exact_own_panel_quartz_metadata","window":window,
+        "non_atomic":true,"input_authority":false,"input_sent":false,
+        "sampled_unix_ms":std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default().as_millis() as u64});
+    if raw.is_null() {
+        data["read_available"] = json!(false);
+        return data;
+    }
+    let rows: CFArray<CFDictionary<CFString, CFType>> =
+        unsafe { TCFType::wrap_under_create_rule(raw) };
+    data["read_available"] = json!(true);
+    data["records"] = json!(rows.len());
+    if rows.len() != 1 {
+        return data;
+    }
+    let row = rows.get(0).expect("one native metadata row");
+    let integer = |key: &str| {
+        row.find(CFString::new(key))
+            .and_then(|v| v.downcast::<CFNumber>())
+            .and_then(|v| v.to_i64())
+    };
+    let pid = integer("kCGWindowOwnerPID");
+    let number = integer("kCGWindowNumber");
+    let own = pid == Some(i64::from(std::process::id())) && number == Some(i64::from(window));
+    data["owner_matches"] = json!(own);
+    if !own {
+        return data;
+    }
+    data["pid"] = json!(pid);
+    data["layer"] = json!(integer("kCGWindowLayer"));
+    data["onscreen"] = json!(
+        row.find(CFString::new("kCGWindowIsOnscreen"))
+            .and_then(|v| v.downcast::<CFBoolean>())
+            .map(bool::from)
+    );
+    data["alpha"] = json!(
+        row.find(CFString::new("kCGWindowAlpha"))
+            .and_then(|v| v.downcast::<CFNumber>())
+            .and_then(|v| v.to_f64())
+    );
+    data
 }
 fn open_system_panel(kind: &'static str, sender: &AnyObject) {
     callback(|| {
