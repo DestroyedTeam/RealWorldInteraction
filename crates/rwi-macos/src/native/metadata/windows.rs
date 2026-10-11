@@ -2,6 +2,72 @@
 use super::*;
 
 impl NativeMac {
+    /// A fresh application reference changes only this read's messaging timeout,
+    /// not the original caller's or a system-wide AX element. No cached window,
+    /// title/geometry fallback, app activation or input request is involved.
+    fn exact_inventory_relay(&self, expected: Rect) -> Result<Cf> {
+        let started = Instant::now();
+        let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
+        let status = unsafe { ffi::AXUIElementSetMessagingTimeout(application.0, 0.25) };
+        if status != 0 {
+            return Err(fault(
+                "ax_inventory_timeout_unavailable",
+                "Cannot set the bounded inventory read timeout.",
+            ));
+        }
+        let value = application.attr("AXWindows")?;
+        let windows = unsafe { ffi::array(value.0, 64)? };
+        let mut candidates: Vec<Cf> = Vec::new();
+        for window in windows {
+            operation::checkpoint("macos_ax_bounded_inventory_candidate")?;
+            if started.elapsed() >= Duration::from_millis(500) {
+                return Err(fault(
+                    "ax_inventory_relay_budget",
+                    "Inventory relay budget exhausted; no window selection.",
+                ));
+            }
+            let native_type = unsafe { ffi::CFGetTypeID(window.0) == ffi::AXUIElementGetTypeID() };
+            if !native_type {
+                continue;
+            }
+            let status = unsafe { ffi::AXUIElementSetMessagingTimeout(window.0, 0.05) };
+            if status != 0 {
+                return Err(fault(
+                    "ax_inventory_timeout_unavailable",
+                    "Cannot bound the candidate window reads.",
+                ));
+            }
+            let id = ffi::window_number_for_ax_element(&window);
+            if id != Some(self.window) {
+                continue;
+            }
+            let role = window.attr("AXRole").ok().and_then(|v| v.string().ok());
+            if exact_relay::exact_relay_matches(
+                self.pid,
+                self.window,
+                expected,
+                exact_relay::RelayFacts {
+                    native_type,
+                    pid: window.pid().ok(),
+                    window: id,
+                    rect: ax_rect(&window).ok(),
+                    role: role.as_deref(),
+                },
+            ) && !candidates
+                .iter()
+                .any(|prior| unsafe { ffi::CFEqual(prior.0, window.0) != 0 })
+            {
+                candidates.push(window);
+            }
+        }
+        if candidates.len() != 1 {
+            return Err(fault(
+                "ax_inventory_relay_no_exact_window",
+                "Bounded inventory has no single exact native window; no geometry or first-row substitution.",
+            ));
+        }
+        Ok(candidates.remove(0))
+    }
     /// Exact private-SPI window match first; a strict geometry fallback only
     /// when the private attribute is unavailable. Modal sheets and dialogs are
     /// child elements of a top-level AX window rather than entries in
@@ -209,7 +275,149 @@ impl NativeMac {
         application: &Cf,
         expected: Rect,
     ) -> Result<Cf> {
-        let value = application.attr("AXWindows")?;
+        self.resolve_window_element_traced(application, expected, &mut None)
+    }
+    pub(in crate::native) fn resolve_window_element_traced(
+        &self,
+        application: &Cf,
+        expected: Rect,
+        recovery: &mut Option<serde_json::Value>,
+    ) -> Result<Cf> {
+        let value = match application.attr("AXWindows") {
+            Ok(value) => value,
+            Err(mut error) => {
+                if !ffi::observation_read_can_settle(&error) {
+                    return Err(error);
+                }
+                // Prefer exact aliases, without input/focus or geometry-only
+                // substitution. A never-focused background app may expose none;
+                // only that read-only case may use one bounded inventory relay.
+                let started = Instant::now();
+                let mut candidates: Vec<(Cf, &'static str)> = Vec::new();
+                let mut attempted = 0;
+                for attribute in ["AXFocusedWindow", "AXMainWindow"] {
+                    operation::checkpoint("macos_ax_exact_window_relay")?;
+                    if started.elapsed() >= Duration::from_millis(500) {
+                        break;
+                    }
+                    attempted += 1;
+                    let Ok(candidate) = application.attr(attribute) else {
+                        continue;
+                    };
+                    let native_type =
+                        unsafe { ffi::CFGetTypeID(candidate.0) == ffi::AXUIElementGetTypeID() };
+                    if !native_type {
+                        continue;
+                    }
+                    let role = candidate.attr("AXRole").ok().and_then(|v| v.string().ok());
+                    if exact_relay::exact_relay_matches(
+                        self.pid,
+                        self.window,
+                        expected,
+                        exact_relay::RelayFacts {
+                            native_type,
+                            pid: candidate.pid().ok(),
+                            window: ffi::window_number_for_ax_element(&candidate),
+                            rect: ax_rect(&candidate).ok(),
+                            role: role.as_deref(),
+                        },
+                    ) && !candidates
+                        .iter()
+                        .any(|(prior, _)| unsafe { ffi::CFEqual(prior.0, candidate.0) != 0 })
+                    {
+                        candidates.push((candidate, attribute));
+                    }
+                }
+                // AXWindow names an enclosing ordinary window, not a sheet.
+                // A focused control's public top-level object may instead be the
+                // exact selected sheet. Read no value/text or ancestor search.
+                if candidates.is_empty() && started.elapsed() < Duration::from_millis(500) {
+                    operation::checkpoint("macos_ax_exact_top_level_relay")?;
+                    attempted += 1;
+                    if let Ok(focused) = application.attr("AXFocusedUIElement") {
+                        let native_type =
+                            unsafe { ffi::CFGetTypeID(focused.0) == ffi::AXUIElementGetTypeID() };
+                        if native_type
+                            && exact_relay::focused_provider_matches(
+                                self.pid,
+                                native_type,
+                                focused.pid().ok(),
+                            )
+                            && started.elapsed() < Duration::from_millis(500)
+                        {
+                            operation::checkpoint("macos_ax_exact_top_level_object")?;
+                            attempted += 1;
+                            if let Ok(candidate) = focused.attr("AXTopLevelUIElement") {
+                                let native_type = unsafe {
+                                    ffi::CFGetTypeID(candidate.0) == ffi::AXUIElementGetTypeID()
+                                };
+                                if native_type {
+                                    let role =
+                                        candidate.attr("AXRole").ok().and_then(|v| v.string().ok());
+                                    if exact_relay::exact_relay_matches(
+                                        self.pid,
+                                        self.window,
+                                        expected,
+                                        exact_relay::RelayFacts {
+                                            native_type,
+                                            pid: candidate.pid().ok(),
+                                            window: ffi::window_number_for_ax_element(&candidate),
+                                            rect: ax_rect(&candidate).ok(),
+                                            role: role.as_deref(),
+                                        },
+                                    ) {
+                                        candidates.push((
+                                            candidate,
+                                            "AXFocusedUIElement.AXTopLevelUIElement",
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                let mut note = serde_json::json!({
+                    "route":"exact_AX_alias_after_window_list_messaging_failure",
+                    "original_error":error.diagnostic,
+                    "attributes_attempted":attempted,
+                    "candidate_count":candidates.len(),
+                    "input_authority":false,
+                    "focus_requested":false,
+                    "input_replayed":false,
+                });
+                if candidates.len() == 1 {
+                    let (candidate, attribute) = candidates.remove(0);
+                    let mut note = note;
+                    note["resolved_attribute"] = serde_json::json!(attribute);
+                    *recovery = Some(note);
+                    return Ok(candidate);
+                }
+                if exact_relay::inventory_retry_allowed(&error, candidates.len()) {
+                    operation::checkpoint("macos_ax_bounded_inventory_relay")?;
+                    note["inventory_retry_attempted"] = serde_json::json!(true);
+                    match self.exact_inventory_relay(expected) {
+                        Ok(candidate) => {
+                            note["route"] =
+                                serde_json::json!("bounded_exact_AXWindows_read_after_alias_miss");
+                            note["resolved_attribute"] = serde_json::json!("AXWindows");
+                            note["candidate_count"] = serde_json::json!(1);
+                            note["inventory_timeout_ms"] = serde_json::json!(250);
+                            *recovery = Some(note);
+                            return Ok(candidate);
+                        }
+                        Err(relay_error) => {
+                            note["inventory_retry_error"] = serde_json::json!(relay_error)
+                        }
+                    }
+                }
+                // Ambiguous/unknown aliases retain the original failure and no
+                // binding. Do not pick first or substitute another window.
+                if let Some(original) = error.diagnostic.as_mut() {
+                    original["exact_relay"] = note;
+                }
+                return Err(error);
+            }
+        };
         let mut windows = unsafe { ffi::array(value.0, 64)? };
         let mut exact = Vec::new();
         let mut geometric = Vec::new();

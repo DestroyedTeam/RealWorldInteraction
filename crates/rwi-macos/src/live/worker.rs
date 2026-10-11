@@ -32,6 +32,7 @@ pub(super) fn run(shared: Arc<Shared>) {
     }
 }
 fn run_loop(shared: &Arc<Shared>) {
+    let mut family_capture = crate::native::LiveFamilyCapture::default();
     loop {
         let Ok(mut state) = shared.state.lock() else {
             return;
@@ -74,10 +75,13 @@ fn run_loop(shared: &Arc<Shared>) {
                         "Preview display topology changed; restart with a fresh display selection.",
                     ));
                 }
-                source.visual_capture(VisualOptions {
-                    max_edge: options.max_edge,
-                    ..Default::default()
-                })
+                source.live_visual_capture(
+                    VisualOptions {
+                        max_edge: options.max_edge,
+                        ..Default::default()
+                    },
+                    &mut family_capture,
+                )
             })
         });
         operation.finish();

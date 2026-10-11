@@ -109,7 +109,7 @@ impl State {
         debug_assert!(matches!(self.mode, Mode::Running | Mode::Recovering));
         self.mode = Mode::Running;
         self.reset_source_recovery();
-        self.metadata = json!({"window":frame.window,"title":frame.details["title"],"display":frame.details["display"],"captured_unix_ms":frame.captured_unix_ms,"image_size":frame.image_size});
+        self.metadata = json!({"window":frame.window,"title":frame.details["title"],"display":frame.details["display"],"captured_unix_ms":frame.captured_unix_ms,"image_size":frame.image_size,"family":frame.details["family"]});
         self.captured += 1;
         self.latest = Some(frame);
         self.last_error = None;

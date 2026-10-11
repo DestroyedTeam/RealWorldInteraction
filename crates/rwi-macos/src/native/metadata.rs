@@ -1,5 +1,6 @@
 //! Native AX metadata, focus and hit-testing. No implicit application activation.
 use super::*;
+mod exact_relay;
 mod placement;
 mod windows;
 use placement::panel_placement_position;
@@ -139,7 +140,9 @@ impl NativeMac {
         unsafe {
             ffi::AXUIElementSetMessagingTimeout(application.0, 0.05);
         }
-        let focused = self.resolve_window_element(&application, window.rect)?;
+        let mut window_recovery = None;
+        let focused =
+            self.resolve_window_element_traced(&application, window.rect, &mut window_recovery)?;
         let ax_rect = ax_rect(&focused)?;
         if !window.rect.same(ax_rect) {
             return Err(fault(
@@ -171,7 +174,7 @@ impl NativeMac {
         // Application-scoped AX hit testing still respects that app's window
         // z-order; equality with each exact tree node preserves window identity.
         let mut diagnostics = Vec::new();
-        let (elements, coverage) = read_control_metadata(include_controls, || {
+        let (elements, mut coverage) = read_control_metadata(include_controls, || {
             Ok(if let Some(target) = target {
                 if target.scope.pid != self.pid || target.scope.window != self.window_name() {
                     return Err(fault(
@@ -210,6 +213,9 @@ impl NativeMac {
                 )?
             })
         })?;
+        if let Some(note) = window_recovery {
+            coverage["window_resolution_recovery"] = note;
+        }
         if include_controls && let Ok(mut saved) = self.hit_diagnostics.lock() {
             *saved = diagnostics;
         }

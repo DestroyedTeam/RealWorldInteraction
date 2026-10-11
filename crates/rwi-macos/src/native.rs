@@ -6,6 +6,8 @@ pub(crate) mod hotkey;
 mod input;
 pub(crate) use input::NATIVE_SAMPLE_INTERVAL_MS;
 mod keyboard;
+mod live_family;
+pub(crate) use live_family::LiveFamilyCapture;
 mod metadata;
 mod objects;
 mod semantic;
