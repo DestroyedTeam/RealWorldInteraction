@@ -73,6 +73,11 @@ mod tests {
         let status = entry.status();
         assert_eq!(status.data["native_call_pending"], true);
         assert_eq!(status.data["terminal"], false);
+        assert!(!entry.retirable_at(
+            false,
+            true,
+            Instant::now() + HISTORY_TTL + Duration::from_secs(1)
+        ));
         assert_eq!(
             r.call(&pin, &policy, Some(token), Call::CloseContext)
                 .await
@@ -81,11 +86,20 @@ mod tests {
         );
         drop(scope);
         assert_eq!(entry.status().data["resources_released"], true);
+        let completed_at = Instant::now();
         if let Phase::Running { terminal_at, .. } = &mut *entry.phase.lock().unwrap() {
-            *terminal_at = Some(Instant::now() - HISTORY_TTL - Duration::from_secs(1));
+            *terminal_at = Some(completed_at);
         }
+        // A fresh Windows runner's monotonic epoch may be younger than the TTL.
+        // Advance the query clock, never manufacture a pre-epoch Instant.
+        assert!(!entry.retirable_at(
+            false,
+            true,
+            completed_at + HISTORY_TTL - Duration::from_nanos(1)
+        ));
         assert!(
-            r.resolve_execution(&pin, &reference).is_err(),
+            r.resolve_execution_at(&pin, &reference, completed_at + HISTORY_TTL)
+                .is_err(),
             "terminal age eviction must return stale, never another execution"
         );
         assert!(
@@ -145,13 +159,18 @@ impl Execution {
         }
     }
     pub fn retirable(&self, fenced: bool, aged_only: bool) -> bool {
+        self.retirable_at(fenced, aged_only, Instant::now())
+    }
+    fn retirable_at(&self, fenced: bool, aged_only: bool, now: Instant) -> bool {
         let _ = self.status();
         let Ok(phase) = self.phase.lock() else {
             return false;
         };
         match &*phase {
             Phase::Accepted => false,
-            Phase::Cancelled => !aged_only || self.accepted_at.elapsed() >= ACCEPT_TTL,
+            Phase::Cancelled => {
+                !aged_only || now.saturating_duration_since(self.accepted_at) >= ACCEPT_TTL
+            }
             Phase::Running {
                 operation,
                 terminal_at,
@@ -160,7 +179,9 @@ impl Execution {
                 s.terminal
                     && !s.native_call_pending
                     && (s.resources_released || fenced)
-                    && (!aged_only || terminal_at.is_some_and(|t| t.elapsed() >= HISTORY_TTL))
+                    && (!aged_only
+                        || terminal_at
+                            .is_some_and(|t| now.saturating_duration_since(t) >= HISTORY_TTL))
             }
         }
     }
@@ -379,6 +400,14 @@ impl Runtime {
         peer: &PeerPin,
         reference: &OperationRef,
     ) -> Result<(Arc<Context>, Arc<Execution>), DeviceResult> {
+        self.resolve_execution_at(peer, reference, Instant::now())
+    }
+    fn resolve_execution_at(
+        &self,
+        peer: &PeerPin,
+        reference: &OperationRef,
+        now: Instant,
+    ) -> Result<(Arc<Context>, Arc<Execution>), DeviceResult> {
         let stale = || {
             DeviceResult::error(
                 "execution_ref_expired",
@@ -397,7 +426,7 @@ impl Runtime {
         let mut entries = context.executions.lock().map_err(|_| stale())?;
         // Do not evict a live execution merely because a new query arrived.
         let fenced = context.domain.fenced.load(Ordering::Acquire);
-        entries.retain(|_, e| !e.retirable(fenced, true));
+        entries.retain(|_, e| !e.retirable_at(fenced, true, now));
         let entry = entries
             .get(&reference.execution_nonce)
             .filter(|e| e.reference == *reference)
