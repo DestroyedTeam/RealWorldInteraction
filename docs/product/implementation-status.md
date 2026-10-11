@@ -1770,3 +1770,25 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 真实顺序图片保存在 `outputs/validation/r54-readonly-ax-2026-10-11/`；03是原1320×1104，不将显示缩放当源分辨率。Live既有320×303pt、eye.slash/play.fill/xmark、真实v2任务隐藏/恢复/关闭继续保留，不复演已完成操作。
 - Apple的CannotComplete说明是消息失败/未响应，不能当AX缺失（https://developer.apple.com/documentation/applicationservices/1462091-axuielementperformaction）；API timeout可按对象设定（https://developer.apple.com/documentation/applicationservices/1459345-axuielementsetmessagingtimeout）。本轮只重试read、不重发action。
 - 完整F01–F16仍未完成，尤其真正后台tracking/tooltips、系统共享菜单、隐藏/最小化、跨应用DnD等；用户休息期间不再请求切窗、展开、密码或权限。唯一源根及同四角色不变；基线从155扩为156，新增此前未纳入的native visual源，原97全部不变。首次重构副本漏文件的验收失败1保留，修正后重跑。
+
+
+## 2026-10-11 · R55：自然冷启动后台拖拽实测，悬停缺口分开保留
+
+- 按R54 checkpoint真实启动own122（PID64052/CG42266/虚拟4），regular app、无environment sampler、默认first responder为NSButton、无cooperative校准。初次AX在第二次read恢复，返回7控件/正向输入binding，未把只读图当输入。
+- loaded RWI一次显式background hover：App/Window都收到type5、正确own window/hover zone；view/move/enter/exit/tooltip仍0。一次不同的新typed drag：实际NSView接收1down/16dragged/1up、completed1/orphan0，1320×1104实际蓝线可见；18个回调采样均app inactive/window nonkey/frontmostPID35390。不是连续前台/硬件来源证明，不外推所有应用或拖放DnD。
+- 原hover与drag durable请求均terminal/resources_released/no pending/no uncertainty/replay=false；volatile execution refs在保留期后expired的原错误不改写，按明确request重新只读查询，不重放动作。第一次release错误字段target被schema拒绝；纠正device_id时lease已过期unknown_lease，不假称显式release成功，也不是原生资源未清理。
+- 122后来真实lifetime到期closed/expiry1/进程exit0、binding detached；Close尝试停在process_identity_unknown，未调用点击，不称显式Close验收。
+- 本轮只更新事实，不改Rust、不部署、不为了每轮对话触发提交/Action；R54同一源码的755/0/11/42门禁及精确8d3f705 Mac/Windows CI证据保留，不能说是新性能/全量兼容性结论。原四角色与156原字节基线延展，完整F01–F16继续未完成。
+- 再复核已有50仓库/150正文研究及Apple activeAlways公开契约：允许inactive tracking并不代表一条外部PostToPid必然生成所有tracking/tooltip；不伪造第三方tracking指针、不偷偷激活/warp来充当后台成功。https://developer.apple.com/documentation/appkit/nstrackingarea/options-swift.struct/activealways ；Hammerspoon app post实用CGEventPostToPSN，非本进程sendEvent的跨进程接口：https://github.com/Hammerspoon/hammerspoon/blob/master/extensions/eventtap/libeventtap_event.m 。
+
+
+## 2026-10-11 · R56：sheet隔离通过，区分AppKit可见与系统面板呈现
+
+- 存储映射后继续原唯一源路径 `/Users/vincentadamnemessis/AI Projects/Real World Interaction`，实际卷 `/Volumes/Codex-RWI/Real World Interaction`；当前shell显式workdir，不进入旧cwd壳。只读复验旧123已到期closed/exit0；不重放原sheet/颜色动作。只比较当前156受管源，未把另一会话的282951全树校验报告当成本任务自行执行。
+- 原123 sheet：parentCG42287/input blocked，parent Safe动作checked_context_unavailable/native_dispatch=false/计数0；独立sheetCG42292安全按钮计数1、Close后visiblefalse/attachedfalse。首次typed click漏at.kind是schema拒绝/计数0，纠正参数和新request后执行成功，不是原生不可用。
+- 为自有fixture的SystemPanelOracle补只读hides_on_deactivate/on_active_space/occlusion_state/quartz_description；通过公开CGWindowListCreateDescriptionFromArray只查一枚pointer-sized windowID，再核对自身PID/id，Create/Get由CF RAII释放。无全桌面枚举、图像、输入授权、panel策略修改。未读取保持null；CG可选onscreen字段缺失仍null，不能改成false。focused基线缺诊断101，同命令修改后1pass0；完整11门0/workspace755/0/11/42、Receiver64/UI7。
+- 新124：Colors与Fonts分别真实CG42817/42831，初色彩窗在内建屏且不完全落单屏（0,771,266,454/displaynull），既有place_window已能原生移到虚拟4且两次settle确认；不为一个并不存在的placement错误改后端。各自原生画面与控件可读。
+- getter明确两panel hidesOnDeactivate=true。新peer125启动时已自然成为前台，随后RWI focus125是already_foreground/native_requests0，不能称工具造成该切换；source124 inactive时AppKit isVisible仍true，但两panel退出on-screen catalog，exact-CG描述仍同owner、onscreen可选键缺失。一次明确的RWI focus124经public AXRaise/AXFrontmost使54126→48954，独立记录同panelID/位置及catalog重新出现/onscreentrue。符合AppKit hide policy；不是旧123所有window_missing原因的普遍证明，也不是后台hidden panel输入验收。
+- 清理时两panel再次window_missing，未点不存在的Close；只对fresh parent/peer执行各一次AXClose，124/125 closed/expiry0/进程0，retained panels isVisiblefalse。123是到期expiry1而非显式Close。13原durable请求全部terminal/released/no pending/no uncertainty/no replay，所有6相关binding退役。
+- 生产Agent/MCP/四项权限不改、不需要Host重启。源配置BASELINE1/MODIFIED0/独立copy ROLLBACK1精确3hash恢复/REAPPLIED0，原四角色继续扩展；不将source配置试验当生产回滚效果。完整F01–F16仍未完成，background hover、foreign-provider menu、hidden/minimized输入、跨应用DnD等保留。
+- 主源：Apple hidesOnDeactivate（https://developer.apple.com/documentation/appkit/nswindow/hidesondeactivate）与Quartz描述指定IDs（https://developer.apple.com/documentation/coregraphics/quartz-window-services）；正式报告/原图在 `outputs/validation/r56-layered-panels-2026-10-11/`。

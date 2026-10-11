@@ -523,11 +523,11 @@
       "ignored": 11,
       "suites": 42
     },
-    "receiver63": true,
+    "receiver64": true,
     "UI7": true,
     "architecture_passed": true,
     "existing_debt": 12,
-    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-no-sampler-isolation-r54/final-gates/GATES_EVIDENCE_AGGREGATE.json"
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/layered-modal-panels-followthrough-r56/final-gates/GATES_EVIDENCE_AGGREGATE.json"
   },
   "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
   "current_deployment": {
@@ -2767,5 +2767,174 @@
     },
     "full_goal_complete": false,
     "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-no-sampler-isolation-r54"
+  },
+  "R55_cold_start_pointer": {
+    "scope": "one new cold-start regular own AppKit receiver on virtual4; no game/user document input; does not substitute for whole foreground/background matrix",
+    "pid": 64052,
+    "window": "cgwindow:42266",
+    "receiver_calibration_requested": false,
+    "first_responder": "RWIReceiverFixtureButton",
+    "background_drag": {
+      "downs": 1,
+      "moves": 16,
+      "ups": 1,
+      "completed": 1,
+      "orphan_moves": 0,
+      "orphan_ups": 0,
+      "independent_blue_line_verified": true,
+      "callback_samples": 18,
+      "all_callbacks_app_inactive": true,
+      "all_callbacks_window_nonkey": true,
+      "all_callbacks_frontmost_pid": 35390,
+      "continuous_foreground_or_hardware_origin_attestation": false
+    },
+    "background_hover": {
+      "application_events": 1,
+      "window_events": 1,
+      "hit": "hover_zone",
+      "view_moves": 0,
+      "enters": 0,
+      "exits": 0,
+      "tooltip_requests": 0,
+      "goal_verified": false
+    },
+    "original_request_states": {
+      "terminal": true,
+      "resources_released": true,
+      "native_call_pending": false,
+      "release_uncertain": false,
+      "replay_allowed": false
+    },
+    "errors_retained": [
+      "release target unsupported by actual schema; corrected to device_id but lease already expired/unknown_lease",
+      "volatile execution refs expired; explicit durable request query confirms original terminal resources",
+      "post-expiry Close observation process_identity_unknown: no Close input attempted",
+      "research local hover.rs path missing/exit1; actual module inventory queried"
+    ],
+    "fixture_cleanup": {
+      "status": "closed",
+      "expiry": 1,
+      "process_exit": 0,
+      "explicit_RWI_Close_verified": false,
+      "binding_detached": true
+    },
+    "source_changed": "acceptance facts only; production Rust and installed Agent/MCP unchanged",
+    "full_goal_complete": false,
+    "human_cooperation_requested": false,
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/background-cold-start-followthrough-r55"
+  },
+  "R56_shared_panel_visibility": {
+    "scope": "own document sheet and AppKit shared Colors/Fonts; actual tested cases only, not complete OS dialogs/foreign-PID/hidden input",
+    "source_root": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "resolved_root": "/Volumes/Codex-RWI/Real World Interaction",
+    "unique_product_source": true,
+    "completed_input_replay": false,
+    "sheet": {
+      "parent": 42287,
+      "sheet": 42292,
+      "exact_pid": 75812,
+      "parent_blocked": true,
+      "parent_native_dispatch": false,
+      "parent_safe_count": 0,
+      "sheet_safe_count": 1,
+      "sheet_closed": true
+    },
+    "panel_source": {
+      "pid": 48954,
+      "parent": 42809,
+      "color": 42817,
+      "font": 42831,
+      "color_and_font_independently_placed_on_virtual4": true,
+      "color_partial_initial_bounds": [
+        0,
+        771,
+        266,
+        454
+      ],
+      "placement_already_supported_before_this_fixture_probe": true
+    },
+    "visibility": {
+      "hides_on_deactivate": true,
+      "appkit_visible_during_inactive": true,
+      "inactive_panels_absent_from_onscreen_catalog": true,
+      "description_retains_exact_owner_row": true,
+      "inactive_onscreen_field": "null/unavailable, not forged false",
+      "explicit_return_restores_catalog_and_onscreen_true": true,
+      "peer_foreground_transition": "fixture125 creation made it foreground; subsequent focus125 had native_requests0/already_foreground",
+      "source_return": "explicit RWI AXRaise/AXFrontmost once, independent Native foreground/source/panels verified",
+      "hidden_panel_input_accepted": false,
+      "original123_cause": "unattested; new124 contrast supports client hide policy, not proof for every old error"
+    },
+    "implementation": {
+      "changed_symbol": "SystemPanelOracle / sample_system_panel / own_panel_quartz_description",
+      "production_agent_mcp_changed": false,
+      "read_only_one_retained_panel_id": true,
+      "changes_hides_policy": false,
+      "pixels_captured_by_probe": false,
+      "input_authority": false
+    },
+    "validation": {
+      "workspace": {
+        "passed": 755,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver_tests": 64,
+      "live_UI_tests": 7,
+      "all11_exit0": true,
+      "focused_baseline_exit": 101,
+      "focused_modified_exit": 0,
+      "source_configuration_baseline_modified_rollback_reapplied": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "production_rollback": false
+    },
+    "cleanup": {
+      "sources": {
+        "123": {
+          "pid": 75812,
+          "status": "closed",
+          "exit": 0,
+          "expiry": 1,
+          "explicit_RWI_Close": false,
+          "color_visible": false,
+          "font_visible": null
+        },
+        "124": {
+          "pid": 48954,
+          "status": "closed",
+          "exit": 0,
+          "expiry": 0,
+          "explicit_RWI_Close": true,
+          "color_visible": false,
+          "font_visible": false
+        },
+        "125": {
+          "pid": 54126,
+          "status": "closed",
+          "exit": 0,
+          "expiry": 0,
+          "explicit_RWI_Close": true,
+          "color_visible": null,
+          "font_visible": null
+        }
+      },
+      "durable_requests": 13,
+      "all_terminal_and_released": true,
+      "replay": false
+    },
+    "errors_retained": [
+      "click missing at.kind; schema-only failure/native open count0 then changed valid request",
+      "original123 color not discovered while inactive; not replayed",
+      "later panel Close snapshots window_missing: no panel click performed; own parent cleanup closes retained panels",
+      "codegraph filename guesses not indexed; actual source re-read",
+      "all original input records and source labels retained across storage migration"
+    ],
+    "full_goal_complete": false,
+    "human_cooperation_requested": false
   }
 }
