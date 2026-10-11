@@ -182,15 +182,18 @@ impl NativeMac {
                     )
                 });
         }
-        windows()?
+        let found = windows()?
             .into_iter()
-            .find(|w| w.id == self.window && w.pid == self.pid)
-            .ok_or_else(|| {
-                fault(
-                    "window_missing",
-                    "The exact pinned on-screen window/PID is absent.",
-                )
-            })
+            .find(|w| w.id == self.window && w.pid == self.pid);
+        if let Some(window) = found {
+            return Ok(window);
+        }
+        // An inactive shared panel can retain its native record while being
+        // removed from the onscreen list. Explain that distinction without
+        // returning an offscreen Window, input binding, or activation fallback.
+        let probe = window_record_probe::read(self.window);
+        operation::checkpoint("macos_missing_window_probe_complete")?;
+        Err(window_record_probe::missing(self.pid, self.window, probe))
     }
 }
 #[cfg(test)]
@@ -271,4 +274,17 @@ mod tests {
             .is_err()
         );
     }
+}
+
+#[cfg(test)]
+#[test]
+fn missing_window_has_read_only_exact_server_probe_wiring() {
+    let production = include_str!("semantic.rs")
+        .split("#[cfg(test)]")
+        .next()
+        .unwrap();
+    assert!(
+        production.contains("window_record_probe"),
+        "missing exact WindowServer read-only diagnostic; onscreen absence is not destruction"
+    );
 }

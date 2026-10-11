@@ -13,6 +13,7 @@ mod objects;
 mod semantic;
 pub(crate) use semantic::focused_dialog_window;
 mod visual;
+mod window_record_probe;
 use crate::{
     capture::Capturer,
     ffi::{self, Cf},

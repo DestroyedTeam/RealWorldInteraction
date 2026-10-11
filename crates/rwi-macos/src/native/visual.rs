@@ -214,12 +214,11 @@ impl NativeMac {
         let mut matches = windows()?
             .into_iter()
             .filter(|window| window.id == self.window && window.pid == self.pid);
-        let window = matches.next().ok_or_else(|| {
-            fault(
-                "window_missing",
-                "The exact bound on-screen window is unavailable for visual capture.",
-            )
-        })?;
+        let Some(window) = matches.next() else {
+            let probe = window_record_probe::read(self.window);
+            operation::checkpoint("macos_missing_visual_window_probe_complete")?;
+            return Err(window_record_probe::missing(self.pid, self.window, probe));
+        };
         if matches.next().is_some() {
             return Err(fault(
                 "window_binding_ambiguous",
