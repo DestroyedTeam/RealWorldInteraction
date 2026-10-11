@@ -2241,5 +2241,41 @@
     "native_windows_GUI_accepted": false,
     "new_exact_head_remote_ci_pending": true,
     "full_goal_complete": false
+  },
+  "R41_byte_pinned_fixture_checkout": {
+    "date": "2026-10-11",
+    "preceding_remote_ci": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38115460661",
+    "preceding_macos": "success",
+    "preceding_windows_unit_tests": {
+      "passed": 91,
+      "failed": 7
+    },
+    "actual_Git_autocrlf_checkout_reproduced_remote_sha": true,
+    "changed_file": ".gitattributes",
+    "exact_rules": {
+      "crates/rwi-windows/tests/fixtures/r5-preflight.json": "-text",
+      "crates/rwi-windows/tests/fixtures/r5-launch-grant.json": "-text"
+    },
+    "fixture_bytes_and_original_SHA_assertions_unchanged": true,
+    "same_input_real_checkout_probe": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "rollback_restores_original_attribute_absence": true,
+    "fresh_mandatory_gates_exit_zero": true,
+    "workspace": {
+      "passed": 736,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "additional_source_unchanged_gates_reused_from": "R40",
+    "runtime_normalization_or_test_skipping": false,
+    "native_runtime_deployment_changed": false,
+    "human_requests": false,
+    "new_exact_head_remote_ci_pending": true,
+    "full_goal_complete": false
   }
 }

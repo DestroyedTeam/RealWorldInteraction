@@ -1,3 +1,11 @@
+## 2026-10-11 · R41：固定证据原始字节跨平台 checkout
+
+第五次真实远程 run [38115460661](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38115460661) 的 Mac job 成功；Windows进入unit tests（此前编译错误已消失），rwi-windows91passed/7failed。7项均在固定r5证据PREFLIGHT原字节SHA处失败，实际eaf690…而expected76c36b…。
+
+本机用隔离Git index/worktree、真实 `core.autocrlf=true checkout-index` 精确复现同一eaf690…，而仓库blob/source的SHA仍为76c36b…。新增 `.gitattributes` 只为 `r5-preflight.json` 与 `r5-launch-grant.json` 设 `-text`，保证checkout原始字节。两份JSON、原SHA断言、7项安全负例都未改；不做运行时/测试内换行归一化、不接受另一SHA、不跳过测试。
+
+同命令Git检查BASELINE1→MODIFIED0→独立copy可执行ROLLBACK1（恢复.gitattributes原本不存在）→REAPPLIED0；两fixture原hash始终一致。新的fmt/workspace test/all-target all-featureClippy三强制门禁0、workspace736/0/11/42；R40另外五项源码未变的已完成门禁保留，不虚构重跑。此前Windows package Clippy0仍仅compile/lint范围，不冒称Windows GUI或整任务完成。原生Agent/MCP、CA/profile/权限均不动；新head仍需真实remote CI，用户无需配合。
+
 ## 2026-10-11 · R40：实际 Windows 编译分支补齐
 
 第四次真实远程 run [38114544302](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38114544302) 的 Mac job 成功，Windows实际报4处 `crate::input_trajectory` 找不到。watch 曾因 GitHub API unexpected EOF 返回1；之后 run readback确认failure、failed-log取回0，区分网络监听错误与真实Windows编译错误。
