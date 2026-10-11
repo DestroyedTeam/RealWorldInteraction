@@ -1,3 +1,11 @@
+## 2026-10-11 · R39：默认 MCP 构建排除旧 native pipe 诊断工具
+
+第三次真实远程 run [38113659051](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38113659051)：Mac成功，Windows默认测试实际在 `rwi-pipe-client.rs:16` 因未启用的 `rwi_windows` 报 E0433。该CLI属于旧 local-worker诊断，现明确 `required-features=["legacy-local"]`；Windows/MSVC build script只在同一feature开启时给它发linker指令，默认MCP仍保留asInvoker/uiAccess=false。没有把Windows/macOS后端依赖加回默认网关，也没有修改native pipe执行体、丢弃测试或权限校验。
+
+实际Cargo metadata＋编译真实build.rs（Windows/MSVC环境输入）同命令：BASELINE1、MODIFIED0、独立copy可执行ROLLBACK1、REAPPLIED0；两个原hash与新测试路径原本不存在的状态恢复。此项是构建配置/指令验收，不假称Windows链接或GUI。新增Rust回归已通过；修改后八门禁全部0、workspace736/0/11/42、receiver53、UI7、architecture0/既有12debt、负例8tests0。
+
+新源码与安装版的实际独立MCP进程initialize／41工具完整schema、description、resources逐项相等；profile及安装二进制未变。源ad0ce…与安装4a29…不同hash不等于工具语义不同，更不等于本会话Host已刷新。实际协议说明限定“schema支持时才传include_timings”；当前Host缓存的旧泛化说明不是增加参数的依据。仅构建目标修正不部署/重启Agent或Codex，不请用户配合。先前成功的提交保留；本次新head还需真实Mac/Windows CI，不将本机通过代替远程通过。Live正式Host挂载/强任务绑定和其余native矩阵仍如实保留未完成项。
+
 ## 2026-10-11 · R38 第二轮 CI 修正：平台例程与 Unix 私有目录
 
 远程 run [38112670187](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38112670187) 的 macOS job 成功，但 Windows 默认 workspace 测试实际又报4个 `coords.rs` 编译错误，未以第一轮 lib.rs 修正冒称全 CI 已通过。现对 coords 的 Apple API main 补 macOS gate，非 macOS 明确返回 unsupported；receiver Store::create 仅 Unix 可变 DirBuilder，保留0700与新建目录语义，不用 lint allow 掩盖 Windows unused_mut。

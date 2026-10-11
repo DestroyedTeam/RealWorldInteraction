@@ -4,6 +4,13 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+# This legacy local-worker diagnostic uses the optional Windows backend. It is
+# not a binary of the platform-neutral production gateway's default build.
+name = "rwi-pipe-client"
+path = "src/bin/rwi-pipe-client.rs"
+required-features = ["legacy-local"]
+
 [features]
 # Production binaries must understand the authenticated agent guard. Native
 # targets/input remain explicit CLI grants; enabling this does not allocate one.

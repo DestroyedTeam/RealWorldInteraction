@@ -2175,5 +2175,38 @@
     "new_remote_ci_acceptance_pending": true,
     "agent_redeploy_required": false,
     "human_requests": false
+  },
+  "R39_default_pipe_client_gate": {
+    "date": "2026-10-11",
+    "preceding_remote_ci": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38113659051",
+    "preceding_macos": "success",
+    "preceding_windows": "E0433 rwi-pipe-client references disabled optional rwi_windows",
+    "changed_fields": [
+      "rwi-pipe-client.required-features = legacy-local",
+      "build.rs CARGO_FEATURE_LEGACY_LOCAL branch"
+    ],
+    "same_input_config_and_manifest_probe": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "restored_hashes_and_absence_match": true,
+    "new_regression": "default_mcp_build_excludes_legacy_native_pipe_client",
+    "full_eight_local_gates_exit_zero": true,
+    "workspace": {
+      "passed": 736,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "production_windows_dependency_graph_native_backends": false,
+    "actual_mcp_catalog_equal": true,
+    "actual_mcp_process_tools": 41,
+    "host_model_tool_count": 42,
+    "native_agent_deployment_changed": false,
+    "human_requests": false,
+    "new_remote_ci_pending": true,
+    "full_goal_accepted": false
   }
 }
