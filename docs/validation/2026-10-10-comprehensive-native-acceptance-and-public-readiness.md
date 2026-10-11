@@ -1,3 +1,11 @@
+## 2026-10-11 · 标准 PR 已推送，仓库已公开
+
+- 9条合理拆分的commit已正常推送，源码HEAD `8103793c5f4563ecc6b62a95bb5ac92dbc73912a` 与GitHub PR1回读一致；PR为OPEN/MERGEABLE，未merge、未force-push、未tag/release。
+- 公开仓库：https://github.com/DestroyedTeam/RealWorldInteraction ；标准PR：https://github.com/DestroyedTeam/RealWorldInteraction/pull/1 。旧截图/历史沿用用户授权；本批只提交269个明确源码/文档路径，不提交raw PNG、运行时数据、本机设置或凭据。
+- 当前/README敏感扫描0；包含9条新commit的完整可达历史扫描0。8个独立源码树check均0；当前完整回归735/0/11/42、receiver53/UI7、fmt/Clippy/release门禁0。两处既有文档EOF空行导致的diff-check2及归档遗漏SDK的编译101均保留，修正后通过，不重放先前成功提交或GUI输入。
+- R36/R37稳定签名部署与两组实机结果已验证：320×303点浮层、隐藏/恢复/关闭；Close/Minimize/Zoom明确名称及具名关闭；完整signed.app独立copy rollback恢复原hash。用户不需要今晚配合。
+- **未封版的剩余项**：实际MCP Apps Host渲染/强任务ID绑定、物理人类来源切窗、foreign-PID窗口族、hidden/minimized/offscreen及系统DnD等继续按partial/unsupported标记；既有12项architecture debt未消失。公开与PR交付不等于所有能力均已验收。
+
 ### PR 与开源准备进展（本轮实际回读）
 
 GitHub 已回读 `DestroyedTeam/RealWorldInteraction` 为 PUBLIC；旧截图与历史公开范围沿用用户确认。8个不可变源码Git树（功能基础、MCP两次拆分、Core拆分、macOS拆分、精确窗口/Live窗口族、320点浮层、窗口控件命名）分别离线check编译0。首次验证归档遗漏JavaScript SDK的真实101已保留；修正归档输入后全部通过，未改产品源码或重建Git树。标准PR1仍使用既有分支；提交/推送结果以之后GitHub回读为准。

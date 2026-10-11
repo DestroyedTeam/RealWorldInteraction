@@ -2091,9 +2091,30 @@
     "formal_host_task_binding_accepted": false,
     "all_features_accepted": false,
     "publication_sensitive_current_and_history": "R35 actual scans0; no allowlist",
-    "commit_split": "8 source trees check-compiled, commits/push pending",
+    "commit_split": "9 commits pushed and read back; final delivery-record documentation follows",
     "repository_public_observed": true,
     "repository_url": "https://github.com/DestroyedTeam/RealWorldInteraction",
-    "immutable_source_trees_checked": 8
+    "immutable_source_trees_checked": 8,
+    "publication": {
+      "commits": 9,
+      "head": "8103793c5f4563ecc6b62a95bb5ac92dbc73912a",
+      "pr": {
+        "baseRefName": "main",
+        "headRefName": "engineering/governance-native-mcp",
+        "headRefOid": "8103793c5f4563ecc6b62a95bb5ac92dbc73912a",
+        "mergeable": "MERGEABLE",
+        "state": "OPEN",
+        "url": "https://github.com/DestroyedTeam/RealWorldInteraction/pull/1"
+      },
+      "repository": {
+        "isPrivate": false,
+        "nameWithOwner": "DestroyedTeam/RealWorldInteraction",
+        "url": "https://github.com/DestroyedTeam/RealWorldInteraction"
+      },
+      "force_push": false,
+      "release_or_tag": false,
+      "merged": false,
+      "remaining_native_host_limits_preserved": true
+    }
   }
 }
