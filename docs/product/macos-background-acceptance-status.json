@@ -2625,5 +2625,59 @@
     "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/hover-natural-responder-r52/NATIVE_RESULT_R52.json",
     "report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r52-foreground-hover-2026-10-11/REPORT.md",
     "background_cold_start_hover": "pending; default addressed delivery was not replaced by global posting"
+  },
+  "R53_delivery_contract_and_clock": {
+    "scope": "explicit native route advertisement and sender timestamp integrity; NOT full background-hover/drag acceptance",
+    "core_baseline": "new capability case 4pass1fail/101 before fix; after all6focused0; unadvertised explicit BG zero backend calls, bare move one backend call",
+    "timestamp_baseline": "deterministic CGEvent timestamp123456789 was stamped to1; first default-time assumption101 and omitted obsolete constant compile101 retained",
+    "timestamp_modified": "same timestamp preservation test0; background4focused0, exact PID/window fields/flags kept; public C getter verifies58 aliases timestamp on this runtime",
+    "actual_loaded_MCP": "Mac advertised explicit background options accepted; app/window type5 exact own116 hover-zone hit, source stayed inactive/keyfalse/system background, no calibration/buttons; view/enter/tooltip still0",
+    "AX_failure": "own114 and116 AXWindows25204 while exact-window capture_visual returned real image; CUA readonly own116 also timeoutReached10005; no unsupported lock/loginwindow claim",
+    "drag": "not dispatched: both attempts stopped at missing grounded snapshot; no replay",
+    "fixture_cleanup": {
+      "114": {
+        "status": "closed",
+        "lifetime_expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false
+      },
+      "115": {
+        "status": "closed",
+        "lifetime_expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false
+      },
+      "116": {
+        "status": "closed",
+        "lifetime_expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false
+      },
+      "117": {
+        "status": "closed",
+        "lifetime_expiry": 1,
+        "process_exit": 0,
+        "explicit_RWI_Close_verified": false
+      }
+    },
+    "workspace": {
+      "passed": 753,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "eleven_current_gates_exit_zero": true,
+    "current_agent_pid": 4091,
+    "current_agent_instance": "67e9b9d1-8935-4a5f-94f1-aa24a1c7a729",
+    "same_cert_CA_profile_and_installed_MCP": true,
+    "human_cooperation_requested": false,
+    "source_cfg_baseline_modified_rollback_reapplied": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "production_rolled_back": false,
+    "full_goal_complete": false
   }
 }

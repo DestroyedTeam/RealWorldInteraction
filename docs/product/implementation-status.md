@@ -1748,3 +1748,13 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 独立 Receiver113 清洁复验：先显式移动到自有按钮外区，再进入、区内移动、退出；相对外区基线新增 enter1/move1/exit1/tooltip1，光标原生回读对应所请求点，down/up/safe actions均0，无校准。实际同 PID tooltip 窗口曾被控制器按 PID 误选，TypeError 在输入前；已保留、退役，改用精确 main CG41271。错误 tooltip-window foreground tuple 真被拒绝 `foreground_scope_mismatch`；最后 AXClose、expiry0、进程exit0、全部原请求terminal/released/no-replay、两绑定均退役。
 - Live 既有小预览320×303pt和原生 eye.slash/play.fill/xmark按钮、tooltip及可访问名称继续沿用；官方 Computer Use 文档只说明 picture-in-picture，不提供精确像素规格，不声称私有 UI 1:1 克隆。正式 v2 隐藏/返回/关闭已有 R48 独立 Host 证据，不重复请求用户配合。
 - 本轮是显式前台能力，不能代替尚未完成的后台 cold-start tracking、系统共享菜单、隐藏/最小化、跨应用 DnD 等 F01–F16 项；全量目标保持未完成。证据与真实时间顺序截图见 `outputs/validation/r52-foreground-hover-2026-10-11/REPORT.md`。
+
+
+## 2026-10-11 · R53：显式后台能力隔离、发送侧时钟修正与未完成验收
+
+- 真实新回归先4pass/1fail、exit101：`BackgroundWindow` 显式选项无条件通过未声明路由的后端。`MovePointerOptions::require_capability` 现要求 pointer_move implemented 与 default_delivery=background_window；Engine 只为显式 value 做新增检查，bare/default路径不变。6项 focused0，fixture证明显式拒绝后backend calls0、bare move calls1；已拆分 commit a2b0030。
+- 纯 Rust/公开 CGEvent getter 观测：NSEvent move/enter/exit 转换 CGEvent 后，字段58=1e9 与timestamp相同；写58=1把timestamp改成1。旧 `PRIVATE_WINDOW_ROUTING_FIELD` 命名错误，现移除该写入，PID/window51/坐标/标志仍保留。匹配确定性测试原123456789→1失败101，修正后原timestamp保留/exit0；旧“新event应自带当前时间”假设101（实际0）和漏清旧常量编译101均保留。旧 App/Window 原生接收记录已是系统更新后的正常时间，所以**未证明这是hover0的原因**。
+- 当前复合源码11门全0，workspace753/0/11/42、Receiver63、Live UI7、严格fmt/Clippy/发布构建/架构；中间752是仅能力修正版本，不混用。同证书/DR原子部署 Agent4091 / instance67e9b9d1-8935-4a5f-94f1-aa24a1c7a729，配对、MCP、四权限不变，不要求重启或配合。
+- 真实 loaded MCP 在自有116（虚拟4）系统后台接受显式 background_window；App/Window 收到精确MouseMoved、hit hover_zone，但view/enter/tooltip仍0、无校准/按钮，不升级成全后台hover完成。随后拖拽两次都在snapshot阶段 AXWindows/-25204 停止，未调用 drag、不重放。capture_visual 能返回真实图片；CUA对同自有116只读也timeoutReached/-10005，因此不武断认定只属于RWI。采样main stack在environment_sampled→flush_sampled→NSString/CFString创建；只是一秒样本，不足以认定死锁或锁屏。PID1588实际是iStat Menus而非loginwindow。
+- 114–117均实际lifetime到期、closed、进程exit0；不是显式RWI Close验收。相关source绑定已退役、唯一实际BG move原请求terminal/released/no replay。source配置BASELINE false1/MODIFIED true0/独立copy ROLLBACK false1精确4hash恢复/REAPPLIED true0，原97 baseline与同四角色保持。
+- 前台R52、实际v2 Live和R47执行中切窗结果保留，不复演。完整F01–F16仍未完成；下一步继续隔离环境采样与AX消息可用性，并处理真正后台tracking、系统菜单等。
