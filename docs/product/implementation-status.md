@@ -1,3 +1,18 @@
+## 2026-10-13 · 当前 R92：实验后台点击已实现部署，原生接收与前台键盘保留已验
+
+- 新增显式 `ClickDeliveryOptions` / `background_skylight_experimental` 单左键 down/up；原默认投递不变。严格 JSON、独立点击能力检查、同 PID/窗口/点/几何、共享 lease、durable no-replay、配对释放均保留；不自动激活、不 primer、不改 field58、不做 fallback。
+- 最终签名 Agent **88136 / d9ecca19** 已部署，hash `41407f43…`；普通 fixed attachment 漏发布点击能力已在实际部署后发现并修复。四项权限、原证书、配对/config/profile均未替换，不需要用户授权或重启。MCP typed field 也已原子部署（SHA `5204c6…`），fresh stdio 的 optional strict delivery/default schema 与42工具已验，Agent未重启；本任务仍用已加载的 generic `computer.act` 做实机，不冒称 Host 已刷新 schema。
+- **专用 AppKit 真后台点击通过**：Receiver98840 inactive/keyfalse、Chrome50648前台；Application2 / Window2 / canvas down1 up1 / click_without_drag1。Quartz[3186,804]→AppKit window[150,252]→view[126,54]正确，不把窗口局部坐标笼统归为 bug。
+- **前台键盘接收权保留通过**：Receiver2明确前台，ASCII `RWI_R92_AB`；系统 backspace→`RWI_R92_A`；对后台 ChromeB 一次新 private 请求之后，不补 focus、不再点字段，系统 backspace→`RWI_R92_`，delegate changes1→2→3、key及前台98840仍在。Receiver1旧轮因自身寿命到期未完成后键，不算 private 投递抢焦点。
+- **Chrome 后台消费仍未通过**：默认A、实验A/B counter均0→0，DOM未见click；returned不是goal。它的限制不能泛化为AppKit失败，也不能直接套用上游含focus/primer/field58/fallback的多变量配方。
+- 9门禁实际exit0，workspace **859 passed / 0 failed / 11 ignored / 43 suites**；receiver89、browser oracle9另记。最初架构667>600、初部署 guard缺构建hash、attachment能力缺失及操作命令错误全部保留；拆分请求解析模块，没有抬高架构阈值。
+- 19原始请求全部terminal/released/no-replay；Receiver与A/B已由loaded MCP精确Close，独立发现0窗并detach。Receiver2/Chrome退出0，oracle受限SIGTERM=-15（wrapper241），port58421无listener。用户Chrome907、Arc896及另任务应用71613不操作、不终止。
+- Live延续 **280×300pt上限、原280×269pt、两枚28pt隐藏/恢复与关闭控件**；R92安装保留同源码，采集细节不降，不要求休息中的用户切窗、展开或重启。R89 BG→FG原生DnD、R91前台A/B/C普通/隐私多窗结果保留，不反复重测完成项。
+
+报告：`/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r92-background-click.md`；四角色沿用原绝对路径；实际复制重构／回滚结果以同一 `VERIFICATION.txt` 与当前checkpoint回读为准。下一项是无输入的screen/local window-location内存校准，再按独立证据继续Chrome接收、冷hover及完整F01–F16，不作全功能封版。
+
+---
+
 ## 2026-10-13 · 当前 R91：前台真实浏览器修复完成，后台消费缺口继续
 
 - RWI实际Chrome155独立profile普通A/B／隐私C同PID多窗：counter各0→1，文本R91-A-你好／R91-B／R91-C，A Left caret8→7，C scroll0→240；C精确关闭A/B保留，旧C引用window_missing零dispatch；同PID被遮挡A仍拒绝。旧stale_reference及首strict候选ax_hit_not_stable均留档，不冒称所有重试成功。
