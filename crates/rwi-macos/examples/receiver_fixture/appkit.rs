@@ -21,6 +21,9 @@ use std::{
     panic::AssertUnwindSafe,
 };
 
+#[path = "native_dnd_appkit.rs"]
+mod native_dnd;
+
 #[link(name = "AppKit", kind = "framework")]
 unsafe extern "C" {}
 #[link(name = "Foundation", kind = "framework")]
@@ -54,6 +57,7 @@ struct UI {
     self_foreground_timer: Option<Retained<AnyObject>>,
     command_tab_timer: Option<Retained<AnyObject>>,
     command_tab_actor: Option<command_tab::native::Actor>,
+    native_dnd_objects: Option<native_dnd::Objects>,
     // AppKit target and delegate are unretained properties. Keep them alive.
     _actions: Retained<AnyObject>,
 }
@@ -372,6 +376,9 @@ impl UI {
             let _: () = msg_send![&*self.button, setTitle:&*title];
             let _: () = msg_send![&*self.hover, setNeedsDisplay:true];
             let _: () = msg_send![&*self.canvas, setNeedsDisplay:true];
+            if let Some(objects) = &self.native_dnd_objects {
+                let _: () = msg_send![&*objects.destination, setNeedsDisplay:true];
+            }
         }
     }
     fn region(&self, view: &AnyObject) -> Option<Region> {
@@ -987,10 +994,20 @@ extern "C" fn window_closed(_this: &AnyObject, _cmd: Sel, _notification: &AnyObj
             ui.close_own_modal();
             ui.close_own_cover();
             ui.close_system_panels();
+            let pending_native_drag = ui.state.native_dnd.note_pending_native_shutdown();
             ui.state.close();
             ui.flush();
             // stop: exits NSApplication's run loop after this close event.
             unsafe {
+                if pending_native_drag {
+                    // A direct-dispatch comparison can leave AppKit's native
+                    // drag loop waiting after the owning window is closed.
+                    // This dedicated disposable fixture must end its own app;
+                    // never fake draggingSession:endedAtPoint: or signal another
+                    // process. Flush the unconfirmed native end before quitting.
+                    let _: () = msg_send![&*ui.app, terminate:std::ptr::null_mut::<AnyObject>()];
+                    return;
+                }
                 if let Err(error) = stop_own_app(&ui.app, ui.state.window_number.unwrap_or(0)) {
                     ui.state.status = "error";
                     ui.state.output_error = Some(error);
@@ -998,6 +1015,31 @@ extern "C" fn window_closed(_this: &AnyObject, _cmd: Sel, _notification: &AnyObj
                 }
             }
         });
+    });
+}
+
+/// Explicit own-fixture teardown, independent of screen-sharing titlebar chrome.
+/// Closing the source is not a forged drag-ended/cancelled callback.
+extern "C" fn native_fixture_close(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
+    callback(|| {
+        let window = UI_STATE.with(|cell| {
+            let mut state = cell.borrow_mut();
+            let ui = state.as_mut()?;
+            if !ui.state.native_dnd.enabled {
+                return None;
+            }
+            ui.state.native_dnd.explicit_close_requests += 1;
+            ui.state.native_dnd.active_at_explicit_close = ui.state.native_dnd.active_sequence;
+            ui.flush();
+            Some(ui.window.clone())
+        });
+        if let Some(window) = window {
+            // Public close on this retained own window, not another application.
+            // Delegate callbacks run without a RefCell borrow spanning AppKit.
+            unsafe {
+                let _: () = msg_send![&*window, close];
+            }
+        }
     });
 }
 extern "C" fn environment_sampled(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
@@ -1343,6 +1385,10 @@ fn classes() -> Result<FixtureClasses, String> {
     unsafe {
         actions.add_method(sel!(clicked:), clicked as extern "C" fn(_, _, _));
         actions.add_method(
+            sel!(nativeFixtureClose:),
+            native_fixture_close as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
             sel!(systemFileOpen:),
             file_panel_open as extern "C" fn(_, _, _),
         );
@@ -1500,6 +1546,7 @@ pub fn run(options: Options) -> Result<(), String> {
     state.lifetime_ms = Some(options.lifetime_ms);
     state.environment_sample_ms = options.environment_sample_ms;
     state.system_panels.enabled = options.system_panel_controls;
+    state.native_dnd.enabled = options.native_dnd_controls;
     state.self_foreground_on_first_down_after_ms = options.self_foreground_on_first_down_after_ms;
     state.command_tab.config = options.command_tab.clone();
     if options.self_foreground_after_ms.is_some()
@@ -1652,7 +1699,19 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*button, setAction:sel!(clicked:)];
             identify(&button, "rwi-fixture-safe-button", "RWI safe count button");
             let _: () = msg_send![&*content, addSubview:&*button];
-            let input = view(class(c"NSTextField")?, rect(230., 432., 406., 30.));
+            let input = view(
+                class(c"NSTextField")?,
+                rect(
+                    230.,
+                    432.,
+                    if options.native_dnd_controls {
+                        214.
+                    } else {
+                        406.
+                    },
+                    30.,
+                ),
+            );
             let _: () = msg_send![&*input, setEditable:true];
             let _: () = msg_send![&*input, setSelectable:true];
             let _: () = msg_send![&*input, setDelegate:&*actions];
@@ -1660,6 +1719,20 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*input, setPlaceholderString:&*placeholder];
             identify(&input, "rwi-fixture-input", "RWI fixture text input");
             let _: () = msg_send![&*content, addSubview:&*input];
+            if options.native_dnd_controls {
+                let stop = view(button_class, rect(464., 430., 172., 34.));
+                let title = NSString::from_str("End own fixture");
+                let _: () = msg_send![&*stop, setTitle:&*title];
+                let _: () = msg_send![&*stop, setBezelStyle:1usize];
+                let _: () = msg_send![&*stop, setTarget:&*actions];
+                let _: () = msg_send![&*stop, setAction:sel!(nativeFixtureClose:)];
+                identify(
+                    &stop,
+                    "rwi-native-dnd-close",
+                    "RWI end own native drag fixture",
+                );
+                let _: () = msg_send![&*content, addSubview:&*stop];
+            }
             label(
                 &content,
                 "Hover zone (native tooltip, tracking receipt below)",
@@ -1689,10 +1762,22 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*content, addSubview:&*hover];
             label(
                 &content,
-                "Drag canvas (blue path requires received down → drag → up)",
+                if options.native_dnd_controls {
+                    "Native pasteboard drag source → native drop destination"
+                } else {
+                    "Drag canvas (blue path requires received down → drag → up)"
+                },
                 rect(24., 312., 612., 22.),
             )?;
-            let canvas = view(receiver_class, rect(24., 100., 360., 206.));
+            let native_dnd_objects = if options.native_dnd_controls {
+                Some(native_dnd::Objects::new()?)
+            } else {
+                None
+            };
+            let canvas = native_dnd_objects
+                .as_ref()
+                .map(|o| o.source.clone())
+                .unwrap_or_else(|| view(receiver_class, rect(24., 100., 360., 206.)));
             identify(&canvas, "rwi-fixture-canvas", "RWI drag canvas");
             let _: () = msg_send![&*content, addSubview:&*canvas];
             let scroll = view(class(c"NSScrollView")?, rect(404., 100., 232., 206.));
@@ -1701,11 +1786,18 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*scroll, setAutohidesScrollers:false];
             let _: () = msg_send![&*scroll, setBorderType:1usize];
             identify(&scroll, "rwi-fixture-scroll", "RWI native scroll viewport");
-            let document = view(receiver_class, rect(0., 0., 210., 1000.));
-            for n in 0..30 {
+            let document = native_dnd_objects
+                .as_ref()
+                .map(|o| o.destination.clone())
+                .unwrap_or_else(|| view(receiver_class, rect(0., 0., 210., 1000.)));
+            for n in 0..if options.native_dnd_controls { 4 } else { 30 } {
                 label(
                     &document,
-                    &format!("Native scroll row {n:02}"),
+                    &if options.native_dnd_controls {
+                        format!("Native drop target {n:02}")
+                    } else {
+                        format!("Native scroll row {n:02}")
+                    },
                     rect(12., 10. + f64::from(n) * 30., 190., 24.),
                 )?;
             }
@@ -1758,6 +1850,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     self_foreground_timer: None,
                     command_tab_timer: None,
                     command_tab_actor,
+                    native_dnd_objects,
                     _actions: actions,
                 })
             });

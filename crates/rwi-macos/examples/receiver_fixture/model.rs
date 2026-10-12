@@ -12,7 +12,7 @@ pub const USAGE: &str = "RWI receiver fixture (no window without --open-window)\
 Usage: receiver_fixture --open-window --run-id RUN_ID --state-dir ABS_NEW_DIRECTORY --display-id NONZERO_ID [--lifetime-ms 1..600000]\n\
 Creates only its own RWI acceptance window. Root must allocate that exact window\n\
 before native testing; default behavior uses only its own window on that display.\n\
-An explicit peer-pinned Command+Tab test actor is default-off; --check-only validates without GUI/input.\n\
+An explicit peer-pinned Command+Tab test actor and --native-dnd-controls are default-off; --check-only validates allocated configuration without GUI/input.\n\
 Default own-window lifetime is 120000 ms; no timer is started by help/no arguments.";
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
@@ -33,6 +33,8 @@ pub struct Options {
     pub boundary_canvas_right: bool,
     pub modal_controls: bool,
     pub system_panel_controls: bool,
+    /// Default-off native pasteboard source/destination, not a canvas drag oracle.
+    pub native_dnd_controls: bool,
     pub environment_sample_ms: Option<u32>,
     pub regular_app: bool,
     /// Own-client calibration only; never an RWI input preparation or fallback.
@@ -85,6 +87,7 @@ impl Options {
         let mut boundary_canvas_right = false;
         let mut modal_controls = false;
         let mut system_panel_controls = false;
+        let mut native_dnd_controls = false;
         let mut environment_sample_ms = None;
         let mut regular_app = false;
         let mut hover_first_responder = false;
@@ -136,6 +139,7 @@ impl Options {
                 "--boundary-canvas-right" if !boundary_canvas_right => boundary_canvas_right = true,
                 "--modal-controls" if !modal_controls => modal_controls = true,
                 "--system-panel-controls" if !system_panel_controls => system_panel_controls = true,
+                "--native-dnd-controls" if !native_dnd_controls => native_dnd_controls = true,
                 "--regular-app" if !regular_app => regular_app = true,
                 "--hover-first-responder" if !hover_first_responder => hover_first_responder = true,
                 "--legacy-self-foreground" if !legacy_self_foreground => {
@@ -216,6 +220,7 @@ impl Options {
             && !boundary_canvas_right
             && !modal_controls
             && !system_panel_controls
+            && !native_dnd_controls
             && environment_sample_ms.is_none()
             && !regular_app
             && !hover_first_responder
@@ -251,6 +256,21 @@ impl Options {
             .filter(|id| *id != 0)
             .ok_or("--display-id must be a nonzero u32")?;
         let lifetime_ms = lifetime_ms.unwrap_or(120_000);
+        if native_dnd_controls
+            && (cover_controls
+                || modal_controls
+                || system_panel_controls
+                || boundary_right
+                || boundary_canvas_right
+                || hover_first_responder
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || command_tab_delay.is_some())
+        {
+            return Err(
+                "native DnD fixture cannot combine with a panel, geometry or input actor".into(),
+            );
+        }
         if boundary_right && boundary_canvas_right {
             return Err("choose exactly one boundary geometry mode".into());
         }
@@ -323,6 +343,7 @@ impl Options {
             boundary_canvas_right,
             modal_controls,
             system_panel_controls,
+            native_dnd_controls,
             environment_sample_ms,
             regular_app,
             hover_first_responder,
@@ -1121,6 +1142,7 @@ pub struct State {
     pub system_panels: SystemPanels,
     pub hover: Hover,
     pub drag: Drag,
+    pub native_dnd: super::native_dnd::Oracle,
     pub text: TextOracle,
     pub scroll: ScrollOracle,
     pub dispatch_probe: DispatchProbe,
@@ -1177,6 +1199,7 @@ impl State {
             system_panels: SystemPanels::default(),
             hover: Hover::default(),
             drag: Drag::default(),
+            native_dnd: super::native_dnd::Oracle::default(),
             text: TextOracle::default(),
             scroll: ScrollOracle::default(),
             dispatch_probe: DispatchProbe::default(),
@@ -1389,6 +1412,31 @@ impl State {
         self.record("native_scroll_clip_readback", None);
     }
     pub fn summary(&self) -> String {
+        if self.native_dnd.enabled {
+            let d = &self.native_dnd;
+            return format!(
+                "Native sessions requested/began/ended: {}/{}/{} · active: {:?}\n\
+                 Native drops consumed: {} · external source: {:?} · last operation: {:?}\n\
+                 Last payload: {} · status: {}{}",
+                d.source_requests,
+                d.source_began,
+                d.source_ended,
+                d.active_sequence,
+                d.consumed,
+                d.last_source_external,
+                d.last_source_operation,
+                d.last_payload
+                    .as_ref()
+                    .map(|p| p.value.as_str())
+                    .unwrap_or("unobserved"),
+                self.status,
+                if self.output_error.is_some() {
+                    " · JSON OUTPUT ERROR"
+                } else {
+                    ""
+                }
+            );
+        }
         format!(
             "Safe actions: {} · Hover enter/move/exit: {}/{}/{} · Tooltip requests: {}\n\
              Drag completed: {} · moves: {} · orphan move/up: {}/{} · active: {}\n\
@@ -2587,5 +2635,61 @@ mod framework_pointer_tests {
         assert_eq!(j["screen_point"], serde_json::json!([10., 20.]));
         assert_eq!(j["screen_point_in_own_hover"], false);
         assert!(j["screen_converted_to_own_window"].is_null());
+    }
+}
+
+#[cfg(test)]
+mod native_dnd_configuration_tests {
+    use super::*;
+    fn args(extra: &[&str]) -> Vec<String> {
+        [
+            "--open-window",
+            "--check-only",
+            "--run-id",
+            "dnd-config",
+            "--state-dir",
+            "/tmp/rwi-native-dnd-check-only-no-write",
+            "--display-id",
+            "4",
+        ]
+        .into_iter()
+        .chain(extra.iter().copied())
+        .map(str::to_owned)
+        .collect()
+    }
+    #[test]
+    fn native_drag_is_explicit_and_check_only_keeps_allocation_identity() {
+        assert!(
+            !Options::parse(args(&[]))
+                .unwrap()
+                .unwrap()
+                .native_dnd_controls
+        );
+        let o = Options::parse(args(&["--native-dnd-controls", "--right-side"]))
+            .unwrap()
+            .unwrap();
+        assert!(o.native_dnd_controls && o.check_only && o.right_side);
+        assert_eq!(o.display_id, 4);
+        assert_eq!(o.run_id, "dnd-config");
+        assert!(
+            Options::parse(["--check-only", "--native-dnd-controls"].map(str::to_owned)).is_err()
+        );
+    }
+    #[test]
+    fn duplicate_flag_and_unrelated_panel_or_actor_combinations_are_refused() {
+        for extra in [
+            vec!["--native-dnd-controls"],
+            vec!["--system-panel-controls"],
+            vec!["--cover-controls"],
+            vec!["--modal-controls"],
+            vec!["--boundary-right"],
+            vec!["--boundary-canvas-right"],
+            vec!["--hover-first-responder"],
+            vec!["--regular-app", "--self-foreground-after-ms", "1000"],
+        ] {
+            let mut flags = vec!["--native-dnd-controls"];
+            flags.extend(extra);
+            assert!(Options::parse(args(&flags)).is_err(), "{flags:?}");
+        }
     }
 }

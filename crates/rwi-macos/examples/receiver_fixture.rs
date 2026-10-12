@@ -12,6 +12,9 @@ mod command_tab;
 #[path = "receiver_fixture/model.rs"]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod model;
+#[path = "receiver_fixture/native_dnd.rs"]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod native_dnd;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(options) = model::Options::parse(std::env::args().skip(1))? else {
@@ -21,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if options.check_only {
         println!(
             "{}",
-            serde_json::json!({"configuration_valid":true,"gui_created":false,"input_sent":false,"native_binding_verified":false,"command_tab":options.command_tab})
+            serde_json::json!({"configuration_valid":true,"gui_created":false,"input_sent":false,"native_binding_verified":false,"native_dnd_controls":options.native_dnd_controls,"command_tab":options.command_tab})
         );
         return Ok(());
     }
