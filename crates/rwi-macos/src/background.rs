@@ -17,6 +17,7 @@ use objc2::{
     runtime::{AnyClass, AnyObject},
 };
 use objc2_foundation::NSPoint;
+pub(crate) mod skylight;
 
 /// AppKit-defined event, subtype 1 = NSApplicationActivatedEventType. Posted
 /// only to the target process so the application treats itself as active

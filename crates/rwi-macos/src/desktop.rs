@@ -314,6 +314,14 @@ pub(crate) fn native_capabilities(
     });
     capabilities["native_semantic_action_policy"] = json!("advertised_element_action");
     capabilities["pointer_move"]["default_delivery"] = json!("background_window");
+    capabilities["pointer_move"]["background_skylight_experimental"] = json!({
+        "implemented":true,"available":crate::background::skylight::available(),
+        "opt_in_required":true,"route":"private SLEventPostToPid/window-addressed MouseMoved",
+        "value":{"delivery":"background_skylight_experimental"},
+        "fallback":false,"native_acknowledgement":false,"application_effect_attested":false,
+        "activation_requested":false,"cursor_warp_requested":false,"authentication_requested":false,
+        "scope":"experimental macOS pointer-only; exact native binding/lease/permissions still required"
+    });
     capabilities["pointer_move"]["foreground_system"] = json!({
         "implemented":true,"route":"explicit CGEventPost(HID)","moves_system_cursor":true,
         "activation_requested":false,"fallback":false,"native_acknowledgement":false,

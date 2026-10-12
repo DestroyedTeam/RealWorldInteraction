@@ -211,6 +211,7 @@ fn move_wiring_preserves_exact_grounding_and_excludes_activation_and_global_fall
     for call in [
         "move_pointer::event(target.point)",
         "move_pointer::guarded_single",
+        "crate::background::skylight::prepare_pointer(",
         "self.read_input_batch(true, expected, target, intent)",
         ".validate(expected, target, Kind::Pointer)",
         "crate::background::deliver_pointer(&event, &delivery, target.point)",
@@ -224,6 +225,7 @@ fn move_wiring_preserves_exact_grounding_and_excludes_activation_and_global_fall
     assert!(!branch.contains("dispatch_native_action"));
     assert!(!branch.contains("click_pair"));
     assert!(branch.contains("if foreground_pointer"));
+    assert!(branch.contains("else if let Some(prepared) = skylight_move"));
     assert!(branch.contains("foreground_move::post(&event)"));
     assert!(branch.contains("foreground_move::guard(self, foreground, target.point)"));
     assert!(!branch.contains("warp"));

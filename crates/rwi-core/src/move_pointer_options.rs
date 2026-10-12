@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "delivery", rename_all = "snake_case", deny_unknown_fields)]
 pub enum MovePointerOptions {
     BackgroundWindow {},
+    /// macOS private SPI experiment; never the default or an automatic retry.
+    BackgroundSkylightExperimental {},
     ForegroundSystem {
         expected_foreground: ForegroundState,
     },
@@ -39,6 +41,15 @@ impl MovePointerOptions {
         matches!(self, Self::ForegroundSystem { .. })
     }
     pub fn require_capability(&self, capabilities: &serde_json::Value) -> Result<()> {
+        if matches!(self, Self::BackgroundSkylightExperimental {}) {
+            let route = &capabilities["pointer_move"]["background_skylight_experimental"];
+            if route["implemented"] != true || route["available"] != true {
+                return Err(fault(
+                    "capability_unavailable",
+                    "The experimental macOS SkyLight pointer route is unavailable; no fallback.",
+                ));
+            }
+        }
         // Explicit background selection is not the same as omitting options.
         // An unadvertised device must never reinterpret it as its native route.
         if matches!(self, Self::BackgroundWindow {})
@@ -68,6 +79,83 @@ mod tests {
     fn foreground() -> serde_json::Value {
         serde_json::json!({"delivery":"foreground_system","expected_foreground":{
             "pid":42,"window":"cgwindow:7","process_start":"42:1:2","native_epoch":"a".repeat(64)}})
+    }
+    #[test]
+    fn experimental_skylight_is_explicit_strict_and_not_foreground() {
+        let options =
+            MovePointerOptions::parse(Some(r#"{"delivery":"background_skylight_experimental"}"#))
+                .unwrap();
+        assert_eq!(
+            options,
+            MovePointerOptions::BackgroundSkylightExperimental {}
+        );
+        assert!(!options.requires_foreground());
+        assert_ne!(MovePointerOptions::parse(None).unwrap(), options);
+        assert!(
+            crate::Intent::MovePointer
+                .validate(Some(r#"{"delivery":"background_skylight_experimental"}"#))
+                .is_ok()
+        );
+        for extra in ["button", "fallback", "activate", "authentication"] {
+            let value =
+                serde_json::json!({"delivery":"background_skylight_experimental",extra:true});
+            assert!(MovePointerOptions::parse(Some(&value.to_string())).is_err());
+        }
+    }
+    #[test]
+    fn experimental_skylight_cannot_inherit_other_routes_or_missing_availability() {
+        let options = MovePointerOptions::BackgroundSkylightExperimental {};
+        for route in [
+            serde_json::json!({}),
+            serde_json::json!({"implemented":true}),
+            serde_json::json!({"implemented":true,"available":false}),
+            serde_json::json!({"implemented":false,"available":true}),
+        ] {
+            let caps = serde_json::json!({"pointer_move":{
+                "implemented":true,"default_delivery":"background_window",
+                "foreground_system":{"implemented":true},
+                "background_skylight_experimental":route}});
+            assert_eq!(
+                options.require_capability(&caps).unwrap_err().code,
+                "capability_unavailable"
+            );
+        }
+        assert!(
+            options
+                .require_capability(&serde_json::json!({"pointer_move":{
+            "background_skylight_experimental":{"implemented":true,"available":true}}}))
+                .is_ok()
+        );
+    }
+    #[cfg(feature = "fixture")]
+    #[test]
+    fn experimental_skylight_unadvertised_fixture_never_dispatches() {
+        let dir = tempfile::tempdir().unwrap();
+        let fixture = crate::fixture::Fixture::default();
+        let mut engine = crate::Engine::new(dir.path().into()).unwrap();
+        engine
+            .register("fixture".into(), Box::new(fixture.clone()))
+            .unwrap();
+        let frame = engine.observe("fixture").unwrap().frame;
+        let reference = engine
+            .resolve(
+                "fixture",
+                &frame,
+                crate::Locator::Element { id: "Input".into() },
+            )
+            .unwrap();
+        let lease = engine.claim("fixture", 5000).unwrap();
+        let result = engine.act(
+            "fixture",
+            &reference.reference,
+            &lease,
+            "unsupported-skylight",
+            crate::Intent::MovePointer,
+            Some(r#"{"delivery":"background_skylight_experimental"}"#.into()),
+        );
+        assert_eq!(result.unwrap_err().code, "capability_unavailable");
+        assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        engine.release(&lease).unwrap();
     }
     #[test]
     fn pointer_options_default_is_unchanged_and_foreground_requires_explicit_exact_tuple() {

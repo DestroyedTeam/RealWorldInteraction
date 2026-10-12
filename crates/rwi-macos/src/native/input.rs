@@ -156,6 +156,18 @@ impl NativeMac {
             match intent {
                 Intent::MovePointer => {
                     let event = move_pointer::event(target.point)?;
+                    let skylight_move = if matches!(
+                        move_options,
+                        rwi_core::MovePointerOptions::BackgroundSkylightExperimental {}
+                    ) {
+                        Some(crate::background::skylight::prepare_pointer(
+                            &event,
+                            &delivery,
+                            target.point,
+                        )?)
+                    } else {
+                        None
+                    };
                     move_pointer::guarded_single(
                         &counter,
                         || {
@@ -172,6 +184,8 @@ impl NativeMac {
                         || {
                             if foreground_pointer {
                                 foreground_move::post(&event)
+                            } else if let Some(prepared) = skylight_move {
+                                prepared.post()
                             } else {
                                 crate::background::deliver_pointer(&event, &delivery, target.point)
                             }
