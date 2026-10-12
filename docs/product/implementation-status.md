@@ -2008,3 +2008,9 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 全新168/169只在授权Virtual4；真实Host DOM可见/“预览连接已确认”，native第59帧为两独立PID显式来源，原生浮层在内建屏1。session3最终147帧/真实240s expiry；新session4恢复后双源31帧→附加169关闭精确omission、根168继续110帧→根关闭paused/imagefalse→真实卡Close/stopped/worker_done，最终111帧。
 - 两source具名AXPress各一次、exit0/stderr空/nonexpiry，三durables terminal/released、不重放，两detach/剩一desktop target/反馈隐藏。保留初始异步race、过期卡selector失败、精确浮层截图及最终卡观察timeout；不声称浮层截图已保存、用户肉眼见证或密码学task-ID。
 - 同源码hash复用R84已执行795/0/11/42、UI15/pkg6/Receiver75及12门；原四角色/baseline继续扩展报告并实测独立copy rollback。正式双源/生命周期已接受，full F01–F16仍false，不把这一项替代full计划。报告 outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md，公开文字 docs/validation/2026-10-12-r84-fresh-host-live.md；raw screenshots不入Git。
+
+## 2026-10-12 · R84 发布与分层实测（完整目标仍未封版）
+- 七组独立commit实际push至DestroyedTeam/RealWorldInteraction；PR1已非Draft/OPEN，仓库PUBLIC。首次push128/SSL_ERROR_SYSCALL保留，仅HTTP/1.1 correction成功0；无force-push/release。
+- 源码head e83d38b的真实CI38261800260：Mac与Windows两job的fmt/tests/all-feature Clippy/architecture/负例全部success，watch0、readback0；非Windows native GUI。此后只补文档，不冒用源码CI作新doc head的CI。
+- 三独立已安装MCP process均0/stderr空：各100resources、30schema、5mac-host Describe，只读/no capture/input/Host presence。read中位0.183–0.207ms、schema1.101–1.163ms、Describe18.308–32.420ms仅该样本/本地operator roundtrip；不是native CPU或通用速度优势。明细 docs/validation/2026-10-12-r84-mcp-measurement.md。
+- 新正式Host及双源接受结果保留，同四角色198路径延续独立copy rollback；F13/F14等整个原矩阵仍未完成，下一native candidate须两个own端的真session/payload消费证据，不把canvas/ACK当DnD。其他app、VM、权限、安装身份不改。

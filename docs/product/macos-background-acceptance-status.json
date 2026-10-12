@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated": "2026-10-12T22:15:06.581618+08:00",
+  "updated": "2026-10-12T22:28:07.040606+08:00",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
   "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md",
@@ -2492,16 +2492,21 @@
     "full_goal_complete": false
   },
   "current_verified_remote_CI": {
-    "source_head": "e0afa0f2dbfb4f0b5685d8bc68be77dcc6cc08ab",
-    "url": "https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38117287848",
-    "overall": "success",
-    "jobs": {
-      "Compile and non-desktop tests (windows-latest)": "success",
-      "Compile and non-desktop tests (macos-latest)": "success"
-    },
-    "non_desktop_scope_only": true,
-    "full_native_Host_goal_complete": false,
-    "following_change": "documentation only, tested source unchanged"
+    "head": "e83d38bdf1d413feefd16b2141c5c825db8e583e",
+    "run_id": 38261800260,
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "Compile and non-desktop tests (windows-latest)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Compile and non-desktop tests (macos-latest)",
+        "conclusion": "success"
+      }
+    ],
+    "scope": "Compile/non-desktop; not native GUI"
   },
   "R50_readonly_pressure": {
     "result": {
@@ -5243,5 +5248,251 @@
       }
     ],
     "report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md"
+  },
+  "R84_MCP_measured_scope": {
+    "scopes": [
+      "process startup/stdio resources/schema",
+      "authenticated Describe without capture/input",
+      "earlier true Host Live kept separate"
+    ],
+    "runs": [
+      {
+        "event": "command_execution",
+        "command": [
+          "rtk",
+          "proxy",
+          "./rwi-mcp",
+          "--profile",
+          "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
+        ],
+        "cwd": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin",
+        "process_exit_status": 0,
+        "literal_stderr": "",
+        "measurements": {
+          "initialize_ms": 11.870625,
+          "spawn_to_initialize_ms": 14.925667,
+          "resources/read": {
+            "n": 100,
+            "minimum_ms": 0.11525,
+            "median_ms": 0.182958,
+            "p95_ms": 0.292417,
+            "maximum_ms": 0.330042
+          },
+          "tools/list": {
+            "n": 30,
+            "minimum_ms": 0.874,
+            "median_ms": 1.101313,
+            "p95_ms": 1.469333,
+            "maximum_ms": 1.762375
+          },
+          "authenticated_mac_host_Describe_targets_only": {
+            "n": 5,
+            "minimum_ms": 11.668417,
+            "median_ms": 21.08925,
+            "p95_ms": 35.801417,
+            "maximum_ms": 35.801417
+          }
+        },
+        "failure": null,
+        "scope": "actual stdio process controller roundtrip; neither Host UI nor native input/capture CPU",
+        "standalone_stdio_is_not_GUI_acceptance": true,
+        "screen_captured": false,
+        "input_sent": false,
+        "Host_presence_sent": false,
+        "selected_window": false,
+        "binary_sha256": "9fe5ae6d22994a511b9e44c3891209dc5efd3798c3577a3a4174bf04972d8afe",
+        "tool_count": 43
+      },
+      {
+        "event": "command_execution",
+        "command": [
+          "rtk",
+          "proxy",
+          "./rwi-mcp",
+          "--profile",
+          "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
+        ],
+        "cwd": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin",
+        "process_exit_status": 0,
+        "literal_stderr": "",
+        "measurements": {
+          "initialize_ms": 8.173375,
+          "spawn_to_initialize_ms": 14.288208,
+          "resources/read": {
+            "n": 100,
+            "minimum_ms": 0.121333,
+            "median_ms": 0.207292,
+            "p95_ms": 0.34125,
+            "maximum_ms": 0.408
+          },
+          "tools/list": {
+            "n": 30,
+            "minimum_ms": 0.885417,
+            "median_ms": 1.1535,
+            "p95_ms": 2.841042,
+            "maximum_ms": 2.907292
+          },
+          "authenticated_mac_host_Describe_targets_only": {
+            "n": 5,
+            "minimum_ms": 15.30225,
+            "median_ms": 32.419917,
+            "p95_ms": 46.259333,
+            "maximum_ms": 46.259333
+          }
+        },
+        "failure": null,
+        "scope": "actual stdio process controller roundtrip; neither Host UI nor native input/capture CPU",
+        "standalone_stdio_is_not_GUI_acceptance": true,
+        "screen_captured": false,
+        "input_sent": false,
+        "Host_presence_sent": false,
+        "selected_window": false,
+        "binary_sha256": "9fe5ae6d22994a511b9e44c3891209dc5efd3798c3577a3a4174bf04972d8afe",
+        "tool_count": 43
+      },
+      {
+        "event": "command_execution",
+        "command": [
+          "rtk",
+          "proxy",
+          "./rwi-mcp",
+          "--profile",
+          "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
+        ],
+        "cwd": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin",
+        "process_exit_status": 0,
+        "literal_stderr": "",
+        "measurements": {
+          "initialize_ms": 7.605625,
+          "spawn_to_initialize_ms": 13.132584,
+          "resources/read": {
+            "n": 100,
+            "minimum_ms": 0.120208,
+            "median_ms": 0.20575,
+            "p95_ms": 0.338083,
+            "maximum_ms": 0.526125
+          },
+          "tools/list": {
+            "n": 30,
+            "minimum_ms": 0.956458,
+            "median_ms": 1.1632295,
+            "p95_ms": 1.581416,
+            "maximum_ms": 1.597791
+          },
+          "authenticated_mac_host_Describe_targets_only": {
+            "n": 5,
+            "minimum_ms": 13.117583,
+            "median_ms": 18.307834,
+            "p95_ms": 63.16775,
+            "maximum_ms": 63.16775
+          }
+        },
+        "failure": null,
+        "scope": "actual stdio process controller roundtrip; neither Host UI nor native input/capture CPU",
+        "standalone_stdio_is_not_GUI_acceptance": true,
+        "screen_captured": false,
+        "input_sent": false,
+        "Host_presence_sent": false,
+        "selected_window": false,
+        "binary_sha256": "9fe5ae6d22994a511b9e44c3891209dc5efd3798c3577a3a4174bf04972d8afe",
+        "tool_count": 43
+      }
+    ],
+    "no_general_speed_superiority_claim": true
+  },
+  "R84_publication": {
+    "commits": [
+      {
+        "subject": "test(macos): harden fixture teardown and observe minimized state",
+        "sha": "19dc4994271a54a64c891dea4280aa1ffe2defb2",
+        "paths": [
+          "crates/rwi-macos/examples/receiver_fixture/appkit.rs",
+          "crates/rwi-macos/examples/receiver_fixture/model.rs"
+        ]
+      },
+      {
+        "subject": "fix(macos): keep high-detail Live previews compact",
+        "sha": "c81c9b5da03cfade48a39aa889c1473c3e39bb9d",
+        "paths": [
+          "crates/rwi-macos/src/live/presenter.rs"
+        ]
+      },
+      {
+        "subject": "feat(macos): compose pinned Live sources and capture retained windows",
+        "sha": "2c7b96ea40ad5f478b9f75493ee5659d7a17e78c",
+        "paths": [
+          "crates/rwi-core/src/live.rs",
+          "crates/rwi-macos/src/capture.rs",
+          "crates/rwi-macos/src/capture/offscreen_policy.rs",
+          "crates/rwi-macos/src/desktop.rs",
+          "crates/rwi-macos/src/live.rs",
+          "crates/rwi-macos/src/live/tests.rs",
+          "crates/rwi-macos/src/live/worker.rs",
+          "crates/rwi-macos/src/native.rs",
+          "crates/rwi-macos/src/native/live_family.rs",
+          "crates/rwi-macos/src/native/visual.rs",
+          "crates/rwi-macos/src/native/visual/additional.rs",
+          "crates/rwi-macos/src/native/visual/selection.rs"
+        ]
+      },
+      {
+        "subject": "fix(agent): refresh pointer feedback facts per native context",
+        "sha": "13a82c8d00938196b0b623635dc0579bdcddb40d",
+        "paths": [
+          "crates/rwi-agent/src/runtime/capabilities.rs",
+          "crates/rwi-agent/src/runtime/capabilities/macos_tests.rs"
+        ]
+      },
+      {
+        "subject": "fix(mcp): isolate Live replacements and diagnose adapter ownership",
+        "sha": "3a6263f407f3f3495fd22c56c0129074999ec32e",
+        "paths": [
+          "crates/rwi-mcp/src/gateway.rs",
+          "crates/rwi-mcp/src/gateway/live_ui.html",
+          "crates/rwi-mcp/src/gateway/live_ui.rs",
+          "crates/rwi-mcp/tests/gateway_stdio.rs",
+          "crates/rwi-mcp/tests/live_ui.test.mjs"
+        ]
+      },
+      {
+        "subject": "fix(packaging): pin installed MCP binary revision in descriptor",
+        "sha": "264d470d3407428e22da3dc706abbda80580c271",
+        "paths": [
+          "tools/package_rwi_plugin.py",
+          "tools/test_package_rwi_plugin.py"
+        ]
+      },
+      {
+        "subject": "docs: record scoped Host multi-source Live acceptance and remaining matrix",
+        "sha": "e83d38bdf1d413feefd16b2141c5c825db8e583e",
+        "paths": [
+          "docs/product/implementation-status.md",
+          "docs/product/macos-background-acceptance-status.json",
+          "docs/validation/2026-10-12-r84-fresh-host-live.md"
+        ]
+      }
+    ],
+    "PR_url": "https://github.com/DestroyedTeam/RealWorldInteraction/pull/1",
+    "PR_isDraft": false,
+    "repository_visibility": "PUBLIC",
+    "source_head": "e83d38bdf1d413feefd16b2141c5c825db8e583e",
+    "remote_source_CI": {
+      "id": 38261800260,
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Compile and non-desktop tests (windows-latest)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile and non-desktop tests (macos-latest)",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "first_push_exit_status": 128,
+    "HTTP1_corrected_push_exit_status": 0,
+    "raw_screenshots_binaries_credentials_excluded": true,
+    "all_features_accepted": false
   }
 }
