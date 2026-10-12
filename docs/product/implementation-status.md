@@ -1861,3 +1861,19 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 同稳定证书部署Agent2300/509117ee；实际loaded MCP返回新capavailable=true，四权限／CA／profile／安装MCP不变、不需人工重启。143既有tracking后自然到期0；新144右侧cold hover0，peer145前台：public与SPI各一条type5准确达App/Window，仍view/tooltip0且framework转换区域外。明确FGmove才enter1/move1、dwelltooltip1；再focus145，144inactive/nonkey的新SPI move1→2仅条件性tracking证明。未泛化冷态后台hover。
 - 144/145明确Close expiry0/进程0/detach；9durable terminal/released/no pending/uncertainty/replay。保留初编译101、源接线断言101、warning与unknown_frame/schema拒绝；focus确会失效同desktop aliases，fresh snapshot后新操作成功，不重放已投递输入。
 - 同四角色扩展166，source-copy matching配置1/0/1/0与精确哈希恢复，非生产回滚。正式报告／原图outputs/validation/r63-explicit-skylight-pointer-2026-10-12/REPORT.md；全计划继续未完成，优先改善失效范围反馈并补通用tracking／复杂provider等。
+
+
+## 2026-10-12 · R64：切窗后明确失效范围，避免旧frame误用
+
+- Engine::focus_window新增grounding_invalidated：current_executor／same_native_desktop／target_count／snapshot_then_resolve；只有原始调用执行失效时返回，持久重复读取不假装新失效。核心返回／拒绝／uncertain／未知counter断言覆盖，baseline新检查101→modified0；完整11门0/workspace774/0/11、Receiver70/UI7。
+- 同稳定签名部署Agent34348/cc9272d1，四权限／CA／profile／安装MCP不变。真实147前台后反馈3个本执行器目标失效；146旧frame只读unknown_frame/nativefalse。fresh snapshot+一次AXPress独立Safe0→1，146inactive/nonkey／fg34877。两个明确Close expiry0/进程0/detach；4durable全terminal/released/无pending/uncertainty/replay。
+- 四角色源配置1/0/1/0和精确哈希恢复，非生产回滚。当前改动待与后续功能组合理提交；远程CI仍是R63 f2204d02/macOS+Windows success，不把旧CI当本轮证明。同步F03真实实验已实现状态，不再以陈旧not_implemented反复重做；全目标未完成。
+- 报告／原始顺序截图：outputs/validation/r64-focus-grounding-feedback-2026-10-12/REPORT.md；下一步系统文件面板／provider层级，不依赖人工。
+
+
+## 2026-10-12 · R65：真实系统文件面板／模态拒绝／取消后后台恢复
+
+- 仅显式fixture system-panel-controls增加真正NSOpenPanel own-parent sheet与空目录。SystemPanels.file及真实completion response分离visibility/CG/sheetParent；队列上限/drop计数，可重入调用不借UI。record私有导致初编译101保留，窄completed方法修正；新增2测试，完整11门0/workspace774/0/11、Receiver72/UI7。生产Agent仍R64，未重复部署。
+- 148 Open原始AX25204/uncertain不改，后续实际sheet44629/attached/display4/open1。父Safe modal负例nativefalse/Safe0；精确Cancel response0。148最终expiry1/exit0，晚到Safe/Close未发，两detach，不假装显式关闭。
+- 新149 Open仍uncertain，首次有界只读未发现不当终止、不重启、不replay；继续同process/handle后sheet44684真实可见。Cancel returned；独立发现仅parent44674，fresh unblocked＋Safe0→1/inactive/nonkey/fg97732。明确Close expiry0/exit0，两detach；7durable terminal/released/无pending/uncertainty/replay。
+- 此例真实NSOpenPanel渲染owner仍fixture PID，不冒充foreign-provider；没有放松physical point守卫或把window截图当遮挡证明。下一项已有LiveFamilyCapture与真正文件sheet的层叠合成实测，全A01–A07/F01–F16仍未完成。报告／原图：outputs/validation/r65-native-system-file-panel-2026-10-12/REPORT.md。

@@ -3,7 +3,7 @@
   "updated": "2026-10-12",
   "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r63-explicit-skylight-pointer-2026-10-12/REPORT.md",
+  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r65-native-system-file-panel-2026-10-12/REPORT.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -118,10 +118,10 @@
         "auto-trycua-cua-file-3",
         "auto-trycua-cua-issue-2688"
       ],
-      "current_state": "not_implemented",
-      "implementation_evidence": "SkyLight 只保留显式 SPI 候选设计",
-      "this_turn_native_evidence": "没有 native acceptance",
-      "remaining": "按 OS/arch/ABI 探测并隔离实验 route，不默默替换生产 CG transport"
+      "current_state": "experimental_pointer_transport_native_accepted",
+      "implementation_evidence": "R63 guarded explicit macOS-only SLEventPostToPid one-move lane, no auth/field58/warp/fallback; current production retains it",
+      "this_turn_native_evidence": "R63 own144 actual type5 once/window correct; cold tracking0, explicit FG positive and pretracked inactive move1→2; R64 retained without replay",
+      "remaining": "Keyboard authentication/no-raise and wider OS/architecture/client acceptance are not implemented or proved; availability is not generic hover support."
     },
     {
       "id": "F04",
@@ -177,7 +177,7 @@
       ],
       "current_state": "partial_implemented",
       "implementation_evidence": "typed hover 已加载；工厂/派发 probe 可诊断",
-      "this_turn_native_evidence": "R62 off-framework-pointer move/click reached app/window but view hover0; both Cua/RWI clicks down/up real, hover0; established physical tracking + inactive own141 allows new addressed mouseMoved1→2",
+      "this_turn_native_evidence": "R62/R63 exact app/window events with external physical cursor did not trigger cold hover; explicit foreground did, preexisting inactive tracking conditionally accepted. No new hover inputs in R64.",
       "remaining": "generic cold/background hover at arbitrary points with physical cursor elsewhere remains unaccepted; no silent global warp/focus fallback; timestamp field58 preservation required for any SPI experiment",
       "last_native_evidence_date": "2026-10-11",
       "R51_foreground_default": {
@@ -283,6 +283,12 @@
         "delayed_independent_state_proves_transition_during_drag": true,
         "new_input_sent_this_turn": false,
         "physical_human_origin_attested": false
+      },
+      "R64_invalidation_feedback": {
+        "context": "current_executor",
+        "next": "snapshot_then_resolve",
+        "scope": "same_native_desktop",
+        "target_count": 3
       }
     },
     {
@@ -407,6 +413,14 @@
         "standard_titlebar_controls_replaced": true,
         "opened_close_menu_not_in_selected_window_snapshot": true,
         "root_menu_attribute_read_incomplete": true
+      },
+      "R65_system_file_panel_acceptance": {
+        "real_NSOpenPanel": true,
+        "same_render_owner_pid": true,
+        "parent_modal_negative_native_dispatch_false": true,
+        "cancel_and_parent_reenabled_background_action_observed": true,
+        "foreign_pid_accepted": false,
+        "live_family_os_file_sheet_case_accepted": false
       }
     },
     {
@@ -3778,6 +3792,247 @@
         "correction": "check returned reference before act"
       }
     ],
+    "full_goal_complete": false
+  },
+  "R64_focus_grounding_feedback": {
+    "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "changed_field": "Engine::focus_window.grounding_invalidated",
+    "feedback": {
+      "context": "current_executor",
+      "next": "snapshot_then_resolve",
+      "scope": "same_native_desktop",
+      "target_count": 3
+    },
+    "actual_focus_foreground": {
+      "native_epoch": "10f7b2c83772ca3950d70679154166887bd668c09c887cd5aa48d65778d64b3f",
+      "pid": 34877,
+      "process_start": "34877:1791785348:385532",
+      "window": "cgwindow:44482"
+    },
+    "old_frame": {
+      "code": "unknown_frame",
+      "goal_verified": false,
+      "message": "Observe this exact target again.",
+      "native_execution": false,
+      "result_kind": "cached_read"
+    },
+    "fresh_background_action": {
+      "pid": 34831,
+      "window_number": 44479,
+      "safe_button_actions": 1,
+      "app_active": false,
+      "window_key": false,
+      "frontmost_pid": 34877,
+      "sequence": 1
+    },
+    "validation": {
+      "eleven_gates_exit0": true,
+      "workspace": {
+        "passed": 774,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver": 70,
+      "live_ui": 7
+    },
+    "cleanup": {
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "durable_requests": 4,
+      "input_replayed": false,
+      "own146": {
+        "explicit_AXClose": true,
+        "expiry_requests": 0,
+        "process_exit": 0,
+        "detached": true
+      },
+      "own147": {
+        "explicit_AXClose": true,
+        "expiry_requests": 0,
+        "process_exit": 0,
+        "detached": true
+      }
+    },
+    "deployment": {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "original_hash": "3377ea27e79b143da3451334a69c44d2936953d6733bebb8a4fd430a5d632a52",
+      "installed_hash": "3aa4c303f291c82ae53724d95cf050c28b2033096bafb599e14eee89eb005148",
+      "candidate_hash": "bf21e05d4cf9a992cb360258e223fa6d661645a7b0fb8258363a80f4d7abf3ff",
+      "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "protected_public_config_hashes": {
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "5cf8424eb08f10735a9ff3cfaac69e924cf48affa3ebf0453d737b99bd8d8c29"
+      },
+      "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-focus-grounding-r64.app",
+      "retained_baseline_app": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/focus-grounding-feedback-r64/deployment/baseline/RWI Agent.app",
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "recovery_invoked": false,
+      "mcp_binary_changed": false,
+      "input_sent_by_controller": false
+    },
+    "startup": {
+      "command": [
+        "rtk",
+        "proxy",
+        "./rwi-mcp",
+        "--profile",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
+      ],
+      "cwd": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin",
+      "binary_sha256": "5cf8424eb08f10735a9ff3cfaac69e924cf48affa3ebf0453d737b99bd8d8c29",
+      "initialize_ok": true,
+      "tools_count": 41,
+      "targets_healthy": true,
+      "device_id": "mac-host",
+      "agent_instance": "cc9272d1-0300-4ae6-9b1d-1f1ab72f7d2b",
+      "native_pid": 34348,
+      "permissions": {
+        "accessibility": true,
+        "listen_event": true,
+        "post_event": true,
+        "requests_permission": false,
+        "screen_capture": true,
+        "screenshot_api": true
+      },
+      "executor_features": {
+        "move_pointer_intent": {
+          "fallback": false,
+          "implemented": true,
+          "requires_native_backend_support": true,
+          "scope": "intent_parser; not native hover-effect availability"
+        },
+        "resolve_view_red_marker_cluster": {
+          "fallback": false,
+          "implemented": true,
+          "opt_in_required": true,
+          "scope": "executor_parameter; native_anchor_is_checked_per_view",
+          "unavailable_error": "red_marker_anchor_unavailable"
+        }
+      },
+      "input_domain_fenced": false,
+      "resource_domain": "0d5ca219585e132b6cbe15f6f2a011bba3412ea23816927c74172c0a95e31180",
+      "input_sent": false,
+      "screen_capture_requested": false,
+      "images_returned": 0,
+      "readonly_startup_attempts": 2,
+      "process_exit": 0,
+      "stderr": "",
+      "failure": null
+    },
+    "full_goal_complete": false
+  },
+  "R65_native_system_file_panel": {
+    "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "changed_fields": [
+      "SystemPanels.file",
+      "SystemPanelOracle.completion_response",
+      "SystemPanelOracle.completion_callbacks_dropped"
+    ],
+    "changed_symbols": [
+      "file_panel_open",
+      "State::native_file_panel_completed",
+      "UI::sample_environment"
+    ],
+    "native148": {
+      "pid": 89003,
+      "parent": "cgwindow:44616",
+      "file_sheet": "cgwindow:44629",
+      "sheet_on_display4_attached": true,
+      "open_original_dispatch": "uncertain",
+      "open_native_status": -25204,
+      "open_independently_observed_actions": 1,
+      "parent_modal_negative": "checked_context_unavailable/native_dispatch_entered=false",
+      "safe_actions_final": 0,
+      "cancel_response": 0,
+      "expiry_close_requests": 1,
+      "process_exit": 0,
+      "late_safe_or_close_not_sent": true,
+      "bindings_detached": true
+    },
+    "native149": {
+      "pid": 2328,
+      "parent": "cgwindow:44674",
+      "sheet": "cgwindow:44684",
+      "source_discovery_after_cancel": [
+        "cgwindow:44674"
+      ],
+      "open_original_dispatch": "uncertain",
+      "initial_readonly_settle_timed_out": true,
+      "same_process_resumed_no_restart": true,
+      "file": {
+        "open_actions": 1,
+        "window_number": 44684,
+        "visible": false,
+        "window_key": false,
+        "frame": {
+          "x": 2926.0,
+          "y": 165.0,
+          "width": 880.0,
+          "height": 448.0
+        },
+        "display_id": 4,
+        "is_sheet": true,
+        "attached_to_own_parent": false,
+        "hides_on_deactivate": false,
+        "on_active_space": true,
+        "occlusion_state": 8192,
+        "quartz_description": {
+          "alpha": 1.0,
+          "input_authority": false,
+          "input_sent": false,
+          "layer": 0,
+          "non_atomic": true,
+          "onscreen": null,
+          "owner_matches": true,
+          "pid": 2328,
+          "read_available": true,
+          "records": 1,
+          "sampled_unix_ms": 1791788711580,
+          "scope": "exact_own_panel_quartz_metadata",
+          "window": 44684
+        },
+        "completion_response": 0,
+        "completion_callbacks_dropped": 0
+      },
+      "safe_after_cancel": {
+        "safe_button_actions": 1,
+        "app_active": false,
+        "window_key": false,
+        "frontmost_pid": 97732,
+        "sequence": 3
+      },
+      "explicit_AXClose": true,
+      "expiry_close_requests": 0,
+      "process_exit": 0,
+      "bindings_detached": true
+    },
+    "provider_scope": "Real native NSOpenPanel/RWI subtree; rendered CG owner is fixture PID on this host. No foreign-PID ownership/input or universal popup claim.",
+    "validation": {
+      "eleven_gates_exit0": true,
+      "workspace": {
+        "passed": 774,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver_tests": 72,
+      "live_ui_tests": 7
+    },
+    "cleanup": {
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "durable_requests": 7,
+      "original_uncertain_open_results_retained": true,
+      "input_replayed": false
+    },
+    "production_agent_changed_this_turn": false,
+    "installed_agent_pid": 34348,
+    "installed_agent_instance": "cc9272d1-0300-4ae6-9b1d-1f1ab72f7d2b",
     "full_goal_complete": false
   }
 }
