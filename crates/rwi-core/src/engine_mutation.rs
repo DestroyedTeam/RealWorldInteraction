@@ -178,6 +178,13 @@ impl Engine {
             return Ok(result);
         }
         operation::checkpoint("before_revalidation")?;
+        if matches!(intent, Intent::Click)
+            && let Some(options) = ClickDeliveryOptions::from_click_value(value.as_deref())?
+        {
+            // A move route or public/default click cannot authorize this opt-in.
+            // Preserve the exact encoded value in the existing durable fingerprint.
+            options.require_capability(&self.backend(target)?.capabilities())?;
+        }
         if matches!(intent, Intent::MovePointer) && value.is_some() {
             MovePointerOptions::parse(value.as_deref())?
                 .require_capability(&self.backend(target)?.capabilities())?;
@@ -194,6 +201,15 @@ impl Engine {
             return Err(fault(
                 "native_action_mismatch",
                 "Native-action references cannot dispatch pointer, text, or a different action.",
+            ));
+        }
+        if matches!(intent, Intent::Click)
+            && resolved.native_action.is_none()
+            && ClickDeliveryOptions::native_action_value(value.as_deref()).is_some()
+        {
+            return Err(fault(
+                "native_action_mismatch",
+                "A native-action value requires its exact marked reference; a pointer cannot be promoted.",
             ));
         }
         if resolved.placement_only {

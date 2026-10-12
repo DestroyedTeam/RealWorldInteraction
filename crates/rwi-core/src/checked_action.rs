@@ -68,6 +68,11 @@ impl Engine {
             return Ok(result);
         }
         operation::checkpoint("checked_action_preconditions")?;
+        if matches!(intent, Intent::Click)
+            && let Some(options) = ClickDeliveryOptions::from_click_value(value.as_deref())?
+        {
+            options.require_capability(&self.backend(target)?.capabilities())?;
+        }
         self.leases
             .shared()
             .lock()
@@ -106,7 +111,10 @@ impl Engine {
                 },
             ));
         }
-        let native_action = match (&intent, value.as_deref()) {
+        let native_action = match (
+            &intent,
+            ClickDeliveryOptions::native_action_value(value.as_deref()),
+        ) {
             (Intent::Click, Some(action)) => {
                 let caps = self.backend(target)?.capabilities();
                 if action.is_empty()

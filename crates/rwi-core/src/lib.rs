@@ -4,6 +4,8 @@ mod foreground;
 pub use foreground::ForegroundState;
 mod move_pointer_options;
 pub use move_pointer_options::MovePointerOptions;
+mod click_delivery_options;
+pub use click_delivery_options::{ClickDeliveryOptions, ExperimentalClickPhase};
 mod checked_action;
 mod engine_lifecycle;
 mod engine_mutation;
@@ -214,6 +216,15 @@ pub enum Intent {
 }
 impl Intent {
     pub fn validate(&self, value: Option<&str>) -> Result<()> {
+        if matches!(self, Self::Click) {
+            ClickDeliveryOptions::from_click_value(value)?;
+        }
+        if matches!(self, Self::DoubleClick | Self::ContextMenu) && value.is_some() {
+            return Err(fault(
+                "invalid_input_value",
+                "Double-click/context-menu carry no delivery or native-action value; no fallback.",
+            ));
+        }
         if matches!(self, Self::MovePointer) {
             MovePointerOptions::parse(value)?;
         }
