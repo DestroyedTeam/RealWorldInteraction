@@ -1,6 +1,21 @@
 //! Single native-window Backend implementation; policy bodies unchanged.
 use super::*;
 
+impl NativeMac {
+    /// Shared shape for pinned windows and desktop-owned exact selections. This
+    /// advertises an attempted route, never bypassing native per-operation guards.
+    pub(crate) fn pointer_click_capabilities(
+        input_enabled: bool,
+        semantic_only: bool,
+    ) -> serde_json::Value {
+        serde_json::json!({
+            "implemented":true,
+            "default_delivery":"background_window",
+            "background_skylight_experimental":crate::background::skylight::click_capabilities(input_enabled, semantic_only),
+        })
+    }
+}
+
 impl Backend for NativeMac {
     fn drag_between(
         &mut self,
@@ -45,6 +60,9 @@ impl Backend for NativeMac {
         caps["target_scope"] = serde_json::json!(
             "pinned PID + CGWindowID + process start; no implicit foreground requirement"
         );
+        caps["pointer_click"] =
+            Self::pointer_click_capabilities(self.allow_input, self.semantic_only);
+        caps["window_selected"] = serde_json::json!(true);
         // The legacy pinned constructor does not gain dynamic catalog operations.
         caps["window_discovery"]["implemented"] = serde_json::json!(false);
         caps["pointer_feedback"] = crate::overlay::status_json();

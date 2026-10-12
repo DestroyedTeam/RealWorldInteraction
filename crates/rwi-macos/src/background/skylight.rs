@@ -1,4 +1,4 @@
-//! Opt-in MouseMoved-only SkyLight experiment. Missing SPI is a refusal, never
+//! Opt-in MouseMoved / single-left-pair SkyLight experiments. Missing SPI is a refusal, never
 //! a public PID/HID retry. Availability and a void post do not attest app effect.
 //! Signature reference: trycua/cua 0a10f6964b727cd8ae45cd118a1d392815cdb8b7,
 //! libs/cua-driver/rust/crates/platform-macos/src/input/skylight.rs.
@@ -11,6 +11,8 @@ use core_graphics::{
 use foreign_types::ForeignType;
 use rwi_core::{Result, fault};
 use std::{ffi::c_void, sync::OnceLock};
+mod click;
+pub(crate) use click::{click_capabilities, prepare_click_pair};
 
 type PostToPid = unsafe extern "C" fn(libc::pid_t, *mut c_void);
 struct Driver {

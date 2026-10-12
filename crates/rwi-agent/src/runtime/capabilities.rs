@@ -153,6 +153,10 @@ impl Runtime {
             "move_pointer_intent": {
                 "implemented": true, "requires_native_backend_support": true,
                 "fallback": false, "scope": "intent_parser; not native hover-effect availability"
+            },
+            "click_delivery_options": {
+                "implemented": true, "requires_native_backend_support": true,
+                "fallback": false, "scope": "intent_parser; selected native click capability remains required"
             }
         });
         result.data["recent_operations"] = json!(recent_operations(&self.config.state_root, 5));
@@ -249,6 +253,8 @@ fn recent_operations(state_root: &std::path::Path, limit: usize) -> Vec<serde_js
     rows
 }
 
+#[cfg(test)]
+mod click_delivery_tests;
 #[cfg(test)]
 mod macos_tests;
 #[cfg(test)]

@@ -85,6 +85,15 @@ pub(super) struct ClickArgs {
     pub(super) target: String,
     pub(super) request_id: String,
     pub(super) at: ClickTarget,
+    /// Explicit single pointer-click delivery; omission keeps the native default.
+    #[serde(default, deserialize_with = "click_delivery_option")]
+    #[schemars(with = "rwi_core::ClickDeliveryOptions")]
+    pub(super) delivery: Option<rwi_core::ClickDeliveryOptions>,
+}
+fn click_delivery_option<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<rwi_core::ClickDeliveryOptions>, D::Error> {
+    rwi_core::ClickDeliveryOptions::deserialize(deserializer).map(Some)
 }
 #[derive(Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -232,6 +241,7 @@ pub(super) fn compact_action_reply(data: &Value, details_ref: Option<String>) ->
         "elapsed_ms",
         "hover_effect",
         "motion_history",
+        "requested_delivery",
     ] {
         // Omit an absent field, never an explicit null: a native unknown (such
         // as system_accepted:null) remains distinct from missing evidence.

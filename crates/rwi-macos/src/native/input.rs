@@ -7,6 +7,8 @@ pub(crate) use drag::NATIVE_SAMPLE_INTERVAL_MS;
 mod continuation;
 mod dispatch;
 mod mouse_gesture;
+mod request;
+use request::native_action_request;
 mod move_pointer;
 use anchor_native::AxObject;
 use continuation::{Facts, Kind, Sequence};
@@ -29,6 +31,8 @@ impl NativeMac {
         }
         let requested_native_action =
             native_action_request(intent, target.native_action.as_deref(), value)?;
+        let experimental_click = matches!(intent, Intent::Click)
+            && rwi_core::ClickDeliveryOptions::from_click_value(value)?.is_some();
         let move_options = if matches!(intent, Intent::MovePointer) {
             rwi_core::MovePointerOptions::parse(value)?
         } else {
@@ -96,6 +100,12 @@ impl NativeMac {
         // accessibility press action instead, with the same grounded element
         // validation and no synthetic primer.
         let native_press = matches!(intent, Intent::Click) && self.native_press_required(target)?;
+        if experimental_click && native_press {
+            return Err(fault(
+                "experimental_click_pointer_required",
+                "This target requires an advertised native action; experimental pointer delivery cannot substitute AXPress or fall back.",
+            ));
+        }
         if let Some(action) = requested_native_action {
             return self.dispatch_native_action(expected, target, action);
         }
@@ -129,7 +139,8 @@ impl NativeMac {
         // changes receiving active/key/order state before even the first down.
         // This does not promise that an inactive client consumes pointer input.
         // Keyboard compatibility retains its separately validated preparation.
-        let receiver_prepared = !matches!(intent, Intent::MovePointer)
+        let receiver_prepared = !experimental_click
+            && !matches!(intent, Intent::MovePointer)
             && needs_background_activation(
                 intent,
                 native_press,
@@ -219,14 +230,34 @@ impl NativeMac {
                         1
                     } {
                         let (press, release) = gesture.click_pair(n)?;
-                        sequence.pair(
-                            expected,
-                            target,
-                            &counter,
-                            (press, release),
-                            |first| self.read_input_batch(first, expected, target, intent),
-                            |e| crate::background::deliver_pointer(e, &delivery, target.point),
-                        )?;
+                        if experimental_click {
+                            let pair = crate::background::skylight::prepare_click_pair(
+                                &press,
+                                &release,
+                                &delivery,
+                                target.point,
+                            )?;
+                            // Same native/semantic/context/lease checks and counted
+                            // pair custody. Up is cleanup of this exact down; no
+                            // checkpoint, activation or fallback between them.
+                            sequence.pair(
+                                expected,
+                                target,
+                                &counter,
+                                pair,
+                                |first| self.read_input_batch(first, expected, target, intent),
+                                |prepared| prepared.post(),
+                            )?;
+                        } else {
+                            sequence.pair(
+                                expected,
+                                target,
+                                &counter,
+                                (press, release),
+                                |first| self.read_input_batch(first, expected, target, intent),
+                                |e| crate::background::deliver_pointer(e, &delivery, target.point),
+                            )?;
+                        }
                     }
                 }
                 Intent::Text => {
@@ -516,21 +547,6 @@ fn validate_batch_scene(
 
 #[cfg(test)]
 mod tests;
-
-fn native_action_request<'a>(
-    intent: &Intent,
-    marked: Option<&'a str>,
-    value: Option<&str>,
-) -> Result<Option<&'a str>> {
-    match (marked, intent, value) {
-        (Some(action), Intent::Click, Some(value)) if value == action => Ok(Some(action)),
-        (Some(_), _, _) | (None, Intent::Click, Some(_)) => Err(fault(
-            "native_action_mismatch",
-            "Use the exact checked native-action reference and matching action. A pointer reference cannot be promoted by its value; no input sent.",
-        )),
-        _ => Ok(None),
-    }
-}
 
 // A nonzero AX status is not proof that the application made no change.
 fn native_action_failure(action: &str, status: i32) -> rwi_core::Fault {

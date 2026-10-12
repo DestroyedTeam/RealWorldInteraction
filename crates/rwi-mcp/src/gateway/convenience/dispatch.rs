@@ -187,51 +187,18 @@ impl Gateway {
                     Ok(a) => a,
                     Err(e) => return invalid(&e.to_string()),
                 };
-                let has_action = matches!(
-                    &a.at,
-                    ClickTarget::Element {
-                        action: Some(_),
-                        ..
+                if let Err(error) = validate_click_delivery(&a) {
+                    return error;
+                }
+                let device_id = if a.delivery.is_some() {
+                    match self.route_id("computer.act", &json!({"target":a.target})) {
+                        Ok(device_id) => Some(device_id),
+                        Err(error) => return error,
                     }
-                );
-                let intent = match click_intent(a.click_count, has_action) {
-                    Ok(intent) => intent,
-                    Err(error) => return error,
+                } else {
+                    None
                 };
-                let (tool, args) = match a.at {
-                    ClickTarget::Element {
-                        frame,
-                        element,
-                        action,
-                    } => (
-                        "computer.act_checked",
-                        json!({"frame":frame,"element":element,"intent":intent,"value":action}),
-                    ),
-                    ClickTarget::View {
-                        view_id,
-                        x,
-                        y,
-                        red_marker_cluster,
-                    } => {
-                        if !x.is_finite() || !y.is_finite() {
-                            return invalid("Coordinates must be finite.");
-                        }
-                        let r = call(
-                            "computer.resolve_view",
-                            view_resolution_args(&a.target, &view_id, x, y, red_marker_cluster),
-                            false,
-                        )
-                        .await;
-                        if r.is_error {
-                            return r;
-                        }
-                        (
-                            "computer.act",
-                            json!({"reference":r.data["reference"],"intent":intent}),
-                        )
-                    }
-                };
-                leased(&a.target, &a.request_id, tool, args, call).await
+                click(a, device_id, call).await
             }
             "computer.reveal" => {
                 let a = match serde_json::from_value::<RevealArgs>(args) {

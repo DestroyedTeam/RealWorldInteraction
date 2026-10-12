@@ -9,6 +9,7 @@ struct LegacyResolveView {
     y: f64,
 }
 
+mod click_delivery;
 mod controls;
 mod drag_between;
 mod hover;

@@ -4,12 +4,14 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::{future::Future, time::Instant};
 
+mod click;
 mod controls;
 mod dispatch;
 mod drag_between;
 mod inputs;
 mod schema;
 mod snapshots;
+use click::*;
 use controls::*;
 #[cfg(test)]
 use dispatch::CallTimings;
@@ -30,7 +32,7 @@ pub(super) fn tools() -> Vec<Tool> {
         ),
         tool::<ClickArgs>(
             "computer.click",
-            "Click one exact snapshot element or delivered-view coordinate. No JS or manual lease management. Supply stable request_id; click_count=1 (default) or 2 for a native double-click. On a visible compact red-dot cluster only, red_marker_cluster=true opts into marker-shape revalidation while ignoring unrelated non-red animation; marker move/loss/occlusion still refuses. Default false is strict. Returns receipt, not goal success; no retry, focus or fallback. Observe afterward.",
+            "Click one exact snapshot element or delivered-view coordinate. Stable request_id; click_count=1 (default) or 2 for native double-click. Optional delivery={delivery:background_skylight_experimental} is macOS-only, single pointer click, no AX action; requires the exact selected target's pointer_click route and executor support. Missing capability or older peer refuses, never downgrades. Omit delivery for unchanged native default. red_marker_cluster=true is only for a visible compact red-dot cluster; default false is strict. Receipt/requested_delivery is not goal or delivery proof. No JS, retry, activation or fallback; observe afterward.",
         ),
         tool::<HoverArgs>(
             "computer.hover",
