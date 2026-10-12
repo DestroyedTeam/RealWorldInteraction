@@ -39,6 +39,8 @@ struct UI {
     modal_button: Option<Retained<AnyObject>>,
     color_panel: Option<Retained<AnyObject>>,
     font_panel: Option<Retained<AnyObject>>,
+    file_panel: Option<Retained<AnyObject>>,
+    file_panel_directory: Option<std::path::PathBuf>,
     button: Retained<AnyObject>,
     hover: Retained<AnyObject>,
     canvas: Retained<AnyObject>,
@@ -58,6 +60,9 @@ struct UI {
 thread_local! {
     static UI_STATE: RefCell<Option<UI>> = const { RefCell::new(None) };
     static DISPATCH_BORROW_SKIPS: Cell<u64> = const { Cell::new(0) };
+    // Completion can be reentrant during panel teardown; never borrow UI there.
+    static FILE_PANEL_RESPONSES: RefCell<Vec<isize>> = const { RefCell::new(Vec::new()) };
+    static FILE_PANEL_RESPONSES_DROPPED: Cell<u64> = const { Cell::new(0) };
 }
 
 fn class(name: &'static CStr) -> Result<&'static AnyClass, String> {
@@ -174,6 +179,13 @@ impl UI {
         }
     }
     fn close_system_panels(&mut self) {
+        if let Some(panel) = self.file_panel.take() {
+            unsafe {
+                let _: () = msg_send![&*panel, cancel:std::ptr::null_mut::<AnyObject>()];
+                let _: () = msg_send![&*panel, orderOut:std::ptr::null_mut::<AnyObject>()];
+                self.state.system_panels.file.visible = Some(msg_send![&*panel, isVisible]);
+            }
+        }
         for (slot, observed) in [
             (&mut self.color_panel, &mut self.state.system_panels.color),
             (&mut self.font_panel, &mut self.state.system_panels.font),
@@ -218,6 +230,16 @@ impl UI {
         }
     }
     fn sample_environment(&mut self) {
+        self.state.system_panels.file.completion_callbacks_dropped =
+            FILE_PANEL_RESPONSES_DROPPED.with(Cell::get);
+        FILE_PANEL_RESPONSES.with(|queue| {
+            for response in queue.borrow_mut().drain(..) {
+                self.state.native_file_panel_completed(response);
+            }
+        });
+        if let Some(panel) = &self.file_panel {
+            sample_system_panel(panel, &self.window, &mut self.state.system_panels.file);
+        }
         if let Some(panel) = &self.color_panel {
             sample_system_panel(panel, &self.window, &mut self.state.system_panels.color);
         }
@@ -850,6 +872,65 @@ fn open_system_panel(kind: &'static str, sender: &AnyObject) {
         });
     });
 }
+/// Public native NSOpenPanel, opt-in own parent and empty allocated directory.
+/// Never opens a selected file, captures other apps, requests OS permissions,
+/// synthesizes provider identity, or attributes a request counter to visibility.
+extern "C" fn file_panel_open(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
+    callback(|| {
+        let request = UI_STATE.with(|cell| {
+            let mut b = cell.borrow_mut();
+            let ui = b.as_mut()?;
+            if ui
+                .file_panel
+                .as_ref()
+                .is_some_and(|panel| unsafe { msg_send![&**panel, isVisible] })
+                || !ui.state.system_panel_open("file")
+            {
+                return None;
+            }
+            Some((ui.window.clone(), ui.file_panel_directory.clone()?))
+        });
+        let Some((parent, directory)) = request else {
+            return;
+        };
+        // Never hold a UI RefCell borrow across reentrant framework calls.
+        let result: Result<Retained<AnyObject>, String> = (|| unsafe {
+            let panel: Retained<AnyObject> = msg_send![class(c"NSOpenPanel")?, openPanel];
+            let path =
+                NSString::from_str(directory.to_str().ok_or("file_panel_directory_not_utf8")?);
+            let url: Retained<AnyObject> =
+                msg_send![class(c"NSURL")?, fileURLWithPath:&*path, isDirectory:true];
+            let _: () = msg_send![&*panel, setDirectoryURL:&*url];
+            let _: () = msg_send![&*panel, setCanChooseFiles:true];
+            let _: () = msg_send![&*panel, setCanChooseDirectories:false];
+            let _: () = msg_send![&*panel, setAllowsMultipleSelection:false];
+            let title = NSString::from_str("RWI own empty file chooser — cancel only");
+            let _: () = msg_send![&*panel, setTitle:&*title];
+            let completion = block2::RcBlock::new(|response: isize| {
+                FILE_PANEL_RESPONSES.with(|queue| {
+                    let mut values = queue.borrow_mut();
+                    if values.len() < 4 {
+                        values.push(response);
+                    } else {
+                        FILE_PANEL_RESPONSES_DROPPED
+                            .with(|dropped| dropped.set(dropped.get().saturating_add(1)));
+                    }
+                });
+            });
+            let _: () = msg_send![&*panel, beginSheetModalForWindow:&*parent, completionHandler:&*completion];
+            Ok(panel)
+        })();
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                match result {
+                    Ok(panel) => ui.file_panel = Some(panel),
+                    Err(error) => ui.state.output_error = Some(error),
+                }
+                ui.flush();
+            }
+        });
+    });
+}
 extern "C" fn color_panel_open(_this: &AnyObject, _cmd: Sel, sender: &AnyObject) {
     open_system_panel("color", sender);
 }
@@ -1235,6 +1316,10 @@ fn classes() -> Result<FixtureClasses, String> {
     unsafe {
         actions.add_method(sel!(clicked:), clicked as extern "C" fn(_, _, _));
         actions.add_method(
+            sel!(systemFileOpen:),
+            file_panel_open as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
             sel!(systemColorOpen:),
             color_panel_open as extern "C" fn(_, _, _),
         );
@@ -1376,6 +1461,13 @@ pub fn run(options: Options) -> Result<(), String> {
         return Err("AppKit receiver must run on the main thread".into());
     }
     let store = Store::create(&options.state_dir).map_err(|e| e.to_string())?;
+    let file_panel_directory = if options.system_panel_controls {
+        let directory = options.state_dir.join("empty-native-file-panel");
+        std::fs::create_dir(&directory).map_err(|e| e.to_string())?;
+        Some(directory)
+    } else {
+        None
+    };
     let mut state = State::new(options.run_id);
     state.requested_display_id = Some(options.display_id);
     state.lifetime_ms = Some(options.lifetime_ms);
@@ -1511,6 +1603,7 @@ pub fn run(options: Options) -> Result<(), String> {
                         sel!(systemColorOpen:),
                     ),
                     (360., "Fonts", "rwi-system-font-open", sel!(systemFontOpen:)),
+                    (468., "Files", "rwi-system-file-open", sel!(systemFileOpen:)),
                 ] {
                     let control = view(class(c"NSButton")?, rect(x, 474., 98., 30.));
                     let title = NSString::from_str(title);
@@ -1621,6 +1714,8 @@ pub fn run(options: Options) -> Result<(), String> {
                     modal_button: None,
                     color_panel: None,
                     font_panel: None,
+                    file_panel: None,
+                    file_panel_directory,
                     button,
                     hover,
                     canvas,

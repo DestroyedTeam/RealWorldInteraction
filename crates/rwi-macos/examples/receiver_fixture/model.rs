@@ -879,6 +879,9 @@ pub struct SystemPanelOracle {
     pub occlusion_state: Option<usize>,
     /// Exact retained panel ID only; no desktop capture or input authority.
     pub quartz_description: Option<serde_json::Value>,
+    /// Only a real native file-panel completion callback supplies this value.
+    pub completion_response: Option<isize>,
+    pub completion_callbacks_dropped: u64,
 }
 
 #[cfg(test)]
@@ -900,6 +903,7 @@ pub struct SystemPanels {
     pub enabled: bool,
     pub color: SystemPanelOracle,
     pub font: SystemPanelOracle,
+    pub file: SystemPanelOracle,
 }
 /// Public own-window responder readback, separate from consumed input counters.
 #[derive(Default, Serialize)]
@@ -1227,10 +1231,19 @@ impl State {
                 self.system_panels.font.open_actions += 1;
                 "fixture_system_font_open_action"
             }
+            "file" => {
+                self.system_panels.file.open_actions += 1;
+                "fixture_system_file_open_action"
+            }
             _ => return false,
         };
         self.record(action, None);
         true
+    }
+    /// A native completion response is not a window-visibility or owner proof.
+    pub fn native_file_panel_completed(&mut self, response: isize) {
+        self.system_panels.file.completion_response = Some(response);
+        self.record("fixture_native_file_panel_completion", None);
     }
     pub fn modal_action(&mut self, action: &'static str) {
         match action {
@@ -1845,6 +1858,31 @@ mod tests {
         assert_eq!(state.drag.downs, 0);
         state.close();
         assert!(!state.system_panel_open("color"));
+    }
+    #[test]
+    fn file_panel_request_never_attests_native_response_visibility_or_provider() {
+        let mut state = State::new("file-panel".into());
+        state.status = "running";
+        assert!(!state.system_panel_open("file"));
+        state.system_panels.enabled = true;
+        assert!(state.system_panel_open("file"));
+        assert_eq!(state.system_panels.file.open_actions, 1);
+        assert!(state.system_panels.file.visible.is_none());
+        assert!(state.system_panels.file.completion_response.is_none());
+        assert!(state.system_panels.file.quartz_description.is_none());
+        assert!(state.system_panels.file.attached_to_own_parent.is_none());
+        state.close();
+        assert!(!state.system_panel_open("file"));
+    }
+    #[test]
+    fn file_panel_completion_never_infers_rendered_window_disappearance() {
+        let mut state = State::new("file-completion".into());
+        state.native_file_panel_completed(0);
+        assert_eq!(state.system_panels.file.completion_response, Some(0));
+        assert!(state.system_panels.file.visible.is_none());
+        assert!(state.system_panels.file.quartz_description.is_none());
+        assert!(state.system_panels.file.attached_to_own_parent.is_none());
+        assert_eq!(state.drag.downs, 0);
     }
     #[test]
     fn covered_receiver_contract_has_explicit_opt_in_and_rejects_duplicate() {

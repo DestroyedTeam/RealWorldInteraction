@@ -390,3 +390,8 @@ Missing/unread values remain null. These getters do not move the system cursor,
 change responder/active/key state, generate tracking callbacks or attest a
 physical human. Compare them with the unchanged event `window_point` and actual
 view/tooltip counters; a diagnostic inside result is never an input-effect proof.
+
+
+### Native system file-panel case
+
+`--system-panel-controls` adds an opt-in Files button that opens public NSOpenPanel as an own-parent sheet, initially in a newly allocated empty directory under this fixture state root. The test must only cancel, never open or save user files. The callback response, AppKit visibility/sheet-parent, and exact CGWindow description are separate native observations; unknown values remain null. A completion response does not attest the rendered panel is gone. This fixture does not infer another process as its owner or bypass RWI native binding/permission/no-replay guards.
