@@ -30,6 +30,7 @@ pub(super) fn guard(
             "Foreground pointer yields to recent or unknown HID activity; no replay.",
         ));
     }
+    anchor_native::require_foreground_pointer_hit(native, point)?;
     if activation::foreground_state()? != *expected {
         return Err(fault(
             "foreground_changed",

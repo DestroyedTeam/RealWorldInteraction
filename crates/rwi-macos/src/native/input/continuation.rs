@@ -81,13 +81,28 @@ impl<K: PartialEq> Facts<K> {
             changed.push("enabled_disabled");
         }
         if !changed.is_empty() {
-            return Err(fault(
+            let mut error = fault(
                 "input_boundary_changed",
                 &format!(
                     "Native facts changed or unknown ({}); stop remaining batches.",
                     changed.join(",")
                 ),
-            ));
+            );
+            error.diagnostic = Some(Box::new(serde_json::json!({
+                "changed":changed,
+                "point":self.point,
+                "window_bounds":[self.window_rect.x,self.window_rect.y,self.window_rect.w,self.window_rect.h],
+                "hit_bounds":[self.hit_rect.x,self.hit_rect.y,self.hit_rect.w,self.hit_rect.h],
+                "mapping_ready":self.mapping_ready,
+                "modal":self.modal,
+                "occluded":self.occluded,
+                "permissions":self.permissions,
+                "enabled":self.enabled,
+                "current_batch_native_input_dispatched":false,
+                "prior_batches_may_have_dispatched":true,
+                "replay_allowed":false,
+            })));
+            return Err(error);
         }
         if !self.class.readable()
             || target
