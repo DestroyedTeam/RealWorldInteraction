@@ -1,3 +1,15 @@
+## 2026-10-13 · 当前 R91：前台真实浏览器修复完成，后台消费缺口继续
+
+- RWI实际Chrome155独立profile普通A/B／隐私C同PID多窗：counter各0→1，文本R91-A-你好／R91-B／R91-C，A Left caret8→7，C scroll0→240；C精确关闭A/B保留，旧C引用window_missing零dispatch；同PID被遮挡A仍拒绝。旧stale_reference及首strict候选ax_hit_not_stable均留档，不冒称所有重试成功。
+- 最小native修复只等价原AXButton与无action的同window/provider/geometry StaticText后代，真实有限祖先链；原对象、点、visibility/focus/modal/user-yield/no-replay都保留。snapshot单遍；精确重验证有限采样/perproxy有限timeout（120ms软预算，非硬抢占）。
+- 签名最终Agent11922／9f1a58be已实部署，installed a9be7414…，当前loaded MCP复核同instance、unfenced；四权限和证书／配对/profile不变，MCP未替换、不需重启。9门禁0、workspace828/0/11/43，example oracle9／receiver89另记。
+- **真正后台仍失败**：Codex前台时click counter1→1、type -BG值仍原文；DOM至少收到trusted G，flagsfalse/docFocusedfalse，却无编辑。returned不是goal；前台tuple未变不是完整key-window接收权证明。原35请求terminal/released/no pending/no uncertainty/replay_allowedfalse，绝不重放。
+- 5次真实snapshot caller median267ms／adapter245ms／native capture115ms；text9699–9701B、PNG235181B分计。非受控前后benchmark／CPU／token数／语言优势。
+- Live延续R73已验max280×300pt（当时280×269），两枚28pt按钮实现隐藏/恢复toggle＋关闭；源图分辨率不降。R91没有重新声称人眼见证，不要求休息中的用户人工配合。R89原生BG→FG DnD已完成，旧R88失败保留但从current priority移除。
+- 自有Chrome退出0／oracle143、3target detach，用户907/896出生未变。R92实际candidate与3offline baseline已启动并返回0；新private click route尚未实现/部署/实机接受。继续coldhover、真实BG键盘消费、hidden/minimized/provider/lost-release/performance全矩阵，不作整计划封版。
+
+报告：`/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r91-browser-compatibility.md`。同四角色已扩展至226路径，实际copy patch/rollback全部原hash/缺席恢复；FINAL_REOPEN_R91保留回读结果；不回滚生产或重放GUI。
+
 ## 2026-10-11 · R45：执行中系统切窗的自主测试程序（尚未验完）
 
 上一轮head f175181的实际CI38119325985已回读：Mac与Windows均success，不把这个结果冒用于下述新源码。

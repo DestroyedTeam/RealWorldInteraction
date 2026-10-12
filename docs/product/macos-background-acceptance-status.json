@@ -3,7 +3,7 @@
   "updated": "2026-10-13",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r90-interleaved-discovery.md",
+  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r91-browser-compatibility.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -524,8 +524,7 @@
     }
   ],
   "priority_order": [
-    "R91：代表性真实浏览器新profile／本地页面多窗口与隐私生命周期、native输入与独立回读、分层耗时和输出量",
-    "R88 native paired DnD BG->FG after actual native session begins; retain R47 ordinary-drag OS Command+Tab and R86/R87 drop/cancel/exit, never replay them or substitute them for this distinct case.",
+    "R92：inactive Chrome真正后台click/edit未产生业务效果；显式opt-in SLEvent down/up实验，独立消费与前台接收端保持，不激活/不重放。",
     "F05 cold background view/tracking/tooltip and F07 actual keyboard recipient/foreground preservation, using explicitly allocated autonomous actors without human participation.",
     "F08/F09/F10 capture/input state distinctions: retain R79 exact minimized pixels and R80 limited native Live frames; validate pending formal Host/dynamic hidden/offscreen scopes without unhide fallback.",
     "F12 exact foreign-provider/window-family/native-menu ownership and composition; retain R49 task hide/return/close and R84 formal multisource acceptance; no private Host-ID certification requirement.",
@@ -586,23 +585,17 @@
     "existing_debt": 12,
     "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/layered-modal-panels-followthrough-r56/final-gates/GATES_EVIDENCE_AGGREGATE.json"
   },
-  "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
+  "current_claim_correction": "R91 foreground normal/multiple/incognito cases accepted independently; true background counter/edit failed despite returned. R89 native DnD BG-to-FG accepted; do not reuse R88 cancelled sample as pending priority. Full F01-F16 remains partial.",
   "current_deployment": {
-    "Agent_native_pid": 21019,
-    "Agent_instance": "236e3e9a-3d8f-42b7-b21c-fb63184d9b90",
-    "stable_signature_and_permissions": true,
-    "MCP_installed_hash": "24f133e5e7850f15700ce9e26360e0727aceff85b42bc8e4ed5fad74e1b13534",
-    "fresh_installed_schema_additional_sources": true,
-    "current_Host_old_adapter_observed_rejection": true,
-    "current_Host_adapter_restarted": false,
-    "agent_pid": 70150,
-    "agent_instance": "ad38eb63-1fdc-46a9-83ee-1506ffc8a658",
     "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
-    "installed_hash": "c9f29026b8d448a6188a94d6b8d9ebfa964195947f2976067de6db25d9ed11a5",
-    "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r78-pointer-feedback-freshness-2026-10-12/REPORT.md",
+    "agent_pid": 11922,
+    "agent_instance": "9f1a58be-6b2d-46ba-a93d-03c7de7f0b27",
+    "installed_hash": "a9be7414e0a821be5ef7b81b57f0b909bfc3c3a11c7f215d1c5c84e8377ae2d8",
+    "MCP_installed_hash": "e48ad9f1111764ceea008db0b41e7e1b7c5394c136aecbd47bcb0d1d2a85cee4",
     "certificate_replaced": false,
     "pairing_replaced": false,
-    "codex_restart_required": false
+    "codex_restart_required": false,
+    "current_loaded_instance_verified": true
   },
   "current_comprehensive_acceptance": {
     "target": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
@@ -970,6 +963,25 @@
       "agent_instance": "e57ec955-2265-421d-8c10-0d3bbd064c56",
       "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/cross-display-drag-native-r61/deployment/DEPLOYED.json",
       "stable_signing_and_pairing": true
+    },
+    {
+      "replaced_current_record_before_r91": {
+        "Agent_native_pid": 21019,
+        "Agent_instance": "236e3e9a-3d8f-42b7-b21c-fb63184d9b90",
+        "stable_signature_and_permissions": true,
+        "MCP_installed_hash": "24f133e5e7850f15700ce9e26360e0727aceff85b42bc8e4ed5fad74e1b13534",
+        "fresh_installed_schema_additional_sources": true,
+        "current_Host_old_adapter_observed_rejection": true,
+        "current_Host_adapter_restarted": false,
+        "agent_pid": 70150,
+        "agent_instance": "ad38eb63-1fdc-46a9-83ee-1506ffc8a658",
+        "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+        "installed_hash": "c9f29026b8d448a6188a94d6b8d9ebfa964195947f2976067de6db25d9ed11a5",
+        "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r78-pointer-feedback-freshness-2026-10-12/REPORT.md",
+        "certificate_replaced": false,
+        "pairing_replaced": false,
+        "codex_restart_required": false
+      }
     }
   ],
   "claim_correction_history": [
@@ -1397,7 +1409,7 @@
     "true_Host_task_switch_complete": false
   },
   "human_coordination_policy": {
-    "current": "user asleep/unavailable for further manual cooperation; use explicitly allocated own-fixture GUI and independent autonomous actors, never claim physical-human provenance or request repeated switch/restart/expand",
+    "current": "user unavailable; autonomous explicitly allocated targets only; no further switch/restart/expand/password/permission request, no physical-human-origin claim",
     "source": "latest user turn",
     "sensitive_auth_boundary": "do not invent password or grant new permissions"
   },
@@ -5958,5 +5970,313 @@
     "recovery_invoked": false,
     "mcp_binary_changed": false,
     "input_sent_by_controller": false
-  }
+  },
+  "r91_browser_native_acceptance": {
+    "schema_version": 1,
+    "active_object": "/Volumes/ChatGPT/Real World Interaction",
+    "root_stable": true,
+    "source_hashes": {
+      "crates/rwi-macos/src/native.rs": {
+        "sha256": "4a27dc1bb341eac571b4c2391858fdfa5cd042b46a403c2a1b1605b5cfa1d654",
+        "bytes": 31219
+      },
+      "crates/rwi-macos/src/native/metadata.rs": {
+        "sha256": "35e297772d1c8ee5b6cefe868abae3728e72d0c5a2ef3c649d304bb024ae9bd8",
+        "bytes": 21024
+      },
+      "crates/rwi-macos/src/native/hit_settle.rs": {
+        "sha256": "ad9f60d216ec32734d79d0b14593bc066d2c1d5d8fd4c46bdcf780686b856c1c",
+        "bytes": 7309
+      },
+      "crates/rwi-macos/src/native/metadata/settled_hit.rs": {
+        "sha256": "7e0abbc8dfe2834d909f369a35c03944b71b7cf44bb964f3b098f092c4872786",
+        "bytes": 7300
+      },
+      "crates/rwi-macos/src/native/input/anchor_native.rs": {
+        "sha256": "54f5d7c9aea2fc9141678069695f62966b28593dba78fda340bcc813c109b2bb",
+        "bytes": 21355
+      },
+      "crates/rwi-macos/src/native/label_hit.rs": {
+        "sha256": "8e37d4efc2062c94feae42b96c7595af7068ab15da6481420c4dbcbf4c55d57c",
+        "bytes": 11674
+      }
+    },
+    "deployed": {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "old_hash": "e2abbf63a3d052b4ec2883f805629070d2d6e539738c49bf0d8fd47a4d626d8a",
+      "installed_hash": "a9be7414e0a821be5ef7b81b57f0b909bfc3c3a11c7f215d1c5c84e8377ae2d8",
+      "old_pid": 94937,
+      "old_instance": "5b08d49a-cfdc-4484-ab39-12520f892247",
+      "new_pid": 11922,
+      "new_instance": "9f1a58be-6b2d-46ba-a93d-03c7de7f0b27",
+      "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "protected_public_file_hashes": {
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "e48ad9f1111764ceea008db0b41e7e1b7c5394c136aecbd47bcb0d1d2a85cee4",
+        "/Users/vincentadamnemessis/Library/LaunchAgents/com.destroyedteam.real-world-interaction.rwi-agent.plist": "28be2e6a110cac79c53c7d79cdaee83bf6312e66661baed5e64e2d13cf0e86ed",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5"
+      },
+      "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-native-label-r91.app",
+      "retained_baseline_app": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/deployment/actual-agent-r91b/baseline/RWI Agent.app",
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "private_keys_opened": false,
+      "tcc_reset": false,
+      "mcp_binary_changed": false,
+      "input_sent_by_controller": false,
+      "original_durable_inputs_replayed": false,
+      "old_window_bindings_invalidated": true,
+      "fresh_discovery_and_attachment_required": true,
+      "browser_windows_closed_or_moved_by_controller": false
+    },
+    "loaded_agent_instance_reopened": "9f1a58be-6b2d-46ba-a93d-03c7de7f0b27",
+    "native_browser": {
+      "version_binary": "155.0.8059.39",
+      "owner_pid": 68778,
+      "process_start": "68778:1791830550:652971",
+      "windows": {
+        "a": "cgwindow:46546",
+        "b": "cgwindow:46555",
+        "c": "cgwindow:46561"
+      },
+      "isolated_profile": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/chrome-isolated-profile-r91",
+      "virtual_display_id_at_test": 4,
+      "virtual_display_UUID": "13E4E9B0-47F2-4043-9CDC-878D5441BD41",
+      "private_C_native_badge_and_AX_title_verified": true,
+      "Chrome_ignored_requested_separate_positions": true,
+      "foreground_A_B_C_counter_text_accepted": true,
+      "foreground_A_unicode_value": "R91-A-你好",
+      "foreground_A_left_caret": [
+        8,
+        7
+      ],
+      "foreground_B_value": "R91-B",
+      "foreground_C_value": "R91-C",
+      "foreground_C_scrollTop": [
+        0,
+        240
+      ],
+      "private_C_exact_close_A_B_survived": true,
+      "CG_close_enumeration_initial_ghost_observed": true,
+      "closed_C_input_rejected_no_retarget": true,
+      "same_pid_A_covered_input_rejected_before_focus_specific_gate": true,
+      "negative_receipts_preserved": {
+        "covered-a-point-negative": {
+          "code": "visibility_unknown",
+          "native_dispatch_entered": false
+        },
+        "click-private-c-counter-1": {
+          "code": "stale_reference",
+          "native_dispatch_entered": false
+        },
+        "click-normal-a-counter-1": {
+          "code": "stale_reference",
+          "native_dispatch_entered": false
+        },
+        "modified-a-point-counter": {
+          "code": "ax_hit_not_stable",
+          "native_dispatch_entered": false
+        },
+        "same-pid-a-other-window-text-negative": {
+          "code": "visibility_unknown",
+          "native_dispatch_entered": false
+        },
+        "closed-private-target-input-negative": {
+          "code": "window_missing",
+          "native_dispatch_entered": false
+        }
+      },
+      "OS_CommandTab_posted_events": 4,
+      "OS_CommandTab_paired_release_posted": true,
+      "OS_CommandTab_later_independent_foreground_pid": 9697,
+      "background_click_request": "r91-a-background-counter-1",
+      "background_click_counter": [
+        1,
+        1
+      ],
+      "background_type_request": "r91-a-background-type-1",
+      "background_type_requested": "-BG",
+      "background_input_value_unchanged": "R91-A-你好",
+      "background_key_G_received_trusted": {
+        "activeElementId": "text",
+        "altKey": false,
+        "button": null,
+        "buttons": null,
+        "clientSequence": 299,
+        "clientUnixMs": 1791832988695,
+        "clientX": null,
+        "clientY": null,
+        "code": "KeyA",
+        "counter": 1,
+        "ctrlKey": false,
+        "data": null,
+        "deltaMode": null,
+        "deltaX": null,
+        "deltaY": null,
+        "documentFocused": false,
+        "eventTimeStamp": 289948,
+        "inputType": null,
+        "inputValue": "R91-A-你好",
+        "isTrusted": true,
+        "key": "G",
+        "metaKey": false,
+        "performanceNowMs": 289950.6999999881,
+        "repeat": false,
+        "screenX": null,
+        "screenY": null,
+        "scrollLeft": 0,
+        "scrollTop": 0,
+        "selectionEnd": 7,
+        "selectionStart": 7,
+        "shiftKey": false,
+        "targetId": "text",
+        "type": "keydown",
+        "visibilityState": "visible",
+        "window": "a"
+      },
+      "background_click_goal_accepted": false,
+      "background_edit_goal_accepted": false,
+      "background_native_foreground_tuple_preserved": true,
+      "background_front_app_keyboard_reception_not_attested": true,
+      "service_goal_verified_remains_false": true,
+      "fixture_is_native_GUI_not_CDP_synthetic_input": true
+    },
+    "durables": {
+      "unique_mutation_requests": 35,
+      "all_original_queries_terminal_and_released": true,
+      "no_pending_or_release_uncertainty": true,
+      "all_replay_allowed_false": true,
+      "original_request_replayed": false,
+      "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/ALL_35_ORIGINAL_DURABLE_REQUESTS_R91.json"
+    },
+    "cleanup": {
+      "allocated_Chrome_exit_status": 0,
+      "allocated_oracle_exit_status": 143,
+      "all_three_attached_windows_detached": true,
+      "last_targets_only_original_desktop": true,
+      "original_Chrome907_and_Arc896_alive_birth_unchanged": true,
+      "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/FINAL_PROCESS_ABSENCE_AND_USER_PROCESSES_R91.json"
+    },
+    "timings": {
+      "sample_count": 5,
+      "caller_wall_ms": {
+        "min": 248,
+        "median": 267,
+        "max": 452
+      },
+      "adapter_elapsed_ms": {
+        "min": 232,
+        "median": 245,
+        "max": 427
+      },
+      "native_capture_wall_ms": {
+        "min": 107,
+        "median": 115,
+        "max": 177
+      },
+      "text_bytes": [
+        9699,
+        9701
+      ],
+      "image_bytes": 235181,
+      "native_CPU_measured": false,
+      "controlled_before_after_comparison": false
+    },
+    "screenshots": [
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/05-a-counter-one-original.png",
+        "sha256": "1f8dcba9258b62da677c484d719ba1a06cf042dd3fb3b1be3a4762204cd1b4ed",
+        "bytes": 119335,
+        "actual_native_capture": true
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/06-b-counter-and-text-original.png",
+        "sha256": "2ebc4b7cdfb10256a0be2fca828e5e0b08c62ade5c7833b972f4077d011eee17",
+        "bytes": 131385,
+        "actual_native_capture": true
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/07-private-c-before-native-input.png",
+        "sha256": "0714adad1a8d33fc73341df9c867c70694d1bf9810b92f4503c49ab067abbd22",
+        "bytes": 119552,
+        "actual_native_capture": true
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/08-private-c-after-native-input.png",
+        "sha256": "547d9f1955e6509f13f48a43ad1d27fad11941fb9480ce75a6db07ee6eb70c01",
+        "bytes": 131459,
+        "actual_native_capture": true
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/09-private-c-after-scroll.png",
+        "sha256": "74ba0db01ffd3b8c2f50527b7040efd6c262e63b4290727d8059fcdc83ec384d",
+        "bytes": 126929,
+        "actual_native_capture": true
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/10-a-background-input-original.png",
+        "sha256": "e61ea2f1055fb416862dd68a9e6d7262bc1bb54f0f26139d25afec3f77087897",
+        "bytes": 133095,
+        "actual_native_capture": true
+      }
+    ],
+    "offline_counts": {
+      "passed": 828,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 43
+    },
+    "offline_gates": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/OFFLINE_FINAL_GATES_R91.json",
+    "no_human_cooperation_requested": true,
+    "full_goal_complete": false,
+    "next_pending_scope": "explicit opt-in private pointer down/up transport, independent inactive Chrome effect; not default-route broadening"
+  },
+  "r91_four_role_copy_verification": {
+    "root_stable": true,
+    "managed_paths": 226,
+    "original97_unchanged": true,
+    "diff_reconstructs_all_modified": true,
+    "default_rollback_restores_all_hashes_and_absences": true,
+    "modified_reapplied": true,
+    "workspace_counts_from_actual_stdout": {
+      "passed": 828,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 43
+    },
+    "cumulative_configuration_only_same_input": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "hit_settle_compiled_pure_only_same_input": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "label_parent_compiled_pure_only_same_input": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "latest_oracle_check_only_same_input": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "production_rolled_back": false,
+    "native_input_sent_by_refresh": false,
+    "native_input_replayed_by_refresh": false,
+    "full_goal_complete": false,
+    "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/browser-window-lifecycle-r91/FINAL_REOPEN_R91.json"
+  },
+  "r91_original_request_count_provenance": "ORIGINAL_DURABLE_REQUESTS_R91.json preserves first34; ALL_35_ORIGINAL_DURABLE_REQUESTS_R91.json adds final-own-A-close original request query, never replay."
 }
