@@ -4,8 +4,9 @@
 //! post/listen authorization; it never grants permission or acts as an RWI fallback.
 use super::command_tab;
 use super::model::{
-    DispatchEvent, DispatchRegion, DispatchStage, MouseEvent, MouseKind, Options, Rect, Region,
-    State, Store, SystemPanelOracle, activation_policy_ready, is_dispatch_mouse_type,
+    DispatchEvent, DispatchRegion, DispatchStage, FrameworkPointerSnapshot, MouseEvent, MouseKind,
+    Options, Rect, Region, State, Store, SystemPanelOracle, activation_policy_ready,
+    is_dispatch_mouse_type,
 };
 use objc2::{
     msg_send,
@@ -370,6 +371,45 @@ fn dispatch_subtype(event: &AnyObject, native_type: usize) -> Option<i16> {
         .then(|| unsafe { msg_send![event, subtype] })
 }
 
+impl UI {
+    fn framework_pointer(&self) -> Option<FrameworkPointerSnapshot> {
+        // Public getters only. Never set a pointer, active/key state or responder,
+        // synthesize tracking messages, or count these reads as received events.
+        let event_class = AnyClass::get(c"NSEvent")?;
+        unsafe {
+            let screen: NSPoint = msg_send![event_class, mouseLocation];
+            let window: NSPoint = msg_send![&*self.window, convertPointFromScreen:screen];
+            let outside: NSPoint = msg_send![&*self.window, mouseLocationOutsideOfEventStream];
+            let hover: NSPoint = msg_send![&*self.hover, convertPoint:window, fromView:std::ptr::null_mut::<AnyObject>()];
+            let bounds: NSRect = msg_send![&*self.hover, bounds];
+            let finite = |p: NSPoint| (p.x.is_finite() && p.y.is_finite()).then_some([p.x, p.y]);
+            let hover_point = finite(hover);
+            let contains = hover_point
+                .filter(|_| {
+                    bounds.origin.x.is_finite()
+                        && bounds.origin.y.is_finite()
+                        && bounds.size.width.is_finite()
+                        && bounds.size.height.is_finite()
+                        && bounds.size.width > 0.
+                        && bounds.size.height > 0.
+                })
+                .map(|p| {
+                    p[0] >= bounds.origin.x
+                        && p[0] < bounds.origin.x + bounds.size.width
+                        && p[1] >= bounds.origin.y
+                        && p[1] < bounds.origin.y + bounds.size.height
+                });
+            Some(FrameworkPointerSnapshot {
+                screen_point: finite(screen),
+                screen_converted_to_own_window: finite(window),
+                own_window_outside_event_stream: finite(outside),
+                screen_converted_to_own_hover: hover_point,
+                screen_point_in_own_hover: contains,
+            })
+        }
+    }
+}
+
 fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) -> bool {
     let native_type: usize = unsafe { msg_send![event, type] };
     if !is_dispatch_mouse_type(native_type) {
@@ -387,7 +427,9 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
             };
             unsafe {
                 // Public NSEvent.h properties valid for these mouse types only;
-                // no characters, keyboard codes, global cursor or other app read.
+                // No characters or keyboard codes. The optional diagnostic below
+                // reads public framework pointer state only for this own receiver;
+                // it never moves the cursor or inspects another application's UI.
                 let window_number: isize = msg_send![event, windowNumber];
                 let point: NSPoint = msg_send![event, locationInWindow];
                 let receiver_match = match stage {
@@ -404,6 +446,7 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
                 } else {
                     None
                 };
+                let framework_pointer = own_window_match.then(|| ui.framework_pointer()).flatten();
                 ui.state.dispatch_probe.receive(DispatchEvent {
                     sequence: 0,
                     stage,
@@ -414,6 +457,7 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
                     timestamp_seconds: msg_send![event, timestamp],
                     own_window_match,
                     hit_region,
+                    framework_pointer,
                 });
             }
             recorded = true;

@@ -379,3 +379,14 @@ It does not change input delivery, responder preparation, AX role or the drawing
 oracle, and is not a product capability. Other window/actor modes and the two
 boundary flags cannot be combined. `--check-only` parses without creating UI.
 The old quarter-offscreen geometry remains unchanged for R58–R60 evidence.
+
+
+### Framework pointer readback (R62)
+
+An exact own-window mouse dispatch may record optional `framework_pointer`
+metadata from public NSEvent/NSWindow/NSView getters. Screen points use the AppKit
+lower-left coordinate system; converted points belong only to this fixture.
+Missing/unread values remain null. These getters do not move the system cursor,
+change responder/active/key state, generate tracking callbacks or attest a
+physical human. Compare them with the unchanged event `window_point` and actual
+view/tooltip counters; a diagnostic inside result is never an input-effect proof.

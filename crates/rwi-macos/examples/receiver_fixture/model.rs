@@ -710,6 +710,18 @@ pub struct DispatchEvent {
     pub own_window_match: bool,
     /// Public own-content hitTest snapshot, not a received view callback.
     pub hit_region: Option<DispatchRegion>,
+    /// Read-only public framework state, not a view receipt or HID attestation.
+    pub framework_pointer: Option<FrameworkPointerSnapshot>,
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct FrameworkPointerSnapshot {
+    /// AppKit screen points, lower-left origin; never screenshot coordinates.
+    pub screen_point: Option<[f64; 2]>,
+    pub screen_converted_to_own_window: Option<[f64; 2]>,
+    pub own_window_outside_event_stream: Option<[f64; 2]>,
+    pub screen_converted_to_own_hover: Option<[f64; 2]>,
+    pub screen_point_in_own_hover: Option<bool>,
 }
 pub fn is_dispatch_mouse_type(native_type: usize) -> bool {
     // NSEvent.h mouse down/up/moved/dragged/entered/exited/other button types.
@@ -1479,6 +1491,7 @@ mod tests {
             timestamp_seconds: 1.5,
             own_window_match: true,
             hit_region: Some(DispatchRegion::HoverZone),
+            framework_pointer: None,
         }
     }
     #[test]
@@ -2510,5 +2523,29 @@ mod canvas_boundary_geometry_tests {
             .place_boundary_canvas_right(660., 552.)
             .is_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod framework_pointer_tests {
+    use super::*;
+    #[test]
+    fn unread_framework_pointer_stays_unknown_without_a_hover_claim() {
+        let p = FrameworkPointerSnapshot::default();
+        let j = serde_json::to_value(p).unwrap();
+        assert!(j["screen_point"].is_null());
+        assert!(j["screen_point_in_own_hover"].is_null());
+    }
+    #[test]
+    fn known_framework_position_is_diagnostic_not_a_received_view_event() {
+        let p = FrameworkPointerSnapshot {
+            screen_point: Some([10., 20.]),
+            screen_point_in_own_hover: Some(false),
+            ..Default::default()
+        };
+        let j = serde_json::to_value(p).unwrap();
+        assert_eq!(j["screen_point"], serde_json::json!([10., 20.]));
+        assert_eq!(j["screen_point_in_own_hover"], false);
+        assert!(j["screen_converted_to_own_window"].is_null());
     }
 }
