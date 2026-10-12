@@ -1,5 +1,5 @@
 //! Bounded local preview control. No image stream or input authority is implied.
-use crate::{DisplayTarget, Engine, Result, fault, operation};
+use crate::{DisplayTarget, Engine, Result, WindowRelation, WindowSelection, fault, operation};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,10 @@ pub struct LiveOptions {
     /// Hard lifetime bound, also covering an unclean Host disconnect.
     #[serde(default = "duration")]
     pub duration_ms: u64,
+    /// Up to three explicitly discovered additional visual windows. This is
+    /// observation-only; it does not assert ownership or grant input authority.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_windows: Vec<WindowSelection>,
     /// Adapter-owned Host view binding. Never supplied by the model-facing tool.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(skip)]
@@ -85,6 +89,28 @@ fn duration() -> u64 {
 impl LiveOptions {
     pub fn validate(&self) -> Result<()> {
         self.display.validate()?;
+        if self.additional_windows.len() > 3
+            || self
+                .additional_windows
+                .iter()
+                .enumerate()
+                .any(|(index, window)| {
+                    window.pid == 0
+                        || window.window.is_empty()
+                        || window.window.len() > 128
+                        || window.native_epoch.is_empty()
+                        || window.native_epoch.len() > 128
+                        || !matches!(window.relation, WindowRelation::Initial)
+                        || self.additional_windows[..index]
+                            .iter()
+                            .any(|other| other.window == window.window)
+                })
+        {
+            return Err(fault(
+                "invalid_live_sources",
+                "Use at most three distinct, explicitly discovered initial window selections; this grants no input or ownership relationship.",
+            ));
+        }
         if !(64..=2048).contains(&self.max_edge)
             || !(250..=2000).contains(&self.interval_ms)
             || !(1000..=600_000).contains(&self.duration_ms)
@@ -148,6 +174,48 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn additional_live_sources_are_bounded_explicit_and_not_owner_claims() {
+        let selection = serde_json::json!({"window":"cgwindow:7","pid":23,"native_epoch":"epoch","relation":"initial"});
+        let make = |windows| {
+            serde_json::from_value::<LiveOptions>(
+                serde_json::json!({"display":{"id":1},"additional_windows":windows}),
+            )
+            .unwrap()
+        };
+        make(vec![selection.clone()]).validate().unwrap();
+        assert!(
+            make(vec![selection.clone(), selection.clone()])
+                .validate()
+                .is_err()
+        );
+        let mut bad = selection.clone();
+        bad["relation"] = serde_json::json!("owned_popup");
+        assert!(make(vec![bad]).validate().is_err());
+        let mut bad = selection.clone();
+        bad["pid"] = serde_json::json!(0);
+        assert!(make(vec![bad]).validate().is_err());
+        assert!(
+            make(
+                (0..4)
+                    .map(|i| {
+                        let mut s = selection.clone();
+                        s["window"] = serde_json::json!(format!("cgwindow:{i}"));
+                        s
+                    })
+                    .collect::<Vec<_>>()
+            )
+            .validate()
+            .is_err()
+        );
+        let empty = make(vec![]);
+        assert!(
+            serde_json::to_value(empty)
+                .unwrap()
+                .get("additional_windows")
+                .is_none()
+        );
+    }
     #[test]
     fn live_options_bound_duration_rate_memory_and_preview_display() {
         let valid: LiveOptions =

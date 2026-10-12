@@ -5,6 +5,7 @@ fn state() -> State {
         serde_json::from_value(json!({"display":{"id":1},"duration_ms":1000})).unwrap();
     State {
         source: Arc::new(NativeMac::fixture_for_live()),
+        additional_sources: vec![],
         generation: 1,
         mode: Mode::Running,
         deadline: Instant::now() + Duration::from_secs(1),
@@ -139,6 +140,32 @@ fn explicit_rebind_invalidates_old_source_but_does_not_override_user_pause_or_st
     }
     session.control(LiveAction::Stop);
     session.source_failed("late_source_error".into());
+    session.source(NativeMac::fixture_for_live());
+    assert_eq!(session.status()["status"], "stopped");
+}
+#[test]
+fn root_rebind_drops_explicit_extra_sources_without_resurrecting_a_stopped_session() {
+    let session = session();
+    session
+        .shared
+        .state
+        .lock()
+        .unwrap()
+        .additional_sources
+        .push(Arc::new(NativeMac::fixture_for_live()));
+    session.control(LiveAction::Pause);
+    session.source(NativeMac::fixture_for_live());
+    assert!(
+        session
+            .shared
+            .state
+            .lock()
+            .unwrap()
+            .additional_sources
+            .is_empty()
+    );
+    assert_eq!(session.status()["status"], "paused");
+    session.control(LiveAction::Stop);
     session.source(NativeMac::fixture_for_live());
     assert_eq!(session.status()["status"], "stopped");
 }

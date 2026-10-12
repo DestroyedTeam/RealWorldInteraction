@@ -1,4 +1,5 @@
 //! ScreenCaptureKit callback ownership is confined to callbacks. Only owned bytes cross threads.
+mod offscreen_policy;
 mod pending;
 use crate::{ffi, geometry::Rect};
 use block2::RcBlock;
@@ -67,7 +68,7 @@ pub(crate) fn api_available() -> bool {
 }
 impl Capturer {
     pub fn capture(&self, pid: u32, window: u32, expected: Rect) -> Result<Capture> {
-        self.capture_with_limit(pid, window, expected, None)
+        self.capture_with_limit(pid, window, expected, None, false)
     }
 
     /// Size the response-only visual from ScreenCaptureKit's actual native
@@ -79,6 +80,7 @@ impl Capturer {
         window: u32,
         expected: Rect,
         max_edge: u32,
+        include_offscreen: bool,
     ) -> Result<Capture> {
         if !(64..=2048).contains(&max_edge) {
             return Err(fault(
@@ -86,7 +88,7 @@ impl Capturer {
                 "Use a bounded visual output with max_edge 64..2048 pixels.",
             ));
         }
-        self.capture_with_limit(pid, window, expected, Some(max_edge))
+        self.capture_with_limit(pid, window, expected, Some(max_edge), include_offscreen)
     }
 
     fn capture_with_limit(
@@ -95,7 +97,12 @@ impl Capturer {
         window: u32,
         expected: Rect,
         max_edge: Option<u32>,
+        include_offscreen: bool,
     ) -> Result<Capture> {
+        let on_screen_only = Bool::from(offscreen_policy::onscreen_only(
+            max_edge,
+            include_offscreen,
+        )?);
         if !unsafe { ffi::CGPreflightScreenCaptureAccess() } {
             return Err(fault(
                 "screen_capture_permission_missing",
@@ -260,7 +267,7 @@ impl Capturer {
                 });
             });
             unsafe {
-                let _: () = msg_send![share,getShareableContentExcludingDesktopWindows:Bool::YES,onScreenWindowsOnly:Bool::YES,completionHandler:&*callback];
+                let _: () = msg_send![share,getShareableContentExcludingDesktopWindows:Bool::YES,onScreenWindowsOnly:on_screen_only,completionHandler:&*callback];
             }
             Ok(())
         })();

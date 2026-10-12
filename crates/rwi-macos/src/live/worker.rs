@@ -49,8 +49,9 @@ fn run_loop(shared: &Arc<Shared>) {
             let _ = shared.wake.wait_timeout(state, Duration::from_millis(100));
             continue;
         }
-        let (source, generation, options, display) = (
+        let (source, additional_sources, generation, options, display) = (
             state.source.clone(),
+            state.additional_sources.clone(),
             state.generation,
             state.options.clone(),
             state.display.clone(),
@@ -75,12 +76,13 @@ fn run_loop(shared: &Arc<Shared>) {
                         "Preview display topology changed; restart with a fresh display selection.",
                     ));
                 }
-                source.live_visual_capture(
+                source.live_visual_capture_with_additional(
                     VisualOptions {
                         max_edge: options.max_edge,
                         ..Default::default()
                     },
                     &mut family_capture,
+                    &additional_sources,
                 )
             })
         });

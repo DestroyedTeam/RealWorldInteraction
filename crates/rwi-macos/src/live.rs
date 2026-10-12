@@ -45,6 +45,7 @@ enum Mode {
 }
 struct State {
     source: Arc<NativeMac>,
+    additional_sources: Vec<Arc<NativeMac>>,
     generation: u64,
     mode: Mode,
     options: LiveOptions,
@@ -211,6 +212,11 @@ impl std::ops::Deref for Session {
 impl Session {
     pub(crate) fn start(source: NativeMac, options: LiveOptions) -> Result<Self> {
         options.validate()?;
+        let additional_sources = options
+            .additional_windows
+            .iter()
+            .map(|selection| source.additional_visual_source(selection).map(Arc::new))
+            .collect::<Result<Vec<_>>>()?;
         if source.pid == std::process::id() {
             return Err(fault(
                 "live_self_capture_excluded",
@@ -269,6 +275,7 @@ impl Session {
             state: Mutex::new(State {
                 host_view: options.host_view_id.clone().map(ViewGate::new),
                 source: Arc::new(source),
+                additional_sources,
                 generation: 1,
                 mode: Mode::Running,
                 deadline: Instant::now() + Duration::from_millis(options.duration_ms),
@@ -331,6 +338,10 @@ impl Session {
             s.expire();
             if s.mode != Mode::Stopped {
                 s.source = Arc::new(source);
+                // Additional sources belong to the explicitly started root,
+                // not a process name. A later root rebind must not keep them.
+                s.additional_sources.clear();
+                s.options.additional_windows.clear();
                 s.metadata = Value::Null;
                 s.reset_source_recovery();
                 s.clear();

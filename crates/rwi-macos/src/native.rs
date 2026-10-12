@@ -188,9 +188,28 @@ pub(crate) fn window_inventory() -> Result<WindowInventory> {
     window_inventory_with_options(1 | 16)
 }
 fn window_inventory_with_options(options: u32) -> Result<WindowInventory> {
+    window_inventory_relative(options, 0)
+}
+fn window_inventory_relative(options: u32, relative: u32) -> Result<WindowInventory> {
     let _call = operation::native_call("macos_window_inventory")?;
     unsafe {
-        let array = Cf::owned(ffi::CGWindowListCopyWindowInfo(options, 0))?;
+        let array = Cf::owned(ffi::CGWindowListCopyWindowInfo(options, relative))?;
+        parse_window_inventory(array)
+    }
+}
+fn exact_window_inventory(window: u32) -> Result<WindowInventory> {
+    use core_foundation::{array::CFArray, base::TCFType};
+    let _call = operation::native_call("macos_exact_visual_window_description")?;
+    let ids = CFArray::from_copyable(&[window as usize]);
+    unsafe {
+        let raw = core_graphics::window::CGWindowListCreateDescriptionFromArray(
+            ids.as_concrete_TypeRef(),
+        );
+        parse_window_inventory(Cf::owned(raw.cast())?)
+    }
+}
+fn parse_window_inventory(array: Cf) -> Result<WindowInventory> {
+    unsafe {
         let rows = ffi::array(array.0, 2048)?;
         let native_rows = rows.len();
         let mut out = Vec::new();
@@ -232,6 +251,7 @@ fn window_inventory_with_options(options: u32) -> Result<WindowInventory> {
         })
     }
 }
+
 /// One active display as reported by CoreGraphics, including whether it is the
 /// built-in panel. Bounded read-only inventory; no display reconfiguration.
 #[derive(Clone, Debug, PartialEq)]

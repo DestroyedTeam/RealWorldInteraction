@@ -10,6 +10,7 @@ pub(super) struct VisualWindow {
     pub(super) record: WindowRecord,
     pub(super) displays: Vec<Display>,
     pub(super) rect: Rect,
+    pub(super) on_screen_inventory_match: bool,
 }
 
 /// A failed read is not AX absence or input authority. Only an exact AXWindows
@@ -151,6 +152,9 @@ fn record_for_visual(
     )
 }
 
+mod additional;
+mod selection;
+
 impl NativeMac {
     #[cfg(test)]
     pub(crate) fn fixture_for_live() -> Self {
@@ -211,7 +215,10 @@ impl NativeMac {
         let capture_ms = phase.elapsed().as_millis() as u64;
         operation::checkpoint("macos_visual_only_post_capture")?;
         let after = self.visual_window()?;
-        if before.record != after.record || before.displays != after.displays {
+        if before.record != after.record
+            || before.displays != after.displays
+            || before.on_screen_inventory_match != after.on_screen_inventory_match
+        {
             return Err(fault(
                 "visual_window_changed",
                 "Window identity, geometry or display topology changed during visual-only capture; discard this image.",
@@ -230,25 +237,13 @@ impl NativeMac {
             ));
         }
         let displays = displays()?;
-        let mut matches = windows()?
-            .into_iter()
-            .filter(|window| window.id == self.window && window.pid == self.pid);
-        let Some(window) = matches.next() else {
-            let probe = window_record_probe::read(self.window);
-            operation::checkpoint("macos_missing_visual_window_probe_complete")?;
-            return Err(window_record_probe::missing(self.pid, self.window, probe));
-        };
-        if matches.next().is_some() {
-            return Err(fault(
-                "window_binding_ambiguous",
-                "More than one native row matched the bound window; no image was returned.",
-            ));
-        }
+        let (window, on_screen_inventory_match) = selection::read(self.pid, self.window)?;
         let record = record_for_visual(&self.identity, &window, self.process.clone(), &displays)?;
         Ok(VisualWindow {
             record,
             displays,
             rect: window.rect,
+            on_screen_inventory_match,
         })
     }
 
@@ -264,16 +259,23 @@ impl NativeMac {
         let before = self.visual_window()?;
         let source_rect = integer_visual_rect(before.rect)?;
         let before_feedback = crate::overlay::status_json();
-        let capture =
-            self.capturer
-                .capture_visual(self.pid, self.window, before.rect, options.max_edge)?;
+        let capture = self.capturer.capture_visual(
+            self.pid,
+            self.window,
+            before.rect,
+            options.max_edge,
+            !before.on_screen_inventory_match,
+        )?;
         let captured_unix_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis() as u64;
         operation::checkpoint("macos_visual_post_capture")?;
         let after = self.visual_window()?;
-        if before.record != after.record || before.displays != after.displays {
+        if before.record != after.record
+            || before.displays != after.displays
+            || before.on_screen_inventory_match != after.on_screen_inventory_match
+        {
             return Err(fault(
                 "visual_window_changed",
                 "Window identity, geometry or display topology changed during capture; discard this image.",
@@ -330,6 +332,8 @@ impl NativeMac {
                 "display": before.record.display,
                 "capture_scope": "exact_window_local",
                 "containing_display_required": false,
+                "on_screen_inventory_match": before.on_screen_inventory_match,
+                "native_record_scope": "exact ID/PID; offscreen record does not classify hidden/minimized",
                 "ax_walk": false,
                 "input_authority": false,
                 "frame_created": false,

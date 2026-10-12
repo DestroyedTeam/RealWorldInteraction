@@ -9,6 +9,51 @@ const MAX_SHEETS: usize = 3;
 const SCAN_BUDGET: Duration = Duration::from_millis(200);
 const RELAY_COOLDOWN: Duration = Duration::from_secs(1);
 
+fn temporary_explicit_source_loss(code: &str) -> bool {
+    matches!(
+        code,
+        "window_missing"
+            | "process_identity_unknown"
+            | "session_or_process_changed"
+            | "window_identity_changed"
+    )
+}
+/// CGWindowListCopyWindowInfo returns front-to-back rows. Render back-to-front,
+/// and reject a missing/ambiguous layer instead of inventing a caller z-order.
+fn visual_layer_order(windows: &[String], catalog: &[Window]) -> Result<Vec<usize>> {
+    let mut order = Vec::new();
+    for (index, window) in windows.iter().enumerate() {
+        let positions = catalog
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| format!("cgwindow:{}", row.id) == *window)
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        if positions.len() != 1 || windows[..index].contains(window) {
+            return Err(fault(
+                "live_layer_order_unknown",
+                "A selected visual layer is absent, duplicated or ambiguous in the exact native inventory.",
+            ));
+        }
+        order.push((positions[0], index));
+    }
+    order.sort_by_key(|(position, _)| std::cmp::Reverse(*position));
+    Ok(order.into_iter().map(|(_, index)| index).collect())
+}
+
+/// One exact captured offscreen root has no inter-window z-order to infer.
+/// Multiple layers always retain native on-screen ordering checks.
+fn capture_layer_order(
+    windows: &[String],
+    catalog: &[Window],
+    single_offscreen_root: bool,
+) -> Result<Vec<usize>> {
+    if single_offscreen_root && windows.len() == 1 {
+        return Ok(vec![0]);
+    }
+    visual_layer_order(windows, catalog)
+}
+
 /// One worker-local object, never an input reference or app-wide window cache.
 /// Revalidate native type/PID/window/role/geometry on every pre/post owner walk.
 #[derive(Default)]
@@ -215,15 +260,19 @@ impl NativeMac {
 
     /// No new binding/reference or permission. Only exact, parent-linked sheets;
     /// unrelated same-PID windows and unverified foreign renderers are excluded.
-    pub(crate) fn live_visual_capture(
+    pub(crate) fn live_visual_capture_with_additional(
         &self,
         options: VisualOptions,
         memo: &mut LiveFamilyCapture,
+        additional: &[std::sync::Arc<NativeMac>],
     ) -> Result<VisualCapture> {
         let before = self.visual_window()?;
         let family = self.live_sheets(&before, memo);
+        let order_before = windows()?;
         let mut root = self.visual_capture(options)?;
         let mut frames = Vec::new();
+        let mut explicit_windows = Vec::new();
+        let mut explicit_omissions = Vec::new();
         for sheet in &family.sheets {
             operation::checkpoint("live_family_capture_sheet")?;
             let mut child = self.visual_copy()?;
@@ -245,9 +294,48 @@ impl NativeMac {
             }
             frames.push(frame);
         }
+        for source in additional {
+            operation::checkpoint("live_explicit_source_capture")?;
+            match source.visual_capture(options) {
+                Ok(frame) => {
+                    // A caller may explicitly select an already verified sheet.
+                    // Do not composite one window twice or call it a new edge.
+                    if frame.window.window != root.window.window
+                        && !frames
+                            .iter()
+                            .any(|other| other.window.window == frame.window.window)
+                    {
+                        if frames.len() >= MAX_SHEETS {
+                            return Err(fault(
+                                "live_family_budget",
+                                "At most four combined root/sheet/explicit visual layers; select fewer sources.",
+                            ));
+                        }
+                        explicit_windows.push(frame.window.window.clone());
+                        frames.push(frame);
+                    }
+                }
+                Err(error) if temporary_explicit_source_loss(&error.code) => {
+                    explicit_omissions.push(json!({"pid":source.pid,"window":format!("cgwindow:{}",source.window),"reason":error.code,"replacement_selected":false}));
+                }
+                Err(error) => return Err(error),
+            }
+        }
+        let ids = std::iter::once(&root)
+            .chain(frames.iter())
+            .map(|frame| frame.window.window.clone())
+            .collect::<Vec<_>>();
+        let order = capture_layer_order(&ids, &order_before, !before.on_screen_inventory_match)?;
+        if order != capture_layer_order(&ids, &windows()?, !before.on_screen_inventory_match)? {
+            return Err(fault(
+                "visual_window_changed",
+                "Selected visual layer order changed during capture; discard the composite.",
+            ));
+        }
         let after = self.visual_window()?;
         let rechecked = self.live_sheets(&after, memo);
         if before.record != after.record
+            || before.on_screen_inventory_match != after.on_screen_inventory_match
             || before.displays != after.displays
             || !family.same(&rechecked)
         {
@@ -256,14 +344,40 @@ impl NativeMac {
                 "Exact Live root or parent-linked sheet set changed; discard this read-only composite.",
             ));
         }
+        for source in additional {
+            let id = format!("cgwindow:{}", source.window);
+            if explicit_windows.contains(&id) {
+                let expected = frames
+                    .iter()
+                    .find(|frame| frame.window.window == id)
+                    .unwrap();
+                let current = source.visual_window()?;
+                let rect = expected.source_rect;
+                if !current.rect.same(Rect {
+                    x: f64::from(rect.x),
+                    y: f64::from(rect.y),
+                    w: f64::from(rect.width),
+                    h: f64::from(rect.height),
+                }) {
+                    return Err(fault(
+                        "visual_window_changed",
+                        "An explicit additional visual source moved during composition; discard this frame.",
+                    ));
+                }
+            }
+        }
         let layers = std::iter::once(&root).chain(frames.iter()).map(|f| json!({
             "window":f.window, "source_rect":f.source_rect, "image_size":f.image_size,
             "captured_unix_ms":f.captured_unix_ms,
-            "relation":if f.window.window == root.window.window {"selected_root"} else {"verified_AXSheet_AXParent"}
+            "relation":if f.window.window == root.window.window {"selected_root"} else if explicit_windows.contains(&f.window.window) {"caller_explicit_visual_selection; ownership_not_inferred"} else {"verified_AXSheet_AXParent"}
         })).collect::<Vec<_>>();
         if !frames.is_empty() {
-            let tiles = std::iter::once(&root)
+            let all = std::iter::once(&root)
                 .chain(frames.iter())
+                .collect::<Vec<_>>();
+            let tiles = order
+                .iter()
+                .map(|index| all[*index])
                 .map(|f| composite::Tile {
                     png: &f.png,
                     rect: Rect {
@@ -310,8 +424,10 @@ impl NativeMac {
             root.atomicity = "non-atomic exact root/owned-sheet captures; native pre/post process/window/topology and AXParent set checks; visual-only, never an input frame".into();
             root.normalization = "bounded straight RGBA source-over at desktop-point positions; common non-upscaling grid; original source PNGs not modified".into();
         }
-        root.details["family"] = json!({"scope":"selected_root_and_verified_same_provider_attached_sheets",
-            "layers":layers,"complete":family.complete,"reasons":family.reasons,"input_authority":false,
+        root.details["family"] = json!({"scope":"selected_root_verified_attached_sheets_and_explicit_visual_selections",
+            "layers":layers,"complete":family.complete && explicit_omissions.is_empty(),"reasons":family.reasons,"input_authority":false,
+            "explicit_source_omissions":explicit_omissions,"automatic_foreign_owner_inference":false,
+            "composition_order":if !before.on_screen_inventory_match && ids.len() == 1 { "single_exact_offscreen_root_no_inter_window_order" } else { "native_window_inventory_back_to_front_pre_post_checked" },
             "selection_updated":false,"new_reference":false,"all_same_pid_windows_included":false,
             "foreign_pid_requires_explicit_selection":true,"atomic":false,
             "root_relay_attempts":memo.relay_attempts,"retained_root_checks":memo.retained_root_checks});
@@ -322,6 +438,57 @@ impl NativeMac {
 #[cfg(test)]
 mod owner_root_tests {
     use super::*;
+    #[test]
+    fn explicit_visual_layers_follow_native_order_and_never_guess_missing_windows() {
+        let rect = Rect {
+            x: 0.,
+            y: 0.,
+            w: 10.,
+            h: 10.,
+        };
+        let rows = vec![
+            Window {
+                id: 7,
+                pid: 12,
+                rect,
+                alpha: 1.,
+                title: None,
+            },
+            Window {
+                id: 8,
+                pid: 13,
+                rect,
+                alpha: 1.,
+                title: None,
+            },
+        ];
+        assert_eq!(
+            visual_layer_order(&["cgwindow:8".into(), "cgwindow:7".into()], &rows).unwrap(),
+            vec![0, 1]
+        );
+        assert_eq!(
+            visual_layer_order(&["cgwindow:7".into(), "cgwindow:8".into()], &rows).unwrap(),
+            vec![1, 0]
+        );
+        assert!(visual_layer_order(&["cgwindow:9".into()], &rows).is_err());
+        assert!(visual_layer_order(&["cgwindow:7".into(), "cgwindow:7".into()], &rows).is_err());
+        for code in [
+            "window_missing",
+            "process_identity_unknown",
+            "session_or_process_changed",
+            "window_identity_changed",
+        ] {
+            assert!(temporary_explicit_source_loss(code));
+        }
+        for code in [
+            "cancelled",
+            "screen_capture_permission_missing",
+            "window_epoch_changed",
+            "storage_or_transport_error",
+        ] {
+            assert!(!temporary_explicit_source_loss(code));
+        }
+    }
     #[test]
     fn retained_owner_root_requires_every_positive_native_fact() {
         let rect = Rect {
@@ -388,5 +555,28 @@ mod owner_root_tests {
             now + RELAY_COOLDOWN,
             Some(now + RELAY_COOLDOWN)
         ));
+    }
+}
+
+#[cfg(test)]
+mod offscreen_order_tests {
+    use super::*;
+    #[test]
+    fn one_exact_offscreen_root_has_only_one_layer() {
+        assert_eq!(
+            capture_layer_order(&["cgwindow:8".into()], &[], true).unwrap(),
+            vec![0]
+        );
+    }
+    #[test]
+    fn on_screen_or_multi_layer_missing_order_still_refuses() {
+        assert!(capture_layer_order(&["cgwindow:8".into()], &[], false).is_err());
+        assert!(
+            capture_layer_order(&["cgwindow:8".into(), "cgwindow:9".into()], &[], true).is_err()
+        );
+    }
+    #[test]
+    fn empty_layers_do_not_invent_an_offscreen_root() {
+        assert!(capture_layer_order(&[], &[], true).unwrap().is_empty());
     }
 }
