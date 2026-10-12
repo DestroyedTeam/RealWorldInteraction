@@ -2,6 +2,7 @@
 use super::*;
 mod exact_relay;
 mod placement;
+mod settled_hit;
 mod windows;
 use placement::panel_placement_position;
 
@@ -191,15 +192,27 @@ impl NativeMac {
                     &self.objects,
                 )?;
                 (
-                    vec![observed_element(
-                        &element,
-                        &focused,
-                        &application,
-                        window.rect,
-                        blocked,
-                        &mut diagnostics,
-                        &self.objects,
-                    )?],
+                    vec![if target.native_action.is_none() {
+                        settled_hit::observed(
+                            self,
+                            &element,
+                            &focused,
+                            &application,
+                            window.rect,
+                            blocked,
+                            &mut diagnostics,
+                        )?
+                    } else {
+                        observed_element(
+                            &element,
+                            &focused,
+                            &application,
+                            window.rect,
+                            blocked,
+                            &mut diagnostics,
+                            &self.objects,
+                        )?
+                    }],
                     serde_json::json!({"scope":"exact_target_revalidation","complete":false,"input_authority":false}),
                 )
             } else {

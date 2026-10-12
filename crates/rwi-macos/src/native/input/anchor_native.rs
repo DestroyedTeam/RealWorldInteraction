@@ -212,7 +212,7 @@ impl NativeMac {
                 "The exact AX window no longer matches the pinned native bounds.",
             ));
         }
-        let (hit, application_hit) = if target.native_action.is_some() {
+        let (mut hit, application_hit) = if target.native_action.is_some() {
             (
                 super::super::objects::exact(
                     &window_element,
@@ -227,6 +227,38 @@ impl NativeMac {
         } else {
             point_element(&window_element, self.pid, target.point)?
         };
+        // Preserve an already referenced button when its passive text label is
+        // the actual native hit. Never search by attributes or apply this to a
+        // pixel target, text/key receiver, another button or another window.
+        if target.native_action.is_none()
+            && matches!(kind, Kind::Pointer | Kind::DoubleClick)
+            && let Some(id) = target.scope.element.as_deref()
+        {
+            let original =
+                super::super::objects::exact(&window_element, self.pid, id, &self.objects)?;
+            if unsafe { ffi::CFEqual(original.0, hit.0) == 0 }
+                && label_hit::equivalent(
+                    &original,
+                    &hit,
+                    &window_element,
+                    target.point,
+                    Some("AXButton"),
+                    Duration::from_millis(40),
+                )?
+            {
+                if let Ok(mut rows) = self.hit_diagnostics.lock()
+                    && rows.len() < 8
+                {
+                    rows.push(serde_json::json!({
+                        "stage":"macos_original_button_label_hit","original_element":id,
+                        "hit_pid":hit.pid().ok(),"hit_role":hit.attr("AXRole").ok().and_then(|role|role.string().ok()),
+                        "hit_window":hit.attr("AXWindow").ok().as_ref().and_then(ffi::window_number_for_ax_element),
+                        "label_equivalent":true,"original_retained":true,"native_input_dispatched":false
+                    }));
+                }
+                hit = original;
+            }
+        }
         let hit_description =
             super::super::objects::describe(&hit, &window_element, &self.objects)?;
         if target.pixel_anchor_used {

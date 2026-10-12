@@ -2,10 +2,12 @@ pub(crate) mod activation;
 mod backend;
 mod coverage;
 mod delegation;
+mod hit_settle;
 pub(crate) mod hotkey;
 mod input;
 pub(crate) use input::NATIVE_SAMPLE_INTERVAL_MS;
 mod keyboard;
+mod label_hit;
 mod live_family;
 pub(crate) use live_family::LiveFamilyCapture;
 mod metadata;
@@ -749,9 +751,20 @@ fn observed_element(
     let inside = bounds.contains(point);
     let matches = if inside && blocked == Some(false) {
         let hit = hit_test(application, point).ok();
-        let matches = hit
+        let exact = hit
             .as_ref()
             .map(|h| unsafe { ffi::CFEqual(h.0, node.0) } != 0);
+        let matches = hit.as_ref().and_then(|h| {
+            label_hit::equivalent(
+                node,
+                h,
+                window,
+                point,
+                e.element.role.as_deref(),
+                Duration::from_millis(40),
+            )
+            .ok()
+        });
         if matches != Some(true) && !e.element.actions.is_empty() && diagnostics.len() < 8 {
             let rect_json = |v: &Cf| ax_rect(v).ok().map(|r| [r.x, r.y, r.w, r.h]);
             diagnostics.push(serde_json::json!({
@@ -762,7 +775,7 @@ fn observed_element(
                 "hit_rect": hit.as_ref().and_then(rect_json),
                 "hit_role": hit.as_ref().and_then(|h| h.attr("AXRole").ok()).and_then(|r| r.string().ok()),
                 "hit_window": hit.as_ref().and_then(ffi::window_number_for_ax_element),
-                "equal": matches
+                "equal": exact, "equivalent": matches
             }));
         }
         matches
