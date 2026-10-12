@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated": "2026-10-12T22:28:07.040606+08:00",
+  "updated": "2026-10-12T23:30:57.948690+08:00",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
   "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md",
@@ -436,10 +436,10 @@
         "FW-S089",
         "FW-S101"
       ],
-      "current_state": "not_implemented",
-      "implementation_evidence": "有界 same-window drag 不提供 native cross-app DnD session",
-      "this_turn_native_evidence": "没有 MIME/pasteboard/destination/drop 验收",
-      "remaining": "先独立双 own-app fixture；不能拿本轮 canvas blue path 当 DnD 完成"
+      "current_state": "partial: own AppKit native same-window background DnD verified; cross-app production input route not implemented",
+      "implementation_evidence": "Rust opt-in fixture/native_dnd.rs + native_dnd_appkit.rs: public source/session/custom pasteboard destination, bounded consume-once oracle; no backend bridge.",
+      "this_turn_native_evidence": "R85 own174/175 each actual native begin/move/end(copy) and typed drop consumed1, external=false. CU incomplete native sessions retained; own explicit-close lifecycle revised and both final exits0.",
+      "remaining": "Cross-app multi-endpoint transport and exact paired authority/lease/layout/interruption/cancel/no-replay still required; same-app native drops are not cross-app completion."
     },
     {
       "id": "F14",
@@ -5494,5 +5494,127 @@
     "HTTP1_corrected_push_exit_status": 0,
     "raw_screenshots_binaries_credentials_excluded": true,
     "all_features_accepted": false
+  },
+  "R85_native_dnd_fixture": {
+    "active_object": "/Volumes/ChatGPT/Real World Interaction",
+    "native_fixture_implemented": true,
+    "same_window_native_background_drop_verified": [
+      174,
+      175
+    ],
+    "cross_application_native_drop_verified": false,
+    "raw_canvas_counts_not_native_DnD": true,
+    "backend_or_installed_MCP_changed": false,
+    "Agent_restarted": false,
+    "permissions_changed": false,
+    "human_origin_attested": false,
+    "new_CU_drop_or_native_end_verified": false,
+    "CU_comparison_native_active_sequences": [
+      9,
+      12
+    ],
+    "CU_529ms_and_RWI_1438ms_not_controlled_speed_comparison": true,
+    "original_173_cleanup_exit": 143,
+    "final_fixture_exit_statuses": [
+      0,
+      0
+    ],
+    "final_fixture_lifetime_expiry": [
+      0,
+      0
+    ],
+    "explicit_close_goal_observed": true,
+    "uncertain_AXPress_preserved": -25204,
+    "uncertain_input_replayed": false,
+    "full_F01_F16_accepted": false,
+    "native_actors": {
+      "174": {
+        "pid": 7218,
+        "window_number": 45913,
+        "app_active": false,
+        "app_frontmost": false,
+        "frontmost_pid": 89561,
+        "native_dnd": {
+          "enabled": true,
+          "source_requests": 1,
+          "source_began": 1,
+          "source_moved": 19,
+          "source_ended": 1,
+          "source_cancelled": 0,
+          "active_sequence": null,
+          "last_source_operation": 1,
+          "destination_entered": 1,
+          "destination_updated": 17,
+          "destination_exited": 0,
+          "destination_prepared": 1,
+          "destination_performed": 1,
+          "destination_concluded": 1,
+          "rejected_drops": 0,
+          "consumed": 1,
+          "last_payload": {
+            "schema_version": 1,
+            "source_pid": 7218,
+            "run_id": "r85-native-dnd-174",
+            "offer": 1,
+            "value": "RWI native payload r85-native-dnd-174 #1"
+          },
+          "last_drop_sequence": 10,
+          "last_source_external": false,
+          "last_destination_window": 45913,
+          "error": null,
+          "explicit_close_requests": 0,
+          "active_at_explicit_close": null,
+          "application_terminate_requests": 0,
+          "active_at_application_termination": null,
+          "consumed_sessions": [
+            10
+          ]
+        }
+      },
+      "175": {
+        "pid": 7219,
+        "window_number": 45912,
+        "app_active": false,
+        "app_frontmost": false,
+        "frontmost_pid": 89561,
+        "native_dnd": {
+          "enabled": true,
+          "source_requests": 1,
+          "source_began": 1,
+          "source_moved": 19,
+          "source_ended": 1,
+          "source_cancelled": 0,
+          "active_sequence": null,
+          "last_source_operation": 1,
+          "destination_entered": 1,
+          "destination_updated": 16,
+          "destination_exited": 0,
+          "destination_prepared": 1,
+          "destination_performed": 1,
+          "destination_concluded": 1,
+          "rejected_drops": 0,
+          "consumed": 1,
+          "last_payload": {
+            "schema_version": 1,
+            "source_pid": 7219,
+            "run_id": "r85-native-dnd-175",
+            "offer": 1,
+            "value": "RWI native payload r85-native-dnd-175 #1"
+          },
+          "last_drop_sequence": 11,
+          "last_source_external": false,
+          "last_destination_window": 45912,
+          "error": null,
+          "explicit_close_requests": 0,
+          "active_at_explicit_close": null,
+          "application_terminate_requests": 0,
+          "active_at_application_termination": null,
+          "consumed_sessions": [
+            11
+          ]
+        }
+      }
+    },
+    "remaining": "Cross-app multi-endpoint input transport + leases/identity/layout/cancel/no-replay; then browser route and remaining full matrix."
   }
 }

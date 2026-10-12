@@ -2014,3 +2014,11 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 源码head e83d38b的真实CI38261800260：Mac与Windows两job的fmt/tests/all-feature Clippy/architecture/负例全部success，watch0、readback0；非Windows native GUI。此后只补文档，不冒用源码CI作新doc head的CI。
 - 三独立已安装MCP process均0/stderr空：各100resources、30schema、5mac-host Describe，只读/no capture/input/Host presence。read中位0.183–0.207ms、schema1.101–1.163ms、Describe18.308–32.420ms仅该样本/本地operator roundtrip；不是native CPU或通用速度优势。明细 docs/validation/2026-10-12-r84-mcp-measurement.md。
 - 新正式Host及双源接受结果保留，同四角色198路径延续独立copy rollback；F13/F14等整个原矩阵仍未完成，下一native candidate须两个own端的真session/payload消费证据，不把canvas/ACK当DnD。其他app、VM、权限、安装身份不改。
+
+## 2026-10-12 · R85：原生后台拖放接收器（同应用内）
+
+- Rust fixture 的 typed pasteboard/native source/destination 已实现；实际后台174/175各消费1次，非canvas计数，external=false，跨应用仍未验。
+- CU对照留下未结束会话9/12；修复自有fixture关闭后的native-loop挂起，最终两实例明确退出0。拒绝、AX -25204和原173退出143全部保留；没有重放不确定输入。
+- 配置检查不创建GUI；最终workspace795/fixture83/Clippy全target全feature/架构规则通过。
+- [验收与原图](../validation/2026-10-12-r85-native-dnd-fixture.md)。Agent、安装MCP、四项权限、证书未改变。
+- 下一项：生产原生跨应用多endpoint输入路线；之后仍继续F14和完整F01–F16。不以fixture成功、PR或绿CI结束目标。
