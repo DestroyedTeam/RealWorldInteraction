@@ -3,7 +3,7 @@
   "updated": "2026-10-13",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md",
+  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r89-native-callback-timeline.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -22,7 +22,7 @@
     "hidden",
     "minimized"
   ],
-  "this_turn_tested_state": "R79 own163 background/minimized exact pixels verified; normal observe still refuses, input capture unchanged; four native processes exit0 and six durable resources terminal/released. Interrupted memory-store gap documented without replay. Minimized Live/full matrix remain.",
+  "this_turn_tested_state": "R89 native sequence19 survives BG-to-FG with49 FG moves; external destination consume1; scoped fixture only, R88 cancelled result retained",
   "foreground_extension": {
     "tool": "computer.focus_window",
     "state": "loaded40_validator_and_native_explicit_transition_accepted",
@@ -304,10 +304,10 @@
         "FW-S069",
         "NI-A19"
       ],
-      "current_state": "partial_implemented",
+      "current_state": "partial_native_capture_accepted",
       "implementation_evidence": "精确 window SCK capture 已实现",
-      "this_turn_native_evidence": "own cover above primary and covering button point verified by native metadata; precise primary SCK image still includes covered button; capture confirmed, input authority not inferred",
-      "remaining": "本轮own covered capture已原生确认；offscreen/其他Space及minimized fresh pixels尚未证明，不外推单例",
+      "this_turn_native_evidence": "Retain original covered-window SCK evidence and R79 exact background/minimized response-only1320x1104 original pixels; R80 one already-minimized root produced4 native Live frames, but formal Host remained0 in that run. Capture proof never grants input authority.",
+      "remaining": "Other-Space, wholly-offscreen/dynamic-state and broader capture freshness still need scoped evidence; do not repeat R79 minimized exact-pixels acceptance or infer input support.",
       "last_native_evidence_date": "2026-10-10"
     },
     {
@@ -355,10 +355,10 @@
         "FW-S094",
         "auto-trycua-cua-file-2"
       ],
-      "current_state": "not_implemented_for_general_hidden_minimized",
+      "current_state": "partial_native_visual_minimized_accepted",
       "implementation_evidence": "当前仍明确不支持 hidden/minimized discovery",
-      "this_turn_native_evidence": "没有这两个状态的 native acceptance",
-      "remaining": "paused/stale 与 semantic-only 分开，禁止自动 unhide 把前台伪装后台"
+      "this_turn_native_evidence": "R79 independently verified an exact inactive minimized source at capture-time; R80 native minimized-root Live4frames, not formal Host success. No general hidden/minimized input acceptance or automatic unhide.",
+      "remaining": "Formal Host minimized/dynamic hidden lifecycle, fresh versus paused/stale semantics and supported semantic/input routes remain distinct pending scopes; no activation or unhide fallback."
     },
     {
       "id": "F11",
@@ -436,10 +436,10 @@
         "FW-S089",
         "FW-S101"
       ],
-      "current_state": "partial: own two-PID AppKit native background drop verified via deployed typed paired input; full native DnD matrix pending",
+      "current_state": "partial: native two-PID background drop, observed same-session BG-to-FG external drop, in-progress cancellation and destination process exit independently accepted",
       "implementation_evidence": "R86 Rust core invocation-local paired Endpoint/Pair authority, native guarded background trajectory + shared durable lease, computer.drag_between strict typed source/destination views; ordinary drag remains window-contained; Windows refuses",
-      "this_turn_native_evidence": "R86 loaded fresh Host request r86-native-source-to-destination-1: PID82004 -> PID82005, source began/end1, native external destination performed/concluded/consume1, payload exact run_id, both endpoints inactive before/after; original durable terminal/released; own fixture exits0/0",
-      "remaining": "Native DnD mid-operation cancel/change/exit/TCC and BG->FG must be independently accepted; file promises, other payloads/client frameworks/browser and broader real apps remain; F01-F16 full goal not complete."
+      "this_turn_native_evidence": "R89 actual native sequence19: begun in background,49 active/key/frontmost native moved callbacks, source end Copy1 no cancel, independent destination external consume1; original returned receipt goal_verified=false retained, no replay/terminal released, own app exits0/0",
+      "remaining": "Endpoint geometry/TCC changes, representative broader client/framework payloads and browser scenarios still pending; R89 own fixture success does not erase R88 cancel or prove its cause. Full F01-F16 not complete."
     },
     {
       "id": "F14",
@@ -476,7 +476,7 @@
       "current_state": "partial_native_accepted",
       "implementation_evidence": "durable reservation/no-replay、lease/cancel/cleanup、own timer common modes 已有",
       "this_turn_native_evidence": "R19 loaded own56 FG->BG during5s drag, firstBG1642.49ms,26FG/55BG,1/79/1. Real global cmdtab own57->56 AFTER drag. Separate deadline cancel1340ms/1/20/1/paired release/no orphan; original uncertain receipt immutable after idle HID+session0key0button recovery/noinput/noreplay. Stale global foreground tuple rejected before down; oldsource had also expired, not pure liveA/B isolation. Own56 expiry0 and own57 explicitclose0/2detach. R21 live own A/B only stale foreground tuple refused/no dispatch while both windows running; independent explicit focus; exact lease boundaries tested both directions. Actual correctly scoped own58 drag5s1/79/1/81FG, no orphan. Concurrent root chord with child lease rejected/never dispatched; controller4583ms queue cause not attested. All12 original requests terminal/released/no replay; explicit source58/59 close0, two detach.",
-      "remaining": "真实取消/丢失释放/任务 Live 生命周期和 physical input 连续性需专项测量",
+      "remaining": "Retain R19/R87 actual in-flight cancellation, paired release/no-replay and R49/R84 task/source Live lifecycle acceptance. Lost-release, disabled/wake/hook recovery and bounded competing-input continuity still need scoped tests; no further human-coordination request or physical-origin certification gate.",
       "last_native_evidence_date": "2026-10-11",
       "R76_bounded_resource_cases": {
         "target_capacity16_including_desktop": true,
@@ -489,7 +489,8 @@
         "1000ms_expiry_terminal_resume_does_not_resurrect": true,
         "source_survives_detach_then_explicit_close_and_returns_original_target_count": true
       },
-      "R84_additional": "Formal Host lifecycle, two clean source exits, exact additional-source omission and root-loss clear, close worker done; three durable terminal/released, no input replay. Not physical-human continuity."
+      "R84_additional": "Formal Host lifecycle, two clean source exits, exact additional-source omission and root-loss clear, close worker done; three durable terminal/released, no input replay. Not physical-human continuity.",
+      "r87_verified": "True in-flight native cancel and destination disappearance: source native cancel/end2, release2, terminal original operations; historical uncertainty/fences kept, explicit read-only native recovery and no replay."
     },
     {
       "id": "F16",
@@ -507,7 +508,7 @@
       "current_state": "partial_native_measured",
       "implementation_evidence": "原图保留、2048预览、stage timings/compact output 已有",
       "this_turn_native_evidence": "R16 deployed stable native recovery: actualsameSource frames90->92->96, noLiveResume afterloss,8limit/1s backoff. Font output priority/nativewalk optimization remains. R20 readonly degraded AXWindows read guards/process positive media and poison rejection, isError retained and no frame/view/input authority; MCP deployed4a29, current parent not reloaded. R21 exact own snapshots adapter187..231ms in selected samples and controller wrong-scope chord4583ms; no exact queue-cause/general speed claim.",
-      "remaining": "Raw native tool timing scope and Host/adapter/transport/Agent wait need measured separation; currently loaded formatter remains old. Full framework/capture/stress coverage and composite family remain.",
+      "remaining": "Retain R84 measured real-MCP startup/schema/resource/Describe scopes and R50 read-only admission evidence; these are not native capture/input CPU or Host-queue timings. Continue native capture/convert/encode and transport/Agent/Host-wait separation, picture quality and bounded active-stream stress. R86 fresh Host loaded the paired typed tool; historical old-formatter records are not current general conclusions.",
       "last_native_evidence_date": "2026-10-11",
       "R76_measured_scope": {
         "timings": {
@@ -523,16 +524,13 @@
     }
   ],
   "priority_order": [
-    "R19 observed background AXWindows cannotComplete: preserve error/unknown controls, exact-window read-only visual path without granting input or changing focus; add real MCP-process contract before deployment.",
-    "Autonomous own-app first-canvas-down triggered foreground actor; cannot rely on ChatGPT message/tool start timestamps; no human coordination.",
-    "Autonomous actual MCP-process queue localization; own-window continuous Live/control and retained AXPress uncertainty, no further human participation",
-    "F07 ordinary pointer preparation/down/client key-order isolation; physical-input continuity/restoration",
-    "F05 hover view/tracking route after exact App/Window foreground/background contrast",
-    "F08/F09 offscreen/window-local identity and state matrix",
-    "F12 multiwindow/popup/Live owner graph",
-    "F06 raw/client adaptation; F10 paused/hidden semantics; F13 native DnD; F14 explicit browser route",
-    "F15 cleanup/stress and F16 scoped performance across all paths",
-    "MCP tool description/schema timing-option consistency; do not advertise unavailable fields"
+    "R90：有界context-local多Catalog快照，独立TTL与exact native revalidation，修复跨PID发现覆盖",
+    "R88 native paired DnD BG->FG after actual native session begins; retain R47 ordinary-drag OS Command+Tab and R86/R87 drop/cancel/exit, never replay them or substitute them for this distinct case.",
+    "F05 cold background view/tracking/tooltip and F07 actual keyboard recipient/foreground preservation, using explicitly allocated autonomous actors without human participation.",
+    "F08/F09/F10 capture/input state distinctions: retain R79 exact minimized pixels and R80 limited native Live frames; validate pending formal Host/dynamic hidden/offscreen scopes without unhide fallback.",
+    "F12 exact foreign-provider/window-family/native-menu ownership and composition; retain R49 task hide/return/close and R84 formal multisource acceptance; no private Host-ID certification requirement.",
+    "F03 explicit experimental transport, F06 app-specific relative/raw and F14 explicit browser content/native multiwindow/incognito lifecycle remain within the approved F01-F16 matrix; no all-future-client or ABI guarantee.",
+    "F15 remaining hook/lost-release/recovery and F16 bounded native/adapter/transport/Host measurements, tool output/schema consistency; retained completed cancellation/Live/compact controls are not repeated gates."
   ],
   "receipt_event_files": [
     "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-09/background-plan-return/07-long-drag-oracle.json",
@@ -1399,7 +1397,7 @@
     "true_Host_task_switch_complete": false
   },
   "human_coordination_policy": {
-    "current": "user asleep; autonomous own-fixture GUI validation; no repeated user switch/restart requests",
+    "current": "user asleep/unavailable for further manual cooperation; use explicitly allocated own-fixture GUI and independent autonomous actors, never claim physical-human provenance or request repeated switch/restart/expand",
     "source": "latest user turn",
     "sensitive_auth_boundary": "do not invent password or grant new permissions"
   },
@@ -5675,5 +5673,227 @@
     "failed": 0,
     "ignored": 11,
     "suites": 42
-  }
+  },
+  "r87_native_interruption": {
+    "native_cancel_accepted": true,
+    "native_destination_exit_accepted": true,
+    "original_failed_R87_preserved": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-paired-interruption-r87/host-gui-acceptance/20261013-0051-session-94b6021b/RESULT.json",
+    "independent_Host_result": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-paired-interruption-r87/independent-controller-r87b/host-gui-acceptance/RESULT.json",
+    "same_product_source_unchanged": true,
+    "source_pid": 23247,
+    "destination_pid": 23248,
+    "native_source_began_ended_cancelled": [
+      2,
+      2,
+      2
+    ],
+    "native_destination_consumed": 0,
+    "original_operation_results": [
+      {
+        "request": "r87b-native-pair-cancel-1",
+        "code": "operation_cancelled",
+        "native_elapsed_ms": 219,
+        "moves": 3,
+        "paired_release_inserted": true,
+        "original_receipt_fenced": true,
+        "source_scope": {
+          "element": null,
+          "pid": 23247,
+          "window": "cgwindow:46257"
+        }
+      },
+      {
+        "request": "r87b-native-pair-destination-exit-1",
+        "code": "process_identity_unknown",
+        "native_elapsed_ms": 152,
+        "moves": 1,
+        "paired_release_inserted": true,
+        "original_receipt_fenced": true,
+        "source_scope": {
+          "element": null,
+          "pid": 23247,
+          "window": "cgwindow:46257"
+        }
+      }
+    ],
+    "controlled_destination_SIGTERM_exit_status": 143,
+    "source_normal_close_exit_status": 0,
+    "recovery_native_input_sent": false,
+    "replay": false,
+    "final_domain_fenced": false,
+    "current_deployment_or_permissions_changed": false,
+    "native_BG_to_FG_accepted_by_this_run": false,
+    "full_F01_F16_complete": false
+  },
+  "r88_native_BG_to_FG_pending": {
+    "fixture_configuration_repaired": true,
+    "scope": "own regular native-DnD fixture first-down foreground actor; fixture configuration only, not new product input transport",
+    "baseline_configuration": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-dnd-bg-fg-r88/ALLOCATED_NATIVE_ACTOR_CONFIGURATION_R88.command_execution.json",
+    "baseline_exit_status": 1,
+    "baseline_error": "native DnD fixture cannot combine with a panel, geometry or input actor",
+    "modified_configuration": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-dnd-bg-fg-r88/MODIFIED_CONFIGURATION_R88.command_execution.json",
+    "modified_check_only_exit_status": 0,
+    "modified_gui_created": false,
+    "modified_input_sent": false,
+    "modified_native_binding_verified": false,
+    "receiver_tests": {
+      "passed": 85,
+      "failed": 0,
+      "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-dnd-bg-fg-r88/fixture_tests.command_execution.json"
+    },
+    "GUI_acceptance_task": "01a1312f-7b5d-7152-b09a-f2cf0981c5e9",
+    "GUI_acceptance_state": "pending",
+    "native_paired_BG_to_FG_accepted": false,
+    "native_transition_actor_is_not_physical_human_evidence": true,
+    "prior_R86_result_is_historical_snapshot": true,
+    "current_native_cancel_accepted": true,
+    "current_native_destination_exit_accepted": true,
+    "compact_Live_and_buttons_already_accepted": "R73 maximum280x300 points, eye.slash/play.fill/xmark; R49/R84 hidden/restore/close retained, not a new size/button gate",
+    "full_F01_F16_complete": false,
+    "state": "executed_native_cancelled_no_drop",
+    "native_result": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-dnd-bg-fg-r88/PARENT_VERIFIED_NATIVE_BG_FG_R88.json",
+    "foreground_transition_observed": true,
+    "native_BG_to_FG_continuity_accepted": false,
+    "source_native_began_moved_ended_cancelled": [
+      1,
+      31,
+      1,
+      1
+    ],
+    "destination_consumed": 0,
+    "original_no_replay": true,
+    "fixture_exits": [
+      0,
+      0
+    ]
+  },
+  "r88_result": {
+    "root": "/Volumes/ChatGPT/Real World Interaction",
+    "target_stable": true,
+    "source_pid_window": [
+      78136,
+      46312
+    ],
+    "destination_pid_window": [
+      78138,
+      46311
+    ],
+    "actual_native_session_observed": true,
+    "source_native_began_moved_ended_cancelled": [
+      1,
+      31,
+      1,
+      1
+    ],
+    "initial_both_background": true,
+    "foreground_transition_observed": true,
+    "first_down_unix_ms": 1791826708214,
+    "first_foreground_delay_ms": 2016,
+    "first_active_key_delay_ms": 2110,
+    "native_BG_to_FG_continuity_accepted": false,
+    "precise_native_end_vs_foreground_timing_unknown": true,
+    "destination_consume": 0,
+    "native_drop_goal_verified": false,
+    "original_request_no_replay": true,
+    "original_receipt": {
+      "deduplicated": false,
+      "details_ref": "842f7d2a64dd4c3b9c0899f12fcd10c6",
+      "dispatch": "returned",
+      "frame": "39ab64ec-bfd7-4df2-a7a3-b5c21b1f88ef",
+      "goal_verified": false,
+      "input_domain_fenced": false,
+      "operation_ref": {
+        "agent_instance": "4715f706-beeb-4199-b150-2226cef5b09e",
+        "context_generation": "d87b0479-83d3-4d32-9c5c-9f563e4da8ec",
+        "device_id": "mac-host",
+        "execution_nonce": "10:b0e2f5de-3da6-4413-b4ce-411c840ff382",
+        "ref_version": 1
+      },
+      "replay": "forbidden",
+      "request_id": "r88-native-pair-bg-fg-1",
+      "scope": {
+        "element": null,
+        "pid": 78136,
+        "window": "cgwindow:46312"
+      },
+      "system_accepted": null
+    },
+    "durable_terminal_resources_released": true,
+    "input_domain_fenced": false,
+    "fixture_exit_statuses": {
+      "source": 0,
+      "destination": 0
+    },
+    "production_agent_or_MCP_modified": false,
+    "four_role_configuration_proof": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-dnd-bg-fg-r88/same-input-first-down-copy-proof/RESULT.json",
+    "next": "fixture-only bounded native callback timeline, then one new authorized experiment; do not replay r88 request",
+    "full_goal_complete": false
+  },
+  "r89_native_BG_to_FG_verified": {
+    "root": "/Volumes/ChatGPT/Real World Interaction",
+    "actual_native_session_observed": true,
+    "native_BG_to_FG_continuity_accepted": true,
+    "scope": "own AppKit native pasteboard source/destination with once-only modern own foreground actor; not arbitrary app/physical human or universal transport guarantee",
+    "source_pid_window": [
+      3838,
+      46394
+    ],
+    "destination_pid_window": [
+      3839,
+      46395
+    ],
+    "native_sequence": 19,
+    "source_native_began_moved_ended_cancelled": [
+      1,
+      79,
+      1,
+      0
+    ],
+    "foreground_native_moves": 49,
+    "background_native_moves": 30,
+    "native_end_operation": 1,
+    "same_native_sequence_before_during_after_activation": true,
+    "timeline_total_source_destination": [
+      118,
+      20
+    ],
+    "timeline_dropped": [
+      0,
+      0
+    ],
+    "first_foreground_native_move_after_began_ms": 2026.512,
+    "end_after_began_ms": 4957.958,
+    "destination_external_consume_verified": true,
+    "destination_payload": {
+      "schema_version": 1,
+      "source_pid": 3838,
+      "run_id": "r89-native-source",
+      "offer": 1,
+      "value": "RWI native payload r89-native-source #1"
+    },
+    "original_request_no_replay": true,
+    "original_receipt_goal_verified": false,
+    "durable_terminal_resources_released": true,
+    "input_domain_fenced": false,
+    "fixture_exit_statuses": {
+      "source": 0,
+      "destination": 0
+    },
+    "production_agent_or_MCP_modified": false,
+    "R88_cancelled_result_retained": true,
+    "R88_cancel_root_cause_proven": false,
+    "instrumentation_may_influence_timing": true,
+    "full_goal_complete": false,
+    "source_hashes": {
+      "crates/rwi-macos/examples/receiver_fixture/native_dnd.rs": "3fc30be037f7fa3447ce223edc7bd25602955c9299d5ad7ae735fbb083538608",
+      "crates/rwi-macos/examples/receiver_fixture/native_dnd_appkit.rs": "18d9bc2502bfc69d8210e8d05b5ec733494c81e958c21a24ccb954a4e1e125f5",
+      "crates/rwi-macos/examples/receiver_fixture/model.rs": "b863aa01619e422fc8992dda042c5ab5208418a82616d0def36b0f6174d62f44",
+      "crates/rwi-macos/examples/receiver_fixture/appkit.rs": "b9b36d242c461ef0c6b6fbad65949c0cab962174835f42cb7167edf67b82c8ab",
+      "crates/rwi-macos/examples/receiver_fixture.rs": "0ab96f595eb8b5ec203036f5aa71300bc91f0ded0d2d2f92abf3c03daa8d0257",
+      "post_regression_target_binary_not_GUI_tested": "7a26aab1e5b5181f6dab471d7a12e486271d4774c7bc31ae685e8b83e3e9519b",
+      "actual_GUI_fixture_binary": "c8e678b39ba56e3293af663f1e52340a04d196aa2a339d9919072e1338b65551"
+    }
+  },
+  "r89_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r89-native-callback-timeline.md",
+  "r89_next_catalog_fix": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-callback-timeline-r89/CATALOG_INTERLEAVING_FOLLOWUP.json"
 }
