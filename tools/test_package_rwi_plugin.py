@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -49,6 +50,31 @@ class PackagingTests(unittest.TestCase):
         self.output.symlink_to(target, target_is_directory=True)
         with self.assertRaises(ValueError):
             package(self.binary, self.profile, self.output, replace=True)
+
+    def test_binary_revision_is_explicit_and_stable_without_executing_runtime(self):
+        result = package(self.binary, self.profile, self.output)
+        entry = json.loads((self.output / ".mcp.json").read_text())["mcpServers"][
+            "real_world_interaction"
+        ]
+        expected = hashlib.sha256(self.binary.read_bytes()).hexdigest()
+        self.assertEqual(entry["env"]["RWI_MCP_BINARY_SHA256"], expected)
+        self.assertEqual(result["binary_sha256"], expected)
+        self.assertFalse(result["runtime_started"])
+        package(self.binary, self.profile, self.output, replace=True)
+        repeated = json.loads((self.output / ".mcp.json").read_text())["mcpServers"][
+            "real_world_interaction"
+        ]
+        self.assertEqual(repeated["env"], entry["env"])
+
+    def test_changed_binary_at_same_path_changes_only_its_revision(self):
+        package(self.binary, self.profile, self.output)
+        first = json.loads((self.output / ".mcp.json").read_text())["mcpServers"]["real_world_interaction"]
+        self.binary.write_text("different offline fixture; never executed")
+        package(self.binary, self.profile, self.output, replace=True)
+        second = json.loads((self.output / ".mcp.json").read_text())["mcpServers"]["real_world_interaction"]
+        self.assertNotEqual(first["env"], second["env"])
+        self.assertEqual(first["command"], second["command"])
+        self.assertEqual(first["args"], second["args"])
 
 
 if __name__ == "__main__":

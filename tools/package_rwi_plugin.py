@@ -1,5 +1,6 @@
 """Operator-only packaging; the MCP runtime and native execution remain Rust."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,11 @@ def package(binary, profile, output, *, source=SOURCE, replace=False):
         raise ValueError("Installation must be separate from canonical source")
     if binary.is_relative_to(output) or profile.is_relative_to(output):
         raise ValueError("Binary, profile and identity stay outside the plugin bundle")
+    binary_hash = hashlib.sha256()
+    with binary.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(65536), b""):
+            binary_hash.update(chunk)
+    revision = binary_hash.hexdigest()
     for p in source.rglob("*"):
         if p.is_symlink():
             raise ValueError("Plugin source must not contain symlinks")
@@ -37,7 +43,9 @@ def package(binary, profile, output, *, source=SOURCE, replace=False):
     try:
         shutil.copytree(source, staging, dirs_exist_ok=True)
         entry = {"mcpServers": {"real_world_interaction": {
-            "command": str(binary), "args": ["--profile", str(profile)]}}}
+            "command": str(binary), "args": ["--profile", str(profile)],
+            # Configuration identity, not authorization or an automatic-reload guarantee.
+            "env": {"RWI_MCP_BINARY_SHA256": revision}}}}
         (staging / ".mcp.json").write_text(json.dumps(entry, indent=2) + "\n")
         if output.exists():
             backup = output.with_name(".rwi-plugin-backup-" + uuid.uuid4().hex)
@@ -52,7 +60,8 @@ def package(binary, profile, output, *, source=SOURCE, replace=False):
         if staging.exists():
             shutil.rmtree(staging)
     return {"plugin": str(output), "backup": str(backup) if backup else None,
-            "credentials_copied": False, "runtime_started": False}
+            "credentials_copied": False, "runtime_started": False,
+            "binary_sha256": revision}
 
 
 if __name__ == "__main__":
