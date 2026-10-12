@@ -1813,3 +1813,14 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - own128（PID68206/CG43156）前后同一个process_start/CGID/位置：[3225,504,660,552]，Virtual4右缘3720，catalog.display=null。旧独立capture_visual报visual_display_unknown，新返回真实完整1320×1104/122552bytePNG；普通snapshot在旧版已可读7controls，新版仍可读，但两者mutation_ready=false、input_reference_available=false、original_to_desktop=null。不是修好了已正常的snapshot，不把响应图的visual_to_desktop借作输入frame。
 - fresh AXClose在checked_context_unavailable前置拒绝、native_dispatch=false；另一次明确的cleanup placement在AX读降级后target_binding_unknown/native_execution=false，未move、不重放。三个binding退役；源最终真实到期closed/expiry1/进程exit0，所有Safe/drag/hover/text/scroll输入计数0，不称显式Close成功。保留这些window-local输入/语义动作缺口，继续真正实现，不以只读成功替代。
 - 配置BASELINE false1/MODIFIED true0/独立copy ROLLBACK false1/REAPPLIED true0，六源pristine hash精确恢复，非生产回滚。沿用同四角色/累计158路径与原97基线；真实顺序原图/报告在outputs/validation/r58-window-local-visual-2026-10-12/。整个F01–F16保持未完成；过去CmdTab、Host v2 Live、sheet等已完成结果不重演。
+
+
+## 2026-10-12 · R59：已恢复，窗口局部后台输入原生闭环
+
+- 合并后根/旧Codex-RWI/旧AI Projects alias实际同对象，158受管源hash一致；不改迁移记录、不重建卷。先按存下的controller真实核对fa580ba对应38161295476：watch0、Mac+Windows两job success；这是恢复后的首个未完成操作，不重复旧GUI。Goal服务仍返回paused，未调用不支持的resume或新建替代goal；执行依据用户此前“搞完恢复会话”的条件授权与已确认目录状态。
+- native::window_mapping_ready/display_layout将完整单display包含从input映射移除，改为有限Window几何+实际active unrotated交集；on-screen exact native Window/AX/SCK核验、layout digest、object/properties、lease/no-replay和modal等不变，完整离屏/旋转受影响Surface仍拒绝。display assignment仍null。foreground_move::guard单独验证point唯一命中一个unrotated active display，不clamp/global fallback；新负向point规则本轮仅纯测试，不称HID实机负向完成。
+- 新mapping合同基线101→修改2pass0；首workspace旧wiring字符串失败101/partial490/1/9/16保留，纠正到guard(self,foreground,target.point)后完整11门0/workspace765/0/11/42、Receiver66/UI7、fmt/严格Clippy/release/架构通过。首保存大JSON argv被OS拒绝Argument list too long（未启动命令），纠正逐event写入，保留error来源而不捏造exit。
+- 同证书/DR部署Agent18993 / 73001bbe-91f1-4177-9114-7f45a3b236f1，signed hash d44ee05a5ed5d84e99e3b44ada745110f64f3aa06f0d09168abbb4866380d7a7，原lease inode排他/durable资源门先过；四权限、MCP5cf8424、CA/profile/config未变，无Host重启或人工请求。
+- 同native129/PID15825/CG43580/process birth和[3225,504,660,552]旧snapshot有图但mutReady/inputReffalse；新Frame自身map[.5,0,0,.5,3225,504]与两ready true。源仍display=null/右165pt出屏。一次AXPress Safe1；一次typed BG drag实际1/16/1/completed1/orphan0，完整1320×1104蓝线；18鼠标callback均inactive/nonkey/frontPID97732，非连续/hardware证明，AX语义非mouse input。
+- outside ScrollArea advertised AXScrollDownByPage却返回-25205/uncertain，scroll events0/clip0，未重放或改走其他输入。保留四原请求terminal/released/no pending/no uncertainty/no replay。Fresh AXClose一次后源closed/expiry0/进程exit0，两binding退役；不靠timer冒充Close成功。
+- 配置false1/true0/独立copy ROLLBACKfalse1/REAPPLIEDtrue0，七源pristine hash精确恢复，非生产回滚；同四角色158与原97不改。真实顺序原图/报告在outputs/validation/r59-window-local-input-2026-10-12/；F01–F16全目标仍未完成，不以这一个窗口的成功推断通用App/hidden/DnD/hover等。

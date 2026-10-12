@@ -2978,5 +2978,30 @@
       "suites": 42
     },
     "full_goal_complete": false
+  },
+  "R59_window_local_partial_native_input": {
+    "date": "2026-10-12",
+    "same_window_before_after": true,
+    "normal_input_mapping_now_available": true,
+    "native_safe_ax_actions": 1,
+    "native_canvas_drag": {
+      "down": 1,
+      "move": 16,
+      "up": 1,
+      "completed": 1
+    },
+    "inactive_nonkey_mouse_samples": 18,
+    "source_explicit_closed_exit0": true,
+    "scroll_native_error_retained": -25205,
+    "scroll_goal_verified": false,
+    "foreground_negative_native_case_executed": false,
+    "report": "outputs/validation/r59-window-local-input-2026-10-12/REPORT.md",
+    "workspace": {
+      "passed": 765,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "full_goal_complete": false
   }
 }
