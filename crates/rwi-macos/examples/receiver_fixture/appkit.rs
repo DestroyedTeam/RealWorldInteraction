@@ -1406,7 +1406,10 @@ pub fn run(options: Options) -> Result<(), String> {
             let screen_frame = explicit_screen_frame(options.display_id)?;
             let decoration: NSRect = msg_send![class(c"NSWindow")?,
                 frameRectForContentRect:rect(0., 0., 660., 520.), styleMask:3usize];
-            let placed = if options.boundary_right {
+            let placed = if options.boundary_canvas_right {
+                screen_frame
+                    .place_boundary_canvas_right(decoration.size.width, decoration.size.height)?
+            } else if options.boundary_right {
                 screen_frame.place_boundary_right(decoration.size.width, decoration.size.height)?
             } else if options.right_side {
                 screen_frame.place_right(decoration.size.width, decoration.size.height)?
@@ -1595,7 +1598,7 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*window, setFrame:requested_frame, display:true, animate:false];
             let actual: NSRect = msg_send![&*window, frame];
             let screen: *mut AnyObject = msg_send![&*window, screen];
-            let allocation_matches = if options.boundary_right {
+            let allocation_matches = if options.boundary_right || options.boundary_canvas_right {
                 placed.same(geometry(actual))
             } else {
                 screen_frame.contains(geometry(actual))

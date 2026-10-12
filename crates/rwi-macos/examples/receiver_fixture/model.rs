@@ -28,6 +28,9 @@ pub struct Options {
     pub right_side: bool,
     /// Explicit read-only geometry fixture: last quarter outside the selected screen.
     pub boundary_right: bool,
+    /// Place the ordinary drag canvas across the allocated screen's right edge.
+    /// Geometry only: does not change event acceptance, responders or AX roles.
+    pub boundary_canvas_right: bool,
     pub modal_controls: bool,
     pub system_panel_controls: bool,
     pub environment_sample_ms: Option<u32>,
@@ -79,6 +82,7 @@ impl Options {
         let mut cover_controls = false;
         let mut right_side = false;
         let mut boundary_right = false;
+        let mut boundary_canvas_right = false;
         let mut modal_controls = false;
         let mut system_panel_controls = false;
         let mut environment_sample_ms = None;
@@ -129,6 +133,7 @@ impl Options {
                 "--cover-controls" if !cover_controls => cover_controls = true,
                 "--right-side" if !right_side => right_side = true,
                 "--boundary-right" if !boundary_right => boundary_right = true,
+                "--boundary-canvas-right" if !boundary_canvas_right => boundary_canvas_right = true,
                 "--modal-controls" if !modal_controls => modal_controls = true,
                 "--system-panel-controls" if !system_panel_controls => system_panel_controls = true,
                 "--regular-app" if !regular_app => regular_app = true,
@@ -208,6 +213,7 @@ impl Options {
             && !cover_controls
             && !right_side
             && !boundary_right
+            && !boundary_canvas_right
             && !modal_controls
             && !system_panel_controls
             && environment_sample_ms.is_none()
@@ -245,7 +251,10 @@ impl Options {
             .filter(|id| *id != 0)
             .ok_or("--display-id must be a nonzero u32")?;
         let lifetime_ms = lifetime_ms.unwrap_or(120_000);
-        if boundary_right
+        if boundary_right && boundary_canvas_right {
+            return Err("choose exactly one boundary geometry mode".into());
+        }
+        if (boundary_right || boundary_canvas_right)
             && (right_side
                 || cover_controls
                 || modal_controls
@@ -311,6 +320,7 @@ impl Options {
             cover_controls,
             right_side,
             boundary_right,
+            boundary_canvas_right,
             modal_controls,
             system_panel_controls,
             environment_sample_ms,
@@ -527,6 +537,18 @@ impl Rect {
     pub fn place_boundary_right(self, width: f64, height: f64) -> Result<Self, &'static str> {
         let mut placed = self.place(width, height)?;
         placed.x = self.x + self.width - width * 0.75;
+        Ok(placed)
+    }
+
+    pub fn place_boundary_canvas_right(
+        self,
+        width: f64,
+        height: f64,
+    ) -> Result<Self, &'static str> {
+        let mut placed = self.place(width, height)?;
+        // The unchanged canvas spans local x24..384. Its rightmost 120 points
+        // now lie outside this allocated display; there is no event calibration.
+        placed.x = self.x + self.width - 264.;
         Ok(placed)
     }
     pub fn same(self, other: Self) -> bool {
@@ -2424,5 +2446,69 @@ mod ax_provider_delay_contract {
         assert_eq!(s.ax_provider_probe["AX_error_attested"], false);
         assert_eq!(s.ax_provider_probe["input_sent"], false);
         assert_eq!(s.ax_provider_probe["getter_calls"], 0);
+    }
+}
+
+#[cfg(test)]
+mod canvas_boundary_geometry_tests {
+    use super::*;
+
+    #[test]
+    fn boundary_canvas_flag_is_explicit_and_conflicting_geometry_refuses() {
+        let args = vec![
+            "--open-window",
+            "--run-id",
+            "parser-only",
+            "--state-dir",
+            "/tmp/rwi-never-created-parser-probe",
+            "--display-id",
+            "4",
+            "--boundary-canvas-right",
+            "--check-only",
+        ];
+        let parsed = Options::parse(args.iter().map(|s| s.to_string()))
+            .unwrap()
+            .unwrap();
+        assert!(parsed.boundary_canvas_right);
+        assert!(!parsed.boundary_right);
+        let mut conflict = args;
+        conflict.push("--boundary-right");
+        assert!(Options::parse(conflict.iter().map(|s| s.to_string())).is_err());
+        assert!(
+            Options::parse(["--boundary-canvas-right"].into_iter().map(str::to_owned)).is_err()
+        );
+    }
+
+    #[test]
+    fn unchanged_canvas_straddles_edge_without_acceptance_or_screen_substitution() {
+        let screen = Rect {
+            x: 1800.,
+            y: 89.,
+            width: 1920.,
+            height: 1080.,
+        };
+        let own = screen.place_boundary_canvas_right(660., 552.).unwrap();
+        assert_eq!(own.x, 3456.);
+        assert_eq!(own.y, 113.);
+        assert_eq!(screen.x + screen.width - own.x, 264.);
+        assert!(own.x + 24. < screen.x + screen.width);
+        assert!(own.x + 384. > screen.x + screen.width);
+        assert!(!screen.contains(own));
+        assert!(
+            Rect {
+                width: 600.,
+                ..screen
+            }
+            .place_boundary_canvas_right(660., 552.)
+            .is_err()
+        );
+        assert!(
+            Rect {
+                x: f64::NAN,
+                ..screen
+            }
+            .place_boundary_canvas_right(660., 552.)
+            .is_err()
+        );
     }
 }

@@ -368,3 +368,14 @@ The first actual own-background canvas down arms one common-mode timer. A releas
 `--check-only` requires the same explicit allocation/configuration arguments but returns a JSON configuration report without creating the state directory, loading AppKit, opening a window or posting input. Native binding remains unverified in that report. All default/no-argument behavior is preserved.
 
 Primary APIs: [Apple private source state](https://developer.apple.com/documentation/coregraphics/cgeventsourcestateid), [existing post-event preflight](https://developer.apple.com/documentation/coregraphics/cgpreflightposteventaccess()), [CGEventPost](https://developer.apple.com/documentation/coregraphics/cgevent/post(tap:)).
+
+
+### Canvas across the display edge (R61)
+
+`--boundary-canvas-right` is an explicit alternative to `--boundary-right`.
+It changes only the initial geometry on the allocated display: the unchanged
+canvas at local x24..384 crosses the right edge, with 120 canvas points outside.
+It does not change input delivery, responder preparation, AX role or the drawing
+oracle, and is not a product capability. Other window/actor modes and the two
+boundary flags cannot be combined. `--check-only` parses without creating UI.
+The old quarter-offscreen geometry remains unchanged for R58–R60 evidence.
