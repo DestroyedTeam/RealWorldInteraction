@@ -60,9 +60,37 @@ struct UI {
 thread_local! {
     static UI_STATE: RefCell<Option<UI>> = const { RefCell::new(None) };
     static DISPATCH_BORROW_SKIPS: Cell<u64> = const { Cell::new(0) };
+    // Record failures even while teardown temporarily owns UI outside this slot.
+    static CALLBACK_FAILURES: Cell<u64> = const { Cell::new(0) };
     // Completion can be reentrant during panel teardown; never borrow UI there.
     static FILE_PANEL_RESPONSES: RefCell<Vec<isize>> = const { RefCell::new(Vec::new()) };
     static FILE_PANEL_RESPONSES_DROPPED: Cell<u64> = const { Cell::new(0) };
+}
+
+/// AppKit teardown may synchronously draw or notify delegates. Own the value,
+/// not a RefCell borrow, across those calls; restore it even during unwinding.
+struct DetachedSlot<'a, T> {
+    slot: &'a RefCell<Option<T>>,
+    value: Option<T>,
+}
+impl<T> Drop for DetachedSlot<'_, T> {
+    fn drop(&mut self) {
+        self.slot.replace(self.value.take());
+    }
+}
+fn with_detached_slot<T, R>(
+    slot: &RefCell<Option<T>>,
+    work: impl FnOnce(&mut T) -> R,
+) -> Option<R> {
+    let value = slot.borrow_mut().take()?;
+    let mut owned = DetachedSlot {
+        slot,
+        value: Some(value),
+    };
+    Some(work(owned.value.as_mut().unwrap()))
+}
+fn with_detached_ui<R>(work: impl FnOnce(&mut UI) -> R) -> Option<R> {
+    UI_STATE.with(|slot| with_detached_slot(slot, work))
 }
 
 fn class(name: &'static CStr) -> Result<&'static AnyClass, String> {
@@ -121,6 +149,7 @@ unsafe fn view(class: &AnyClass, frame: NSRect) -> Retained<AnyObject> {
 /// No Rust panic may unwind through Objective-C's callback ABI.
 fn callback(f: impl FnOnce()) {
     if std::panic::catch_unwind(AssertUnwindSafe(f)).is_err() {
+        CALLBACK_FAILURES.with(|count| count.set(count.get().saturating_add(1)));
         eprintln!("receiver_fixture: callback panic; receipt must not be accepted");
         UI_STATE.with(|cell| {
             if let Ok(mut borrowed) = cell.try_borrow_mut()
@@ -183,8 +212,8 @@ impl UI {
             unsafe {
                 let _: () = msg_send![&*panel, cancel:std::ptr::null_mut::<AnyObject>()];
                 let _: () = msg_send![&*panel, orderOut:std::ptr::null_mut::<AnyObject>()];
-                self.state.system_panels.file.visible = Some(msg_send![&*panel, isVisible]);
             }
+            sample_system_panel(&panel, &self.window, &mut self.state.system_panels.file);
         }
         for (slot, observed) in [
             (&mut self.color_panel, &mut self.state.system_panels.color),
@@ -251,6 +280,8 @@ impl UI {
         unsafe {
             self.state.app_active = Some(msg_send![&*self.app, isActive]);
             self.state.window_key = Some(msg_send![&*self.window, isKeyWindow]);
+            self.state.responder.window_miniaturized =
+                Some(msg_send![&*self.window, isMiniaturized]);
             self.state.responder.accepts_mouse_moved =
                 Some(msg_send![&*self.window, acceptsMouseMovedEvents]);
             let first: *mut AnyObject = msg_send![&*self.window, firstResponder];
@@ -950,25 +981,23 @@ extern "C" fn clicked(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
 }
 extern "C" fn window_closed(_this: &AnyObject, _cmd: Sel, _notification: &AnyObject) {
     callback(|| {
-        UI_STATE.with(|cell| {
-            if let Some(ui) = cell.borrow_mut().as_mut() {
-                ui.sample_environment();
-                ui.invalidate_lifetime_timer();
-                ui.close_own_modal();
-                ui.close_own_cover();
-                ui.close_system_panels();
-                ui.state.close();
-                ui.flush();
-                // stop: exits NSApplication's run loop after this close event.
-                unsafe {
-                    if let Err(error) = stop_own_app(&ui.app, ui.state.window_number.unwrap_or(0)) {
-                        ui.state.status = "error";
-                        ui.state.output_error = Some(error);
-                        ui.flush();
-                    }
+        with_detached_ui(|ui| {
+            ui.sample_environment();
+            ui.invalidate_lifetime_timer();
+            ui.close_own_modal();
+            ui.close_own_cover();
+            ui.close_system_panels();
+            ui.state.close();
+            ui.flush();
+            // stop: exits NSApplication's run loop after this close event.
+            unsafe {
+                if let Err(error) = stop_own_app(&ui.app, ui.state.window_number.unwrap_or(0)) {
+                    ui.state.status = "error";
+                    ui.state.output_error = Some(error);
+                    ui.flush();
                 }
             }
-        })
+        });
     });
 }
 extern "C" fn environment_sampled(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
@@ -1099,10 +1128,8 @@ extern "C" fn lifetime_expired(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) 
                     let _: () = msg_send![&*window, close];
                 }
             }
-            UI_STATE.with(|cell| {
-                if let Some(ui) = cell.borrow_mut().as_mut()
-                    && ui.state.status != "closed"
-                {
+            with_detached_ui(|ui| {
+                if ui.state.status != "closed" {
                     // A refused/failed public close is not a fabricated closed
                     // receipt. Bound our run-loop lifetime but preserve the error.
                     ui.invalidate_lifetime_timer();
@@ -1540,8 +1567,10 @@ pub fn run(options: Options) -> Result<(), String> {
             // Ground the caller-selected NSScreen before creating any window.
             // No default/main-screen creation followed by a later move.
             let screen_frame = explicit_screen_frame(options.display_id)?;
+            // Public NSWindowStyleMask: titled | closable | miniaturizable.
+            const ROOT_WINDOW_STYLE: usize = 1 | 2 | 4;
             let decoration: NSRect = msg_send![class(c"NSWindow")?,
-                frameRectForContentRect:rect(0., 0., 660., 520.), styleMask:3usize];
+                frameRectForContentRect:rect(0., 0., 660., 520.), styleMask:ROOT_WINDOW_STYLE];
             let placed = if options.boundary_canvas_right {
                 screen_frame
                     .place_boundary_canvas_right(decoration.size.width, decoration.size.height)?
@@ -1554,12 +1583,12 @@ pub fn run(options: Options) -> Result<(), String> {
             };
             let requested_frame = rect(placed.x, placed.y, placed.width, placed.height);
             let content_frame: NSRect = msg_send![class(c"NSWindow")?,
-                contentRectForFrameRect:requested_frame, styleMask:3usize];
+                contentRectForFrameRect:requested_frame, styleMask:ROOT_WINDOW_STYLE];
             state.requested_window_frame = Some(placed);
             let actions: Retained<AnyObject> = msg_send![actions_class, new];
             let allocated: Allocated<AnyObject> = msg_send![window_class, alloc];
             let window: Retained<AnyObject> = msg_send![allocated,
-                initWithContentRect:content_frame, styleMask:3usize,
+                initWithContentRect:content_frame, styleMask:ROOT_WINDOW_STYLE,
                 backing:2usize, defer:false];
             let title = NSString::from_str(&state.window_title);
             let _: () = msg_send![&*window, setTitle:&*title];
@@ -1858,29 +1887,78 @@ pub fn run(options: Options) -> Result<(), String> {
             }
             super::ax_delay::configure(options.ax_windows_delay_ms);
             let _: () = msg_send![&*app, run];
-            let result: Result<(), String> = UI_STATE.with(|cell| {
-                if let Some(mut ui) = cell.borrow_mut().take() {
-                    ui.invalidate_lifetime_timer();
-                    ui.close_own_modal();
-                    ui.close_own_cover();
-                    ui.close_system_panels();
-                    if ui.state.status != "closed" {
-                        ui.state.status = "error";
-                        if ui.state.output_error.is_none() {
-                            ui.state.output_error =
-                                Some("run_loop_returned_without_window_closed".into());
-                        }
-                        ui.flush();
+            let result: Result<(), String> = with_detached_ui(|ui| {
+                ui.invalidate_lifetime_timer();
+                ui.close_own_modal();
+                ui.close_own_cover();
+                ui.close_system_panels();
+                if ui.state.status != "closed" {
+                    ui.state.status = "error";
+                    if ui.state.output_error.is_none() {
+                        ui.state.output_error =
+                            Some("run_loop_returned_without_window_closed".into());
                     }
-                    let _: () = msg_send![&*ui.window, orderOut:std::ptr::null_mut::<AnyObject>()];
-                    if ui.state.status != "closed" || ui.state.output_error.is_some() {
-                        return Err("own window closed state was not verified without error".into());
-                    }
+                    ui.flush();
+                }
+                let _: () = msg_send![&*ui.window, orderOut:std::ptr::null_mut::<AnyObject>()];
+                if CALLBACK_FAILURES.with(Cell::get) != 0 {
+                    ui.state
+                        .output_error
+                        .get_or_insert_with(|| "callback_panicked".into());
+                    ui.flush();
+                }
+                if ui.state.status != "closed" || ui.state.output_error.is_some() {
+                    return Err("own window closed state was not verified without error".into());
                 }
                 Ok(())
-            });
+            })
+            .unwrap_or(Ok(()));
+            // Drop retained AppKit objects with no temporary RefCell borrow.
+            let released = UI_STATE.with(|cell| cell.borrow_mut().take());
+            drop(released);
             result?;
         }
         Ok(())
     })
+}
+
+#[cfg(test)]
+mod detached_teardown_tests {
+    use super::*;
+
+    #[test]
+    fn reentrant_teardown_reads_an_empty_slot_without_a_live_refcell_borrow() {
+        let slot = RefCell::new(Some(7u8));
+        let result = with_detached_slot(&slot, |value| {
+            assert!(slot.borrow().is_none());
+            assert!(with_detached_slot(&slot, |_| ()).is_none());
+            *value = 9;
+            11
+        });
+        assert_eq!(result, Some(11));
+        assert_eq!(*slot.borrow(), Some(9));
+    }
+
+    #[test]
+    fn detached_slot_restores_owned_state_even_when_work_unwinds() {
+        let slot = RefCell::new(Some(3u8));
+        let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            with_detached_slot(&slot, |value| {
+                *value = 4;
+                panic!("synthetic teardown failure");
+            });
+        }));
+        assert!(result.is_err());
+        // An interrupted callback is not a rollback of prior state changes.
+        assert_eq!(*slot.borrow(), Some(4));
+    }
+
+    #[test]
+    fn callback_failure_is_recorded_without_an_installed_ui() {
+        assert!(UI_STATE.with(|cell| cell.borrow().is_none()));
+        let before = CALLBACK_FAILURES.with(Cell::get);
+        callback(|| panic!("synthetic callback without UI"));
+        assert_eq!(CALLBACK_FAILURES.with(Cell::get), before.saturating_add(1));
+        CALLBACK_FAILURES.with(|count| count.set(before));
+    }
 }

@@ -908,6 +908,8 @@ pub struct SystemPanels {
 /// Public own-window responder readback, separate from consumed input counters.
 #[derive(Default, Serialize)]
 pub struct ResponderProbe {
+    /// Public getter on the allocated own window; unknown before native sampling.
+    pub window_miniaturized: Option<bool>,
     pub calibration_requested: bool,
     pub calibration_accepted: Option<bool>,
     pub first_responder_class: Option<String>,
