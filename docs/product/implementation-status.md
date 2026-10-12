@@ -1913,3 +1913,98 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 五原PNG全同SHA66e6b962，不能称菜单/视图像素变化。Live只root+sheet2层，foreign-provider视觉缺口仍在，不以新Pick案例推断旧Press坏或性能优势。
 - File Cancel response0/visiblefalse/解除parent；Live Stop先等worker_done=true/清图隐藏，源仍可读，再源独立Close expiry0/exit0、两detach/9durable终态/no replay，marker隐藏。真实Host tab5已可见，无假presence/IAB/人类宣称。
 - 报告outputs/validation/r70-native-menu-actions-2026-10-12/REPORT.md。下一项继续系统菜单视觉/provider与F01–F16，不重复已完成三动作验收。
+
+
+## 2026-10-12 · R71：真实渲染等待和另一PID系统菜单被捕获
+
+- own154/30584/root44864/file44875/Virtual4。ShowMenu＋3秒/noAX/noLive的exact capture仍基线0f289cbe；List Pick＋2.5秒/noAX/noLive真实fb983d85列表像素，AX另读；Live真tab6/原生640×478显示List，Icons＋2.5秒/Live运行回到0f289cbe。不是旧缓存普遍故障或延迟上限。
+- menu render为AppKit XPC openAndSavePanelService31294/CG44922，uid501/ppid1；host proxy node_window44876不是sheet44875或真实menu44922。仅explicit独立绑定/read-only capture得560×582/6e3f9427菜单，0输入/no frame/没有自动Live关联。PID/名字/几何不当ownership证明。
+- 154到期480s/expiry1/exit0但真实draw RefCell panic两次，不称干净关闭。迟到snapshot无elements TypeError保留，Menu/FileCancel/SourceClose未发。实际source/menu catalog空、Live止采/clear/hidden/workerdone、4detach/6durable清理。报告outputs/validation/r71-native-menu-visual-isolation-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R72：fixture重入关闭与漏记callback错误修复通过
+
+- 只receiver appkit.rs：RAII DetachedSlot/with_detached_ui令AppKit teardown不持UI_STATE借用；window_closed、failed lifetime stop、run退出涵盖，unwind仍恢复。callback失败count在UI之外黏性记录，不被无法borrow吞掉；file cancel后重采状态。三pure tests通过，不修改生产输入/授权/Live。
+- 新155 file-open→120秒expire，156 file+实际AXMenu-open→120秒expire，均expiry1/exit0、无panic/output_error，file visible/key/attachedfalse、实际response0。stderr正常保留own fallback close日志，非MCP输入重放；3durable终态/无pending/uncertainty、3detach、feedback隐藏。120秒不是480秒稳定性上限。
+- 当前11门0/workspace776/0/11/42，Receiver75/UI7。source配置1/0/1/0及原09c9a03f哈希恢复，原97不改/同四角色175，不称生产rollback。生产release Agent/MCP6bd444eb/871aef7a没变，无部署/人工重启。
+- 报告outputs/validation/r72-fixture-reentrant-teardown-2026-10-12/REPORT.md。全F01–F16未完；下一步foreign renderer归属与Live合成及其他矩阵，不重复语义正例充进度。
+
+## 2026-10-12 · R73：Live进一步缩小并完成自主真实卡验收
+
+- panel_size cap320×360→280×300点，竖向限制允许160点宽保持比例；修正首次portrait测试exit101后9相关项通过。采集2048/源1320×1104不降，28点eye.slash/xmark及提示语保留。
+- 稳定签名Agent93892/c6480c95已部署，旧Agent租约互斥/durable终态后原子换包；本会话loadedMCP自动重连，权限全true/MCP+pairing+cert不变，无人工/重启。
+- 真实Host tab7可见，专用157在虚拟4，内建1浮层实际280×269点/560×538原PNG；卡隐藏清图、恢复77→90新帧、卡关闭worker_done/source存活；再源Close一次干净exit0/expiry0/空stderr/2detach/1durable终态no replay。不是睡着用户亲眼验收。
+- 11门0/workspace776/Receiver75/UI7，源码同输入1/0/1/0原hash恢复；同四角色176。Windows .ui-os旧正式门禁仍exit1不改，不宣称跨平台或Codex像素UI一致。
+- 报告outputs/validation/r73-compact-live-refinement-2026-10-12/REPORT.md。完整计划保留，下项F12 foreign-provider归属与Live合成，不重放已完成157。
+
+## 2026-10-12 · R74：明确额外视觉窗口实现，真实新参数正例待fresh Host
+
+- LiveOptions.additional_windows≤3，根+sheet+额外共≤4，native exact UID/session/process/window指纹；额外源无输入／无owner推断；同层去重，原生z顺序前后一致；消失省略不换ID，root rebind清源。新visual/additional.rs职责拆分，未抬architecture600上限。
+- 首轮architecture视觉635>600 exit1已保留；修复后完整11门0/workspace779/Receiver75/UI7，focused core3/macLive43/MCP UI3。源码copy1/0/1/0恢复9hash+absence，同四角色178。
+- 稳定Agent21019/236e3e9a部署权限全true；新MCP24f133e5原子安装，新进程真实tools/list有additional_windows，现有Host旧adapter负例unknown field/0mutation。禁止操作Codex宿主的原工具错误保留，无绕过／无人工要求。
+- own158 Files uncertain/-25204后真实file45054出现，单次Cancel response0，源Close exit0/expiry0/stderr空；3durable终态／2detach。新formal未挂载／compat queued，均0frame并stop workerDone，不称新familyLive或additional-source正例通过。
+- 报告outputs/validation/r74-explicit-live-sources-2026-10-12/REPORT.md。总计划未完；下一步实际新MCP负例契约及fresh Host的显式foreign正例、自动ownergraph，保留其他F01–F16。
+
+## 2026-10-12 · R75/R76：实际新MCP负例与原生容量／回收验收
+
+- R75 installed新MCP实际进程3负例duplicate/4sources/owned_popup均invalid_live_sources，exit0/空stderr；不是Host GUI。
+- R76 own159/31064/45089 Virtual4：15attachment+desktop16，越界target_capacity；2×4并发capture全部返回/原SHA5ab54928/106227B，101..519ms caller await含队列，不称nativeCPU。lease禁止detach，明确释放后回收新ID，retired target resolve foreign_target；原图缓存仍在有界64MiB证据预算，不授予旧frame输入。
+- 4未挂载idle Live worker，第5拒绝；stop均done/clear/hidden/0frame。释放slot后1000ms到期terminal，resume不复活。16detach最终target1；源Close单次exit0/expiry0/空stderr/1durable终态/no replay，safe/drag/hover0。不是活跃视频／15应用／physical用户连续性通过。
+- R74完整gate源码/binary hash仍同，11门0/workspace779，不冒充本轮新跑；same四角色180 sourceconfig1/0/1/0。默认Codex proxy sock不存在exit1，无globalreload／配置变更／安全绕过／人工请求。
+- 下一项R77 min按钮ROOT_WINDOW_STYLE及responder.window_miniaturized独立oracle fixture patch；继续最小化/隐藏状态，保留fresh Host多源正例及全F01–F16，不重放159。
+
+## 2026-10-12 · R78：浮层状态缓存修正，原签名部署与自主实机通过
+- R76 hide响应false但targets缓存true，完整原生目录0；保留旧断言exit1，没有重复输入或hide。修正Rust Runtime::describe/refresh_volatile_target_facts 的 pointer_feedback 新鲜度，同身份刷新，未知/跨身份null，不新增输入授权或锁竞争。
+- 同输入离线真实函数BASELINE1/MODIFIED0/独立副本ROLLBACK1/REAPPLIED0，两个原hash恢复。第一轮rtk空格错误及测试命名空间编译exit101保留，修正后11门全0，workspace782/0/11/42、Receiver75、UI7。
+- 原证书/DR与配对复用、排他租约+durable终态检查、Agent原子更新：PID78581/c51be93a；4权限仍有效，MCP不换，本会话自动重连。一次纯视觉show/hide在虚拟屏4：targets分别true/false，独立窗口45113出现；600ms后完整目录0。没有用户应用键鼠/真实光标/激活，也不宣称窗口已销毁。
+- Live更小的R73实机结果与隐藏恢复关闭保留，私有Codex浮层尺寸未查到，不虚构1:1尺寸。完整F01–F16及标准PR拆分发布仍未完成；先继续R77 fixture最小化候选与hidden/minimized实测，不向睡觉的用户索取配合。
+
+## 2026-10-12 · R77实机：后台最小化确实达成，观察路径限制已定位
+- 补专用根窗ROOT_WINDOW_STYLE最小化位、公有isMiniaturized原生回读；sheet不动。同输入源码配置1/0/1/0，独立回滚两个原hash恢复。11门0，workspace782/0/11/42、Receiver75、UI7。
+- 自身160/PID98397/CG45116/Virtual4仅启动一次；动作前在后台。一次Minimize window/AXPress返回-25204 uncertain且永不重放，但独立原生getterfalse→true，前台PID两样本仍97732。API确认≠效果；此案例正是已发生效果却收到不确定确认。
+- 原绑定capture_visual window_missing但exact native record present/owner matches，onscreen目录0不证明销毁。当前onScreen选择/SCK路径限制确实存在，未伪称最小化捕获成功。
+- 沿用159原600000ms模板自然到期，原进程exit0/stderr空/status closed/output_error null。durable terminal/released无pending/uncertainty；detach、反馈隐藏、目标回到1。生命周期602122ms不是单步性能数字。
+- R79 pending Rust候选已准备：仅视觉读取指定ID/PID的offscreen native record并按需扩SCK枚举；输入/默认发现仍on-screen，身份/租约/no-replay不变。尚未应用或验收，先真实执行候选和离线门，再原签名部署＋新161实机；不索取人工、不重放160。
+
+## 2026-10-12 · R79：精确离屏描述＋最小化后台原像素实机通过
+- CG IncludingWindow在161最小化后仍无row；复用description-from-array解析，只为response-only视觉启用离屏SCK，正常input/observe仍on-screen。新selection/policy九测与完整11门0，workspace791/0/11/42。architecture600行限制不提高，抽取语法/编译失败保留后重跑。
+- 原证书/DR/配对/四权限不变，Agent70150/ad38部署；MCP不换自动重连。163/70685/45159后台、最小化原生gettertrue、前台自身actor164/71454，实际MCP PNG1320×1104/108919/SHA b9cabf…可见自身文字/控件，非空白；没有input frame/authority。
+- snapshot仍拒绝；旧proposal负例实为expiry，不夸成Min专属guard。161最小化时实际FG，标签不作证据；164明确RWI focus后163才真BG。晚期外部前台变化/最终恢复false保留，不倒改capture-time true。
+- 四原进程exit0/stderr空，六durable操作终态释放无pending/uncertainty。中断造成内存MCP输出丢失，保留本任务有限检索/精确摘录/原PNG/原生oracle，不伪造全返回，不重启或重放。
+- 同输入源码1/0/1/0、3原hash+2absences恢复，四角色继续扩展。Minimized Live单根层序、完整F01–F16/标准拆分PR发布仍未完成，下一步真实执行Live层序验证与补齐。
+
+## 2026-10-12 · R80：单个最小化根 Live 4 帧，正式控制卡异常继续修复
+- capture_layer_order 单离屏根不虚构层间顺序；多层严格、身份/出现状态前后校验不变。完整11门0/workspace794/0/11/42，Receiver75/UI7；最终元数据文字修正版部署 Agent26360/ee76ea21，原证书/配对/权限/MCP不变。
+- own165/6999/45311 已真BG/min gettertrue的新Live3捕获4帧；源600390ms正常exit0/空stderr，stop worker_done/detach/隐藏反馈/原输入不重放。无新的MinLive原图或人类确认，最后文字未再native验。
+- 真Host卡DOM拒绝/disabled、0帧保留；兼容页确实198帧，但到期累计237不全当Min帧。实际embeddedUI回归7pass1fail，结束组件的新cap未重启heartbeat；R81下一项修正，未归因唯一原因。
+- 同输入源码配置1/0/1/0，原hash恢复，非生产回滚。四角色188/原97不变；完整F01–F16/合理提交标准PR发布仍未完，无人工请求。报告 outputs/validation/r80-single-offscreen-live-root-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R81：新cap恢复、关闭/teardown竞态修复与MCP部署
+- embedded Live UI 对真正新cap重置状态/队列/sequence并替换唯一heartbeat；旧响应/错误/异步teardown按对象隔离，旧相同cap不复活，hidden不发布visible。首恢复红测7/1、追加关闭/teardown两红测均保留；最终12/0。
+- 完整11门0/workspace794/0/11/42、Receiver75/UI12；同输入12case BASE9pass3fail(exit1)/MOD12pass(exit0)/独立ROLL9pass3fail(exit1)/REAPPLY12pass(exit0)，两原hash恢复，非生产rollback。
+- 原子安装MCP83736a8b，新真实stdio resourceHTML与源码byte相同，实际Agent26360健康。Agent/Codex不重启、不kill其他adapter、profile/配对/证书不动、无键鼠或截图。当前长会话旧adapter/Host缓存的新UI尚未实机证明，不伪造刷新或眼见；全F01–F16继续。
+- 同四角色189/原97不变。报告 outputs/validation/r81-live-ui-replacement-recovery-2026-10-12/REPORT.md；下一项新专用166/167显式多源native Live，不索取睡觉用户配合。
+
+## 2026-10-12 · R82：两进程显式源实机发现/移动/退出通过，Live仍0帧
+- 新own166/40576/45420＋167/40790/45425 Virtual4；独立绑定成功，166单次place1824,24/rendered confirmed，167不搬。两张1320×1104原PNG可读，是源图而不是多源Live。
+- show_live additional exact167被加载接受；真Host browser3/tab2 visible却DOM拒绝/disabled，0frame；compat open queued/实际IAB精确URL不存在，0frame/suspended。均明确stop（formal返回本轮工具输出没有另存完整RPC），不假presence/不重放；多源acceptance=false。
+- 各源Close一次，原进程exit0/stderr空/expiry0/output_errornull；3durable terminal/released/no pending/uncertainty，2detach/markerhide/target1。源码byte同R81，引用11门0/794/UI12，不冒称本轮新门或新部署。
+- 下一项R83精确拒绝reason诊断，随后查多实例/缓存/上下文链路，不以source截图或兼容0帧定义成功。完整F01–F16与最终PR/合理commit/push目标仍未完；报告 outputs/validation/r82-explicit-native-multisource-live-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R83：精确reason与打包修订已部署，Host旧资源仍未刷新
+- UI只显示三种已知拒绝reason，不反射任意message；14case红测→全过。package()新增外部binary分块SHA/env配置identity，6case验证同路径不同内容修订变化、command/args/私有profile不复制、不启动后端。
+- 最终12门0/workspace794/0/11/42、Receiver75/UI14/packager6。UI、pkg、descriptor独立copy均同输入1/0/1/0和原hash恢复，非生产rollback；两新managed既有pkg源码首次baseline冻结，原97不变/四角色193。
+- MCPa0a0f645已原子安装，新真实stdio资源与源码相同；Agent26360/证书/配对/权限/profile不换，无GUI输入或重启。RWI登记env binaryhash更新后真实Host仍旧9153B/7aee9229，无R81/R83代码；不宣称刷新成功。
+- 默认appserverproxy实际exit1/socket不存在，schema只有null参数globalreload；没发送reload、没kill三个RWI进程。三个PID/资源旧代码是实况，不直接推断UI究竟路由到谁；R84下一项新adapter_instance诊断，baselineNode15里14过1失败，尚未应用。
+- 完整F01–F16/正式Live多源实机/合理commit标准PR推送仍未完，不以新stdio或packager替代正式目标。报告 outputs/validation/r83-live-rejection-and-package-revision-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R84：Gateway实例诊断、v3资源、同项目新会话接力
+- Gateway.instance clone保持、每真实实例新UUID；start_meta与rejected_app_event带adapter_instance，UI可明示mismatch，但不跨实例授权/转发、不冒充认证。资源v3，v1/v2读兼容。UI15/新增Rust1。
+- 首v3 workspace101因stdio固定v2；installerguard1保护未部署；修正契约后12门全0/workspace795/0/11/42、Receiver75/UI15/pkg6。同输入源码/descriptor各1/0/1/0原hash恢复，非生产rollback。
+- 新MCP9fe5ae6d真实v3资源byte同源码；RWI env修订同步，Agent26360/profile/配对/证书/权限不动，旧Host真实只列v2，未伪称Live通过或强杀刷新。
+- 按用户此前条件性新会话授权，在同RWI项目local创建01a1305c-f868-79f3-a9b9-e0f2e26597a0并受支持导航，wait确认真实inProgress/mac-host；先只读，父四角色ready才释放共享修改。不建源码复制、不要求人工，新任务承接完整未完成目标，父任务只读跟进审核。报告 outputs/validation/r84-live-owner-instance-and-v3-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R84 新会话：正式 Host 双 PID Live 与完整清理
+- 真实loaded resources/list/read=v3/10460bytes/420f80f4…与源码byte相同，installed9fe5ae6d…，Agent26360/配对/证书/四权限不改；父角色ready才继续，不重做R84 patch或12门。
+- 全新168/169只在授权Virtual4；真实Host DOM可见/“预览连接已确认”，native第59帧为两独立PID显式来源，原生浮层在内建屏1。session3最终147帧/真实240s expiry；新session4恢复后双源31帧→附加169关闭精确omission、根168继续110帧→根关闭paused/imagefalse→真实卡Close/stopped/worker_done，最终111帧。
+- 两source具名AXPress各一次、exit0/stderr空/nonexpiry，三durables terminal/released、不重放，两detach/剩一desktop target/反馈隐藏。保留初始异步race、过期卡selector失败、精确浮层截图及最终卡观察timeout；不声称浮层截图已保存、用户肉眼见证或密码学task-ID。
+- 同源码hash复用R84已执行795/0/11/42、UI15/pkg6/Receiver75及12门；原四角色/baseline继续扩展报告并实测独立copy rollback。正式双源/生命周期已接受，full F01–F16仍false，不把这一项替代full计划。报告 outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md，公开文字 docs/validation/2026-10-12-r84-fresh-host-live.md；raw screenshots不入Git。
