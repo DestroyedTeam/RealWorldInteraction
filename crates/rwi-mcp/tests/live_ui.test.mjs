@@ -139,3 +139,84 @@ test('component declares fullscreen before mount and explains the actual native 
   assert.match(h.nodes.get('location').textContent, /内建屏/);
   assert.match(h.nodes.get('location').textContent, /原生浮层/);
 });
+
+test('fresh owned capability reopens an ended component without reviving the old view', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+  await h.ack(undefined, { code: 'live_ui_event_rejected' });
+  const oldCount = h.calls().length;
+  await h.result(); await drain();
+  assert.equal(h.calls().length, oldCount, 'same ended capability must not revive');
+  await h.result({ view_key: 'c'.repeat(32), page: 'd'.repeat(32) }); await drain();
+  assert.equal(h.calls().length, oldCount + 1, 'new owned capability must publish real observed visibility');
+  assert.equal(h.calls().at(-1).params.arguments.view_key, 'c'.repeat(32));
+  assert.equal(h.calls().at(-1).params.arguments.sequence, 1);
+  await h.ack();
+  assert.equal(h.intervals.size, 1);
+  assert.equal(h.nodes.get('toggle').disabled, false);
+});
+
+test('new capability during a closing flight has exactly one live heartbeat', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  await h.click('close'); const oldClose = h.calls().at(-1);
+  await h.result({ view_key: 'c'.repeat(32), page: 'd'.repeat(32) }); await drain();
+  await h.deliver({ id: oldClose.id, error: { code: -32000, message: 'old close failed' } }); await drain();
+  assert.equal(h.calls().at(-1).params.arguments.view_key, 'c'.repeat(32));
+  await h.ack();
+  assert.equal(h.intervals.size, 1, 'new view owns one heartbeat even before old close ends');
+  assert.equal(h.nodes.get('toggle').disabled, false);
+});
+
+test('old async teardown cannot end a newer owned capability', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  const teardown = h.deliver({ id: 92, method: 'ui/resource-teardown' }); await drain();
+  const oldHidden = h.calls().at(-1);
+  await h.result({ view_key: 'c'.repeat(32), page: 'd'.repeat(32) }); await drain();
+  await h.ack(oldHidden); await h.ack(); await teardown;
+  assert.equal(h.sent.some(m => m.id === 92 && m.result), true);
+  assert.equal(h.nodes.get('toggle').disabled, false, 'old teardown must not disable the new view');
+  assert.equal(h.intervals.size, 1);
+});
+
+test('late rejection for a replaced view cannot invalidate the current view', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+  const oldCall = h.calls().at(-1);
+  await h.result({ view_key: 'c'.repeat(32), page: 'd'.repeat(32) }); await drain();
+  await h.ack(oldCall, { code: 'live_ui_event_rejected' });
+  assert.equal(h.calls().at(-1).params.arguments.view_key, 'c'.repeat(32)); await h.ack();
+  assert.equal(h.nodes.get('toggle').disabled, false);
+  assert.equal(h.intervals.size, 1);
+});
+
+test('replacement never asserts visible while the real component is hidden', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  await h.hidden(); await h.ack();
+  await h.result({ view_key: 'c'.repeat(32), page: 'd'.repeat(32) }); await drain();
+  assert.equal(h.calls().at(-1).params.arguments.visible, false); await h.ack();
+  const count = h.calls().length; await h.tick(); assert.equal(h.calls().length, count);
+});
+
+test('rejected view exposes bounded exact reason rather than one ambiguous error', async () => {
+  for (const reason of ['view_ended', 'stale_event', 'view_unavailable']) {
+    const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+    await h.ack(undefined, { code: 'live_ui_event_rejected', message: reason });
+    assert.ok(h.nodes.get('state').textContent.includes(reason), reason);
+    assert.equal(h.intervals.size, 0);
+  }
+});
+
+test('unrecognized rejected reason is not reflected or used as UI markup', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+  await h.ack(undefined, { code: 'live_ui_event_rejected', message: '<img secret-token>' });
+  assert.doesNotMatch(h.nodes.get('state').textContent, /img|secret-token/);
+  assert.equal(h.nodes.get('toggle').disabled, true);
+});
+
+test('different adapter response is diagnostic only and never replays presence or input', async () => {
+  const h = harness(); await h.init(); await h.intersect(true);
+  await h.result({ view_key: 'a'.repeat(32), page: 'b'.repeat(32), adapter_instance: 'c'.repeat(32) }); await drain();
+  await h.ack(undefined, { code: 'live_ui_event_rejected', message: 'view_ended', adapter_instance: 'd'.repeat(32) });
+  assert.match(h.nodes.get('state').textContent, /adapter_mismatch/);
+  const count = h.calls().length; await h.tick(); await h.click('toggle');
+  assert.equal(h.calls().length, count); assert.equal(h.intervals.size, 0);
+  assert.equal(h.nodes.get('toggle').disabled, true);
+});

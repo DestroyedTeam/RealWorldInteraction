@@ -46,6 +46,7 @@ struct Gateway {
     presentation: Arc<Mutex<presentation::Presentation>>,
     repl: Arc<repl::Repl>,
     presence: Arc<presence::Views>,
+    instance: String,
 }
 impl Gateway {
     fn new(profile: io::Result<AdapterProfile>) -> Self {
@@ -84,6 +85,7 @@ impl Gateway {
             presentation: Arc::new(Mutex::new(presentation::Presentation::default())),
             repl: Arc::new(repl::Repl::default()),
             presence: Arc::new(presence::Views::default()),
+            instance: uuid::Uuid::new_v4().simple().to_string(),
         }
     }
     async fn request(

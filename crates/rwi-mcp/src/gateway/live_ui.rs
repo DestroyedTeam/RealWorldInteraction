@@ -4,8 +4,9 @@ use super::*;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v2.html";
+pub(super) const URI: &str = "ui://real-world-interaction/live/v3.html";
 const LEGACY_URI: &str = "ui://real-world-interaction/live/v1.html";
+const PREVIOUS_URI: &str = "ui://real-world-interaction/live/v2.html";
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
 
@@ -46,7 +47,7 @@ pub(super) fn resource() -> Resource {
         .with_mime_type(MIME).no_annotation()
 }
 pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
-    if uri != URI && uri != LEGACY_URI {
+    if uri != URI && uri != LEGACY_URI && uri != PREVIOUS_URI {
         return Err(ErrorData::invalid_params("Unknown RWI UI resource", None));
     }
     // Declare the mode before loading. Inline cards can be collapsed without
@@ -161,7 +162,15 @@ impl Gateway {
             return None;
         }
         result.data["viewer"] = json!({"resource_uri":URI,"open_with":"MCP Apps-capable Host conversation component","binding":"rendered component visibility, not MCP connection or SessionEnd; actual task-switch behavior requires Host acceptance","unavailable_signal":"hide and clear when the component presence lease expires"});
-        Some(meta(json!({"rwi/live_panel":{"view_key":key,"page":page}})))
+        Some(meta(
+            json!({"rwi/live_panel":{"view_key":key,"page":page,"adapter_instance":self.instance}}),
+        ))
+    }
+    // Diagnostic only. This UUID neither selects targets nor grants authority.
+    fn rejected_app_event(&self, reason: &str) -> DeviceResult {
+        let mut result = DeviceResult::error("live_ui_event_rejected", reason);
+        result.data["adapter_instance"] = json!(self.instance);
+        result
     }
     pub(super) async fn app_live_presence(
         &self,
@@ -198,7 +207,7 @@ impl Gateway {
                 .app_event(&args.view_key, args.page, args.sequence, args.visible)
             {
                 Ok(value) => value,
-                Err(reason) => return DeviceResult::error("live_ui_event_rejected", reason),
+                Err(reason) => return self.rejected_app_event(reason),
             };
         if args.close {
             // Revoke even if remote stop is uncertain. Old views cannot renew
@@ -267,6 +276,28 @@ mod tests {
         );
     }
     #[test]
+    fn component_owner_diagnostics_do_not_delegate_foreign_view_authority() {
+        let owner = Gateway::new(Ok(AdapterProfile::default()));
+        let other = Gateway::new(Ok(AdapterProfile::default()));
+        assert_ne!(owner.instance, other.instance);
+        assert_eq!(owner.instance, owner.clone().instance);
+        let (key, page, _) = owner.presence.test_app_page("fixture:owned-target");
+        assert!(
+            owner
+                .presence
+                .app_event(&key, page.clone(), 1, false)
+                .is_ok()
+        );
+        let reason = other.presence.app_event(&key, page, 1, true).unwrap_err();
+        let rejected = other.rejected_app_event(reason);
+        assert!(rejected.is_error);
+        assert_eq!(rejected.data["code"], "live_ui_event_rejected");
+        assert_eq!(rejected.data["message"], "view_ended");
+        assert_eq!(rejected.data["adapter_instance"], other.instance);
+        assert!(rejected.data.get("view_key").is_none());
+        assert!(rejected.data.get("target").is_none());
+    }
+    #[test]
     fn ui_resource_is_static_closed_network_and_exact_uri() {
         let resource = serde_json::to_value(read(URI).unwrap()).unwrap();
         assert_eq!(resource["contents"][0]["mimeType"], MIME);
@@ -284,6 +315,12 @@ mod tests {
         assert_eq!(
             legacy["contents"][0]["_meta"],
             resource["contents"][0]["_meta"]
+        );
+        let previous = serde_json::to_value(read(PREVIOUS_URI).unwrap()).unwrap();
+        assert_eq!(previous["contents"][0]["uri"], PREVIOUS_URI);
+        assert_eq!(
+            previous["contents"][0]["text"],
+            resource["contents"][0]["text"]
         );
         let tool = serde_json::to_value(presence_tool()).unwrap();
         assert_eq!(tool["_meta"]["ui"]["visibility"], json!(["app"]));

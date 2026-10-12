@@ -197,7 +197,7 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
 #[test]
 fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
     let mime = "text/html;profile=mcp-app";
-    let uri = "ui://real-world-interaction/live/v2.html";
+    let uri = "ui://real-world-interaction/live/v3.html";
     let legacy_uri = "ui://real-world-interaction/live/v1.html";
     for (capabilities, supported) in [
         (json!({}), false),

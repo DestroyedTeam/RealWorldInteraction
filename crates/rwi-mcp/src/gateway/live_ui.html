@@ -78,13 +78,20 @@
               } else if (data.accepted === false && data.reason === 'preview_stopped') {
                 finish('本轮预览已结束 · 恢复不会重开，需新建观察');
               } else if (data.code === 'live_ui_event_rejected') {
-                finish('此视图已过期、被替换或事件被拒绝');
+                const differentAdapter = owner.adapter_instance && /^[0-9a-f]{32}$/.test(data.adapter_instance) && owner.adapter_instance !== data.adapter_instance;
+                const reason = differentAdapter ? '观察所属 MCP 实例不一致（adapter_mismatch）' : {
+                  view_ended: '视图已结束、被替换或过期（view_ended）',
+                  stale_event: '事件序号过时（stale_event）',
+                  view_unavailable: '可见性登记暂不可用（view_unavailable）'
+                }[data.message] ?? '视图事件被拒绝（unknown_reason）';
+                finish(reason);
               } else {
                 status.textContent = !reply.isError && data.accepted === true
                   ? (event.shown ? '组件可见 · 预览连接已确认' : '隐藏已确认')
                   : '连接未确认 · 预览将自动隐藏';
               }
             } catch {
+              if (owner !== capability) continue;
               if (event.stop) finish('关闭未确认 · 不重试，请核对原始状态');
               else status.textContent = '连接未确认 · 预览将自动隐藏';
             }
@@ -114,20 +121,32 @@
             location.textContent = `画面位置：显示器 ${display.id} 的 RWI 原生浮层；若是虚拟屏，请打开它的屏幕串流，或指定可观看的物理屏作为预览屏。关闭后重新打开需新建观察。`;
           }
           if (next.view_key === capability?.view_key && next.page === capability?.page) return;
-          capability = { view_key: next.view_key, page: next.page };
+          capability = { view_key: next.view_key, page: next.page, adapter_instance: /^[0-9a-f]{32}$/.test(next.adapter_instance) ? next.adapter_instance : null };
           sequence = 0;
+          // Only a genuinely new Host-issued capability reopens this component.
+          // Old ended views and late responses must not revive stopped capture.
+          ended = false;
+          closing = false;
+          enabled = true;
+          queued = null;
+          toggle.textContent = '隐藏预览';
+          toggle.setAttribute('aria-pressed', 'false');
+          clearInterval(heartbeat);
+          heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
           toggle.disabled = close.disabled = false;
           report(visible());
         } else if (message.method === 'ui/resource-teardown') {
+          const owner = capability;
           closing = true;
           clearInterval(heartbeat);
           await report(false);
-          finish('组件已关闭 · 预览将自动隐藏');
+          if (owner === capability) finish('组件已关闭 · 预览将自动隐藏');
           send({ id: message.id, result: {} });
         } else if (message.method === 'ui/notifications/tool-cancelled') {
+          const owner = capability;
           closing = true;
           await report(false);
-          finish('此观察已取消 · 预览将自动隐藏');
+          if (owner === capability) finish('此观察已取消 · 预览将自动隐藏');
         } else if (message.method === 'ping' && message.id != null) {
           send({ id: message.id, result: {} });
         }
@@ -155,7 +174,7 @@
         toggle.disabled = close.disabled = true;
         report(false, true);
       });
-      const heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
+      let heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
       request('ui/initialize', {
         protocolVersion: '2026-01-26', appInfo: { name: 'RWI Live', version: '1' },
         appCapabilities: { availableDisplayModes: ['fullscreen'] }
