@@ -1824,3 +1824,23 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 同native129/PID15825/CG43580/process birth和[3225,504,660,552]旧snapshot有图但mutReady/inputReffalse；新Frame自身map[.5,0,0,.5,3225,504]与两ready true。源仍display=null/右165pt出屏。一次AXPress Safe1；一次typed BG drag实际1/16/1/completed1/orphan0，完整1320×1104蓝线；18鼠标callback均inactive/nonkey/frontPID97732，非连续/hardware证明，AX语义非mouse input。
 - outside ScrollArea advertised AXScrollDownByPage却返回-25205/uncertain，scroll events0/clip0，未重放或改走其他输入。保留四原请求terminal/released/no pending/no uncertainty/no replay。Fresh AXClose一次后源closed/expiry0/进程exit0，两binding退役；不靠timer冒充Close成功。
 - 配置false1/true0/独立copy ROLLBACKfalse1/REAPPLIEDtrue0，七源pristine hash精确恢复，非生产回滚；同四角色158与原97不改。真实顺序原图/报告在outputs/validation/r59-window-local-input-2026-10-12/；F01–F16全目标仍未完成，不以这一个窗口的成功推断通用App/hidden/DnD/hover等。
+
+
+## 2026-10-12 · R60：偏出显示器的局部后台输入实机闭环
+
+- point_element先正向区分物理屏坐标与仍有有效屏交集的window-local点；后者只从精确AX窗口的有界原生子树取包含实际点的对象，不借用应用级hit、不clamp、不改delivery。application_hit_geometry校验本身rect，same-window fallback必须CFEqual原生关系；树选窗口不继承empty-window application-hit证明。Facts::validate保留hit_rect等guard并补紧凑数值诊断，声明只阻止当前batch、先前batch可能已发送，不诱导replay。
+- 130原refusal/0输入/expiry1exit0保留。第一候选在同一131仍拒绝，真实hitBounds[1800,0,1920,30]不含point[3745,844]且same_native_window=false；不能把其角色或clamp原因凭矩形猜出来。第二候选同131、同point、一次新wheel原生生效：inactive/nonkey/foreground95007，scroll0→1、clipY0→240、原图row00→08；385ms是该适配器调用墙钟，不是性能优越性。
+- 一次明确RWI focus131实际95007→98005，然后同点foreground_system move得到foreground_point_unmapped/rejected_before_dispatch/native_dispatch=false；这是实机前台点guard执行，而不是先前hit_rect失败冒充它。131/132明确AXClose、expiry0、进程0，两个binding退役；7原durable请求terminal/released/no pending/no release uncertainty/no replay。
+- 最终Agent2772/89dec9f4稳定同证书部署，四权限true，安装MCP/CA/profile/config不变，无用户配合或Host重启。最终当前源全11门0/workspace768/0/11/42，Receiver66/UI7。原四角色扩展，同输入source配置1/0/1/0及精确hash恢复；不声称生产回滚。
+- Live沿用已部署的小320点上限/原生hide-close图标；保留R48真实Host闭环，不伪造本轮用户可见验收。全F01–F16未完成，generic tracking/tooltip、跨显示器drag、hidden/minimized、foreign-provider菜单和跨应用DnD仍保留。当前修改不因一轮对话自动commit/push；既有远程CI不是本候选CI。
+- 正式报告及按实际时间顺序的原图：outputs/validation/r60-offdisplay-background-input-2026-10-12/REPORT.md。
+
+
+## 2026-10-12 · R61：精确窗口与物理命中分离、真实canvas跨屏界拖拽
+
+- 134原quarter边界没有让canvas跨界，未将它冒充验收。新增fixture-only boundary_canvas_right/Rect::place_boundary_canvas_right，原view/role/responder/oracle不变；parser1→0/check-only无GUI及2个纯测试。source/pristine hash记录未改原97。
+- 135同PID的Colors/Fonts先于main，第一次误选只观察，按已分配CG44120纠正后真实drag在hit_rect拒绝/0输入；hitRect[3205,740,470,270]不同于point[3676,829]。面板出现原因未知，不把同PID当owned-provider证明。原135请求保留不replay；135/136到期expiry1/exit0。
+- point_element快速application hit必须native CFEqual精确Window且geometry含point，其余独立查selected native Window child tree；不借用foreign hit、改delivery或继承empty-window application proof。foreground_move::guard新require_foreground_pointer_hit做物理screen positive owner/window/geometry/readable检查；background metadata不授权foreground event。
+- 修正部署后新137明确inactive/nonkey，peer138前台：global[3676,829]→[3781,829]跨3720右界，真实down1/move16/up1/completed1/orphan0，18NSResponder callbacks全部inactive/nonkey/fg29079/ownCG44174，真实PNG蓝线，局部[196,79]→[301,79]。随后明确focus137，samepoint foreground_hit_unproven/no native dispatch；另一有效foreground point真实hover enter1/move1/tooltip1。137/138明确Close/expiry0/exit0/detach；9durable terminal/released/no pending/no uncertainty/no replay。
+- 同稳定证书Agent28828/e57ec955已部署，4权限/CA/profile/config/安装MCP不变，无人工配合或Host重启。完整11门0/workspace769/0/11/42、Receiver68/UI7；源skill小幅补精确window选择及两种grounding，validator0，未覆盖当前cache。四角色保持同集合并扩展、matching source配置1/0/1/0及精确hash恢复，不称生产回滚。完整目标/计划未完成，剩余generic background tracking、复杂layered provider/whole offscreen/DnD等继续保留。
+- 正式报告：outputs/validation/r61-exact-window-cross-edge-drag-2026-10-12/REPORT.md；原图按实际顺序排列，raw截图不提交Git。

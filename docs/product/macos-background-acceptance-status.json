@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "updated": "2026-10-11",
+  "updated": "2026-10-12",
   "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/validation/2026-10-10-comprehensive-native-acceptance-and-public-readiness.md",
+  "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r61-exact-window-cross-edge-drag-2026-10-12/REPORT.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -310,9 +310,23 @@
         "auto-trycua-cua-file-2"
       ],
       "current_state": "partial_implemented",
-      "implementation_evidence": "Retina/window-local 变换和新鲜原生身份检查已有",
-      "this_turn_native_evidence": "本轮 original_to_desktop=0.5、虚拟屏负边界路径被拒绝",
-      "remaining": "single-display/offscreen limits remain; do not claim covered pointer preservation from successful count or unchanged system PID. Separate explicit semantic and synthetic routes."
+      "implementation_evidence": "R59 partial mapping/R60 window-local wheel/R61 exact-window addressed grounding distinct from physical foreground hit",
+      "this_turn_native_evidence": "137 true BG canvas crosses active screen boundary:1/16/1,18 inactive-nonkey callback samples/blue PNG; same137 physical foreign-hit rejected, own-window hover and tooltip1",
+      "remaining": "whole-window offscreen/other-Space/minimized/mixed-DPI/two-active-display-seam remain unaccepted; canvas drag is not cross-app nativeDnD; generic background tracking/tooltip unaccepted",
+      "acceptance_history": [
+        {
+          "current_state": "partial_implemented",
+          "implementation_evidence": "Retina/window-local 变换和新鲜原生身份检查已有",
+          "this_turn_native_evidence": "本轮 original_to_desktop=0.5、虚拟屏负边界路径被拒绝",
+          "remaining": "single-display/offscreen limits remain; do not claim covered pointer preservation from successful count or unchanged system PID. Separate explicit semantic and synthetic routes."
+        },
+        {
+          "current_state": "partial_implemented",
+          "implementation_evidence": "R59 finite window-local partial mapping; R60 offdisplay point uses exact native-window descendants without borrowing an application hit",
+          "this_turn_native_evidence": "same131 inactive/nonkey offdisplay wheel: event0→1/clipY0→240/row00→08; explicit foreground move at same point rejected before dispatch",
+          "remaining": "whole-window-offdisplay/other-Space/minimized/mixed-DPI/cross-display-drag effects remain unaccepted; exact one-fixture background wheel does not establish generic hover or all app compatibility"
+        }
+      ]
     },
     {
       "id": "F10",
@@ -531,9 +545,9 @@
   },
   "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
   "current_deployment": {
-    "agent_pid": 46538,
-    "agent_instance": "a05ac614-8360-4dc5-8a59-e44c7d3a40ea",
-    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-no-sampler-isolation-r54/deployment/DEPLOYED.json",
+    "agent_pid": 28828,
+    "agent_instance": "e57ec955-2265-421d-8c10-0d3bbd064c56",
+    "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/cross-display-drag-native-r61/deployment/DEPLOYED.json",
     "stable_signing_and_pairing": true
   },
   "current_comprehensive_acceptance": {
@@ -3002,6 +3016,237 @@
       "ignored": 11,
       "suites": 42
     },
+    "full_goal_complete": false
+  },
+  "R60_window_local_offdisplay_input": {
+    "date": "2026-10-12",
+    "same_native_window": "131 PID98005 / cgwindow44005 / birth98005:1791777953:281812",
+    "source_point": [
+      3745,
+      844
+    ],
+    "active_display_right_edge": 3720,
+    "original130_retained_refusal": "input_boundary_changed / zero native dispatch; natural expiry1 exit0",
+    "first_candidate131_retained_refusal": {
+      "hit_bounds": [
+        1800,
+        0,
+        1920,
+        30
+      ],
+      "same_native_window": false,
+      "native_dispatch_entered": false
+    },
+    "window_local_background_scroll": {
+      "events_before": 0,
+      "events_after": 1,
+      "clip_before": [
+        0,
+        0
+      ],
+      "clip_after": [
+        0,
+        240
+      ],
+      "active_before_after": [
+        false,
+        false
+      ],
+      "key_before_after": [
+        false,
+        false
+      ],
+      "foreground_before_after": [
+        95007,
+        95007
+      ],
+      "adapter_elapsed_ms": 385,
+      "goal_from_independent_app_state_and_bitmap": true
+    },
+    "explicit_foreground_point_negative": {
+      "code": "foreground_point_unmapped",
+      "native_dispatch_entered": false,
+      "background_fallback": false
+    },
+    "changed_symbols": [
+      "point_element",
+      "application_hit_geometry",
+      "window_local_offdisplay_point",
+      "Facts::validate"
+    ],
+    "cleanup": {
+      "closed": [
+        131,
+        132
+      ],
+      "expiry": [
+        0,
+        0
+      ],
+      "process_exit": [
+        0,
+        0
+      ],
+      "fixed_bindings_detached": true,
+      "durable_original_requests": 7,
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "replay_allowed": false
+    },
+    "workspace": {
+      "passed": 768,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 42
+    },
+    "eleven_gates_exit0": true,
+    "source_cfg_exit_status": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "production_rollback_performed": false,
+    "human_cooperation_requested": false,
+    "report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r60-offdisplay-background-input-2026-10-12/REPORT.md",
+    "full_goal_complete": false
+  },
+  "R61_exact_window_cross_edge_drag": {
+    "date": "2026-10-12",
+    "geometry_fixture_only": {
+      "flag": "--boundary-canvas-right",
+      "window_bounds": [
+        3456,
+        504,
+        660,
+        552
+      ],
+      "unchanged_canvas_local_x": [
+        24,
+        384
+      ],
+      "screen_edge_x": 3720,
+      "no_changed_responder_or_AX_role": true
+    },
+    "original134": {
+      "cross_edge_canvas_scenario": false,
+      "explicit_close": true,
+      "expiry": 0,
+      "process_exit": 0
+    },
+    "original135": {
+      "request": "r61-own135-canvas-cross-display-edge-drag-once",
+      "dispatch": "rejected_before_dispatch",
+      "code": "input_boundary_changed",
+      "hit_bounds": [
+        3205,
+        740,
+        470,
+        270
+      ],
+      "point": [
+        3676,
+        829
+      ],
+      "same_native_window": false,
+      "input_sent": false,
+      "expired": true,
+      "expiry": 1,
+      "process_exit": 0,
+      "replay_allowed": false
+    },
+    "background137": {
+      "pid": 28813,
+      "window": "cgwindow:44174",
+      "process_start": "28813:1791779683:342621",
+      "physical_start": [
+        3676,
+        829
+      ],
+      "offdisplay_end": [
+        3781,
+        829
+      ],
+      "responder_start": [
+        196,
+        79
+      ],
+      "responder_end": [
+        301,
+        79
+      ],
+      "down_move_up": [
+        1,
+        16,
+        1
+      ],
+      "completed": 1,
+      "orphans": [
+        0,
+        0
+      ],
+      "actual_blue_native_png": true,
+      "callback_records": 18,
+      "all_callback_inactive_nonkey": true,
+      "all_callback_foreground_pid": 29079,
+      "physical_human_origin_attested": false
+    },
+    "foreground137": {
+      "explicit_focus_observed": true,
+      "foreign_panel_hit": {
+        "code": "foreground_hit_unproven",
+        "native_dispatch_entered": false,
+        "window_local_fallback": false
+      },
+      "own_window_hit": {
+        "dispatch": "returned",
+        "hover_enter_move": [
+          1,
+          1
+        ],
+        "tooltip_requests": 1
+      }
+    },
+    "cleanup": {
+      "closed": [
+        137,
+        138
+      ],
+      "expiry": [
+        0,
+        0
+      ],
+      "process_exit": [
+        0,
+        0
+      ],
+      "fixed_bindings_detached": true,
+      "original135_136_lifetime_expiry": [
+        1,
+        1
+      ],
+      "durable_requests": 9,
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "input_replay_allowed": false
+    },
+    "validation": {
+      "eleven_gates_exit0": true,
+      "workspace": {
+        "passed": 769,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver_tests": 68,
+      "live_ui_tests": 7,
+      "skill_validated": true
+    },
+    "deployment": {
+      "agent_pid": 28828,
+      "agent_instance": "e57ec955-2265-421d-8c10-0d3bbd064c56",
+      "same_certificate_CA_profile_MCP": true,
+      "no_Codex_restart_or_human_cooperation": true
+    },
+    "report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r61-exact-window-cross-edge-drag-2026-10-12/REPORT.md",
     "full_goal_complete": false
   }
 }
