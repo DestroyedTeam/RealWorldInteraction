@@ -272,7 +272,7 @@ pub(crate) fn native_capabilities(
     let mut capabilities = json!({
         "adapter":"rust-macos-native","capture":"ScreenCaptureKit.SCScreenshotManager",
         "input":"CoreGraphics.CGEvent","oracle":"Accessibility.AXUIElement",
-        "native_semantic_actions":["AXPress","AXOpen","AXConfirm","AXScrollToVisible","AXScrollDownByPage","AXScrollUpByPage","AXScrollLeftByPage","AXScrollRightByPage"],
+        "native_semantic_actions":["AXPress","AXOpen","AXConfirm","AXShowMenu","AXCancel","AXPick","AXScrollToVisible","AXScrollDownByPage","AXScrollUpByPage","AXScrollLeftByPage","AXScrollRightByPage"],
         "checked_context_policy":"native_element","input_opt_in":allow_input,
         "semantic_object_identity":{"implemented":true,"scope":"current selected native backend","identity":"retained type-checked AXUIElement plus CFEqual window/object identity and non-reused serial; not attribute hash alone","max_retained_objects":crate::native::AX_TREE_MAX_NODES*2,"revalidation":"selected object only; exact native window membership, process/provider, geometry, role, value, enabled/actions and existing core binding guards","ancestry_max_nodes":32,"ancestry_read_budget_ms":500,"replacement_or_eviction":"fresh observation required; no attribute-search fallback"},
         "permissions":permissions,"permission_prompts":false,
@@ -441,6 +441,21 @@ mod tests {
                 .contains("system")
         );
     }
+    #[test]
+    fn native_menu_actions_use_existing_exact_element_policy_not_foreground_raise() {
+        let cap = native_capabilities(false, json!({}), None);
+        let actions = cap["native_semantic_actions"].as_array().unwrap();
+        for action in ["AXShowMenu", "AXCancel", "AXPick"] {
+            assert!(actions.iter().any(|a| a == action));
+        }
+        assert!(!actions.iter().any(|a| a == "AXRaise"));
+        assert_eq!(
+            cap["native_semantic_action_policy"],
+            "advertised_element_action"
+        );
+        assert_eq!(cap["input_opt_in"], false);
+    }
+
     #[test]
     fn capabilities_separate_native_implementation_permissions_and_unsupported_tools() {
         let cap = native_capabilities(

@@ -1,10 +1,16 @@
 use super::*;
 #[test]
 fn explicit_native_action_rejects_unmarked_or_mismatched_references_before_input() {
-    assert_eq!(
-        native_action_request(&Intent::Click, Some("AXShowMenu"), Some("AXShowMenu")).unwrap(),
-        Some("AXShowMenu")
-    );
+    for action in ["AXShowMenu", "AXCancel", "AXPick"] {
+        assert_eq!(
+            native_action_request(&Intent::Click, Some(action), Some(action)).unwrap(),
+            Some(action)
+        );
+        assert!(native_action_request(&Intent::Click, None, Some(action)).is_err());
+        assert!(native_action_request(&Intent::Click, Some(action), Some("AXPress")).is_err());
+        assert!(native_action_request(&Intent::DoubleClick, Some(action), Some(action)).is_err());
+        assert!(native_action_request(&Intent::KeyChord, Some(action), Some(action)).is_err());
+    }
     assert!(
         native_action_request(&Intent::Click, None, None)
             .unwrap()

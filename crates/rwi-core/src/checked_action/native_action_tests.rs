@@ -144,16 +144,64 @@ fn explicit_native_action_policy_requires_the_exact_advertised_element_action() 
 struct SemanticFixture {
     base: Fixture,
     advertised: bool,
+    action: &'static str,
     disabled: bool,
     changed: bool,
     reads: usize,
+}
+
+#[test]
+fn explicit_menu_actions_require_backend_and_element_advertisement_and_never_replay() {
+    for action in ["AXShowMenu", "AXCancel", "AXPick"] {
+        for advertised in [false, true] {
+            let dir = tempfile::tempdir().unwrap();
+            let mut engine = Engine::new(dir.path().into()).unwrap();
+            let f = Fixture::default();
+            engine
+                .register(
+                    "menu".into(),
+                    Box::new(SemanticFixture {
+                        base: f.clone(),
+                        advertised,
+                        action,
+                        disabled: false,
+                        changed: false,
+                        reads: 0,
+                    }),
+                )
+                .unwrap();
+            let frame = engine.observe("menu").unwrap().frame;
+            let lease = engine.claim("menu", 60000).unwrap();
+            let call = |engine: &mut Engine, value: &str| {
+                engine.act_checked(CheckedAction {
+                    target: "menu",
+                    frame: &frame,
+                    element: "Input",
+                    lease: &lease,
+                    request: "one-explicit-menu-action",
+                    intent: Intent::Click,
+                    value: Some(value.into()),
+                })
+            };
+            let receipt = call(&mut engine, action);
+            assert_eq!(receipt.is_ok(), advertised);
+            assert_eq!(f.0.lock().unwrap().calls, u64::from(advertised));
+            if advertised {
+                assert!(!receipt.unwrap().goal_verified);
+                assert!(call(&mut engine, action).unwrap().deduplicated);
+                assert!(call(&mut engine, "AXPress").is_err());
+                assert_eq!(f.0.lock().unwrap().calls, 1);
+            }
+            engine.release(&lease).unwrap();
+        }
+    }
 }
 impl Backend for SemanticFixture {
     fn identity(&self) -> Identity {
         self.base.identity()
     }
     fn capabilities(&self) -> serde_json::Value {
-        serde_json::json!({"checked_context_policy":"native_element", "native_semantic_actions":if self.advertised {vec!["AXPress"]} else {vec![]}})
+        serde_json::json!({"checked_context_policy":"native_element", "native_semantic_actions":if self.advertised {vec![self.action]} else {vec![]}})
     }
     fn observe(&mut self) -> Result<Scene> {
         self.reads += 1;
@@ -161,7 +209,7 @@ impl Backend for SemanticFixture {
         for e in &mut s.elements {
             e.visible = Some(self.reads.is_multiple_of(2));
             e.occluded = Some(!self.reads.is_multiple_of(2));
-            e.actions = vec!["AXPress".into()];
+            e.actions = vec![self.action.into()];
             e.enabled = Some(!self.disabled);
             if self.changed && self.reads > 1 {
                 e.state_revision = Some("changed".into());
@@ -176,7 +224,7 @@ impl Backend for SemanticFixture {
         i: &Intent,
         v: Option<&str>,
     ) -> Result<Option<bool>> {
-        assert_eq!(r.native_action.as_deref(), Some("AXPress"));
+        assert_eq!(r.native_action.as_deref(), Some(self.action));
         self.base.act(b, r, i, v)
     }
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
@@ -202,6 +250,7 @@ fn native_actions_are_explicit_capability_gated_and_never_pointer_references() {
                 Box::new(SemanticFixture {
                     base: f.clone(),
                     advertised,
+                    action: "AXPress",
                     disabled,
                     changed,
                     reads: 0,
