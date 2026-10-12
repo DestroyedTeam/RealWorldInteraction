@@ -156,9 +156,15 @@ impl Engine {
             .collect::<Vec<_>>();
         self.snapshots.retain(|(_, s)| !aliases.contains(&s.target));
         self.refs.retain(|r| !aliases.contains(&r.target));
+        let grounding_invalidated = serde_json::json!({
+            "scope": "same_native_desktop", "target_count": aliases.len(),
+            "context": "current_executor", "next": "snapshot_then_resolve"
+        });
         Ok(match placed {
-            Some(value) => serde_json::json!({"receipt": receipt, "activation": value}),
-            None => serde_json::json!({"receipt": receipt}),
+            Some(value) => serde_json::json!({"receipt": receipt, "activation": value,
+                "grounding_invalidated": grounding_invalidated}),
+            None => serde_json::json!({"receipt": receipt,
+                "grounding_invalidated": grounding_invalidated}),
         })
     }
 }

@@ -158,6 +158,19 @@ fn foreground_explicit_return_is_not_goal_and_invalidates_every_desktop_alias() 
     assert_eq!(result["receipt"]["dispatch"], "returned");
     assert_eq!(result["receipt"]["goal_verified"], false);
     assert_eq!(result["activation"]["input_authority_granted"], false);
+    assert_eq!(
+        result["grounding_invalidated"]["scope"],
+        "same_native_desktop"
+    );
+    assert_eq!(result["grounding_invalidated"]["target_count"], 2);
+    assert_eq!(
+        result["grounding_invalidated"]["context"],
+        "current_executor"
+    );
+    assert_eq!(
+        result["grounding_invalidated"]["next"],
+        "snapshot_then_resolve"
+    );
     assert_eq!(h.attempts.load(Ordering::SeqCst), 1);
     assert!(!h.engine.refs.iter().any(|v| v.reference == alias.reference));
     assert!(!h.engine.snapshots.iter().any(|(_, s)| s.target == "alias"));
@@ -252,6 +265,7 @@ fn foreground_changed_before_dispatch_has_zero_effect_and_durable_rejection() {
         "foreground_changed"
     );
     assert_eq!(h.effects.load(Ordering::SeqCst), 0);
+    assert_eq!(result["grounding_invalidated"]["target_count"], 2);
     h.engine.release(&lease).unwrap();
 }
 #[test]
@@ -269,12 +283,19 @@ fn foreground_native_error_is_counted_not_named_and_never_replayed_after_restart
         assert_eq!(first["receipt"]["dispatch"], expected);
         assert_eq!(first["receipt"]["replay"], "forbidden");
         assert_eq!(first["receipt"]["goal_verified"], false);
+        assert_eq!(
+            first["grounding_invalidated"]["context"],
+            "current_executor"
+        );
+        assert_eq!(first["grounding_invalidated"]["target_count"], 2);
         h.engine.release(&lease).unwrap();
         h.engine = Engine::new(h.dir.path().into()).unwrap();
         h.register();
         let duplicate = h.focus(&r, &lease, "durable-once").unwrap();
         assert_eq!(duplicate["receipt"]["dispatch"], expected);
         assert_eq!(duplicate["receipt"]["deduplicated"], true);
+        // Cached durable readback must not claim a new invalidation or input.
+        assert!(duplicate["grounding_invalidated"].is_null());
         assert_eq!(h.attempts.load(Ordering::SeqCst), 1);
         h.before.native_epoch = "c".repeat(64);
         assert_eq!(
