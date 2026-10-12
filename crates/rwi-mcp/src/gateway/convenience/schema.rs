@@ -55,6 +55,7 @@ pub(super) fn trim_timing_fields(data: &mut Value) {
         object.remove("stage_timings");
         object.remove("elapsed_ms");
     }
+    compact_snapshot_diagnostics(data);
 }
 
 #[derive(Deserialize, JsonSchema)]
