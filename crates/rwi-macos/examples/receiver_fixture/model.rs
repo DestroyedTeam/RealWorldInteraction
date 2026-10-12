@@ -264,11 +264,10 @@ impl Options {
                 || boundary_canvas_right
                 || hover_first_responder
                 || self_foreground_after_ms.is_some()
-                || self_foreground_on_first_down_after_ms.is_some()
                 || command_tab_delay.is_some())
         {
             return Err(
-                "native DnD fixture cannot combine with a panel, geometry or input actor".into(),
+                "native DnD fixture cannot combine with a panel, geometry, launch-time activation or global input actor".into(),
             );
         }
         if boundary_right && boundary_canvas_right {
@@ -2690,6 +2689,70 @@ mod native_dnd_configuration_tests {
             let mut flags = vec!["--native-dnd-controls"];
             flags.extend(extra);
             assert!(Options::parse(args(&flags)).is_err(), "{flags:?}");
+        }
+    }
+
+    #[test]
+    fn native_drag_can_arm_only_the_explicit_first_down_own_foreground_actor() {
+        let o = Options::parse(args(&[
+            "--native-dnd-controls",
+            "--regular-app",
+            "--lifetime-ms",
+            "10000",
+            "--self-foreground-on-first-down-after-ms",
+            "2000",
+        ]))
+        .unwrap()
+        .unwrap();
+        assert!(o.native_dnd_controls && o.regular_app && o.check_only);
+        assert_eq!(o.self_foreground_on_first_down_after_ms, Some(2000));
+        assert_eq!(o.self_foreground_after_ms, None);
+        assert!(o.command_tab.is_none());
+    }
+
+    #[test]
+    fn native_first_down_actor_keeps_activation_and_lifetime_guards() {
+        for extra in [
+            vec![],
+            vec!["--regular-app", "--lifetime-ms", "2000"],
+            vec!["--regular-app", "--self-foreground-after-ms", "1000"],
+            vec![
+                "--regular-app",
+                "--command-tab-on-first-down-after-ms",
+                "1000",
+                "--command-tab-peer-pid",
+                "1234",
+                "--command-tab-peer-window",
+                "12",
+                "--command-tab-peer-bundle",
+                "com.destroyedteam.rwi.receiver.allocated-peer",
+                "--environment-sample-ms",
+                "100",
+            ],
+            vec![
+                "--regular-app",
+                "--self-foreground-on-first-down-after-ms",
+                "2000",
+            ],
+        ] {
+            let mut flags = vec![
+                "--native-dnd-controls",
+                "--self-foreground-on-first-down-after-ms",
+                "2000",
+            ];
+            flags.extend(extra);
+            assert!(Options::parse(args(&flags)).is_err(), "{flags:?}");
+        }
+        for delay in ["99", "5001"] {
+            assert!(
+                Options::parse(args(&[
+                    "--native-dnd-controls",
+                    "--regular-app",
+                    "--self-foreground-on-first-down-after-ms",
+                    delay,
+                ]))
+                .is_err()
+            );
         }
     }
 }
