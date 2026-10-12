@@ -3,7 +3,7 @@
   "updated": "2026-10-12",
   "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r65-native-system-file-panel-2026-10-12/REPORT.md",
+  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r70-native-menu-actions-2026-10-12/REPORT.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -394,10 +394,10 @@
         "auto-doc-selenium-windows"
       ],
       "current_state": "partial_implemented",
-      "implementation_evidence": "独立目标+共享物理桌面 lease、明确 popup 绑定与 Live 已有; R6 optional standard MCP Apps resource/presence route implemented; actual Host rendering/task switch not accepted",
-      "this_turn_native_evidence": "R33 real same-provider AXParent sheet composition visually verified in nativePIP; child closes back to one layer. SlowAX live663frames/relay1; foreground+background safe1, parent0. Native hide/resume/close independent effects verified; uncertain selfAX originals retained. No human request. See R32_R33_layered_live.",
+      "implementation_evidence": "Independent exact targets/shared leases, actual Host v2 render/away/return/close accepted; selected root + verified same-provider sheets, including true NSOpenPanel.",
+      "this_turn_native_evidence": "R66/R67 actual NSOpenPanel two layers/cancel root return; R68 menu semantics/visual gap; R70 explicit ShowMenu/Pick/List→Icons readonly settle/Cancel projection. Menu pixels/foreign-provider not accepted.",
       "remaining": "Foreign-PID/system menu native identity + menu/control discovery and multi-source families remain. Actual fresh Host v2 render/away/return/close is accepted; do not keep claiming that completed component test is missing. Private cryptographic Host task-ID not claimed.",
-      "last_native_evidence_date": "2026-10-11",
+      "last_native_evidence_date": "2026-10-12",
       "R28_additional": "PureLive module extraction compiled/deployed, no new Live/render/presence/native-family acceptance this round; earlier evidence retained.",
       "R34_additional": "Native same-provider Colors/Fonts/typography independent exact bindings; new bounded inventory recovery exercised, tab-mode change and virtual placement read back. Not attached sheets; no automatic same-PID family. Formal MCP Apps route protocol available but component unmounted/frame0 so rendering/task binding unaccepted.",
       "R51_formal_host_component": {
@@ -420,7 +420,7 @@
         "parent_modal_negative_native_dispatch_false": true,
         "cancel_and_parent_reenabled_background_action_observed": true,
         "foreign_pid_accepted": false,
-        "live_family_os_file_sheet_case_accepted": false
+        "live_family_os_file_sheet_case_accepted": true
       }
     },
     {
@@ -567,9 +567,9 @@
   },
   "current_claim_correction": "R18 original native self AXPress receipts are uncertain(-25200), not successful API acknowledgement; independent Live state readback verifies hidden/resumed/closed. No replay. Installed new MCP actual fresh-process contract passes, not new formatter loaded in this existing parent. Native same-source image size unchanged; overview is smaller, no claimed AX-walk or GPT-model performance gain.",
   "current_deployment": {
-    "agent_pid": 28828,
-    "agent_instance": "e57ec955-2265-421d-8c10-0d3bbd064c56",
-    "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/cross-display-drag-native-r61/deployment/DEPLOYED.json",
+    "agent_pid": 89552,
+    "agent_instance": "cabc313d-ff5c-4d7f-b2cf-f24a65d527c4",
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-menu-actions-r69/deployment/DEPLOYED.json",
     "stable_signing_and_pairing": true
   },
   "current_comprehensive_acceptance": {
@@ -932,6 +932,12 @@
     {
       "label": "R15/R12 before R16",
       "state": {}
+    },
+    {
+      "agent_pid": 28828,
+      "agent_instance": "e57ec955-2265-421d-8c10-0d3bbd064c56",
+      "evidence": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/cross-display-drag-native-r61/deployment/DEPLOYED.json",
+      "stable_signing_and_pairing": true
     }
   ],
   "claim_correction_history": [
@@ -4033,6 +4039,116 @@
     "production_agent_changed_this_turn": false,
     "installed_agent_pid": 34348,
     "installed_agent_instance": "cc9272d1-0300-4ae6-9b1d-1f1ab72f7d2b",
+    "full_goal_complete": false
+  },
+  "R66_live_native_file_family": {
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-native-file-family-r66/NATIVE_RESULT_R66.json",
+    "two_true_NSOpenPanel_layers": true,
+    "root_restore_unverified_in_that_run": true
+  },
+  "R67_live_native_file_return": {
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/live-native-file-return-r67/NATIVE_RESULT_R67.json",
+    "actual_root_restore": true,
+    "native_close_preserves_source": true
+  },
+  "R68_system_menu_semantic": {
+    "run": 68,
+    "active_object": "/Volumes/ChatGPT/Real World Interaction",
+    "pid": 74718,
+    "root_window": 44766,
+    "file_sheet": 44776,
+    "accepted": {
+      "native_menu_controls": true,
+      "list_view_semantic_readback": true,
+      "native_menu_visual": false,
+      "icons_restore": false,
+      "foreign_pid": false,
+      "background_no_raise": false
+    },
+    "native_menu_controls": [
+      "Show Sidebar",
+      "Icons",
+      "List",
+      "Columns"
+    ],
+    "list_effect": "Grid view / AXList(icon view) -> List / AXOutline(list view)",
+    "icons_restore": "receipt returned, immediate readback still List; unconfirmed before separate Cancel",
+    "source_state": "already active/frontmost at first native oracle sample; no background claim",
+    "live": {
+      "two_same_provider_layers": true,
+      "menu_pixels_observed": false,
+      "stop_status": "stopped",
+      "image_cleared": true,
+      "visible": false,
+      "worker_done_at_last_read": false,
+      "worker_termination_independently_verified": false,
+      "target_detached_after_stop": true
+    },
+    "cleanup": {
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "durable_requests": 7,
+      "detached_targets": 2,
+      "source_process_exit0": true,
+      "lifetime_close_requests": 0
+    },
+    "validation": {
+      "previous_same_source_R66_gates_retained": true,
+      "new_R69_source_not_covered_by_old_gates": true
+    },
+    "no_input_replay": true,
+    "full_goal_complete": false
+  },
+  "R69_explicit_menu_actions": {
+    "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/explicit-native-menu-actions-r69/ENGINEERING_RESULT_R69.json",
+    "implemented": true,
+    "deployed": true,
+    "current_loaded_MCP_verified": true,
+    "explicit_provider_advertised_only": true,
+    "actions": [
+      "AXShowMenu",
+      "AXCancel",
+      "AXPick"
+    ],
+    "default_fallback": false
+  },
+  "R70_current_native_menu_actions": {
+    "active_object": "/Volumes/ChatGPT/Real World Interaction",
+    "scope": "new current RWI MCP / exact own NSOpenPanel controls; semantic effect not menu pixels",
+    "agent_instance": "cabc313d-ff5c-4d7f-b2cf-f24a65d527c4",
+    "agent_pid": 89552,
+    "receiver_pid": 90874,
+    "root_window": 44814,
+    "file_sheet_window": 44824,
+    "accepted": {
+      "AXShowMenu_menu_controls": true,
+      "AXPick_List": true,
+      "AXPick_Icons_restore": true,
+      "AXCancel_menu_projection_removed": true,
+      "menu_visual": false,
+      "foreign_pid_family": false,
+      "background_no_raise": false
+    },
+    "menu_cancel_absence_proven": false,
+    "menu_cancel_scope": "same fresh bounded AX tree no longer returns original menu/items; partial coverage preserved",
+    "icons_restore_readonly_samples": 2,
+    "icons_restore_never_replayed": true,
+    "all_original_PNG_hashes_identical": true,
+    "live": {
+      "actual_Host_tab5_visible": true,
+      "two_root_sheet_layers": true,
+      "stop_requested": true,
+      "worker_done_before_detach": true,
+      "cleared": true,
+      "hidden": true,
+      "source_survived_until_separate_Close": true
+    },
+    "cleanup": {
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "durable_requests": 9,
+      "detached_targets": 2,
+      "source_explicit_close_exit0": true,
+      "lifetime_close_requests": 0
+    },
     "full_goal_complete": false
   }
 }

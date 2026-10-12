@@ -1877,3 +1877,39 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 148 Open原始AX25204/uncertain不改，后续实际sheet44629/attached/display4/open1。父Safe modal负例nativefalse/Safe0；精确Cancel response0。148最终expiry1/exit0，晚到Safe/Close未发，两detach，不假装显式关闭。
 - 新149 Open仍uncertain，首次有界只读未发现不当终止、不重启、不replay；继续同process/handle后sheet44684真实可见。Cancel returned；独立发现仅parent44674，fresh unblocked＋Safe0→1/inactive/nonkey/fg97732。明确Close expiry0/exit0，两detach；7durable terminal/released/无pending/uncertainty/replay。
 - 此例真实NSOpenPanel渲染owner仍fixture PID，不冒充foreign-provider；没有放松physical point守卫或把window截图当遮挡证明。下一项已有LiveFamilyCapture与真正文件sheet的层叠合成实测，全A01–A07/F01–F16仍未完成。报告／原图：outputs/validation/r65-native-system-file-panel-2026-10-12/REPORT.md。
+
+
+## 2026-10-12 · R66：真正系统文件sheet的Live层叠合成
+
+- 当前加载RWI＋真实Host MCP Apps v2可见，own150根44695/系统sheet44713为已验证AXSheet/AXParent；actual Live内建屏320×239点/640×478 PNG，两层合成1760×1104，same-PID Colors/Fonts不自动纳入。
+- 原Open25204/uncertain不重放；首Live180秒到期，Resume仍stopped，另新观察不是输入重放。Cancel之后首次recovering清图即Close，所以R66根恢复未验，不判失败或宣称通过。第二Live原生Close stopped/requested/worker_done/source survives，源单独Close expiry0/exit0，3 detach/4durable全终态。
+- 同源实际11门0/workspace774/0/11/42、Receiver72/UI7；无部署/人工请求。顺序原图与报告：outputs/validation/r66-live-native-file-family-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R67：取消系统文件面板后根窗口Live恢复通过
+
+- 新own151 PID62667/根44733/sheet44747/虚拟4，实际Host tab3可见，RWI发一次Open25204/uncertain；35秒只读超时保留，随后同原进程真实sheet/open1，不重启/重发。
+- 实际Live两层complete，原生预览44755/320×239点；Cancel returned/真实response0/visiblefalse/解除own-parent。连续只读500ms采样231frames→recovering清图attempt1→232frames/root1/running；后276frames仍root1，原生预览新44763/320×303点/640×606 PNG。约1.5秒为本次观测不是性能上限。
+- 对新preview fresh selection再AXClose，stopped/requested/worker_done/清图隐藏，源仍可读；源单独Close expiry0/exit0，4detach/4durable终态释放、nopending/uncertainty/replay。没有用户配合或用户眼见宣称。
+- 同四角色补两个报告170项，原97不变，源配置1/0/1/0哈希恢复/非生产回滚。源码逐字节未变，使用R66当前实际11门而非旧CI；生产Agent/MCP/证书不改。
+- Live已部署320点上限/eye.slash/play.fill/xmark/28点AX可访问控件；复核Apple HIG与Codex PiP用户issue，未获取官方精确尺寸，不称私有UI1:1。正式原图/报告：outputs/validation/r67-live-native-file-return-2026-10-12/REPORT.md。全F01–F16未完成，优先冷态hover/foreign-provider/隐藏最小化/DnD/压力等未验范围，不重复本闭环充进度。
+
+
+## 2026-10-12 · R68：系统菜单语义正例、视觉及恢复缺口保留
+
+- own152/74718/root44766/sheet44776/虚拟4；Open25204/uncertain不重放，实际后open1。Grid菜单AXPress→菜单项，List→List/AXOutline回读；source已active，非后台no-raise。
+- 原图不带菜单，after-menu/after-List原byte同。Icons请求returned但即时仍List，未等即Cancel，不称恢复或API必坏。Live Stop最后worker_done=false，detach前没确认worker，保留缺口。
+- File Cancel response0/visiblefalse/解除parent，源独立Close expiry0/exit0，两detach/7durable清理无重放，反馈marker隐藏。报告outputs/validation/r68-native-system-menu-2026-10-12/REPORT.md。
+
+## 2026-10-12 · R69：显式AX菜单动作声明与稳定部署
+
+- native_semantic_actions增加AXShowMenu/AXCancel/AXPick，真实控件advertise且caller显式才可；原dispatcher执行体/默认click/exact object/window/provider/lease/noReplay不改。SDK Pick列Obsolete，不默认替代Press。
+- 核心新增能力/element/去重错payload测试，Mac声明与strict-reference/click-only测试扩展。初regex错误1不算baseline，纠正后原pristine1→修改0→独立copy窄rollback三hash/1→reapply0。11门0/workspace776/0/11/42、Receiver72/UI7，3focused各1pass不重复计数。
+- 原inode排他lease、旧instance durable终态下同证书原子部署Agent89552/cabc313d；signed SHA05e6e1ad668e7c78ea0682d5013fec144c61a8f95a941911060fae12b0ffda10。4权限true/CA/profile/config/MCP原hash不变，无人工配合/Codex重启。当前loaded MCP实读newinstance/3动作。
+- 报告outputs/validation/r69-explicit-native-menu-actions-2026-10-12/REPORT.md；同四角色扩展173/原97不变，全目标未完。
+
+## 2026-10-12 · R70：新动作语义效果、有界settle与停止顺序实测
+
+- 新loadedMCP对own153/90874/root44814/sheet44824：ShowMenu→菜单控件，Pick List→List/AXOutline；Icons第一次仍List，read-only500ms后第二次Grid/AXList，未重放。AXCancel后同窗树无原菜单，但coverage partial/absence_proven=false。
+- 五原PNG全同SHA66e6b962，不能称菜单/视图像素变化。Live只root+sheet2层，foreign-provider视觉缺口仍在，不以新Pick案例推断旧Press坏或性能优势。
+- File Cancel response0/visiblefalse/解除parent；Live Stop先等worker_done=true/清图隐藏，源仍可读，再源独立Close expiry0/exit0、两detach/9durable终态/no replay，marker隐藏。真实Host tab5已可见，无假presence/IAB/人类宣称。
+- 报告outputs/validation/r70-native-menu-actions-2026-10-12/REPORT.md。下一项继续系统菜单视觉/provider与F01–F16，不重复已完成三动作验收。
