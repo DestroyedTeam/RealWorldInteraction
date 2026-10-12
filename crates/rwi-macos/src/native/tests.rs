@@ -519,3 +519,52 @@ fn window_control_names_do_not_override_provider_or_guess_unknown_roles() {
         ""
     );
 }
+
+#[test]
+fn window_local_input_mapping_preserves_visible_identity_without_full_monitor_containment() {
+    let screens = vec![display(4, false, 1800., 0., 1920., 1080.)];
+    let own = Rect {
+        x: 3225.,
+        y: 504.,
+        w: 660.,
+        h: 552.,
+    };
+    assert!(containing_display(&screens, own).is_none());
+    assert!(
+        window_mapping_ready(&screens, own),
+        "full-window SCK/AX point geometry is known; single-display assignment is descriptive"
+    );
+    assert!(window_mapping_ready(&screens, Rect { x: 1824., ..own }));
+    assert!(!window_mapping_ready(&screens, Rect { x: 4000., ..own }));
+    assert!(!window_mapping_ready(&[], own));
+    assert!(!window_mapping_ready(&screens, Rect { w: f64::NAN, ..own }));
+}
+
+#[test]
+fn window_local_input_mapping_supports_spanning_but_not_invalid_or_rotated_intersections() {
+    let mut screens = vec![
+        display(1, true, 0., 0., 100., 80.),
+        display(2, false, 100., 0., 120., 80.),
+    ];
+    let cross = Rect {
+        x: 80.,
+        y: 10.,
+        w: 40.,
+        h: 30.,
+    };
+    assert!(window_mapping_ready(&screens, cross));
+    screens[1].rotation = 90.;
+    assert!(!window_mapping_ready(&screens, cross));
+    screens[1].rotation = 0.;
+    screens[1].rect.w = f64::NAN;
+    assert!(!window_mapping_ready(&screens, cross));
+    assert!(!window_mapping_ready(&[], cross));
+    assert!(!window_mapping_ready(
+        &[display(4, false, 0., 0., 100., 80.)],
+        Rect {
+            x: f64::MAX,
+            w: f64::MAX,
+            ..cross
+        }
+    ));
+}

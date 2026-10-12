@@ -389,20 +389,46 @@ pub(crate) fn launch_background_and_place(
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 }
+fn window_mapping_ready(displays: &[Display], window: Rect) -> bool {
+    // SCK and AX already agree on this exact on-screen window's point bounds.
+    // Its full bitmap maps to that rectangle, not to one monitor's pixels.
+    // Keep an actual active, unrotated intersection and finite geometry; a
+    // wholly offscreen or rotated affected surface remains unsupported.
+    if !window.valid() || !(window.x + window.w).is_finite() || !(window.y + window.h).is_finite() {
+        return false;
+    }
+    let mut intersects = false;
+    for display in displays {
+        if !display.rect.valid() || !display.rotation.is_finite() {
+            return false;
+        }
+        let d = display.rect;
+        if window.x < d.x + d.w
+            && d.x < window.x + window.w
+            && window.y < d.y + d.h
+            && d.y < window.y + window.h
+        {
+            if display.rotation.abs() >= 0.001 {
+                return false;
+            }
+            intersects = true;
+        }
+    }
+    intersects
+}
 fn display_layout(window: Rect) -> Result<(String, bool)> {
     let displays = displays()?;
     let mut text = String::new();
-    let mut containing = 0;
     for display in &displays {
         text.push_str(&format!(
             "{}:{:?}:{}:{}:{};",
             display.id, display.rect, display.pixels[0], display.pixels[1], display.rotation
         ));
-        if display.rotation.abs() < 0.001 && display.rect.contains_rect(window) {
-            containing += 1;
-        }
     }
-    Ok((digest(text.as_bytes()), containing == 1))
+    Ok((
+        digest(text.as_bytes()),
+        window_mapping_ready(&displays, window),
+    ))
 }
 fn ax_rect(element: &Cf) -> Result<Rect> {
     let p = element.attr("AXPosition")?.point()?;

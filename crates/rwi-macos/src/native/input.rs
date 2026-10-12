@@ -165,7 +165,7 @@ impl NativeMac {
                                 expected_foreground: foreground,
                             } = &move_options
                             {
-                                foreground_move::guard(self, foreground)?;
+                                foreground_move::guard(self, foreground, target.point)?;
                             }
                             Ok(())
                         },

@@ -225,7 +225,7 @@ fn move_wiring_preserves_exact_grounding_and_excludes_activation_and_global_fall
     assert!(!branch.contains("click_pair"));
     assert!(branch.contains("if foreground_pointer"));
     assert!(branch.contains("foreground_move::post(&event)"));
-    assert!(branch.contains("foreground_move::guard(self, foreground)"));
+    assert!(branch.contains("foreground_move::guard(self, foreground, target.point)"));
     assert!(!branch.contains("warp"));
     assert!(!Kind::of(&Intent::MovePointer).needs_focus());
 }
