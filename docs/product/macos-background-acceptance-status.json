@@ -3,7 +3,7 @@
   "updated": "2026-10-12",
   "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r61-exact-window-cross-edge-drag-2026-10-12/REPORT.md",
+  "current_report": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/outputs/validation/r63-explicit-skylight-pointer-2026-10-12/REPORT.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -175,10 +175,10 @@
         "root-apple-f2c9ebd40e801549",
         "FW-S083"
       ],
-      "current_state": "partial_native_view_callback_conditionally_accepted",
+      "current_state": "partial_implemented",
       "implementation_evidence": "typed hover 已加载；工厂/派发 probe 可诊断",
-      "this_turn_native_evidence": "Native36 firstResponder hover: before/after inactive/keyfalse/frontmostfalse; one exact typed RWI hover maps660,374 ->2154,691, native point330,365/local306,27, App/window type5 subtype0 and real moved callback1. Native35 inactive default and Native37 active default firstResponder NSButton, App/window proper event but view0. Later Native36 type8/9+subtype3 events and counters115/enter1/exit1 are un-attributed, not RWI hover success.",
-      "remaining": "RWI-driven view/tracking/highlight/tooltip not accepted in ordinary default first-responder fixture, including foreground; App/Window MouseMoved receipt is not view effect. Continue transport/responder-layer implementation; no impossible or universal success claim.",
+      "this_turn_native_evidence": "R62 off-framework-pointer move/click reached app/window but view hover0; both Cua/RWI clicks down/up real, hover0; established physical tracking + inactive own141 allows new addressed mouseMoved1→2",
+      "remaining": "generic cold/background hover at arbitrary points with physical cursor elsewhere remains unaccepted; no silent global warp/focus fallback; timestamp field58 preservation required for any SPI experiment",
       "last_native_evidence_date": "2026-10-11",
       "R51_foreground_default": {
         "current_head_ci_success": true,
@@ -219,7 +219,15 @@
         "input_replay": false,
         "physical_human_origin_attested": false,
         "evidence": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-requirements-followthrough-r51/NATIVE_HOVER_AND_SHARING_RESULT_R51.json"
-      }
+      },
+      "acceptance_history": [
+        {
+          "current_state": "partial_native_view_callback_conditionally_accepted",
+          "implementation_evidence": "typed hover 已加载；工厂/派发 probe 可诊断",
+          "this_turn_native_evidence": "Native36 firstResponder hover: before/after inactive/keyfalse/frontmostfalse; one exact typed RWI hover maps660,374 ->2154,691, native point330,365/local306,27, App/window type5 subtype0 and real moved callback1. Native35 inactive default and Native37 active default firstResponder NSButton, App/window proper event but view0. Later Native36 type8/9+subtype3 events and counters115/enter1/exit1 are un-attributed, not RWI hover success.",
+          "remaining": "RWI-driven view/tracking/highlight/tooltip not accepted in ordinary default first-responder fixture, including foreground; App/Window MouseMoved receipt is not view effect. Continue transport/responder-layer implementation; no impossible or universal success claim."
+        }
+      ]
     },
     {
       "id": "F06",
@@ -3247,6 +3255,529 @@
       "no_Codex_restart_or_human_cooperation": true
     },
     "report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r61-exact-window-cross-edge-drag-2026-10-12/REPORT.md",
+    "full_goal_complete": false
+  },
+  "R62_framework_pointer_and_cua_comparison": {
+    "date": "2026-10-12",
+    "changed_symbols": [
+      "DispatchEvent::framework_pointer",
+      "FrameworkPointerSnapshot",
+      "UI::framework_pointer",
+      "skylight_event_field_probe::inspect"
+    ],
+    "production_backend_changed": false,
+    "agent_remains": "28828/e57ec955-2265-421d-8c10-0d3bbd064c56",
+    "original139": {
+      "inactive_nonkey": true,
+      "app_window_received_mouse_move": [
+        1,
+        1
+      ],
+      "view_hover": [
+        0,
+        0,
+        0
+      ],
+      "tooltip": 0,
+      "explicit_close_exit0": true
+    },
+    "140_framework_mismatch": {
+      "event_window_point": [
+        100,
+        382
+      ],
+      "framework_window_point": [
+        -1151.03125,
+        130.53125
+      ],
+      "framework_inside_hover": false,
+      "target_was_active_key": true,
+      "view_hover": 0
+    },
+    "cua_and_rwi_matching140_clicks": {
+      "cua_actual_down_up": [
+        1,
+        1
+      ],
+      "rwi_actual_down_up": [
+        1,
+        1
+      ],
+      "both_callback_inactive_nonkey": true,
+      "both_hover_and_tooltip": 0,
+      "cua_subtype": 3,
+      "rwi_subtype": 0,
+      "cua_callback_modifier_flags": 1048576,
+      "rwi_callback_modifier_flags": 0,
+      "modifier_origin_inferred": false,
+      "same_intent_only_for_click_comparison": true,
+      "not_universal_success_or_latency_comparison": true
+    },
+    "140_explicit_physical_control": {
+      "framework_window_equals_event": [
+        100,
+        382
+      ],
+      "framework_hover_point": [
+        76,
+        10
+      ],
+      "framework_inside_hover": true,
+      "hover_enter_move": [
+        1,
+        1
+      ],
+      "tooltip": 1,
+      "explicit_focused_physical_route_not_background_fallback": true
+    },
+    "141_final_source_control": {
+      "native_pointer_already_inside_before_input": true,
+      "enter_and_tooltip_preexisting": true,
+      "foreground_addressed_move": {
+        "moves_before_after": [
+          0,
+          1
+        ],
+        "not_true_background_acceptance": true
+      },
+      "inactive_nonkey_addressed_move": {
+        "moves_before_after": [
+          1,
+          2
+        ],
+        "foreground_pid": 76688,
+        "pointer_inside_hover": true,
+        "prior_tracking_already_established": true
+      },
+      "generic_off_pointer_background_hover_accepted": false
+    },
+    "field58_event_memory_probe": {
+      "authentication_requested": false,
+      "cursor_changed": false,
+      "field58": {
+        "namespace": "SLEventSetIntegerValueField -> public CGEventGetTimestamp",
+        "timestamp_after": 987654321,
+        "timestamp_before": 123456789,
+        "timestamp_changed": true,
+        "written": 987654321
+      },
+      "input_posted": false,
+      "integer_setter_available": true,
+      "library_available": true,
+      "post_symbol_available_not_called": true,
+      "record_symbol_available_not_called": true,
+      "scope": "event_memory_only",
+      "window_created": false
+    },
+    "cleanup": {
+      "139_explicit_close_expiry0_exit0": true,
+      "140_lifetime_expiry1_exit0": true,
+      "140_close_never_dispatched": true,
+      "141_142_explicit_close_expiry0_exit0": true,
+      "all_fixed_bindings_detached": true,
+      "durable_requests": 11,
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "native_replay": false
+    },
+    "validation": {
+      "eleven_gates_exit0": true,
+      "workspace": {
+        "passed": 769,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver_tests": 70,
+      "live_ui_tests": 7
+    },
+    "report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r62-native-tracking-framework-state-2026-10-12/REPORT.md",
+    "full_goal_complete": false
+  },
+  "R63_explicit_skylight_pointer": {
+    "active_object": "/Users/vincentadamnemessis/AI Projects/Real World Interaction",
+    "changed_field": "MovePointerOptions.delivery=background_skylight_experimental",
+    "changed_symbols": [
+      "MovePointerOptions::require_capability",
+      "background::skylight::prepare_pointer",
+      "PreparedMove::post",
+      "NativeMac::dispatch_input"
+    ],
+    "delivery": {
+      "opt_in_required": true,
+      "default_unchanged": true,
+      "one_counted_post": true,
+      "automatic_fallback": false,
+      "field58_written": false,
+      "authentication_requested": false,
+      "cursor_warp_requested": false
+    },
+    "native144": {
+      "pid": 2534,
+      "window": "cgwindow:44392",
+      "display": 4,
+      "samples": {
+        "cold_before": {
+          "app_active": false,
+          "window_key": false,
+          "frontmost_pid": 2571,
+          "hover": {
+            "inside": false,
+            "enters": 0,
+            "exits": 0,
+            "moves": 0,
+            "last_point": null,
+            "tooltip_registered": true,
+            "tooltip_requests": 0,
+            "last_tooltip_point": null
+          },
+          "application_events": 0,
+          "window_events": 0,
+          "last_dispatch_record": []
+        },
+        "public": {
+          "app_active": false,
+          "window_key": false,
+          "frontmost_pid": 2571,
+          "hover": {
+            "inside": false,
+            "enters": 0,
+            "exits": 0,
+            "moves": 0,
+            "last_point": null,
+            "tooltip_registered": true,
+            "tooltip_requests": 0,
+            "last_tooltip_point": null
+          },
+          "application_events": 1,
+          "window_events": 1,
+          "last_dispatch_record": [
+            {
+              "sequence": 2,
+              "stage": "window",
+              "native_type": 5,
+              "window_number": 44392,
+              "window_point": [
+                100.0,
+                382.0
+              ],
+              "subtype": 0,
+              "timestamp_seconds": 423539.793666666,
+              "own_window_match": true,
+              "hit_region": "hover_zone",
+              "framework_pointer": {
+                "screen_point": [
+                  1924.0,
+                  495.0
+                ],
+                "screen_converted_to_own_window": [
+                  -1112.0,
+                  382.0
+                ],
+                "own_window_outside_event_stream": [
+                  -1112.0,
+                  382.0
+                ],
+                "screen_converted_to_own_hover": [
+                  -1136.0,
+                  10.0
+                ],
+                "screen_point_in_own_hover": false
+              }
+            }
+          ]
+        },
+        "spi": {
+          "app_active": false,
+          "window_key": false,
+          "frontmost_pid": 2571,
+          "hover": {
+            "inside": false,
+            "enters": 0,
+            "exits": 0,
+            "moves": 0,
+            "last_point": null,
+            "tooltip_registered": true,
+            "tooltip_requests": 0,
+            "last_tooltip_point": null
+          },
+          "application_events": 2,
+          "window_events": 2,
+          "last_dispatch_record": [
+            {
+              "sequence": 4,
+              "stage": "window",
+              "native_type": 5,
+              "window_number": 44392,
+              "window_point": [
+                100.0,
+                382.0
+              ],
+              "subtype": 0,
+              "timestamp_seconds": 423549.402984583,
+              "own_window_match": true,
+              "hit_region": "hover_zone",
+              "framework_pointer": {
+                "screen_point": [
+                  1924.0,
+                  495.0
+                ],
+                "screen_converted_to_own_window": [
+                  -1112.0,
+                  382.0
+                ],
+                "own_window_outside_event_stream": [
+                  -1112.0,
+                  382.0
+                ],
+                "screen_converted_to_own_hover": [
+                  -1136.0,
+                  10.0
+                ],
+                "screen_point_in_own_hover": false
+              }
+            }
+          ]
+        },
+        "foreground": {
+          "app_active": true,
+          "window_key": true,
+          "frontmost_pid": 2534,
+          "hover": {
+            "inside": true,
+            "enters": 1,
+            "exits": 0,
+            "moves": 1,
+            "last_point": [
+              76.0,
+              10.0
+            ],
+            "tooltip_registered": true,
+            "tooltip_requests": 1,
+            "last_tooltip_point": [
+              76.0,
+              10.0
+            ]
+          },
+          "application_events": 7,
+          "window_events": 7,
+          "last_dispatch_record": [
+            {
+              "sequence": 14,
+              "stage": "window",
+              "native_type": 5,
+              "window_number": 44392,
+              "window_point": [
+                100.0,
+                382.0
+              ],
+              "subtype": 0,
+              "timestamp_seconds": 423579.992292375,
+              "own_window_match": true,
+              "hit_region": "hover_zone",
+              "framework_pointer": {
+                "screen_point": [
+                  3136.0,
+                  495.0
+                ],
+                "screen_converted_to_own_window": [
+                  100.0,
+                  382.0
+                ],
+                "own_window_outside_event_stream": [
+                  100.0,
+                  382.0
+                ],
+                "screen_converted_to_own_hover": [
+                  76.0,
+                  10.0
+                ],
+                "screen_point_in_own_hover": true
+              }
+            }
+          ]
+        },
+        "pretracked_spi": {
+          "app_active": false,
+          "window_key": false,
+          "frontmost_pid": 2571,
+          "hover": {
+            "inside": true,
+            "enters": 1,
+            "exits": 0,
+            "moves": 2,
+            "last_point": [
+              76.0,
+              10.0
+            ],
+            "tooltip_registered": true,
+            "tooltip_requests": 1,
+            "last_tooltip_point": [
+              76.0,
+              10.0
+            ]
+          },
+          "application_events": 9,
+          "window_events": 9,
+          "last_dispatch_record": [
+            {
+              "sequence": 18,
+              "stage": "window",
+              "native_type": 5,
+              "window_number": 44392,
+              "window_point": [
+                100.0,
+                382.0
+              ],
+              "subtype": 0,
+              "timestamp_seconds": 423611.586841791,
+              "own_window_match": true,
+              "hit_region": "hover_zone",
+              "framework_pointer": {
+                "screen_point": [
+                  3136.0,
+                  495.0
+                ],
+                "screen_converted_to_own_window": [
+                  100.0,
+                  382.0
+                ],
+                "own_window_outside_event_stream": [
+                  100.0,
+                  382.0
+                ],
+                "screen_converted_to_own_hover": [
+                  76.0,
+                  10.0
+                ],
+                "screen_point_in_own_hover": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    "generic_cold_background_hover_accepted": false,
+    "preexisting_tracking_inactive_move_accepted": true,
+    "foreground_tracking_tooltip_accepted": true,
+    "deployment": {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "original_hash": "3020f70bab33319c1298e00f9ed06524d9fb719c8216e9eb2705c24f3e7e1ae6",
+      "installed_hash": "3377ea27e79b143da3451334a69c44d2936953d6733bebb8a4fd430a5d632a52",
+      "candidate_hash": "8a4ab7a41431b8349b80e7aae89d2190375d3f757c47b8d5145ad10b15ca0e1e",
+      "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+      "protected_public_config_hashes": {
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "5cf8424eb08f10735a9ff3cfaac69e924cf48affa3ebf0453d737b99bd8d8c29"
+      },
+      "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-skylight-experiment-r63.app",
+      "retained_baseline_app": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/skylight-lane-experiment-r63/deployment/baseline/RWI Agent.app",
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "recovery_invoked": false,
+      "mcp_binary_changed": false,
+      "input_sent_by_controller": false
+    },
+    "startup": {
+      "command": [
+        "rtk",
+        "proxy",
+        "./rwi-mcp",
+        "--profile",
+        "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json"
+      ],
+      "cwd": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin",
+      "binary_sha256": "5cf8424eb08f10735a9ff3cfaac69e924cf48affa3ebf0453d737b99bd8d8c29",
+      "initialize_ok": true,
+      "tools_count": 41,
+      "targets_healthy": true,
+      "device_id": "mac-host",
+      "agent_instance": "509117ee-6f8a-4638-99ab-73a03ab31b5d",
+      "native_pid": 2300,
+      "permissions": {
+        "accessibility": true,
+        "listen_event": true,
+        "post_event": true,
+        "requests_permission": false,
+        "screen_capture": true,
+        "screenshot_api": true
+      },
+      "executor_features": {
+        "move_pointer_intent": {
+          "fallback": false,
+          "implemented": true,
+          "requires_native_backend_support": true,
+          "scope": "intent_parser; not native hover-effect availability"
+        },
+        "resolve_view_red_marker_cluster": {
+          "fallback": false,
+          "implemented": true,
+          "opt_in_required": true,
+          "scope": "executor_parameter; native_anchor_is_checked_per_view",
+          "unavailable_error": "red_marker_anchor_unavailable"
+        }
+      },
+      "input_domain_fenced": false,
+      "resource_domain": "0d5ca219585e132b6cbe15f6f2a011bba3412ea23816927c74172c0a95e31180",
+      "input_sent": false,
+      "screen_capture_requested": false,
+      "images_returned": 0,
+      "readonly_startup_attempts": 3,
+      "process_exit": 0,
+      "stderr": "",
+      "failure": null
+    },
+    "validation": {
+      "eleven_gates_exit0": true,
+      "workspace": {
+        "passed": 774,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 42
+      },
+      "receiver_tests": 70,
+      "live_ui_tests": 7
+    },
+    "cleanup": {
+      "all_terminal_released_no_pending_no_uncertainty": true,
+      "durable_requests": 9,
+      "input_replayed": false,
+      "143": {
+        "expired": true,
+        "exit_status": 0,
+        "close_not_sent": true
+      },
+      "144": {
+        "explicit_AXClose": true,
+        "expiry_close_requests": 0,
+        "exit_status": 0,
+        "binding_detached": true
+      },
+      "145": {
+        "explicit_AXClose": true,
+        "expiry_close_requests": 0,
+        "exit_status": 0,
+        "binding_detached": true
+      }
+    },
+    "tool_errors_retained": [
+      {
+        "code": "unknown_frame",
+        "native_execution": false,
+        "cause_source": "crates/rwi-core/src/foreground/engine.rs:150-158 invalidates same-desktop aliases after explicit focus",
+        "correction": "fresh snapshot+resolve before distinct new public control input"
+      },
+      {
+        "code": "invalid_arguments",
+        "message": "missing field reference",
+        "native_input_entered": false,
+        "correction": "check returned reference before act"
+      }
+    ],
     "full_goal_complete": false
   }
 }

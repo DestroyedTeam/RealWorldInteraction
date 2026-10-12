@@ -1844,3 +1844,20 @@ R50 封版补查：隔离 `cargo test -p rwi-agent --no-default-features --lib r
 - 修正部署后新137明确inactive/nonkey，peer138前台：global[3676,829]→[3781,829]跨3720右界，真实down1/move16/up1/completed1/orphan0，18NSResponder callbacks全部inactive/nonkey/fg29079/ownCG44174，真实PNG蓝线，局部[196,79]→[301,79]。随后明确focus137，samepoint foreground_hit_unproven/no native dispatch；另一有效foreground point真实hover enter1/move1/tooltip1。137/138明确Close/expiry0/exit0/detach；9durable terminal/released/no pending/no uncertainty/no replay。
 - 同稳定证书Agent28828/e57ec955已部署，4权限/CA/profile/config/安装MCP不变，无人工配合或Host重启。完整11门0/workspace769/0/11/42、Receiver68/UI7；源skill小幅补精确window选择及两种grounding，validator0，未覆盖当前cache。四角色保持同集合并扩展、matching source配置1/0/1/0及精确hash恢复，不称生产回滚。完整目标/计划未完成，剩余generic background tracking、复杂layered provider/whole offscreen/DnD等继续保留。
 - 正式报告：outputs/validation/r61-exact-window-cross-edge-drag-2026-10-12/REPORT.md；原图按实际顺序排列，raw截图不提交Git。
+
+
+## 2026-10-12 · R62：框架pointer状态、真实Computer Use对照及private field58内存校准
+
+- fixture-only DispatchEvent::framework_pointer/UI::framework_pointer公开getter诊断：只own window匹配时读NSEvent.mouseLocation与own-window/hover转换，未知null，不改responder、鼠标位置、active/key或tracking counters。增加2纯测试，初msg_send comma warning保留，修正后全11门0/workspace769/0/11/42、Receiver70/UI7。
+- 原139 inactive默认move app/window各1但view/tooltip0；140 even active/key，eventWindowPoint[100,382]与framework[-1151.03125,130.53125]不同且insidefalse。Cua真实一次无害click与RWI同点click均实际down/up、inactive/nonkey、hover0；不杜撰Cua独立hover方法或作异intent耗时比较。subtype3/0与flags1048576/0记录，来源未知不猜。明确focus140+foreground_system move后位置匹配/insidetrue/enter1move1tooltip1。
+- 最终源141启动时指针已经在其hover，enter1/tooltip1是既有状态；其前台addressed move0→1不可算后台。focus不覆盖它的右peer142后141 inactive/nonkey/fg76688，既有tracking仍inside，独立新BG move1→2，条件性view接受已证实但泛化cold hover未完成。139/141/142明确Close expiry0/进程0；140到期expiry1/进程0，process_identity_unknown之后的JS读取elements TypeError保留，未发送Close，不replay；11durable全部terminal/released/无pending无uncertainty。
+- 原生Rust skylight_event_field_probe仅本地event内存：SLEventSetIntegerValueField(58,987654321)使CGEvent timestamp123456789→987654321，post/record只查symbol不调用，无authentication/窗口/输入/cursor改变。重取primary pinned tree源码；trycua desktop hover源码确为warp+HID且两次post，不能当真后台copy；不照抄field58 gesture注释。
+- 生产Agent/MCP/稳定证书/权限不改；诊断和条件对照不是“hover已修复”。全计划继续，source四角色同集合扩展及1/0/1/0 hash恢复；正式原图/报告outputs/validation/r62-native-tracking-framework-state-2026-10-12/REPORT.md。
+
+
+## 2026-10-12 · R63：显式SkyLight实验通道与后台tracking接收对照
+
+- MovePointerOptions新增background_skylight_experimental严格opt-in；仅MouseMoved、一条fresh guard后计数的SLEventPostToPid，无默认切换／认证／field58／warp／自动fallback。符号进程期缓存、失败关闭library，无每次输入泄漏。新核心3／native内存2测试，完整11门0/workspace774/0/11/42、Receiver70/UI7。
+- 同稳定证书部署Agent2300/509117ee；实际loaded MCP返回新capavailable=true，四权限／CA／profile／安装MCP不变、不需人工重启。143既有tracking后自然到期0；新144右侧cold hover0，peer145前台：public与SPI各一条type5准确达App/Window，仍view/tooltip0且framework转换区域外。明确FGmove才enter1/move1、dwelltooltip1；再focus145，144inactive/nonkey的新SPI move1→2仅条件性tracking证明。未泛化冷态后台hover。
+- 144/145明确Close expiry0/进程0/detach；9durable terminal/released/no pending/uncertainty/replay。保留初编译101、源接线断言101、warning与unknown_frame/schema拒绝；focus确会失效同desktop aliases，fresh snapshot后新操作成功，不重放已投递输入。
+- 同四角色扩展166，source-copy matching配置1/0/1/0与精确哈希恢复，非生产回滚。正式报告／原图outputs/validation/r63-explicit-skylight-pointer-2026-10-12/REPORT.md；全计划继续未完成，优先改善失效范围反馈并补通用tracking／复杂provider等。
