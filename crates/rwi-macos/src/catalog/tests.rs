@@ -1,5 +1,5 @@
 use super::*;
-fn identity() -> Identity {
+pub(super) fn identity() -> Identity {
     Identity {
         host: "mac".into(),
         guest: None,
@@ -8,7 +8,7 @@ fn identity() -> Identity {
         desktop: "quartz-console".into(),
     }
 }
-fn row(id: u32) -> WindowRecord {
+pub(super) fn row(id: u32) -> WindowRecord {
     WindowRecord::from_native(
         &identity(),
         &Window {
@@ -28,13 +28,21 @@ fn row(id: u32) -> WindowRecord {
     )
     .unwrap()
 }
-fn selection(row: &WindowRecord) -> WindowSelection {
+pub(super) fn selection(row: &WindowRecord) -> WindowSelection {
     WindowSelection {
         window: row.window.clone(),
         pid: row.pid,
         native_epoch: row.native_epoch.clone(),
         relation: WindowRelation::Initial,
     }
+}
+pub(super) fn expire(catalog: &mut Catalog, id: &str) {
+    catalog
+        .snapshots
+        .iter_mut()
+        .find(|snapshot| snapshot.id == id)
+        .unwrap()
+        .at = Instant::now() - TTL - Duration::from_secs(1);
 }
 #[test]
 fn empty_catalog_and_pagination_never_imply_hidden_window_coverage() {
@@ -107,9 +115,14 @@ fn exact_pid_epoch_freshness_context_and_owner_transition_are_required() {
         assert!(c.select(&s).is_err());
     }
     assert!(c.page(Some("different-context/0")).is_err());
-    c.at = Some(Instant::now() - Duration::from_secs(11));
+    let id = c.page(None).unwrap()["catalog_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    expire(&mut c, &id);
     assert_eq!(c.select(&initial).unwrap_err().code, "catalog_expired");
 }
+
 #[test]
 fn changed_process_window_geometry_title_and_duplicates_cannot_bind() {
     for change in 0..4 {

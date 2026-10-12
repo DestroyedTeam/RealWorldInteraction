@@ -5,11 +5,16 @@ use crate::native::Window;
 use rwi_core::{DiscoveryQuery, Identity, Result, WindowRelation, WindowSelection, digest, fault};
 use serde::Serialize;
 use serde_json::{Value, json};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 const TTL: Duration = Duration::from_secs(10);
 const PAGE_ROWS: usize = 8;
 const PAGE_BYTES: usize = 12 * 1024;
+const MAX_SNAPSHOTS: usize = 8;
+const MAX_TOTAL_ROWS: usize = 2048;
+static NEXT_CONTEXT: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct WindowRecord {
@@ -87,9 +92,12 @@ impl WindowRecord {
                 "Window geometry cannot be safely catalogued.",
             ));
         }
+        let display = display.map(DisplayRecord::from_native);
+        // Display reconnection, scale or placement changes invalidate the same
+        // observed window just like geometry/title/process changes do.
         let native_epoch = digest(
             format!(
-                "{}:{process}:{}:{:?}:{}:{:?}",
+                "{}:{process}:{}:{:?}:{}:{:?}:{display:?}",
                 identity.key(),
                 w.id,
                 w.rect,
@@ -113,7 +121,7 @@ impl WindowRecord {
             bounds: [w.rect.x, w.rect.y, w.rect.w, w.rect.h],
             title_truncated: w.title.as_ref().is_some_and(|t| t.len() > 1024),
             title,
-            display: display.map(DisplayRecord::from_native),
+            display,
             semantic_only: false,
         })
     }
@@ -138,60 +146,17 @@ impl WindowRecord {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct Catalog {
+struct Snapshot {
     rows: Vec<WindowRecord>,
-    at: Option<Instant>,
+    at: Instant,
     id: String,
     header: Value,
 }
-impl Catalog {
-    pub(crate) fn replace(&mut self, rows: Vec<WindowRecord>, header: Value) -> Result<Value> {
-        if rows.len() > 2048
-            || rows
-                .iter()
-                .enumerate()
-                .any(|(i, w)| rows[..i].iter().any(|p| p.window == w.window))
-        {
-            return Err(fault(
-                "catalog_identity_ambiguous",
-                "Native catalog exceeds its bound or repeats a CGWindowID; no binding is accepted.",
-            ));
-        }
-        self.id =
-            rwi_core::digest(format!("{:?}:{}", std::time::SystemTime::now(), header).as_bytes());
-        self.at = Some(Instant::now());
-        self.rows = rows;
-        self.header = header;
-        self.page(None)
+impl Snapshot {
+    fn fresh(&self, now: Instant) -> bool {
+        now.saturating_duration_since(self.at) <= TTL
     }
-    fn require_fresh(&self) -> Result<()> {
-        if self.at.is_none_or(|at| at.elapsed() > TTL) {
-            return Err(fault(
-                "catalog_expired",
-                "Discover again before selecting; cached window rows are not current facts.",
-            ));
-        }
-        Ok(())
-    }
-    pub(crate) fn page(&self, cursor: Option<&str>) -> Result<Value> {
-        self.require_fresh()?;
-        let offset = if let Some(cursor) = cursor {
-            let (id, offset) = cursor
-                .split_once('/')
-                .ok_or_else(|| fault("invalid_catalog_cursor", "Use the returned next_cursor."))?;
-            if id != self.id {
-                return Err(fault(
-                    "catalog_expired",
-                    "The cursor belongs to a different discovery/context.",
-                ));
-            }
-            offset
-                .parse::<usize>()
-                .map_err(|_| fault("invalid_catalog_cursor", "Use the returned next_cursor."))?
-        } else {
-            0
-        };
+    fn page(&self, offset: usize) -> Result<Value> {
         if offset > self.rows.len() || (offset == self.rows.len() && offset != 0) {
             return Err(fault(
                 "invalid_catalog_cursor",
@@ -214,6 +179,12 @@ impl Catalog {
                 offset == 0 && end == self.rows.len() && page["enumeration_complete"] == true
             );
             page["catalog_ttl_ms"] = json!(TTL.as_millis() as u64);
+            page["catalog_cache"] = json!({
+                "mode": "multi_snapshot",
+                "max_snapshots": MAX_SNAPSHOTS,
+                "max_total_rows": MAX_TOTAL_ROWS,
+                "per_snapshot_ttl_ms": TTL.as_millis() as u64,
+            });
             if serde_json::to_vec(&page)
                 .map_err(|_| fault("catalog_encoding", "Invalid native catalog metadata."))?
                 .len()
@@ -230,28 +201,159 @@ impl Catalog {
             count -= 1;
         }
     }
+}
+
+/// Discovery queries retain separate snapshots in this desktop context. Neither
+/// a later query nor a page read refreshes the original snapshot's authority.
+pub(crate) struct Catalog {
+    snapshots: VecDeque<Snapshot>,
+    context: String,
+    sequence: u64,
+}
+impl Default for Catalog {
+    fn default() -> Self {
+        Self {
+            snapshots: VecDeque::new(),
+            context: digest(
+                format!(
+                    "{:?}:{}",
+                    std::time::SystemTime::now(),
+                    NEXT_CONTEXT.fetch_add(1, Ordering::Relaxed)
+                )
+                .as_bytes(),
+            ),
+            sequence: 0,
+        }
+    }
+}
+impl Catalog {
+    pub(crate) fn replace(&mut self, rows: Vec<WindowRecord>, header: Value) -> Result<Value> {
+        if rows.len() > MAX_TOTAL_ROWS
+            || rows
+                .iter()
+                .enumerate()
+                .any(|(i, w)| rows[..i].iter().any(|p| p.window == w.window))
+        {
+            return Err(fault(
+                "catalog_identity_ambiguous",
+                "Native catalog exceeds its bound or repeats a CGWindowID; no binding is accepted.",
+            ));
+        }
+        if !header.is_object() {
+            return Err(fault(
+                "catalog_encoding",
+                "Native catalog metadata must be an object.",
+            ));
+        }
+        if serde_json::to_vec(&header)
+            .map_err(|_| fault("catalog_encoding", "Invalid native catalog metadata."))?
+            .len()
+            > PAGE_BYTES
+        {
+            return Err(fault(
+                "catalog_page_budget",
+                "Native catalog metadata exceeds the public 12 KiB budget.",
+            ));
+        }
+        let sequence = self.sequence.checked_add(1).ok_or_else(|| {
+            fault(
+                "catalog_sequence_exhausted",
+                "Create a new desktop context before discovering again.",
+            )
+        })?;
+        let now = Instant::now();
+        let candidate = Snapshot {
+            rows,
+            at: now,
+            id: digest(format!("{}:{sequence}", self.context).as_bytes()),
+            header,
+        };
+        // Validate before pruning/eviction so refused metadata never destroys
+        // a previously returned cursor or selectable observation.
+        let page = candidate.page(0)?;
+        self.snapshots.retain(|snapshot| snapshot.fresh(now));
+        let mut retained_rows: usize = self.snapshots.iter().map(|s| s.rows.len()).sum();
+        while self.snapshots.len() >= MAX_SNAPSHOTS
+            || retained_rows + candidate.rows.len() > MAX_TOTAL_ROWS
+        {
+            if let Some(oldest) = self.snapshots.pop_front() {
+                retained_rows -= oldest.rows.len();
+            }
+        }
+        self.snapshots.push_back(candidate);
+        self.sequence = sequence;
+        Ok(page)
+    }
+    pub(crate) fn page(&self, cursor: Option<&str>) -> Result<Value> {
+        let now = Instant::now();
+        let (snapshot, offset) = if let Some(cursor) = cursor {
+            let (id, offset) = cursor
+                .split_once('/')
+                .ok_or_else(|| fault("invalid_catalog_cursor", "Use the returned next_cursor."))?;
+            let offset = offset
+                .parse::<usize>()
+                .map_err(|_| fault("invalid_catalog_cursor", "Use the returned next_cursor."))?;
+            let snapshot = self
+                .snapshots
+                .iter()
+                .find(|snapshot| snapshot.id == id && snapshot.fresh(now))
+                .ok_or_else(|| {
+                    fault(
+                        "cursor_expired",
+                        "This discovery cursor expired, was evicted, or belongs to another context; discover again.",
+                    )
+                })?;
+            (snapshot, offset)
+        } else {
+            let snapshot = self
+                .snapshots
+                .back()
+                .filter(|snapshot| snapshot.fresh(now))
+                .ok_or_else(Self::expired)?;
+            (snapshot, 0)
+        };
+        snapshot.page(offset)
+    }
+    fn expired() -> rwi_core::Fault {
+        fault(
+            "catalog_expired",
+            "Discover again before selecting; cached window rows are not current facts.",
+        )
+    }
     pub(crate) fn select(&self, selection: &WindowSelection) -> Result<WindowRecord> {
-        self.require_fresh()?;
+        let now = Instant::now();
+        if !self.snapshots.iter().any(|snapshot| snapshot.fresh(now)) {
+            return Err(Self::expired());
+        }
         if !matches!(selection.relation, WindowRelation::Initial) {
             return Err(fault(
                 "capability_unavailable",
                 "Native macOS owner-chain transitions are not implemented. Use a fresh explicit initial selection under the same authorized desktop; this does not activate it.",
             ));
         }
-        self.rows
+        let mut matches = self
+            .snapshots
             .iter()
-            .find(|w| {
+            .filter(|snapshot| snapshot.fresh(now))
+            .flat_map(|snapshot| &snapshot.rows)
+            .filter(|w| {
                 w.window == selection.window
                     && w.pid == selection.pid
                     && w.native_epoch == selection.native_epoch
-            })
-            .cloned()
-            .ok_or_else(|| {
-                fault(
-                    "window_not_discovered",
-                    "Select an exact fresh catalog entry, never a title/PID substitute.",
-                )
-            })
+            });
+        let found = matches.next().ok_or_else(|| {
+            fault(
+                "window_not_discovered",
+                "Select an exact fresh catalog entry, never a title/PID substitute.",
+            )
+        })?;
+        if matches.any(|other| other != found) {
+            return Err(fault(
+                "catalog_identity_ambiguous",
+                "Matching CGWindowID/PID/epoch observations disagree; wait for expiry or open a fresh context, then discover and select explicitly.",
+            ));
+        }
+        Ok(found.clone())
     }
 }
 
@@ -265,5 +367,7 @@ pub(crate) fn matches_query(window: &Window, query: &DiscoveryQuery) -> bool {
         })
 }
 
+#[cfg(test)]
+mod registry_tests;
 #[cfg(test)]
 mod tests;
