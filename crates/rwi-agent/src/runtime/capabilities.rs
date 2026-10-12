@@ -111,7 +111,8 @@ impl Runtime {
             "identity": identity,
             "values": {
                 "current_foreground": native_capabilities.get("current_foreground"),
-                "user_input_recent_seconds": native_capabilities.get("user_input_recent_seconds")
+                "user_input_recent_seconds": native_capabilities.get("user_input_recent_seconds"),
+                "pointer_feedback": native_capabilities.get("pointer_feedback")
             },
             "captured_unix_ms": std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64,
@@ -184,7 +185,11 @@ pub(super) fn refresh_volatile_target_facts(
         else {
             continue;
         };
-        for name in ["current_foreground", "user_input_recent_seconds"] {
+        for name in [
+            "current_foreground",
+            "user_input_recent_seconds",
+            "pointer_feedback",
+        ] {
             let value = if same_identity {
                 facts["values"]
                     .get(name)

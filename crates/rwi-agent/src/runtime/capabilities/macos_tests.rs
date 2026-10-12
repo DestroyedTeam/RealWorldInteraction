@@ -86,3 +86,45 @@ fn macos_permissions_are_independent_and_binding_replaces_the_foreground_gate() 
         Some("selected_window_required")
     );
 }
+
+#[test]
+fn pointer_feedback_refresh_uses_same_identity_sample_without_replacing_binding() {
+    let mut targets = json!([{"identity":{"session":"own"},"capabilities":{
+        "pointer_feedback":{"visible":true},"window_selected":false,"capture":"exact"}}]);
+    refresh_volatile_target_facts(
+        &mut targets,
+        &json!({"identity":{"session":"own"},
+        "values":{"pointer_feedback":{"visible":false},"current_foreground":null,
+                  "user_input_recent_seconds":0.0}}),
+    );
+    assert_eq!(
+        targets[0]["capabilities"]["pointer_feedback"]["visible"],
+        false
+    );
+    assert_eq!(targets[0]["capabilities"]["window_selected"], false);
+    assert_eq!(targets[0]["capabilities"]["capture"], "exact");
+}
+
+#[test]
+fn pointer_feedback_refresh_clears_stale_value_when_sample_is_unavailable() {
+    let mut targets = json!([{"identity":{"session":"own"},
+        "capabilities":{"pointer_feedback":{"visible":true}}}]);
+    refresh_volatile_target_facts(
+        &mut targets,
+        &json!({"identity":{"session":"own"},"values":{}}),
+    );
+    assert!(targets[0]["capabilities"]["pointer_feedback"].is_null());
+}
+
+#[test]
+fn pointer_feedback_refresh_never_copies_another_desktop_sample() {
+    for identity in [json!({"session":"other"}), serde_json::Value::Null] {
+        let mut targets = json!([{"identity":{"session":"own"},
+            "capabilities":{"pointer_feedback":{"visible":true}}}]);
+        refresh_volatile_target_facts(
+            &mut targets,
+            &json!({"identity":identity,"values":{"pointer_feedback":{"visible":false}}}),
+        );
+        assert!(targets[0]["capabilities"]["pointer_feedback"].is_null());
+    }
+}
