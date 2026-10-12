@@ -2109,3 +2109,7 @@ R73小浮层上限 **280×300点**及 `eye.slash / play.fill / xmark` 隐藏／�
 ## 2026-10-13 · R89：同一原生会话后台切前台并由另一进程消费
 
 fixture-only有界逐callback时间线已实现，89 receiver tests、807 workspace tests通过。实机native sequence19，30后台/49前台moved，began/end1/1、cancel0、目的external consume1；原receipt goal_verified=false保留，独立接收证明业务效果。两own fixtures退出0/0，原请求释放/no replay，Agent/MCP未部署。R88 cancel仍保留，不宣称其根因已修。下一项修复已证实单Catalog跨PID发现互相覆盖，采用独立TTL有界registry且不松原生身份校验。报告：/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r89-native-callback-timeline.md
+
+## 2026-10-13 · R90：交错查询保留独立快照并部署实机验证
+
+Catalog有界8份/2048总rows/独立10秒TTL，显示metadata进入epoch；NativeMacDesktop实际身份复验未改。旧Agent实际A/B查询丢A，新Agent两侧attach及原cursor保持通过，旧A TTL不被B刷新、错epoch拒绝。Agent-only稳定签名部署32995，四权限/config/profile/MCP不变，无人工重启；own fixtures退出0/0。818 workspace、16 Catalog、1实际MCP synthetic contract、89 fixture、fmt/clippy/架构gate通过；初次tests608超上限已拆分修复，保留失败。报告：/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r90-interleaved-discovery.md

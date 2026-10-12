@@ -3,7 +3,7 @@
   "updated": "2026-10-13",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r89-native-callback-timeline.md",
+  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r90-interleaved-discovery.md",
   "scope": "macOS; exact own Receiver allocated to virtual display UUID 13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/Chrome or existing documents; own RWI preview controls allocated to builtin display1 only; no whole-main-screen capture",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -22,7 +22,7 @@
     "hidden",
     "minimized"
   ],
-  "this_turn_tested_state": "R89 native sequence19 survives BG-to-FG with49 FG moves; external destination consume1; scoped fixture only, R88 cancelled result retained",
+  "this_turn_tested_state": "R90 native interleaved discovery baseline refusal repaired; retained cursor and independent TTL verified after signed Agent-only deploy",
   "foreground_extension": {
     "tool": "computer.focus_window",
     "state": "loaded40_validator_and_native_explicit_transition_accepted",
@@ -524,7 +524,7 @@
     }
   ],
   "priority_order": [
-    "R90：有界context-local多Catalog快照，独立TTL与exact native revalidation，修复跨PID发现覆盖",
+    "R91：代表性真实浏览器新profile／本地页面多窗口与隐私生命周期、native输入与独立回读、分层耗时和输出量",
     "R88 native paired DnD BG->FG after actual native session begins; retain R47 ordinary-drag OS Command+Tab and R86/R87 drop/cancel/exit, never replay them or substitute them for this distinct case.",
     "F05 cold background view/tracking/tooltip and F07 actual keyboard recipient/foreground preservation, using explicitly allocated autonomous actors without human participation.",
     "F08/F09/F10 capture/input state distinctions: retain R79 exact minimized pixels and R80 limited native Live frames; validate pending formal Host/dynamic hidden/offscreen scopes without unhide fallback.",
@@ -5895,5 +5895,68 @@
     }
   },
   "r89_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r89-native-callback-timeline.md",
-  "r89_next_catalog_fix": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-callback-timeline-r89/CATALOG_INTERLEAVING_FOLLOWUP.json"
+  "r89_next_catalog_fix": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-callback-timeline-r89/CATALOG_INTERLEAVING_FOLLOWUP.json",
+  "r90_catalog_result": {
+    "root": "/Volumes/ChatGPT/Real World Interaction",
+    "actual_native_session_observed": true,
+    "original_request_no_replay": true,
+    "scope": "native exact-window discovery/attachment, retained pagination, per-snapshot TTL and wrong-epoch negative; no input during cache verification; two explicit own End AXPress cleanup actions only",
+    "native_interleaving_baseline_source_refused": true,
+    "native_interleaving_modified_both_attached": true,
+    "retained_cursor_same_snapshot_verified": true,
+    "independent_TTL_negative_verified": true,
+    "wrong_epoch_refused_before_native_dispatch": true,
+    "Agent_deployed": true,
+    "agent_pid": 32995,
+    "agent_instance": "108dc859-6575-4cc2-bd35-ed0e71ef5a54",
+    "code_signing_or_pairing_replaced": false,
+    "MCP_binary_changed": false,
+    "native_bind_revalidation_unchanged": true,
+    "source_and_destination_cleaned": true,
+    "post_fixture_exit_statuses": {
+      "source": 0,
+      "destination": 0
+    },
+    "baseline_fixture_lifetime_exit_statuses": {
+      "source": 0,
+      "destination": 0
+    },
+    "copy_baseline_modified_rollback_reapplied": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "full_goal_complete": false
+  },
+  "r90_catalog_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r90-interleaved-discovery.md",
+  "r90_offline_counts": {
+    "passed": 818,
+    "failed": 0,
+    "ignored": 11,
+    "suites": 43
+  },
+  "r90_current_deployment": {
+    "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+    "original_hash": "0246d271b4f4685e63ee5f0c8ec309a5f6d9cfbdd24aa530a310cbf435758f03",
+    "installed_hash": "29e16d8c33b70011971e9d8c90dfc4ee9b0dcd0052cd8c8ff76ccce65b930c65",
+    "candidate_hash": "18e6a9fe986636958df34185858a107bb651eb2966c82be6ab294131e3a3dd7c",
+    "designated_requirement": "identifier \"com.destroyedteam.real-world-interaction.agent\" and certificate leaf = H\"24b346a95ec8f450f7d8433a2e1876568dbcb2f8\"",
+    "protected_public_config_hashes": {
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/rwi-agent.json": "39d4b3db32d9c26dd8b2ff8ddca5ba7c866f809528816ca93dd45fb8dab35362",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/profile.json": "439c46c974ac96ee243bee3258b553fa10d2a5b89d23788c69ff9b95bd72f799",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/agent/certificate.der": "5a55da369b6dfa6ad5e00d69a67b27a0c0549ede7ccc3c6377d4c3350649978a",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/ca.der": "aa370c2e670a3bf9bf60ab39a854ed351aa45c86e726c74f93174a388379e721",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/pairing-renewable-20260924/model/certificate.der": "cf734d81370b9034d050b674b88d3476e78ec120de8603c180c55b47baf7fcd5",
+      "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/client-v1/bin/rwi-mcp": "e48ad9f1111764ceea008db0b41e7e1b7c5394c136aecbd47bcb0d1d2a85cee4"
+    },
+    "rollback_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.candidate-catalog-registry-r90.app",
+    "retained_baseline_app": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/interleaved-discovery-registry-r90/deployment/baseline/RWI Agent.app",
+    "certificate_replaced": false,
+    "pairing_replaced": false,
+    "recovery_invoked": false,
+    "mcp_binary_changed": false,
+    "input_sent_by_controller": false
+  }
 }
