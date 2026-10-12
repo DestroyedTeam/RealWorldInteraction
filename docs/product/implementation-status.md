@@ -1,3 +1,27 @@
+## 2026-10-13 · 当前 R94：默认输出精简实测与 MCP-only 部署完成
+
+- `compact_snapshot_diagnostics` / `consistency.ax_coverage_after_ref=/coverage` 只替换精确重复；动作、全ID、坐标、关键状态、unknown/限制、完整缓存和原图不删。可选未完成operation保留inline；原timing规则保持。
+- 七unit同输入副本实测101→0→rollback101→reapply0，4/3fail→7/0fail；二进制同固定EXPECT1亦101/0/101/0、旧5204 SHA恢复。副本缺bootstrap编译101已按未修改依赖闭包纠正，原literal错误保留，未重播完成项/GUI。
+- 真实MCP＋合成mTLS场景6×2：默认content/structured各净500B、wire净1040B；一张固定PNG原文、完整cache/JSON/hash与无新增deviceRPC已验。非native画质、CPU、耗时或token收益。旧443B／5.322%模型另记不混用。
+- 新371source九门禁全0、workspace867/0/11。MCPonly实际原子部署fe13586…，fresh42唯一tools／all schemas不变、四权限仍true、Agent88136/d9ecca19及11protectedhash保留；不重启Agent/Host/其他adapter、不替证书/配对。当前Host旧inode不冒称刷新，不要求用户重启。
+- Live沿用max280×300pt／两28pt隐藏恢复与关闭控件、源细节不降；无需休息中的用户人工配合。R92AppKit单击/前台键盘保留已验，Chrome后台counter0缺口仍在，继续真实document接收与完整F01–F16。R93两localcommits尚未在本段写入时推送，R92远端CI成功不冒用于新head。
+
+报告：`/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r94-snapshot-metadata-compaction.md`。同四角色与原基线继续追加，实际最终copy/hash回读以checkpoint和VERIFICATION为准。
+
+---
+
+## 2026-10-13 · 当前 R94：MCP 默认 snapshot 去重已实现，七项保护回归通过
+
+- `compact_snapshot_diagnostics` 仅将成功且已留完整原件的 `consistency.ax_coverage_after` 精确重复体替换为 `/coverage` 引用；坐标、actions、全 ID、coverage false/null/限制、未知字段与图片保留。完整 `computer.result` 原件和 hash 保留，不再 RPC 或重放输入。
+- 形状／缓存引用缺失、不同 coverage、已有 ref、错误、显式 timings 不去重；可选 operation 非终态／未释放／pending／不确定保留 inline coverage。原默认 timing 规则不变，不冒称不确定 snapshot 全原件展示。
+- 最初同六专测101→0，Clippy `nonminimal_bool` 实际101已保留并等价修正；新增保护后实际 Clippy／fmt／七专测均0。完整工作区、同四角色回滚与新 MCP 进程／部署的当前结果继续写入追加 ledger，不拿专测代替完整验收。
+- 六个旧 Chrome 场景的净443B／median约5.322%是重新序列化反事实模型，不是实测 token／CPU／native capture加速。短 ID 尚未实现，严格多窗/frame契约继续；当前Host旧MCP inode不冒称刷新。
+- R93独立事件内存校准、R92AppKit后台消费／前台键盘保留和publicPR1 exact-head CI成功全部沿用；Chrome后台counter仍0，继续真实document事件捕获。Live已缩至280×300pt上限、两28pt按钮，不降源图，不需休息中的用户配合。完整F01–F16未封版。
+
+报告：`/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r94-snapshot-metadata-compaction.md`；四角色原路径及原基线保持，证据延伸而非替换。
+
+---
+
 ## 2026-10-13 · 当前 R93：无输入坐标校准完成，生产投递不改
 
 - 新增显式 `CGEventCreateCopy` 内存诊断：两原件＋六副本同时存活且八指针互异；每变体前后及最终原 Quartz／受保护字段保持。原版无example exit101，修改后exit0，五专测／fmt／Clippy通过；9工作区门禁全0。

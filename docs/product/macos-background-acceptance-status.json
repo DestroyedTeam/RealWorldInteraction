@@ -3,7 +3,7 @@
   "updated": "2026-10-13",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r93-window-location-memory.md",
+  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r94-snapshot-metadata-compaction.md",
   "scope": "macOS; own Receiver and isolated Chrome A/B on allocated virtual display UUID13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/user browser or existing document input; no whole-main-screen capture; R91 normal/private A/B/C outcomes retained.",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -22,7 +22,7 @@
     "hidden",
     "minimized"
   ],
-  "this_turn_tested_state": "R93 event-memory-only calibration completed, 8 independent objects and original location/field invariants; synthetic window roundtrip identical, not client effect or Chrome explanation",
+  "this_turn_tested_state": "R94 default exact duplicate snapshot diagnostics implemented; pure7 and actualMCPbinary sameinput101/0/101/0; actual synthetic6-scene formatted text -500B/wire -1040B; newest full9gates867/0/11 and MCP-onlyfe135 atomicinstall accepted; currentHostold formatter not refreshed; no nativeinput thisscope",
   "foreground_extension": {
     "tool": "computer.focus_window",
     "state": "loaded40_validator_and_native_explicit_transition_accepted",
@@ -541,7 +541,69 @@
         "scope": "caller observed concurrent tool await wall times; includes adapter/queue/transport/capture; not native CPU or capture-only benchmark",
         "active_Live_capture_measured": false
       },
-      "R84_additional": "Actual fresh loaded timing schema used; placement442ms and close105/101ms are adapter totals with stage breakdown, not native CPU or broad superiority. Formal native two-source composition now accepted; full benchmark/client matrix remains."
+      "R84_additional": "Actual fresh loaded timing schema used; placement442ms and close105/101ms are adapter totals with stage breakdown, not native CPU or broad superiority. Formal native two-source composition now accepted; full benchmark/client matrix remains.",
+      "r94_additional": {
+        "result": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/actual-run-r94/RESULT.json",
+        "changed_symbol": "compact_snapshot_diagnostics",
+        "changed_field": "consistency.ax_coverage_after -> consistency.ax_coverage_after_ref=/coverage",
+        "matching_final_test_count": 7,
+        "initial_baseline_modified_exit_statuses": [
+          101,
+          0
+        ],
+        "initial_clippy_exit_status": 101,
+        "repaired_clippy_exit_status": 0,
+        "operation_guard_clippy_exit_status": 0,
+        "optional_operation_uncertain_inline_coverage_retained": true,
+        "full_cached_original_unchanged": true,
+        "model_net_saved_bytes": 443,
+        "model_median_percent": 5.322,
+        "model_is_actual_runtime_token_CPU_benchmark": false,
+        "short_aliases_implemented": false,
+        "native_input_sent": false,
+        "installed_formatter_changed_at_report_write": false,
+        "full_goal_complete": false,
+        "pure_seven_copy_behaviors": [
+          101,
+          0,
+          101,
+          0
+        ],
+        "pure_seven_old_test_counts": [
+          4,
+          3
+        ],
+        "pure_seven_new_test_counts": [
+          7,
+          0
+        ],
+        "same_constant_EXPECT_COMPACT_binary_behaviors": [
+          101,
+          0,
+          101,
+          0
+        ],
+        "old_binary_hash_restored": true,
+        "actual_format_acceptance": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/operator-preparation/actual-real-mcp-format-r94/ACCEPTANCE.json",
+        "actual_format_scope": "actualMCP process with archive-derived synthetic scene, not reconstructed rawnative/HostGUI",
+        "actual_default_text_bytes_saved": 500,
+        "actual_default_structured_bytes_saved": 500,
+        "actual_default_wire_bytes_saved": 1040,
+        "full_cache_and_exact_synthetic_PNG_verified": true,
+        "actual_CPU_latency_token_gain_attested": false,
+        "newest_full_gates": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/OFFLINE_FINAL_FORMAT_GATES_R94.json",
+        "workspace_passed_failed_ignored": [
+          867,
+          0,
+          11
+        ],
+        "installed_formatter_changed": true,
+        "installed_formatter_sha256": "fe13586a68fbb02915f7738f9ccd0fed601883589d8c22ad0eb8fa9ffb09168e",
+        "current_Host_formatter_refreshed": false,
+        "installed_new_process_verified": true,
+        "MCP_only_deployment_record": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/operator-preparation/installed-mcp-r94/DEPLOYED_MCP_ONLY_R94.json",
+        "human_cooperation_required": false
+      }
     }
   ],
   "priority_order": [
@@ -611,15 +673,28 @@
     "agent_pid": 88136,
     "agent_instance": "d9ecca19-6ca4-4a0e-8253-928a6e4b0ec2",
     "installed_hash": "41407f43f286af9f6a00a9b8221bb20f515484837eba7ac30a4cae33fa1772f3",
-    "MCP_installed_hash": "5204c6d3734e8c094b7f164ff4e54de3d089f4708056e6a109dd7a216f3b3af9",
+    "MCP_installed_hash": "fe13586a68fbb02915f7738f9ccd0fed601883589d8c22ad0eb8fa9ffb09168e",
     "MCP_typed_field_loaded_in_current_task": false,
     "certificate_replaced": false,
     "pairing_replaced": false,
     "codex_restart_required_for_generic_acceptance": false,
     "current_loaded_instance_verified": true,
     "MCP_fresh_stdio_tools": 42,
-    "MCP_only_deployment_record": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/background-pointer-route-r92/mcp-deployment/installed-mcp-r92/DEPLOYED_MCP_ONLY_R92.json",
-    "MCP_current_Host_schema_refreshed": false
+    "MCP_only_deployment_record": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/operator-preparation/installed-mcp-r94/DEPLOYED_MCP_ONLY_R94.json",
+    "MCP_current_Host_schema_refreshed": false,
+    "MCP_current_Host_formatter_refreshed": false,
+    "Agent_restarted_this_turn": false,
+    "MCP_all_input_schemas_unchanged": true,
+    "protected_file_count": 11,
+    "permissions": {
+      "accessibility": true,
+      "listen_event": true,
+      "post_event": true,
+      "requests_permission": false,
+      "screen_capture": true,
+      "screenshot_api": true
+    },
+    "profile_configuration_public_certificates_and_agent_unchanged": true
   },
   "current_comprehensive_acceptance": {
     "target": "/Volumes/ChatGPT/Real World Interaction",
@@ -879,6 +954,21 @@
         "pairing_replaced": false,
         "codex_restart_required": false
       }
+    },
+    {
+      "agent_app": "/Users/vincentadamnemessis/Library/Application Support/RealWorldInteraction/agent-mac-v1/RWI Agent.app",
+      "agent_pid": 88136,
+      "agent_instance": "d9ecca19-6ca4-4a0e-8253-928a6e4b0ec2",
+      "installed_hash": "41407f43f286af9f6a00a9b8221bb20f515484837eba7ac30a4cae33fa1772f3",
+      "MCP_installed_hash": "5204c6d3734e8c094b7f164ff4e54de3d089f4708056e6a109dd7a216f3b3af9",
+      "MCP_typed_field_loaded_in_current_task": false,
+      "certificate_replaced": false,
+      "pairing_replaced": false,
+      "codex_restart_required_for_generic_acceptance": false,
+      "current_loaded_instance_verified": true,
+      "MCP_fresh_stdio_tools": 42,
+      "MCP_only_deployment_record": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/background-pointer-route-r92/mcp-deployment/installed-mcp-r92/DEPLOYED_MCP_ONLY_R92.json",
+      "MCP_current_Host_schema_refreshed": false
     }
   ],
   "claim_correction_history": [
@@ -6521,5 +6611,67 @@
     "production_input_changed": false,
     "chrome_explained": false,
     "all_features_complete": false
+  },
+  "r94_snapshot_projection": {
+    "result": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/actual-run-r94/RESULT.json",
+    "changed_symbol": "compact_snapshot_diagnostics",
+    "changed_field": "consistency.ax_coverage_after -> consistency.ax_coverage_after_ref=/coverage",
+    "matching_final_test_count": 7,
+    "initial_baseline_modified_exit_statuses": [
+      101,
+      0
+    ],
+    "initial_clippy_exit_status": 101,
+    "repaired_clippy_exit_status": 0,
+    "operation_guard_clippy_exit_status": 0,
+    "optional_operation_uncertain_inline_coverage_retained": true,
+    "full_cached_original_unchanged": true,
+    "model_net_saved_bytes": 443,
+    "model_median_percent": 5.322,
+    "model_is_actual_runtime_token_CPU_benchmark": false,
+    "short_aliases_implemented": false,
+    "native_input_sent": false,
+    "installed_formatter_changed_at_report_write": false,
+    "full_goal_complete": false,
+    "pure_seven_copy_behaviors": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "pure_seven_old_test_counts": [
+      4,
+      3
+    ],
+    "pure_seven_new_test_counts": [
+      7,
+      0
+    ],
+    "same_constant_EXPECT_COMPACT_binary_behaviors": [
+      101,
+      0,
+      101,
+      0
+    ],
+    "old_binary_hash_restored": true,
+    "actual_format_acceptance": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/operator-preparation/actual-real-mcp-format-r94/ACCEPTANCE.json",
+    "actual_format_scope": "actualMCP process with archive-derived synthetic scene, not reconstructed rawnative/HostGUI",
+    "actual_default_text_bytes_saved": 500,
+    "actual_default_structured_bytes_saved": 500,
+    "actual_default_wire_bytes_saved": 1040,
+    "full_cache_and_exact_synthetic_PNG_verified": true,
+    "actual_CPU_latency_token_gain_attested": false,
+    "newest_full_gates": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/OFFLINE_FINAL_FORMAT_GATES_R94.json",
+    "workspace_passed_failed_ignored": [
+      867,
+      0,
+      11
+    ],
+    "installed_formatter_changed": true,
+    "installed_formatter_sha256": "fe13586a68fbb02915f7738f9ccd0fed601883589d8c22ad0eb8fa9ffb09168e",
+    "current_Host_formatter_refreshed": false,
+    "installed_new_process_verified": true,
+    "MCP_only_deployment_record": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/mcp-snapshot-readability-proposal-r94/operator-preparation/installed-mcp-r94/DEPLOYED_MCP_ONLY_R94.json",
+    "human_cooperation_required": false
   }
 }
