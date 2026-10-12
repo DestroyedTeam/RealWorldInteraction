@@ -24,7 +24,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if options.check_only {
         println!(
             "{}",
-            serde_json::json!({"configuration_valid":true,"gui_created":false,"input_sent":false,"native_binding_verified":false,"native_dnd_controls":options.native_dnd_controls,"command_tab":options.command_tab})
+            serde_json::json!({
+                "configuration_valid":true,"gui_created":false,"input_sent":false,
+                "native_binding_verified":false,"native_dnd_controls":options.native_dnd_controls,
+                "command_tab":options.command_tab,
+                "native_timeline":{
+                    "implemented":true,"enabled":options.native_dnd_controls,
+                    "max_events":native_dnd::MAX_TIMELINE_EVENTS,
+                    "clock_scope":"process_local_monotonic_plus_unix_samples",
+                    "native_callbacks_observed":false
+                }
+            })
         );
         return Ok(());
     }

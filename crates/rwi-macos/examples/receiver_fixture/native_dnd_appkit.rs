@@ -1,7 +1,7 @@
 //! Public AppKit native drag/drop receiving fixture. No global event producer,
 //! activation, clipboard-general access, hidden transport or production fallback.
 use super::*;
-use crate::native_dnd::{PASTEBOARD_TYPE, Payload};
+use crate::native_dnd::{PASTEBOARD_TYPE, Payload, Phase};
 use objc2::runtime::AnyProtocol;
 
 pub(super) struct Objects {
@@ -156,6 +156,7 @@ extern "C" fn dragged(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
                 ui.state.native_dnd.source_requests,
             );
             let source = objects.source.clone();
+            ui.note_native_timeline(Phase::SourceRequest, None, None);
             ui.flush();
             Some((source, down, payload))
         });
@@ -215,23 +216,24 @@ extern "C" fn mask(_this: &AnyObject, _cmd: Sel, _session: &AnyObject, _context:
 }
 extern "C" fn began(_this: &AnyObject, _cmd: Sel, session: &AnyObject, _point: NSPoint) {
     callback(|| {
+        let sequence = unsafe { msg_send![session, draggingSequenceNumber] };
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.state.native_dnd.source_began += 1;
-                ui.state.native_dnd.active_sequence =
-                    Some(unsafe { msg_send![session, draggingSequenceNumber] });
-                ui.sample_environment();
+                ui.state.native_dnd.active_sequence = Some(sequence);
+                ui.note_native_timeline(Phase::SourceBegan, Some(sequence), None);
                 ui.flush();
             }
         })
     });
 }
-extern "C" fn moved(_this: &AnyObject, _cmd: Sel, _session: &AnyObject, _point: NSPoint) {
+extern "C" fn moved(_this: &AnyObject, _cmd: Sel, session: &AnyObject, _point: NSPoint) {
     callback(|| {
+        let sequence = unsafe { msg_send![session, draggingSequenceNumber] };
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.state.native_dnd.source_moved += 1;
-                ui.sample_environment();
+                ui.note_native_timeline(Phase::SourceMoved, Some(sequence), None);
                 ui.flush();
             }
         })
@@ -240,22 +242,24 @@ extern "C" fn moved(_this: &AnyObject, _cmd: Sel, _session: &AnyObject, _point: 
 extern "C" fn ended(
     _this: &AnyObject,
     _cmd: Sel,
-    _session: &AnyObject,
+    session: &AnyObject,
     _point: NSPoint,
     operation: usize,
 ) {
     callback(|| {
+        let sequence = unsafe { msg_send![session, draggingSequenceNumber] };
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.state.native_dnd.source_ended += 1;
                 ui.state.native_dnd.source_cancelled += u64::from(operation == 0);
                 ui.state.native_dnd.last_source_operation = Some(operation);
+                // Keep the real session and active state in the end receipt before clearing them.
+                ui.note_native_timeline(Phase::SourceEnded, Some(sequence), Some(operation));
                 ui.state.native_dnd.active_sequence = None;
                 if let Some(o) = ui.native_dnd_objects.as_mut() {
                     o.down = None;
                     o.session = None;
                 }
-                ui.sample_environment();
                 ui.flush();
             }
         })
@@ -286,6 +290,7 @@ unsafe fn read(info: &AnyObject) -> Option<String> {
 fn destination(info: &AnyObject, update: bool) -> usize {
     let mut operation = 0;
     callback(|| {
+        let sequence = unsafe { msg_send![info, draggingSequenceNumber] };
         let valid = unsafe { read(info) }.is_some();
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
@@ -295,7 +300,15 @@ fn destination(info: &AnyObject, update: bool) -> usize {
                     ui.state.native_dnd.destination_entered += 1;
                 }
                 operation = usize::from(ui.state.native_dnd.enabled && valid);
-                ui.sample_environment();
+                ui.note_native_timeline(
+                    if update {
+                        Phase::DestinationUpdated
+                    } else {
+                        Phase::DestinationEntered
+                    },
+                    Some(sequence),
+                    Some(operation),
+                );
                 ui.flush();
             }
         });
@@ -308,11 +321,16 @@ extern "C" fn entered(_this: &AnyObject, _cmd: Sel, info: &AnyObject) -> usize {
 extern "C" fn updated(_this: &AnyObject, _cmd: Sel, info: &AnyObject) -> usize {
     destination(info, true)
 }
-extern "C" fn exited(_this: &AnyObject, _cmd: Sel, _info: *mut AnyObject) {
+extern "C" fn exited(_this: &AnyObject, _cmd: Sel, info: *mut AnyObject) {
     callback(|| {
+        let sequence = unsafe {
+            info.as_ref()
+                .map(|info| msg_send![info, draggingSequenceNumber])
+        };
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.state.native_dnd.destination_exited += 1;
+                ui.note_native_timeline(Phase::DestinationExited, sequence, None);
                 ui.flush();
             }
         })
@@ -321,11 +339,17 @@ extern "C" fn exited(_this: &AnyObject, _cmd: Sel, _info: *mut AnyObject) {
 extern "C" fn prepare(_this: &AnyObject, _cmd: Sel, info: &AnyObject) -> Bool {
     let mut accepted = false;
     callback(|| {
+        let sequence = unsafe { msg_send![info, draggingSequenceNumber] };
         let valid = unsafe { read(info) }.is_some();
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.state.native_dnd.destination_prepared += 1;
                 accepted = ui.state.native_dnd.enabled && valid;
+                ui.note_native_timeline(
+                    Phase::DestinationPrepared,
+                    Some(sequence),
+                    Some(usize::from(accepted)),
+                );
                 ui.flush();
             }
         });
@@ -352,18 +376,27 @@ extern "C" fn perform(_this: &AnyObject, _cmd: Sel, info: &AnyObject) -> Bool {
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 consumed = ui.state.native_dnd.consume(seq, &text, external, window);
-                ui.sample_environment();
+                ui.note_native_timeline(
+                    Phase::DestinationPerformed,
+                    Some(seq),
+                    Some(usize::from(consumed)),
+                );
                 ui.flush();
             }
         });
     });
     Bool::from(consumed)
 }
-extern "C" fn conclude(_this: &AnyObject, _cmd: Sel, _info: *mut AnyObject) {
+extern "C" fn conclude(_this: &AnyObject, _cmd: Sel, info: *mut AnyObject) {
     callback(|| {
+        let sequence = unsafe {
+            info.as_ref()
+                .map(|info| msg_send![info, draggingSequenceNumber])
+        };
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.state.native_dnd.destination_concluded += 1;
+                ui.note_native_timeline(Phase::DestinationConcluded, sequence, None);
                 ui.flush();
             }
         })

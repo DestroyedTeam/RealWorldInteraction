@@ -167,6 +167,42 @@ fn callback(f: impl FnOnce()) {
     }
 }
 impl UI {
+    /// Diagnostic oracle for this allocated receiving fixture only. It neither
+    /// changes native session state nor acknowledges an application goal.
+    pub(super) fn note_native_timeline(
+        &mut self,
+        phase: crate::native_dnd::Phase,
+        native_sequence: Option<isize>,
+        operation: Option<usize>,
+    ) {
+        if !self.state.native_dnd.enabled {
+            return;
+        }
+        static ORIGIN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        let origin = ORIGIN.get_or_init(std::time::Instant::now);
+        self.sample_environment();
+        let unix_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .and_then(|d| u64::try_from(d.as_millis()).ok());
+        // This origin is local to the receiving process, not a clock for sorting
+        // callbacks from another application. Unix samples retain that distinction.
+        let process_monotonic_ns = u64::try_from(origin.elapsed().as_nanos()).unwrap_or(u64::MAX);
+        self.state
+            .native_dnd
+            .note_timeline(crate::native_dnd::TimelineEvent {
+                phase,
+                native_sequence,
+                active_sequence: self.state.native_dnd.active_sequence,
+                operation,
+                unix_ms,
+                process_monotonic_ns,
+                app_active: self.state.app_active,
+                window_key: self.state.window_key,
+                frontmost_pid: self.state.frontmost_pid,
+                app_frontmost: self.state.app_frontmost,
+            });
+    }
     fn arm_first_down_foreground_timer(&mut self, delay_ms: u32) -> Result<(), String> {
         if self.self_foreground_timer.is_some() {
             return Err("own foreground timer already exists; never overwrite it".into());
@@ -1111,14 +1147,19 @@ extern "C" fn own_foreground_requested(_this: &AnyObject, _cmd: Sel, timer: &Any
             };
             let available: bool = msg_send![&*app, respondsToSelector:selector];
             if available {
+                note_own_actor_phase(crate::native_dnd::Phase::ActorBeforeActivate);
                 if legacy {
                     let _: () = msg_send![&*app, activateIgnoringOtherApps:true];
                 } else {
                     let _: () = msg_send![&*app, activate];
                 }
+                note_own_actor_phase(crate::native_dnd::Phase::ActorAfterActivate);
+                note_own_actor_phase(crate::native_dnd::Phase::ActorBeforeOrder);
                 let _: () =
                     msg_send![&*window, makeKeyAndOrderFront:std::ptr::null_mut::<AnyObject>()];
+                note_own_actor_phase(crate::native_dnd::Phase::ActorAfterOrder);
             } else {
+                note_own_actor_phase(crate::native_dnd::Phase::ActorApiUnavailable);
                 UI_STATE.with(|cell| {
                     if let Some(ui) = cell.borrow_mut().as_mut() {
                         ui.state.output_error = Some("own_foreground_api_unavailable".into());
@@ -1131,6 +1172,14 @@ extern "C" fn own_foreground_requested(_this: &AnyObject, _cmd: Sel, timer: &Any
                 ui.flush();
             }
         });
+    });
+}
+fn note_own_actor_phase(phase: crate::native_dnd::Phase) {
+    UI_STATE.with(|cell| {
+        if let Some(ui) = cell.borrow_mut().as_mut() {
+            ui.note_native_timeline(phase, ui.state.native_dnd.active_sequence, None);
+            ui.flush();
+        }
     });
 }
 extern "C" fn lifetime_expired(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {

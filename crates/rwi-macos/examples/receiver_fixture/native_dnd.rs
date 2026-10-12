@@ -1,11 +1,49 @@
 //! Bounded receiving oracle. Only native AppKit callbacks populate this in GUI
 //! runs; pure tests are not native transport or cross-application acceptance.
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 
 pub const PASTEBOARD_TYPE: &str = "com.destroyedteam.rwi.fixture.native-dnd-v1";
 pub const MAX_PAYLOAD_BYTES: usize = 4096;
 const MAX_CONSUMED_SESSIONS: usize = 128;
+pub const MAX_TIMELINE_EVENTS: usize = 256;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Phase {
+    SourceRequest,
+    SourceBegan,
+    SourceMoved,
+    SourceEnded,
+    DestinationEntered,
+    DestinationUpdated,
+    DestinationExited,
+    DestinationPrepared,
+    DestinationPerformed,
+    DestinationConcluded,
+    ActorBeforeActivate,
+    ActorAfterActivate,
+    ActorBeforeOrder,
+    ActorAfterOrder,
+    ActorApiUnavailable,
+}
+
+/// Independent native callback/own-actor snapshots, not an input receipt or a
+/// drop goal. FIFO preserves observed callback order even if wall time changes.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TimelineEvent {
+    pub phase: Phase,
+    pub native_sequence: Option<isize>,
+    pub active_sequence: Option<isize>,
+    pub operation: Option<usize>,
+    pub unix_ms: Option<u64>,
+    pub process_monotonic_ns: u64,
+    pub app_active: Option<bool>,
+    pub window_key: Option<bool>,
+    pub frontmost_pid: Option<i32>,
+    pub app_frontmost: Option<bool>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -48,6 +86,9 @@ impl Payload {
 #[derive(Default, Serialize)]
 pub struct Oracle {
     pub enabled: bool,
+    pub timeline: VecDeque<TimelineEvent>,
+    pub timeline_total: u64,
+    pub timeline_dropped: u64,
     pub source_requests: u64,
     pub source_began: u64,
     pub source_moved: u64,
@@ -76,6 +117,20 @@ pub struct Oracle {
     consumed_sessions: BTreeSet<isize>,
 }
 impl Oracle {
+    /// Recording does not update native session counters, active identity,
+    /// cancellation or payload consumption. Missing snapshots remain unknown.
+    pub fn note_timeline(&mut self, event: TimelineEvent) {
+        if !self.enabled {
+            return;
+        }
+        self.timeline_total += 1;
+        if self.timeline.len() == MAX_TIMELINE_EVENTS {
+            self.timeline.pop_front();
+            self.timeline_dropped += 1;
+        }
+        self.timeline.push_back(event);
+    }
+
     /// Preserve the missing native end callback. Own-fixture shutdown is not
     /// drag cancellation or a successfully consumed second payload.
     pub fn note_pending_native_shutdown(&mut self) -> bool {
@@ -124,6 +179,121 @@ mod tests {
             enabled: true,
             ..Default::default()
         }
+    }
+    fn timeline_event(phase: Phase, native_sequence: Option<isize>) -> TimelineEvent {
+        TimelineEvent {
+            phase,
+            native_sequence,
+            active_sequence: native_sequence,
+            operation: None,
+            unix_ms: None,
+            process_monotonic_ns: 0,
+            app_active: None,
+            window_key: None,
+            frontmost_pid: None,
+            app_frontmost: None,
+        }
+    }
+    #[test]
+    fn disabled_oracle_does_not_record_timeline_or_claim_native_observation() {
+        let mut s = Oracle::default();
+        s.note_timeline(timeline_event(Phase::SourceBegan, Some(10)));
+        assert!(s.timeline.is_empty());
+        assert_eq!(s.timeline_total, 0);
+        assert_eq!(s.timeline_dropped, 0);
+        assert_eq!(s.source_began, 0);
+        assert_eq!(s.active_sequence, None);
+        assert_eq!(s.consumed, 0);
+    }
+    #[test]
+    fn timeline_preserves_callback_order_and_same_native_sequence() {
+        let mut s = enabled();
+        let mut began = timeline_event(Phase::SourceBegan, Some(10));
+        began.unix_ms = Some(100);
+        began.process_monotonic_ns = 1;
+        let mut moved = timeline_event(Phase::SourceMoved, Some(10));
+        moved.unix_ms = Some(90);
+        moved.process_monotonic_ns = 2;
+        let mut ended = timeline_event(Phase::SourceEnded, Some(10));
+        ended.unix_ms = Some(90);
+        ended.process_monotonic_ns = 3;
+        ended.active_sequence = None;
+        ended.operation = Some(0);
+        for event in [began.clone(), moved.clone(), ended.clone()] {
+            s.note_timeline(event);
+        }
+        assert_eq!(s.timeline, VecDeque::from([began, moved, ended]));
+        assert_eq!(s.timeline_total, 3);
+        assert_eq!(s.timeline_dropped, 0);
+        assert_eq!(s.source_began, 0);
+        assert_eq!(s.source_moved, 0);
+        assert_eq!(s.source_ended, 0);
+        assert_eq!(s.source_cancelled, 0);
+        assert_eq!(s.active_sequence, None);
+        assert_eq!(s.last_source_operation, None);
+        assert_eq!(s.destination_performed, 0);
+        assert_eq!(s.consumed, 0);
+    }
+    #[test]
+    fn timeline_capacity_is_fifo_and_overflow_is_explicit() {
+        let mut s = enabled();
+        for i in 0..MAX_TIMELINE_EVENTS {
+            let mut event = timeline_event(Phase::SourceMoved, Some(10));
+            event.process_monotonic_ns = i as u64;
+            s.note_timeline(event);
+        }
+        assert_eq!(s.timeline.len(), MAX_TIMELINE_EVENTS);
+        assert_eq!(s.timeline_total, MAX_TIMELINE_EVENTS as u64);
+        assert_eq!(s.timeline_dropped, 0);
+        for i in MAX_TIMELINE_EVENTS..MAX_TIMELINE_EVENTS + 3 {
+            let mut event = timeline_event(Phase::SourceMoved, Some(10));
+            event.process_monotonic_ns = i as u64;
+            s.note_timeline(event);
+        }
+        assert_eq!(s.timeline.len(), MAX_TIMELINE_EVENTS);
+        assert_eq!(s.timeline_total, MAX_TIMELINE_EVENTS as u64 + 3);
+        assert_eq!(s.timeline_dropped, 3);
+        assert_eq!(s.timeline.front().unwrap().process_monotonic_ns, 3);
+        assert_eq!(
+            s.timeline.back().unwrap().process_monotonic_ns,
+            MAX_TIMELINE_EVENTS as u64 + 2
+        );
+        assert_eq!(
+            s.timeline_total,
+            s.timeline.len() as u64 + s.timeline_dropped
+        );
+    }
+    #[test]
+    fn timeline_serialization_preserves_unknowns_and_explicit_false_separately() {
+        let unknown = timeline_event(Phase::ActorApiUnavailable, None);
+        let value = serde_json::to_value(&unknown).unwrap();
+        assert_eq!(value["phase"], "actor_api_unavailable");
+        for field in [
+            "native_sequence",
+            "active_sequence",
+            "operation",
+            "unix_ms",
+            "app_active",
+            "window_key",
+            "frontmost_pid",
+            "app_frontmost",
+        ] {
+            assert!(value[field].is_null(), "{field}");
+        }
+        assert_eq!(
+            serde_json::from_value::<TimelineEvent>(value).unwrap(),
+            unknown
+        );
+        let mut observed = timeline_event(Phase::ActorBeforeActivate, Some(10));
+        observed.app_active = Some(false);
+        observed.window_key = Some(false);
+        observed.frontmost_pid = Some(41);
+        observed.app_frontmost = Some(false);
+        let observed_value = serde_json::to_value(&observed).unwrap();
+        assert_eq!(observed_value["app_active"], false);
+        assert_eq!(observed_value["window_key"], false);
+        assert_eq!(observed_value["frontmost_pid"], 41);
+        assert_eq!(observed_value["app_frontmost"], false);
     }
     #[test]
     fn default_is_unobserved_not_drop_success() {
