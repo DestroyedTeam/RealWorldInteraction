@@ -3,7 +3,7 @@
   "updated": "2026-10-13",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
-  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r92-background-click.md",
+  "current_report": "/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r93-window-location-memory.md",
   "scope": "macOS; own Receiver and isolated Chrome A/B on allocated virtual display UUID13E4E9B0-47F2-4043-9CDC-878D5441BD41; no game/Feishu/user browser or existing document input; no whole-main-screen capture; R91 normal/private A/B/C outcomes retained.",
   "all_features_accepted": false,
   "acceptance_layers": [
@@ -22,7 +22,7 @@
     "hidden",
     "minimized"
   ],
-  "this_turn_tested_state": "R92 explicit private single click: inactive AppKit actual receipt/correct local coordinate and foreground global-key custody verified; Chrome inactive default/private counters unchanged; no blanket client compatibility",
+  "this_turn_tested_state": "R93 event-memory-only calibration completed, 8 independent objects and original location/field invariants; synthetic window roundtrip identical, not client effect or Chrome explanation",
   "foreground_extension": {
     "tool": "computer.focus_window",
     "state": "loaded40_validator_and_native_explicit_transition_accepted",
@@ -545,7 +545,7 @@
     }
   ],
   "priority_order": [
-    "F02/F03: autonomous no-post window-location memory calibration, then client consumption with new request IDs",
+    "F02/F03: document-level Chrome mouse reception oracle + fresh single-variable private move/pair test; no replay/focus/fallback; R93 pure memory not a transport result",
     "F05: cold background hover, callback/tracking/highlight/tooltip separately",
     "F06-F13: remaining window-family/provider/hidden-state gaps",
     "F15: remaining lost-release/competition/resource negatives; reuse accepted R87/R89/R84 outcomes",
@@ -2399,10 +2399,10 @@
     "full_goal_complete": false
   },
   "current_verified_remote_CI": {
-    "head": "5030cd3067db5cd8357028e908ad043d6b1d9056",
-    "run_id": 38299143364,
+    "head": "6a4360da04c08fa8f8e3e59f6b6759f5d9d5e3fd",
+    "run_id": 38307219546,
     "conclusion": "success",
-    "scope": "R91 only; not R92 uncommitted source"
+    "scope": "R92 committed source only; not new R93 uncommitted example"
   },
   "R50_readonly_pressure": {
     "result": {
@@ -6503,5 +6503,23 @@
     "current_own_live_has_image": false,
     "permissions_still_valid_after_cleanup": true,
     "source_hash_stable_after_acceptance": true
+  },
+  "r93_memory_calibration": {
+    "result": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/window-location-memory-calibration-r93/actual-run-r93/RESULT.json",
+    "full_gates": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/window-location-memory-calibration-r93/OFFLINE_FINAL_GATES_R93.json",
+    "workspace": {
+      "passed": 859,
+      "failed": 0,
+      "ignored": 11,
+      "suites": 43
+    },
+    "scoped_tests": 5,
+    "baseline_missing_example_exit": 101,
+    "modified_memory_exit": 0,
+    "GUI_requested": false,
+    "input_posted": false,
+    "production_input_changed": false,
+    "chrome_explained": false,
+    "all_features_complete": false
   }
 }

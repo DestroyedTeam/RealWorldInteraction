@@ -1,3 +1,15 @@
+## 2026-10-13 · 当前 R93：无输入坐标校准完成，生产投递不改
+
+- 新增显式 `CGEventCreateCopy` 内存诊断：两原件＋六副本同时存活且八指针互异；每变体前后及最终原 Quartz／受保护字段保持。原版无example exit101，修改后exit0，五专测／fmt／Clippy通过；9工作区门禁全0。
+- 三种setter参数的公开NSEvent读回在合成window91234567下均[3186,365]、timestamp0；未post、GUI、截图、移动光标、激活或请求权限。**此构造证据不解释Chrome，不证明screen/local生产规则**；R92实收[150,252]/[126,54]保持正确，生产Agent/MCP不改、不部署诊断example。
+- 先前浅retain-clone提案在执行前审计阻止；已改为真正CreateCopy与初始坐标／原件字段强guard，原错误材料保留。无需用户配合。
+- R92已经3commit推送publicPR1、精确head6a4360da的Mac／Windows CI success；859/0/11回归、AppKit后台单击与前台键盘接收保留已验，Chrome后台counter仍0，原19请求终态／释放／no-replay、专用窗口清理均沿用，不重复完成项。
+- 下一实际客户端实验补document mouse down/up/move观察，再验单变量move＋pair；并独立推进MCP默认输出去重（6实际样本净443B／约5.32%的反事实模型，尚未实现）和严格短ID契约。完整F01–F16仍未封版。
+
+报告：`/Volumes/ChatGPT/Real World Interaction/docs/validation/2026-10-13-r93-window-location-memory.md`。同四角色累计原基线保留；实际复制／回滚结果以当前checkpoint及 `VERIFICATION.txt` 为准。
+
+---
+
 ## 2026-10-13 · 当前 R92：实验后台点击已实现部署，原生接收与前台键盘保留已验
 
 - 新增显式 `ClickDeliveryOptions` / `background_skylight_experimental` 单左键 down/up；原默认投递不变。严格 JSON、独立点击能力检查、同 PID/窗口/点/几何、共享 lease、durable no-replay、配对释放均保留；不自动激活、不 primer、不改 field58、不做 fallback。
