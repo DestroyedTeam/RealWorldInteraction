@@ -420,6 +420,22 @@ impl Backend for NativeMacDesktop {
     ) -> Result<Option<bool>> {
         self.selected()?.act(b, r, i, v)
     }
+    fn drag_between(
+        &mut self,
+        pair: &rwi_core::drag_between::Pair,
+        destination: &mut dyn Backend,
+    ) -> Result<Option<bool>> {
+        self.check_identity()?;
+        self.selected()?.dispatch_drag_between(pair, destination)
+    }
+    fn drag_surface(
+        &mut self,
+        endpoint: &rwi_core::drag_between::Endpoint,
+        initial: bool,
+    ) -> Result<rwi_core::drag_between::Surface> {
+        self.check_identity()?;
+        self.selected()?.paired_drag_surface(endpoint, initial)
+    }
     fn inspect(&mut self, s: &Scope, p: &Predicate, e: &str) -> Result<Oracle> {
         self.selected()?.inspect(s, p, e)
     }

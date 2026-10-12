@@ -12,6 +12,29 @@ pub struct Observed {
     pub entered: Arc<AtomicBool>,
 }
 impl Backend for Observed {
+    fn drag_surface(
+        &mut self,
+        endpoint: &drag_between::Endpoint,
+        initial: bool,
+    ) -> Result<drag_between::Surface> {
+        self.inner.drag_surface(endpoint, initial)
+    }
+    fn drag_between(
+        &mut self,
+        pair: &drag_between::Pair,
+        destination: &mut dyn Backend,
+    ) -> Result<Option<bool>> {
+        let before = self.inner.input_dispatch_count();
+        let previous = self.entered.swap(true, Ordering::AcqRel);
+        let result = self.inner.drag_between(pair, destination);
+        if !previous
+            && before.is_some_and(|n| n < u64::MAX)
+            && before == self.inner.input_dispatch_count()
+        {
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
     fn local_pixel_anchor(&self) -> bool {
         self.inner.local_pixel_anchor()
     }

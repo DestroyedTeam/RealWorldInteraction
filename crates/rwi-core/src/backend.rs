@@ -178,5 +178,27 @@ pub trait Backend: Send {
         intent: &Intent,
         value: Option<&str>,
     ) -> Result<Option<bool>>;
+    /// Explicit paired route. Default backends refuse; ordinary drag is not
+    /// widened, and the native producer must independently guard both endpoints.
+    fn drag_between(
+        &mut self,
+        _pair: &crate::drag_between::Pair,
+        _destination: &mut dyn Backend,
+    ) -> Result<Option<bool>> {
+        Err(fault(
+            "capability_unavailable",
+            "Paired native drag is unavailable on this backend; no fallback.",
+        ))
+    }
+    fn drag_surface(
+        &mut self,
+        _endpoint: &crate::drag_between::Endpoint,
+        _initial: bool,
+    ) -> Result<crate::drag_between::Surface> {
+        Err(fault(
+            "capability_unavailable",
+            "This backend cannot guard a paired native drag endpoint.",
+        ))
+    }
     fn inspect(&mut self, scope: &Scope, predicate: &Predicate, expected: &str) -> Result<Oracle>;
 }

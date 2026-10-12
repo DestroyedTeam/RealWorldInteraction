@@ -2,6 +2,20 @@
 use super::*;
 
 impl Backend for NativeMac {
+    fn drag_between(
+        &mut self,
+        pair: &rwi_core::drag_between::Pair,
+        destination: &mut dyn Backend,
+    ) -> Result<Option<bool>> {
+        self.dispatch_drag_between(pair, destination)
+    }
+    fn drag_surface(
+        &mut self,
+        endpoint: &rwi_core::drag_between::Endpoint,
+        initial: bool,
+    ) -> Result<rwi_core::drag_between::Surface> {
+        self.paired_drag_surface(endpoint, initial)
+    }
     fn local_pixel_anchor(&self) -> bool {
         !self.semantic_only
     }

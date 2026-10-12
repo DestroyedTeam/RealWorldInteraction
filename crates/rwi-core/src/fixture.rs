@@ -188,6 +188,12 @@ impl Backend for Fixture {
                     }
                 }
                 Intent::Text => a.value = value.unwrap_or("").into(),
+                Intent::DragBetween(_) => {
+                    return Err(fault(
+                        "capability_unavailable",
+                        "Default fixture has no native paired drag.",
+                    ));
+                }
                 Intent::MovePointer | Intent::Scroll | Intent::KeyChord | Intent::Drag(_) => {}
             }
             a.epoch += 1;

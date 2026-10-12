@@ -36,6 +36,12 @@ pub(crate) fn plan_with_policy(
     let mut keyboard = false;
     let mut text = false;
     let batches = match intent {
+        Intent::DragBetween(_) => {
+            return Err(fault(
+                "capability_unavailable",
+                "Native paired drag is not implemented on Windows; no ordinary/global input fallback.",
+            ));
+        }
         Intent::MovePointer => {
             return Err(fault(
                 "capability_unavailable",

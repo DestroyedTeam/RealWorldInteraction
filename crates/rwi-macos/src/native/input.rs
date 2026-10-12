@@ -2,6 +2,7 @@
 use super::*;
 mod anchor_native;
 pub(crate) mod drag;
+mod drag_between;
 pub(crate) use drag::NATIVE_SAMPLE_INTERVAL_MS;
 mod continuation;
 mod dispatch;
@@ -154,6 +155,12 @@ impl NativeMac {
         let requested_input_before = counter.load(std::sync::atomic::Ordering::Acquire);
         let result = (|| {
             match intent {
+                Intent::DragBetween(_) => {
+                    return Err(fault(
+                        "paired_dispatch_required",
+                        "Paired input must pass both endpoint guards, never ordinary act.",
+                    ));
+                }
                 Intent::MovePointer => {
                     let event = move_pointer::event(target.point)?;
                     let skylight_move = if matches!(

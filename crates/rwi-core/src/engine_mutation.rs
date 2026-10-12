@@ -275,6 +275,47 @@ impl Engine {
         if current.blocked != Some(false) {
             return Err(fault("target_blocked", "Inspect modal/occlusion state."));
         }
+        let paired_destination = if let Intent::DragBetween(destination) = &intent {
+            if self.backend(target)?.capabilities()["paired_pointer_drag"]["implemented"] != true {
+                return Err(fault(
+                    "capability_unavailable",
+                    "Source backend does not advertise paired native drag; no input or fallback.",
+                ));
+            }
+            if resolved.source_region.is_some() {
+                return Err(fault(
+                    "invalid_drag_endpoint_class",
+                    "Paired source requires a full-window input reference.",
+                ));
+            }
+            let endpoint = self.prepare_drag_destination(target, destination)?;
+            if endpoint.resolved.scope.window == resolved.scope.window
+                && endpoint.resolved.scope.pid == resolved.scope.pid
+            {
+                return Err(fault(
+                    "distinct_drag_endpoints_required",
+                    "Aliases do not create two native windows.",
+                ));
+            }
+            let end = destination
+                .path
+                .waypoints
+                .last()
+                .ok_or_else(|| fault("invalid_drag_path", "Destination waypoint required."))?;
+            if !crate::drag_between::endpoint_matches(
+                resolved.point,
+                end.offset,
+                endpoint.resolved.point,
+            ) {
+                return Err(fault(
+                    "drag_destination_mismatch",
+                    "Path must end at the independently resolved destination point.",
+                ));
+            }
+            Some(endpoint)
+        } else {
+            None
+        };
         let book = self.leases.shared();
         let held = book
             .lock()
@@ -317,8 +358,26 @@ impl Engine {
             .ok_or_else(|| fault("target_binding_unknown", "Native binding required."))?;
         let dispatch_before = self.backend(target)?.input_dispatch_count();
         match operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
-            self.backend(target)?
-                .act(expected, &resolved, &intent, value.as_deref())
+            if let (Intent::DragBetween(destination), Some(endpoint)) =
+                (&intent, &paired_destination)
+            {
+                self.dispatch_drag_pair(
+                    &crate::drag_between::Pair {
+                        source: crate::drag_between::Endpoint {
+                            identity: before.identity.clone(),
+                            binding: expected.clone(),
+                            resolved: resolved.value.clone(),
+                        },
+                        destination: endpoint.clone(),
+                        path: destination.path.clone(),
+                    },
+                    target,
+                    &destination.target,
+                )
+            } else {
+                self.backend(target)?
+                    .act(expected, &resolved, &intent, value.as_deref())
+            }
         }) {
             Ok(accepted) => {
                 receipt.dispatch = "returned".into();

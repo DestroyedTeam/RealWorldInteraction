@@ -29,6 +29,7 @@ use std::{
 use uuid::Uuid;
 pub use visual::*;
 pub mod device;
+pub mod drag_between;
 #[cfg(any(test, feature = "fixture"))]
 pub mod fixture;
 pub mod input_trajectory;
@@ -209,6 +210,7 @@ pub enum Intent {
     KeyChord,
     Scroll,
     Drag(trajectory::DragPath),
+    DragBetween(drag_between::Destination),
 }
 impl Intent {
     pub fn validate(&self, value: Option<&str>) -> Result<()> {
@@ -223,6 +225,15 @@ impl Intent {
                 ));
             }
             path.validate()?;
+        }
+        if let Self::DragBetween(destination) = self {
+            if value.is_some() {
+                return Err(fault(
+                    "invalid_input_value",
+                    "Paired drag carries typed endpoints, not text.",
+                ));
+            }
+            destination.validate()?;
         }
         Ok(())
     }
@@ -564,6 +575,7 @@ fn intent_kind(intent: &Intent) -> &'static str {
         Intent::KeyChord => "key_chord",
         Intent::Scroll => "scroll",
         Intent::Drag(_) => "drag",
+        Intent::DragBetween(_) => "drag_between",
     }
 }
 pub fn popup_kind(subrole: Option<&str>) -> &'static str {

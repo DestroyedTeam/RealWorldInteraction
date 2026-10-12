@@ -298,6 +298,7 @@ pub(crate) fn native_capabilities(
         "lock_state":"unknown","live_acceptance":"per_session_status_required",
         "atomicity":"pre/post validation; neither CGEventPost nor property equality proves the business goal"
     });
+    capabilities["paired_pointer_drag"] = json!({"implemented":true,"endpoint_authority":"two independently resolved input targets; same native desktop/shared lease","delivery":"initiating PID/window addressed; native drag manager owns destination routing","fallback":false,"native_goal_attested":false,"required_destination_readback":true});
     capabilities["background_input"]["foreground_transition_scope"] =
         json!("no explicit system-frontmost request; not target AppKit key/order preservation");
     capabilities["background_input"]["target_appkit_state_unchanged_attested"] = json!(false);
