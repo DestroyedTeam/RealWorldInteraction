@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated": "2026-10-12T23:30:57.948690+08:00",
+  "updated": "2026-10-13",
   "active_object": "/Volumes/ChatGPT/Real World Interaction",
   "historical_plan": "/Users/vincentadamnemessis/AI Projects/Real World Interaction/docs/research/2026-10-08-macos-background-feature-matrix.json",
   "current_report": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r84-fresh-host-native-multisource-2026-10-12/REPORT.md",
@@ -436,10 +436,10 @@
         "FW-S089",
         "FW-S101"
       ],
-      "current_state": "partial: own AppKit native same-window background DnD verified; cross-app production input route not implemented",
-      "implementation_evidence": "Rust opt-in fixture/native_dnd.rs + native_dnd_appkit.rs: public source/session/custom pasteboard destination, bounded consume-once oracle; no backend bridge.",
-      "this_turn_native_evidence": "R85 own174/175 each actual native begin/move/end(copy) and typed drop consumed1, external=false. CU incomplete native sessions retained; own explicit-close lifecycle revised and both final exits0.",
-      "remaining": "Cross-app multi-endpoint transport and exact paired authority/lease/layout/interruption/cancel/no-replay still required; same-app native drops are not cross-app completion."
+      "current_state": "partial: own two-PID AppKit native background drop verified via deployed typed paired input; full native DnD matrix pending",
+      "implementation_evidence": "R86 Rust core invocation-local paired Endpoint/Pair authority, native guarded background trajectory + shared durable lease, computer.drag_between strict typed source/destination views; ordinary drag remains window-contained; Windows refuses",
+      "this_turn_native_evidence": "R86 loaded fresh Host request r86-native-source-to-destination-1: PID82004 -> PID82005, source began/end1, native external destination performed/concluded/consume1, payload exact run_id, both endpoints inactive before/after; original durable terminal/released; own fixture exits0/0",
+      "remaining": "Native DnD mid-operation cancel/change/exit/TCC and BG->FG must be independently accepted; file promises, other payloads/client frameworks/browser and broader real apps remain; F01-F16 full goal not complete."
     },
     {
       "id": "F14",
@@ -5616,5 +5616,64 @@
       }
     },
     "remaining": "Cross-app multi-endpoint input transport + leases/identity/layout/cancel/no-replay; then browser route and remaining full matrix."
+  },
+  "r86_native_pair_result": {
+    "source_pid": 82004,
+    "destination_pid": 82005,
+    "source_window": "cgwindow:46090",
+    "destination_window": "cgwindow:46089",
+    "native_cross_app_drop_verified": true,
+    "native_external_source_observed": true,
+    "same_window_drop_not_substituted": true,
+    "both_endpoints_background_before_and_after": true,
+    "environment_sampling_ms": 500,
+    "continuous_or_physical_human_attestation": false,
+    "durable_input_terminal_and_released": true,
+    "input_replayed": false,
+    "native_goal_from_independent_receiver_not_receipt": true,
+    "fixtures_actual_exit_statuses": [
+      0,
+      0
+    ],
+    "native_dnd_cancel_or_midgesture_endpoint_change_GUI_accepted": false,
+    "full_F01_F16_complete": false,
+    "fresh_Host_thread": "01a130f0-606a-7bf2-ada1-ae5b0d2e85a8",
+    "Host_result": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-cross-app-dnd-contract-r86/host-gui-acceptance/2026-10-13-new-session-1791822470400/RESULT.json",
+    "screenshots": [
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r86-cross-app-dnd-2026-10-13/01-source-before.png",
+        "sha256": "dce5b7b7cd8c8a8ba4ca14576bf8945c12d6439bdb34f717237fad6559ee64c5",
+        "bytes": 110928,
+        "source": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-cross-app-dnd-contract-r86/host-gui-acceptance/2026-10-13-new-session-1791822470400/source-before-original.png",
+        "scope": "original RWI window artifact, not Live panel or edited raster"
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r86-cross-app-dnd-2026-10-13/02-destination-before.png",
+        "sha256": "9b8a54d0061d9546c9fd0ef60da0a6f80a7137d4e2b5d0e8ee24beed9966c119",
+        "bytes": 107059,
+        "source": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-cross-app-dnd-contract-r86/host-gui-acceptance/2026-10-13-new-session-1791822470400/destination-before-original.png",
+        "scope": "original RWI window artifact, not Live panel or edited raster"
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r86-cross-app-dnd-2026-10-13/03-source-after.png",
+        "sha256": "351f05d903f0d7d1e73091601c4267dba437bb8ed195d8f2ede7ef4dfc64cd52",
+        "bytes": 112136,
+        "source": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-cross-app-dnd-contract-r86/host-gui-acceptance/2026-10-13-new-session-1791822470400/source-after-original.png",
+        "scope": "original RWI window artifact, not Live panel or edited raster"
+      },
+      {
+        "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/r86-cross-app-dnd-2026-10-13/04-destination-after.png",
+        "sha256": "ede5ee531fe69916afca38d43b48af5bbb5912dd72b75fc5397017731d87df29",
+        "bytes": 114390,
+        "source": "/Volumes/ChatGPT/Real World Interaction/work/transactions/2026-10-06-mcp-output-compile-fix/implementation-2026-10-10/comprehensive-native-public-readiness/native-cross-app-dnd-contract-r86/host-gui-acceptance/2026-10-13-new-session-1791822470400/destination-after-original.png",
+        "scope": "original RWI window artifact, not Live panel or edited raster"
+      }
+    ]
+  },
+  "r86_offline_gate": {
+    "passed": 807,
+    "failed": 0,
+    "ignored": 11,
+    "suites": 42
   }
 }
