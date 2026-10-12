@@ -301,6 +301,19 @@ impl Gateway {
                 let offset = [points[1][0] - points[0][0], points[1][1] - points[0][1]];
                 leased(&a.target,&a.request_id,"computer.act",json!({"reference":reference,"intent":{"drag":{"waypoints":[{"at_ms":0,"offset":[0,0]},{"at_ms":a.duration_ms,"offset":offset}]}}}),call).await
             }
+            "computer.drag_between" => {
+                let a: DragBetweenArgs = match serde_json::from_value(args) {
+                    Ok(a) => a,
+                    Err(_) => return invalid("Use the advertised paired endpoint schema."),
+                };
+                if let Err(error) = validate_drag_between(&a) {
+                    return error;
+                }
+                if let Err(error) = self.paired_device(&a) {
+                    return error;
+                }
+                paired_drag(a, call).await
+            }
             _ => invalid("Unknown convenience tool."),
         }
     }

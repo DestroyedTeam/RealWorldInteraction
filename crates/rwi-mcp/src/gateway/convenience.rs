@@ -6,12 +6,14 @@ use std::{future::Future, time::Instant};
 
 mod controls;
 mod dispatch;
+mod drag_between;
 mod inputs;
 mod schema;
 mod snapshots;
 use controls::*;
 #[cfg(test)]
 use dispatch::CallTimings;
+use drag_between::*;
 use inputs::*;
 use schema::*;
 use snapshots::*;
@@ -50,6 +52,10 @@ pub(super) fn tools() -> Vec<Tool> {
             "computer.drag",
             "Drag from/to pixels in one delivered view_id; native mapping and short lease handled internally. No JS or desktop-coordinate arithmetic. duration_ms 16..5000, default 500. Stable request_id required. No replay or activation; inspect computer.snapshot afterward.",
         ),
+        tool::<DragBetweenArgs>(
+            "computer.drag_between",
+            "Explicit native drag between two independently selected windows on one device/desktop. source/destination each use their own target, delivered view_id and pixel point. Short shared lease, endpoint guards and paired release are handled internally. macOS only when paired_pointer_drag is advertised; no ordinary-drag widening, activation/global-pointer fallback, clipboard insertion or retry. Stable request_id; duration_ms 16..5000. Receipt is not a drop goal; independently inspect source and destination.",
+        ),
         tool::<ScrollArgs>(
             "computer.scroll",
             "Scroll once at one exact snapshot element or delivered-view coordinate. delta_y is signed native vertical units: positive up/negative down; macOS pixels +/-2000, Windows wheel units multiples of 120 +/-1200; nonzero. This is not a cross-platform pixel conversion. Short lease, native guards and release handled internally, no JS, activation, fallback, replay or automatic screenshot. Read back application state afterward.",
@@ -68,6 +74,7 @@ pub(super) fn handles(name: &str) -> bool {
             | "computer.hover"
             | "computer.reveal"
             | "computer.drag"
+            | "computer.drag_between"
             | "computer.scroll"
             | "computer.controls"
             | "computer.type_text"

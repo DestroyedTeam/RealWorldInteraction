@@ -144,6 +144,22 @@ pub(super) struct DragArgs {
 }
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub(super) struct DragEndpointArgs {
+    pub(super) target: String,
+    pub(super) view_id: String,
+    pub(super) point: [f64; 2],
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct DragBetweenArgs {
+    pub(super) source: DragEndpointArgs,
+    pub(super) destination: DragEndpointArgs,
+    pub(super) request_id: String,
+    #[serde(default = "duration")]
+    pub(super) duration_ms: u64,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub(super) struct TextArgs {
     pub(super) target: String,
     pub(super) frame: String,
@@ -260,6 +276,7 @@ pub(super) fn tool<T: JsonSchema>(name: &'static str, description: &'static str)
         "computer.type_text" => "Type into focused control",
         "computer.press_key" => "Press key or shortcut",
         "computer.place_window" => "Move window to display",
+        "computer.drag_between" => "Drag between selected windows",
         _ => "Drag in screenshot",
     })
     .with_annotations(
@@ -274,6 +291,7 @@ pub(super) fn tool<T: JsonSchema>(name: &'static str, description: &'static str)
         "computer.type_text" => tool.with_title("Type in focused field"),
         "computer.press_key" => tool.with_title("Press key in focused control"),
         "computer.drag" => tool.with_title("Drag within selected window"),
+        "computer.drag_between" => tool.with_title("Drag between selected windows"),
         "computer.scroll" => tool.with_title("Scroll selected surface"),
         "computer.place_window" => tool.with_title("Place selected window"),
         _ => tool,

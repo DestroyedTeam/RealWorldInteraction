@@ -10,6 +10,7 @@ struct LegacyResolveView {
 }
 
 mod controls;
+mod drag_between;
 mod hover;
 mod inputs;
 mod receipts;
