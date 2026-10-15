@@ -141,6 +141,84 @@ pub(super) fn enabled(ax: &Value, node: u64) -> bool {
 pub(super) struct Receipt {
     pub attempted: usize,
     pub acknowledged: usize,
+    pub button_down_acknowledged: bool,
+}
+impl Receipt {
+    pub(super) fn uncertain(&self) -> bool {
+        self.attempted > self.acknowledged || self.button_down_acknowledged
+    }
+}
+fn pre_press(
+    pipe: &mut Pipe,
+    session: &str,
+    g: &Grounding,
+    node: u64,
+    until: Instant,
+) -> io::Result<Point> {
+    let f = frame(&pipe.rpc_on(Some(session), "Page.getFrameTree", json!({}), until)?)?;
+    let root = document(&pipe.rpc_on(
+        Some(session),
+        "DOM.getDocument",
+        json!({"depth":0,"pierce":false}),
+        until,
+    )?)?;
+    let metrics = pipe.rpc_on(Some(session), "Page.getLayoutMetrics", json!({}), until)?;
+    if ["frame_id", "loader_id", "url"]
+        .iter()
+        .any(|k| f[k] != g.document[k])
+        || g.document["backend_document_node"].as_u64() != Some(root)
+        || metrics["cssVisualViewport"] != g.viewport
+        || metrics["visualViewport"] != g.legacy
+    {
+        return Err(invalid("browser_pre_press_document_or_viewport_changed"));
+    }
+    let fid = f["frame_id"].as_str().unwrap();
+    let dom = pipe.rpc_on(
+        Some(session),
+        "DOMSnapshot.captureSnapshot",
+        json!({"computedStyles":[],"includeDOMRects":true}),
+        until,
+    )?;
+    let rects = css_rectangles(&rectangles(&dom, fid)?, layout_scale(&metrics)?)?;
+    let p = point(
+        rects
+            .get(&node)
+            .ok_or_else(|| invalid("browser_pre_press_node_disappeared"))?,
+        &g.viewport,
+    )?;
+    let ax = pipe.rpc_on(
+        Some(session),
+        "Accessibility.getPartialAXTree",
+        json!({"backendNodeId":node,"fetchRelatives":false}),
+        until,
+    )?;
+    if !enabled(&ax, node) {
+        return Err(invalid("browser_pre_press_node_disabled_or_unknown"));
+    }
+    let hit = pipe.rpc_on(Some(session), "DOM.getNodeForLocation", json!({"x":p.document[0],"y":p.document[1],"includeUserAgentShadowDOM":false,"ignorePointerEventsNone":false}), until)?;
+    if hit["frameId"] != f["frame_id"]
+        || !hit["backendNodeId"]
+            .as_u64()
+            .is_some_and(|id| hit_in_subtree(&dom, fid, node, id))
+    {
+        return Err(invalid("browser_pre_press_node_occluded_or_changed"));
+    }
+    let f2 = frame(&pipe.rpc_on(Some(session), "Page.getFrameTree", json!({}), until)?)?;
+    let root2 = document(&pipe.rpc_on(
+        Some(session),
+        "DOM.getDocument",
+        json!({"depth":0,"pierce":false}),
+        until,
+    )?)?;
+    let m2 = pipe.rpc_on(Some(session), "Page.getLayoutMetrics", json!({}), until)?;
+    if f2 != f
+        || root2 != root
+        || m2["cssVisualViewport"] != g.viewport
+        || m2["visualViewport"] != g.legacy
+    {
+        return Err(invalid("browser_pre_press_identity_changed"));
+    }
+    Ok(p)
 }
 pub(super) fn collect(
     pipe: &mut Pipe,
@@ -195,7 +273,7 @@ pub(super) fn collect(
         )?;
         let fid = f["frame_id"].as_str().unwrap();
         let rects = css_rectangles(&rectangles(&dom, fid)?, scale)?;
-        let p = point(
+        let mut p = point(
             rects
                 .get(&node)
                 .ok_or_else(|| invalid("browser_input_element_not_laid_out"))?,
@@ -240,7 +318,14 @@ pub(super) fn collect(
         } else {
             &["mouseMoved", "mousePressed", "mouseReleased"]
         };
+        let initial_move_point = p.viewport;
         for kind in sequence {
+            if *kind == "mousePressed" {
+                // The one preceding move can synchronously hide an in-flow tooltip or
+                // open a menu. Re-ground the SAME node before its single down/up pair.
+                // No second move, retry, alternate target, or layout-forcing script.
+                p = pre_press(pipe, &session, g, node, until)?;
+            }
             if Instant::now() >= g.expires {
                 return Err(invalid("browser_input_observation_expired"));
             }
@@ -253,9 +338,15 @@ pub(super) fn collect(
             receipt.attempted += 1;
             pipe.rpc_on(Some(&session), "Input.dispatchMouseEvent", value, until)?;
             receipt.acknowledged += 1;
+            if *kind == "mousePressed" {
+                receipt.button_down_acknowledged = true;
+            }
+            if *kind == "mouseReleased" {
+                receipt.button_down_acknowledged = false;
+            }
         }
         Ok(
-            json!({"state":"input_sent","action":args.action,"element_ref":args.element_ref,"observation_consumed":true,"point_css_viewport":p.viewport,"hit_css_document":p.document,"input_events_acknowledged":receipt.acknowledged,"atomic":false,"goal_verified":false,"native_input":false,"os_cursor_moved":false,"activation_requested":false}),
+            json!({"state":"input_sent","action":args.action,"element_ref":args.element_ref,"observation_consumed":true,"initial_move_point_css_viewport":initial_move_point,"pre_press_revalidated":args.action==Action::Click,"point_css_viewport":p.viewport,"hit_css_document":p.document,"input_events_acknowledged":receipt.acknowledged,"atomic":false,"goal_verified":false,"native_input":false,"os_cursor_moved":false,"activation_requested":false}),
         )
     })();
     let detached = if !pipe.poisoned {
@@ -304,12 +395,14 @@ impl OwnedChrome {
         let mut r = match result {
             Ok(v) => DeviceResult::value(v),
             Err(e) => {
-                if receipt.attempted > 0 {
+                if receipt.uncertain() {
                     self.content_input_uncertain = true
                 }
                 DeviceResult::error(
-                    if receipt.attempted > 0 {
+                    if receipt.uncertain() {
                         "browser_input_unknown"
+                    } else if receipt.attempted > 0 {
+                        "browser_input_partial"
                     } else {
                         "browser_input_not_dispatched"
                     },

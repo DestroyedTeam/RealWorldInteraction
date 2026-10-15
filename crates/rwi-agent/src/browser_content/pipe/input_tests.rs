@@ -40,6 +40,9 @@ struct Mode {
     overlay: bool,
     changed: bool,
     lost_at: usize,
+    shift_after_move: bool,
+    overlay_after_move: bool,
+    changed_after_move: bool,
 }
 fn fake(mode: Mode) -> (Pipe, Arc<Mutex<Vec<Value>>>, std::thread::JoinHandle<()>) {
     let (tx, read) = UnixStream::pair().unwrap();
@@ -70,16 +73,22 @@ fn fake(mode: Mode) -> (Pipe, Arc<Mutex<Vec<Value>>>, std::thread::JoinHandle<()
                 "Target.attachToTarget" => json!({"sessionId":"flat"}),
                 "Page.getFrameTree" => {
                     frames += 1;
-                    json!({"frameTree":{"frame":{"id":"frame","loaderId":if mode.changed&&frames>1{"changed"}else{"loader"},"url":"about:blank"}}})
+                    json!({"frameTree":{"frame":{"id":"frame","loaderId":if (mode.changed&&frames>1)||(mode.changed_after_move&&inputs>0){"changed"}else{"loader"},"url":"about:blank"}}})
                 }
                 "DOM.getDocument" => json!({"root":{"nodeType":9,"backendNodeId":1}}),
                 "Page.getLayoutMetrics" => metrics(),
-                "DOMSnapshot.captureSnapshot" => dom(),
+                "DOMSnapshot.captureSnapshot" => {
+                    let mut d = dom();
+                    if mode.shift_after_move && inputs > 0 {
+                        d["documents"][0]["layout"]["bounds"][0] = json!([60, 420, 200, 80]);
+                    }
+                    d
+                }
                 "Accessibility.getPartialAXTree" => {
                     json!({"nodes":[{"backendDOMNodeId":7,"ignored":false,"properties":[{"name":"disabled","value":{"type":"boolean","value":mode.disabled}}]}]})
                 }
                 "DOM.getNodeForLocation" => {
-                    json!({"backendNodeId":if mode.overlay{9}else{8},"frameId":"frame"})
+                    json!({"backendNodeId":if mode.overlay||(mode.overlay_after_move&&inputs>0){9}else{8},"frameId":"frame"})
                 }
                 "Input.dispatchMouseEvent" => {
                     inputs += 1;
@@ -116,6 +125,107 @@ fn fake(mode: Mode) -> (Pipe, Arc<Mutex<Vec<Value>>>, std::thread::JoinHandle<()
         calls,
         h,
     )
+}
+#[test]
+fn f16_browser_content_pointer_recheck_follows_same_node_after_one_move_without_retry() {
+    let (mut p, calls, h) = fake(Mode {
+        shift_after_move: true,
+        ..Mode::default()
+    });
+    let mut r = Receipt::default();
+    let v = collect(
+        &mut p,
+        "target",
+        "context",
+        &args(Action::Click),
+        &grounding(),
+        7,
+        &mut r,
+    )
+    .unwrap();
+    assert_eq!(v["initial_move_point_css_viewport"], json!([80., 60.]));
+    assert_eq!(v["point_css_viewport"], json!([80., 30.]));
+    assert_eq!(v["pre_press_revalidated"], true);
+    assert_eq!(r.attempted, 3);
+    assert_eq!(r.acknowledged, 3);
+    assert!(!r.uncertain());
+    drop(p);
+    h.join().unwrap();
+    let c = calls.lock().unwrap();
+    let input: Vec<_> = c
+        .iter()
+        .filter(|q| q["method"] == "Input.dispatchMouseEvent")
+        .collect();
+    assert_eq!(input.len(), 3);
+    assert_eq!(input[0]["params"]["type"], "mouseMoved");
+    assert_eq!(input[1]["params"]["type"], "mousePressed");
+    assert_eq!(input[2]["params"]["type"], "mouseReleased");
+    assert_eq!(input[0]["params"]["y"], 60.);
+    assert_eq!(input[1]["params"]["y"], 30.);
+    assert_eq!(input[2]["params"]["y"], 30.);
+    assert_eq!(
+        c.iter()
+            .filter(|q| q["method"] == "DOMSnapshot.captureSnapshot")
+            .count(),
+        2
+    );
+}
+#[test]
+fn f16_browser_content_pointer_recheck_post_move_change_sends_no_press_and_does_not_fence_known_move()
+ {
+    for mode in [
+        Mode {
+            overlay_after_move: true,
+            ..Mode::default()
+        },
+        Mode {
+            changed_after_move: true,
+            ..Mode::default()
+        },
+    ] {
+        let (mut p, calls, h) = fake(mode);
+        let mut r = Receipt::default();
+        assert!(
+            collect(
+                &mut p,
+                "target",
+                "context",
+                &args(Action::Click),
+                &grounding(),
+                7,
+                &mut r
+            )
+            .is_err()
+        );
+        assert_eq!(r.attempted, 1);
+        assert_eq!(r.acknowledged, 1);
+        assert!(!r.uncertain());
+        drop(p);
+        h.join().unwrap();
+        let c = calls.lock().unwrap();
+        let events: Vec<_> = c
+            .iter()
+            .filter(|q| q["method"] == "Input.dispatchMouseEvent")
+            .collect();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0]["params"]["type"], "mouseMoved");
+    }
+    assert!(
+        Receipt {
+            attempted: 2,
+            acknowledged: 1,
+            button_down_acknowledged: false
+        }
+        .uncertain()
+    );
+    assert!(
+        Receipt {
+            attempted: 2,
+            acknowledged: 2,
+            button_down_acknowledged: true
+        }
+        .uncertain()
+    );
 }
 #[test]
 fn f16_browser_content_input_geometry_scroll_and_clipping_do_not_use_png_or_os_scale() {
