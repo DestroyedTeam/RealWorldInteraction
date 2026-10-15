@@ -1,3 +1,67 @@
+<!-- RWI_F76_INVERSE_CMDTAB_CURRENT -->
+## 当前：拖拽中途双向切窗已自主实机验到；调用目录过期与输入链路余项继续修复 · 2026-10-16
+
+- **F74已实现，不再是提案**：只修改Rust专用receiver测试器3路径，新增显式`--command-tab-start-foreground`／`Config.start_foreground`。旧后台起步默认不变；新模式仍严格校验正整数本进程PID、实际前台PID、peer出生/UID/bundle/window、现有权限和HID资源。5项纯policy/parser测试通过。原先fmt模块定位错误exit1保留，改显式模块路径后格式化与构建0；未替换生产Agent或MCP。
+- **完整离线及回滚**：当前Source479，fmt/workspace/全targets全features Clippy(-D warnings)/architecture四门均0；1328 passed、0 failed、11 ignored、47 suites（fixture的5项单独记录，不混加）。同一CLI输入BASELINE不识别新flag(exit1)→MODIFIED接受但不创建GUI/不发输入(exit0)→独立copy ROLLBACK恢复拒绝(exit1)→严格reapply接受(exit0)；过滤测试数量0/5/0/5、退出均0。相同四角色扩至381，原始全局基线81存在/300不存在；原始字节、旧记录、rollback完整历史保留。
+- **F75新的前台→后台实机**：专用target36876/window2687与peer36868/window2685都在指定虚拟屏。一次loaded RWI默认window-addressed 5秒拖拽，target起初在前台；第一次down后1500ms独立Rust测试器只发一次配对全局Command+Tab（4 posts）。原生25ms采样在down后1647ms、sequence25观察peer成为前台，target随后仍收move与up。独立原图见蓝线和失活窗口；down1/move78/up1/completed1，orphan0/0、鼠标修饰键全0。与F71后台→前台的77move场景合起来覆盖双向转换；不是物理人工，也不冒充新foreground_system拖拽或loaded hotkey工具验收。
+- **连贯性不假通过**：F75接收端NSEvent发送时间戳最大间隔129.796ms、跨度4984.014ms、adapter5249ms；dispatch probe丢34条。F71对应241.485ms/77move原结果完整保留。两次不等价，不能称性能改进；不是回调到达耗时、CPU或生产端post计数，合并/丢弃原因未证，完整采样保真仍未通过。
+- **调用失败纳入后续修复**：F75两次旧context discovery返回context_unknown；明确同一paired mac-host的targets刷新后恢复。另一次attach在输入前catalog_expired、native_dispatch_entered=false；新鲜exact-PID discovery与同window/native_epoch attach成功，没有重放输入或换目标。两类原错误及包装器store(undefined)错误保留；下一优先项是有界、保持身份的窗口选择准备，不能靠放宽PID/epoch或盲重试解决。
+- **清理与错误可追溯**：5个durable请求均终态/释放/禁重放；自有窗口语义关闭、两个绑定detach、两个子进程均exit0，最终只剩root，原前台11924/window421恢复。F75首个收尾脚本错误沿用了后台起步的peer期望，exit1；按实际前台起步修正校验后新命令0，未重放任何Native输入。目录名observed-same380及继承字段中的旧计数标签不代表380，实际managed381/Source479，以补充说明和manifest为准。
+- **完整范围仍继续**：既有Live实际198×200pt、指针隐藏/关闭及清图验收保留；F66样稿焦点24项仍非原生键盘/VO或正式新风格。真正Host图片/PiP/严格会话绑定、Unicode/IME（F69完整KD之后缺文字）、cold hover、前台冲突/模态/隐藏/层叠、分范围性能和工具输出余项仍未全部完成。用户休息，不要求人工配合、不伪造Host可见事件、不操作游戏/现有文档。Agent/安装MCP/签名/四权限/CA/配对/Host配置均未改；当前Native context为7561644a…，不等于Host工具schema已刷新。公开PR1和既有CI事实保留，按有意义的批次提交，不每动作触发Action。full_goal_complete=false。
+- 实际按时间截图和逐步结果：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f75-native-foreground-to-background-commandtab-2026-10-16/README.md；前向对照：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f71-native-command-tab-during-drag-2026-10-16/README.md。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F72_CMDTAB_UNICODE_CURRENT -->
+## 当前：已自动验到真实全局Command+Tab发生在拖拽中途；Unicode边界已缩小但未修复 · 2026-10-16
+
+- **F69新证据，不重跑旧输入**：专用Chrome155.0.8059.40新profile/Receiver69，新的单次后台输入仍expected13/observed5 UTF16。短Native AX日志直接见🙂/𝄞完整KD代理对，原始像素另见👩/💻完整KD；其后紧接KU，BMP有KP/BI/IN。故障界限缩到网页keydown之后的文字处理链，不再把此case归为代理对在传输前拆坏；尚未定位具体AppKit/IME/Chromium分支，更不宣称OS不可能或已修复。Native AX未完整覆盖滚动后可见行，像素转录与AX原值分开。所有原请求、partial/截断/错误保留，无补写/剪贴板/偷偷激活。
+- **F71完成新的执行中切窗场景**：两只自有普通receiver窗口在指定虚拟屏；loaded RWI一次5秒window-addressed后台拖拽，目标第一次down后1501ms由独立Rust测试器核对exact peer出生/UID/bundle/window、现有权限与HID资源，只发一次配对全局Command+Tab（4 posts）。原生环境25ms采样在down后1695ms、sequence25观察target成为前台，后续仍收move和up；独立图像见蓝线、活动窗口。原生down1/move77/up1/completed1、orphan0/0，鼠标modifier_flags全0。不是物理人工，也不冒充loaded RWI hotkey工具本身的验收。post后瞬时样本仍peer，目标真正前台靠后续独立采样证明。
+- **连贯性缺口照实留存**：接收77次move，不改写为79；Native NSEvent时间戳sequence25→26间隔241.485ms，记录跨度4979.813ms、adapter5310ms；不是回调到达耗时/CPU或生产端post计数。dispatch probe预算丢了32条记录，原因未证；源码丢弃成功DragStats，后续须补观测，不凭语言/单次样本宣称性能优越或采样保真通过。
+- **无需人工接力**：F69启动器NameError只读后exit1，修正后新命令0；F71首轮把prepared文件当ready而exit1，原状态与未知peer退出码/精确PID缺席保留，修正为等待running+Native身份后新v2通过。只有新独立case的输入，未重放失败/已完成输入。F69六请求、F71五请求均终态/释放/禁重放；自有窗口、绑定、子进程清理，最终root唯一、前台11924/window421恢复，原有应用/文档不动。
+- **下一项可执行候选已准备，尚未应用**：F74仅测试器增加显式--command-tab-start-foreground/Config.start_foreground，保留旧后台默认及peer/权限/HID/出生身份检查，以自动验收初始前台→其他应用；3路径patch dry-run0，Root Rust尚未改。下一轮先真实apply/离线parser-policy/同输入CLI，再完整fmt/workspace/clippy/architecture、同四角色回滚与Native验收；不把提案/纯parser检查当系统切窗通过。
+- **原全范围保持**：当前Rust478与既有1328pass/11ignored全门相同；安装MCP/Agent/Host/证书/权限/配对未变，无重启要求。既有Native198×200pt隐藏/关闭、F66样稿焦点24项与F56同冻结输入不支持→摘要→回滚不支持→重施摘要保留；MCP child全0，过滤0/14/0/14。本次文档另做1/0/1/0与同四角色copy回滚/严格重建。真正Host图片/PiP/严格任务绑定、Unicode/IME、cold hover、原生键盘/VO、前台冲突/隐藏/层叠与分范围性能余项继续；公开PR1/已有commit及CI结果不重写，不每动作提交。full_goal_complete=false。
+- 最新证据：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f69-background-unicode-short-row-trace-2026-10-16/README.md；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f71-native-command-tab-during-drag-2026-10-16/README.md。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F70_FOCUS_UNICODE_CURRENT -->
+## 当前：样稿焦点恢复通过；后台Unicode缺字复现，根因仍待接收链路取证 · 2026-10-16
+
+- **Live请求继续推进，但不混淆部署**：既有Native浮层已实测198×200pt、默认pointer隐藏/关闭及清图。F66只在未选择HTML样稿修复稳定命名status焦点：两方向×两表达，24次真实浏览器动作后恢复/新建/新帧均P role=status，不掉BODY；隐藏/等待/结束清src。副本严格reverse精确回v2全部hash，再apply精确回v3；原v2保留。临时tab5与自有静态服务已清理，服务0。不是AppKit键盘/VO或真实Host/PiP/active-chat通过，没有替休息中的用户选方向或宣称已部署新风格。
+- **后台文本真实负例不回避**：F68自有Chrome新profile/PID16170/window2495、Receiver68/PID16473/window2525均在指定虚拟屏。AXFocused setter0但元素回读false，记partial；另一个明确的专用字段pointer选择后，将自有peer显式置前。一次新输入“后🙂𝄞 é👩‍💻”，实际“后 é‍”，expected13/observed5 UTF16，四个非BMP缺失。输入期间前台仍peer；不重放、不偷激活、不剪贴板/AXValue补写，不宣称已修复或OS不可能。
+- **取证缺口与错误保留**：被动长日志Native AXValue截断64，retained result无法恢复已省略文本；丰富key discriminator未完成。一次scroll已改变view，第二次因fullframe变化在input前stale_reference，未重试。下一独立case将接收日志拆为短AX行。跨exec临时数组追加未持久化问题已明确披露：31份命名结果与8个durable原对象恢复保存，缺失直接返回不伪造。八请求终态/释放/noreplay；自有窗口关闭，Chrome精确进程清理、peer缺席，监督/receiver均0（Chrome进程exitcode未知），最终root唯一、前台11924/window421恢复。
+- **源码与四角色**：Rust478仍同89bc78…和既有fmt/workspace/clippy/architecture全0、1328pass/11ignored；未新部署Agent、MCP或重启Host，不变动证书/权限/配对。F56同冻结输入BASELINE不支持→MODIFIED摘要→ROLLBACK不支持→reapply摘要，child全0；原过滤0/14/0/14保留。本文档标记另做1/0/1/0及same4 copy回滚/严格重建，不重放Native输入。
+- **后续范围保持**：真正Host图片/PiP/严格会话绑定，AppKit hover/键盘/VO，Unicode/IME、cold hover、Command+Tab/前后台冲突/模态/隐藏/层叠与分范围性能仍继续。已有公开PR1、ad6c16f/c00355f与对应双平台非桌面CI成功不重跑、不每动作提交。full_goal_complete=false，无需人工配合。
+- 最新证据：/Volumes/ChatGPT/Real World Interaction/work/f66-prototype-focus-repair-2026-10-16/README.md；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f68-background-unicode-event-trace-2026-10-16/README.md。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F67_POINTER_DRAFT_CURRENT -->
+## 当前：原生Live模拟指针隐藏/关闭通过；两结构样稿已渲染，焦点恢复仍待修 · 2026-10-16
+
+- **真实Native输入，不借AXPress冒充pointer**：F64新Receiver64实际PID2002/窗口2443在虚拟屏，新loaded context 5ccf…；精确Native浮层2456/PID97795在内建屏198×200pt。view映射239,48一次默认click隐藏，独立hidden/user_hidden=true并清图；一次明确API resume后，新snapshot映射335,48一次新的pointer-close，独立stopped/requested/worker_done=true并清图。三个原操作（含一次hover）均终态/释放，scope element=null、computer.act，不是computer.act_checked/AXPress。源窗口关闭预览后仍在，源无button/drag输入，计时自然0退出；两绑定detach，临时tab3关闭，初末11924/window421前台身份相同。未操作游戏/已有文档/Native Codex。
+- **悬停不假通过**：一次mouse_move回执returned/hover_effect=unverified，采样前后PNG完全同SHA；只说明本次未观察到视觉变化，不证明tooltip/tracking成功，也不推断事件被丢弃或后台hover不可能。143/181/150ms仅单次adapter wall，不是吞吐/CPU/硬件鼠标比较。当前模型snapshot schema仍无新投影字段；新context不等于MCP工具表已刷新。
+- **真正推进视觉样稿，不改生产UI**：F63在原pins/13正文/6视觉的独立研究pass后，F65产A图像优先（去整条常驻磨砂顶栏）与B常驻窄底条两种可编辑SVG/HTML结构。实际IAB v1发现Host img706×590.46875被245高viewport裁切；保留原始失败，v2修正grid min-size和源比例后img/viewport同为418×349.59375，原PNG未改。两方向已真实渲染；40格是双表达/双方向/10状态的模拟DOM检查，不是Host/Native生命周期验收。HTML键盘焦点能显露A按钮、清图/恢复等待/结束与新demo身份已遍历；恢复后焦点描述回到文档文本的缺陷仍open，下一轮精确采样activeElement并修复。未选方向、未独立设计审核、未授权生产实施。
+- **失败/资源完整保留**：首次样稿patch serializer未保留无末尾换行SVG的边界，reverse patch实际1；新命令/补丁加入规范no-newline标记后，副本精确回v1全部hash再重建v2，均0。旧失败、半完成验证copy、v1/v2文件、4张原始浏览器截图均保留。tab4关闭，两只自有loopback静态样稿server均0退出；它们不是RWI后端/输入桥。UIOS旧Windows合同release-check/report仍1/1，不改合同骗绿，不把样稿当正式release/fidelity。
+- **源码/部署/提交事实**：Rust478 hash与原1328 passed/0 failed/11 ignored完整门仍相同；F59的ad6c16f/c00355f已正常push到公开PR1，精确head双平台非桌面CI通过。本轮仅追加验收/探索与当前文档，后续统一合理commit，不为每个动作再触发Action。MCP安装4ec…、Agent F41/PID97795、签名/四权限/CA/配对/Host配置未动。F56同冻结输入B/M/R/reapply不支持/摘要/不支持/摘要、child全0，过滤0/14/0/14保留；本文档标记另做1/0/1/0及同四角色copy回滚/严格重建，不重放Native输入。
+- **范围与新鲜度不缩减**：本次跟踪文档更新发生在F63→F65研究使用/渲染之后；F63原始pass与F65构建时verify0是当时事实，原hash链不改。后续新material设计必须重新校验工作状态/研究新鲜度，不能把旧pass无条件当当前授权；已知样稿焦点修复只针对冻结v2行为，不是新生产风格授权。真正Host image/PiP、严格active-chat、AppKit hover/键盘/VO、Unicode/IME、第三方cold hover、执行中前后台/Command+Tab/冲突/模态/隐藏/层叠与分范围资源性能余项仍在。用户休息，不要求配合、不代签选择。full_goal_complete=false。
+- 原生验收：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f64-native-live-pointer-acceptance-2026-10-16/README.md；两方向与实际QA：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f65-live-controls-design-exploration-2026-10-16/README.md。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F62_NATIVE_CONTROLS_CI_CURRENT -->
+## 当前：原生小窗隐藏／关闭语义按钮自主验到；新MCP提交的双平台CI成功 · 2026-10-16
+
+- **不再等待人工配合**：F61新专用Receiver61留在虚拟屏；只观察/操作它自己的Native Live浮层。真实snapshot获396×400原生PNG与两个AXButton，Native回读198×200pt。一次“隐藏预览”AXPress后独立status=hidden/user_hidden=true、panel/image清除、worker未结束；一次明确API resume后原尺寸恢复/继续出帧。新snapshot后一次“关闭预览”AXPress，独立status=stopped/requested/worker_done=true、panel/image清除，浏览器真实结束/按钮disabled，源窗口仍在。不是API stop冒充X动作，也不是回执即目标成功；是语义AXPress而非物理pointer/hover。
+- **实际原图和清理**：源PNG仍1320×1104，Native浮层原图已保存；未截用户整个主屏。两原始按钮操作终态/资源释放，两绑定detach；源无button/drag输入、计时自然exit0，精确PID 0窗口/ps1且stdout/stderr空，原11924/window421前台身份不变。最初误用rtk wrapper PID88126的0窗口原样保留，按fixture stdout的实际PID88127做新发现才绑定，不猜身份、不激活、不重放。
+- **合理分批已推送**：ad6c16f为显式snapshot摘要/参数诊断，c00355f为此前自主验收记录，一次普通push到公开仓库既有PR1；精确index全部478 Source与已执行1328 passed/0 failed/11 ignored的fmt/workspace/Clippy/architecture一致。新head c00355f的PR CI 38806909293 macOS/Windows两个非桌面job成功并回读评论，不借用旧fe7 CI。本F62新状态文档仍是本地后续工作，不因每个验收项再触发一次提交/Action。https://github.com/DestroyedTeam/RealWorldInteraction/pull/1
+- **运行态/回滚不改口**：安装MCP仍F57 SHA4ec55ceb68df41eaf4664fddb51ce197bfcef825b18eb2940e0a3002ac0c5e25；当前聊天旧schema未强制刷新。Agent F41/PID97795、签名/四权限/CA/配对/Host配置未动。Rust478未改，F56同冻结输入B/M/R/reapply 不支持/摘要/不支持/摘要、child均0，测试0/14/0/14保留；本次只对文档标记做1/0/1/0及独立copy回滚/严格重建，不重放Native输入。
+- **外观与整体验收继续**：F60已绑定原始context/protected hashes开始当前公开参考调研，独立review、六条catalog/样式方向尚以各自真实结果为准，不把研究启动当通过。真实Host图像/PiP、严格active-chat绑定、Native pointer/hover/键盘/VO、用户方向选择与观看、Unicode/IME、第三方cold hover及剩余前台冲突/隐藏/层叠矩阵仍未全部验收。用户休息，不发起配合请求，不伪造选择/Host事件。full_goal_complete=false。
+- 原生截图/逐步报告：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f61-native-live-controls-acceptance-2026-10-16/README.md；CI/评论回读：/Volumes/ChatGPT/Real World Interaction/work/f59-validated-snapshot-mcp-git-batch-2026-10-16/PR_RESULT.json。
+
+--- 以下旧历史按当时状态完整保留 ---
+
 <!-- RWI_F58_COMPACT_NATIVE_LIVE_CURRENT -->
 ## 当前：198×200pt真实Native小窗已自主回读，浏览器隐藏/恢复与API停止通过；Host PiP仍待完成 · 2026-10-16
 
