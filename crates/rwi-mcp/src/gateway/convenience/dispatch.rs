@@ -39,6 +39,8 @@ impl Gateway {
                 result.data = compact_focus_reply(&result.data, reference);
             } else if name == "computer.select_window_local" {
                 result.data = compact_window_local_reply(&result.data, reference);
+            } else if name == "computer.bring_to_front" {
+                result.data = compact_bring_to_front_reply(&result, reference);
             } else if compactable_receipt(&result)
                 && !matches!(name, "computer.snapshot" | "computer.controls")
             {
@@ -130,6 +132,13 @@ impl Gateway {
                     Err(error) => return invalid(&error.to_string()),
                 };
                 place_window(args, call).await
+            }
+            "computer.bring_to_front" => {
+                let args = match serde_json::from_value::<BringToFrontArgs>(args) {
+                    Ok(args) => args,
+                    Err(error) => return invalid(&error.to_string()),
+                };
+                bring_to_front(args, call).await
             }
             "computer.controls" => {
                 let a = match serde_json::from_value::<ControlsArgs>(args) {

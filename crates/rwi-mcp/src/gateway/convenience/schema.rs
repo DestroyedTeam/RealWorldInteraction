@@ -46,8 +46,9 @@ pub(super) fn take_include_timings(args: &mut Value) -> Result<bool, DeviceResul
 pub(super) fn expose_timings(name: &str, result: &DeviceResult, requested: bool) -> bool {
     requested
         || result.is_error
-        || (!matches!(name, "computer.snapshot" | "computer.controls")
-            && !compactable_receipt(result))
+        || !(matches!(name, "computer.snapshot" | "computer.controls")
+            || compactable_receipt(result)
+            || name == "computer.bring_to_front" && bring_to_front_returned(result))
 }
 
 pub(super) fn trim_timing_fields(data: &mut Value) {
@@ -315,6 +316,12 @@ pub(super) struct PlaceWindowArgs {
     pub(super) request_id: String,
     pub(super) display: rwi_core::DisplayTarget,
 }
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct BringToFrontArgs {
+    pub(super) target: String,
+    pub(super) request_id: String,
+}
 pub(super) fn single_click() -> u8 {
     1
 }
@@ -423,6 +430,7 @@ pub(super) fn tool<T: JsonSchema>(name: &'static str, description: &'static str)
         "computer.type_text" => "Type into focused control",
         "computer.press_key" => "Press key or shortcut",
         "computer.place_window" => "Move window to display",
+        "computer.bring_to_front" => "Bring selected window to foreground",
         "computer.drag_between" => "Drag between selected windows",
         _ => "Drag in screenshot",
     })

@@ -67,6 +67,7 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         "computer.type_text",
         "computer.press_key",
         "computer.place_window",
+        "computer.bring_to_front",
     ]);
     assert_eq!(names, expected);
     assert!(names.contains("computer.act_checked"));
@@ -96,6 +97,7 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         "computer.type_text",
         "computer.press_key",
         "computer.place_window",
+        "computer.bring_to_front",
     ]
     .iter()
     .enumerate()

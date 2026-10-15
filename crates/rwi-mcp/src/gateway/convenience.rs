@@ -4,6 +4,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::{future::Future, time::Instant};
 
+mod bring_to_front;
 mod click;
 mod controls;
 mod dispatch;
@@ -14,6 +15,7 @@ mod schema;
 mod set_text;
 mod snapshots;
 mod window_local;
+use bring_to_front::*;
 use click::*;
 use controls::*;
 #[cfg(test)]
@@ -31,6 +33,10 @@ pub(super) fn tools() -> Vec<Tool> {
         focus_element_tool(),
         set_text_tool(),
         window_local_tool(),
+        tool::<BringToFrontArgs>(
+            "computer.bring_to_front",
+            "Explicitly bring the already selected native window to foreground. Supply target and stable request_id; fresh observation, exact current foreground tuple, window reference, short lease and release are handled internally. Uses the existing computer.focus_window guards; unknown foreground or unsupported device refuses. No discovery, keys, mouse, unhide/restore, background fallback or retry. Receipt is not goal proof; inspect a fresh snapshot afterward.",
+        ),
         tool::<SnapshotArgs>(
             "computer.snapshot",
             "Inspect selected window: compact controls and screenshot in one call. Default max_edge=2048 for text detail; use computer.image with an original-pixel crop for a readable tile. AX-incompatible macOS windows may return visual_only=true with image but no controls, input binding, or resolvable view_id; computer.image remains read-only. Semantic-only dialogs have no image or pixel mapping. Terminal, released AXWindows read errors may include a separate exact-current-bound-window visual read; the AX error stays explicit and no frame, view or input authority is created. Full metadata via computer.result. No JS, activation or permission grant.",
@@ -94,6 +100,7 @@ pub(super) fn handles(name: &str) -> bool {
             | "computer.type_text"
             | "computer.press_key"
             | "computer.place_window"
+            | "computer.bring_to_front"
     )
 }
 fn invalid(message: &str) -> DeviceResult {
