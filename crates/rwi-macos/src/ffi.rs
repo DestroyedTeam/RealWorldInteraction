@@ -1,5 +1,8 @@
 //! Small public CoreFoundation/AX boundary. Create/copy results have RAII release.
-use core_foundation::{base::TCFType, string::CFString};
+use core_foundation::{
+    base::{CFRange, TCFType},
+    string::{CFString, CFStringGetBytes, kCFStringEncodingUTF8},
+};
 use core_graphics::geometry::{CGPoint, CGRect, CGSize};
 use rwi_core::{Result, fault};
 use std::ffi::c_void;
@@ -275,22 +278,79 @@ pub unsafe fn string(value: Ref) -> Result<String> {
     if value.is_null() || unsafe { CFGetTypeID(value) != CFStringGetTypeID() } {
         return Err(fault("native_type_mismatch", "Expected a native string."));
     }
-    if unsafe { CFStringGetLength(value) } > 16384 {
+    let chars = unsafe { CFStringGetLength(value) };
+    if chars > 16384 {
         return Err(fault(
             "ax_value_budget",
             "Native string exceeds the preallocation budget.",
         ));
     }
+    let encoding_error = || {
+        fault(
+            "native_string_encoding",
+            "Native string is not a complete, lossless UTF-8 value.",
+        )
+    };
+    if chars < 0 {
+        return Err(encoding_error());
+    }
+    // Keep the original get-rule retain/release lifetime. Never borrow a C string:
+    // embedded NUL is data, while invalid UTF-16 must not panic or become lossy text.
     let value = unsafe { CFString::wrap_under_get_rule(value.cast()) };
-    let result = value.to_string();
-    if result.len() > 16384 {
+    let range = CFRange {
+        location: 0,
+        length: chars,
+    };
+    let mut required = 0;
+    let converted = unsafe {
+        CFStringGetBytes(
+            value.as_concrete_TypeRef(),
+            range,
+            kCFStringEncodingUTF8,
+            0,
+            0,
+            std::ptr::null_mut(),
+            0,
+            &mut required,
+        )
+    };
+    if converted != chars || required < 0 {
+        return Err(encoding_error());
+    }
+    if required > 16384 {
         return Err(fault(
             "ax_value_budget",
             "Accessibility string exceeds 16 KiB.",
         ));
     }
-    Ok(result)
+    let bytes_required = usize::try_from(required).map_err(|_| encoding_error())?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(bytes_required).map_err(|_| {
+        fault(
+            "ax_value_budget",
+            "Native string allocation exceeded the bounded capacity.",
+        )
+    })?;
+    bytes.resize(bytes_required, 0);
+    let mut used = 0;
+    let converted = unsafe {
+        CFStringGetBytes(
+            value.as_concrete_TypeRef(),
+            range,
+            kCFStringEncodingUTF8,
+            0,
+            0,
+            bytes.as_mut_ptr(),
+            required,
+            &mut used,
+        )
+    };
+    if converted != chars || used != required {
+        return Err(encoding_error());
+    }
+    String::from_utf8(bytes).map_err(|_| encoding_error())
 }
+
 pub unsafe fn boolean(value: Ref) -> Option<bool> {
     if value.is_null() || unsafe { CFGetTypeID(value) != CFBooleanGetTypeID() } {
         None
@@ -403,3 +463,96 @@ mod private_spi {
 pub use private_spi::{
     set_window_location, window_location_spi_available, window_number_for_ax_element,
 };
+
+#[cfg(test)]
+mod cf_string_checked_tests {
+    use super::*;
+    use core_foundation::{boolean::CFBoolean, string::CFStringCreateWithCharacters};
+
+    fn own_utf16(units: &[u16]) -> Cf {
+        let value = unsafe {
+            CFStringCreateWithCharacters(std::ptr::null(), units.as_ptr(), units.len() as isize)
+        };
+        unsafe { Cf::owned(value.cast()) }.expect("own memory CFString creation")
+    }
+
+    #[test]
+    fn cf_string_checked_empty_and_unicode_are_exact() {
+        for expected in ["", "ASCII", "汉字 e\u{301} 🙂"] {
+            let native = own_utf16(&expected.encode_utf16().collect::<Vec<_>>());
+            let actual = unsafe { string(native.0) }.unwrap();
+            assert_eq!(actual, expected);
+            println!(
+                "{}",
+                serde_json::json!({"probe":"cf_string_checked", "case":"valid", "utf8_bytes":actual.len(), "exact":actual == expected, "window_calls":0, "input_post_calls":0})
+            );
+        }
+    }
+
+    #[test]
+    fn cf_string_checked_embedded_nul_preserves_the_entire_value() {
+        for expected in ["ok\0suffix", "\0", "a\0b\0c"] {
+            let native = own_utf16(&expected.encode_utf16().collect::<Vec<_>>());
+            let actual = unsafe { string(native.0) }.unwrap();
+            assert_eq!(actual.as_bytes(), expected.as_bytes());
+            println!(
+                "{}",
+                serde_json::json!({"probe":"cf_string_checked", "case":"embedded_nul", "utf8_bytes":actual.len(), "expected_bytes":expected.len(), "exact":actual == expected, "window_calls":0, "input_post_calls":0})
+            );
+        }
+    }
+
+    #[test]
+    fn cf_string_checked_invalid_utf16_returns_encoding_fault_without_panic() {
+        for units in [&[0xd800, 0x0058, 0xdc00][..], &[0xd800], &[0xdc00]] {
+            let native = own_utf16(units);
+            let error = unsafe { string(native.0) }.unwrap_err();
+            assert_eq!(error.code, "native_string_encoding");
+            println!(
+                "{}",
+                serde_json::json!({"probe":"cf_string_checked", "case":"invalid_utf16", "utf16_units":units.len(), "error":error.code, "window_calls":0, "input_post_calls":0})
+            );
+        }
+    }
+
+    #[test]
+    fn cf_string_checked_null_and_wrong_type_keep_type_fault() {
+        assert_eq!(
+            unsafe { string(std::ptr::null()) }.unwrap_err().code,
+            "native_type_mismatch"
+        );
+        let boolean = CFBoolean::true_value();
+        assert_eq!(
+            unsafe { string(boolean.as_concrete_TypeRef().cast()) }
+                .unwrap_err()
+                .code,
+            "native_type_mismatch"
+        );
+    }
+
+    #[test]
+    fn cf_string_checked_character_budget_keeps_16384_unit_boundary() {
+        let exact = own_utf16(&vec![0x0061; 16384]);
+        assert_eq!(unsafe { string(exact.0) }.unwrap().len(), 16384);
+        let over = own_utf16(&vec![0x0061; 16385]);
+        assert_eq!(
+            unsafe { string(over.0) }.unwrap_err().code,
+            "ax_value_budget"
+        );
+    }
+
+    #[test]
+    fn cf_string_checked_byte_budget_is_independent_of_character_budget() {
+        let mut exact_units = vec![0x4e00; 5461];
+        exact_units.push(0x0061);
+        let exact = own_utf16(&exact_units);
+        assert_eq!(unsafe { string(exact.0) }.unwrap().len(), 16384);
+        let over_units = vec![0x4e00; 5462];
+        assert!(over_units.len() < 16384);
+        let over = own_utf16(&over_units);
+        assert_eq!(
+            unsafe { string(over.0) }.unwrap_err().code,
+            "ax_value_budget"
+        );
+    }
+}
