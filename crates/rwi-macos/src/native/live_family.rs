@@ -41,14 +41,51 @@ fn visual_layer_order(windows: &[String], catalog: &[Window]) -> Result<Vec<usiz
     Ok(order.into_iter().map(|(_, index)| index).collect())
 }
 
-/// One exact captured offscreen root has no inter-window z-order to infer.
-/// Multiple layers always retain native on-screen ordering checks.
+/// Scope proof only, not a new input binding or an offscreen classification.
+#[derive(Clone, Copy)]
+struct SingleRootLayer {
+    pid: u32,
+    window: u32,
+}
+fn single_root_layer_scope(
+    pid: u32,
+    window: u32,
+    captured: &[String],
+    additional_requested: usize,
+    owner_walks_complete: bool,
+    native_pre_post_match: bool,
+) -> Option<SingleRootLayer> {
+    (pid > 0
+        && window > 0
+        && captured.len() == 1
+        && captured[0] == format!("cgwindow:{window}")
+        && additional_requested == 0
+        && owner_walks_complete
+        && native_pre_post_match)
+        .then_some(SingleRootLayer { pid, window })
+}
+/// An exact verified root alone has no inter-window order, regardless of the
+/// non-atomic on-screen inventory sample. Contradictory rows still fail closed.
 fn capture_layer_order(
     windows: &[String],
     catalog: &[Window],
-    single_offscreen_root: bool,
+    single_root: Option<SingleRootLayer>,
 ) -> Result<Vec<usize>> {
-    if single_offscreen_root && windows.len() == 1 {
+    if let Some(root) = single_root {
+        let rows = catalog
+            .iter()
+            .filter(|row| row.id == root.window)
+            .collect::<Vec<_>>();
+        if windows.len() != 1
+            || windows[0] != format!("cgwindow:{}", root.window)
+            || rows.len() > 1
+            || rows.first().is_some_and(|row| row.pid != root.pid)
+        {
+            return Err(fault(
+                "live_layer_order_unknown",
+                "The verified single root has contradictory selected layers, duplicate native rows or a different owner.",
+            ));
+        }
         return Ok(vec![0]);
     }
     visual_layer_order(windows, catalog)
@@ -136,6 +173,33 @@ struct Family {
     reasons: Vec<&'static str>,
 }
 impl Family {
+    // The exact same classification feeds owner-walk completeness and the
+    // single-root scope. Unknown native children never mean "known non-sheet".
+    fn child_is_sheet(
+        &mut self,
+        native_type: bool,
+        read_role: impl FnOnce() -> std::result::Result<String, &'static str>,
+    ) -> bool {
+        let role = if native_type {
+            read_role()
+        } else {
+            Err("owner_child_native_type_unknown")
+        };
+        match role {
+            Ok(role) if role == "AXSheet" => true,
+            Ok(role) if !role.is_empty() && role != "AXUnknown" => false,
+            Ok(_) => {
+                self.complete = false;
+                self.reasons.push("owner_child_role_unknown");
+                false
+            }
+            Err(reason) => {
+                self.complete = false;
+                self.reasons.push(reason);
+                false
+            }
+        }
+    }
     fn same(&self, other: &Self) -> bool {
         self.complete == other.complete
             && self.reasons == other.reasons
@@ -195,11 +259,14 @@ impl NativeMac {
                         family.reasons.push("owner_time_budget");
                         break;
                     }
-                    if unsafe { ffi::CFGetTypeID(child.0) != ffi::AXUIElementGetTypeID() } {
-                        continue;
-                    }
-                    let role = child.attr("AXRole").ok().and_then(|v| v.string().ok());
-                    if role.as_deref() != Some("AXSheet") {
+                    let native_type =
+                        unsafe { ffi::CFGetTypeID(child.0) == ffi::AXUIElementGetTypeID() };
+                    if !family.child_is_sheet(native_type, || {
+                        let role = child
+                            .attr("AXRole")
+                            .map_err(|_| "owner_child_role_read_unavailable")?;
+                        role.string().map_err(|_| "owner_child_role_value_invalid")
+                    }) {
                         continue;
                     }
                     if child.attr("AXHidden").ok().and_then(|v| v.boolean()) == Some(true) {
@@ -325,23 +392,33 @@ impl NativeMac {
             .chain(frames.iter())
             .map(|frame| frame.window.window.clone())
             .collect::<Vec<_>>();
-        let order = capture_layer_order(&ids, &order_before, !before.on_screen_inventory_match)?;
-        if order != capture_layer_order(&ids, &windows()?, !before.on_screen_inventory_match)? {
-            return Err(fault(
-                "visual_window_changed",
-                "Selected visual layer order changed during capture; discard the composite.",
-            ));
-        }
         let after = self.visual_window()?;
         let rechecked = self.live_sheets(&after, memo);
-        if before.record != after.record
-            || before.on_screen_inventory_match != after.on_screen_inventory_match
-            || before.displays != after.displays
-            || !family.same(&rechecked)
-        {
+        let native_pre_post_match = before.record == after.record
+            && before.on_screen_inventory_match == after.on_screen_inventory_match
+            && before.displays == after.displays;
+        if !native_pre_post_match || !family.same(&rechecked) {
             return Err(fault(
                 "visual_window_changed",
                 "Exact Live root or parent-linked sheet set changed; discard this read-only composite.",
+            ));
+        }
+        // Owner roots have been positively checked on both walks, and the
+        // exact SCK capture plus native before/after checks above have returned.
+        // Any additional requested/unknown family keeps ordinary native z-order.
+        let single_root = single_root_layer_scope(
+            self.pid,
+            self.window,
+            &ids,
+            additional.len(),
+            family.complete && rechecked.complete,
+            native_pre_post_match,
+        );
+        let order = capture_layer_order(&ids, &order_before, single_root)?;
+        if order != capture_layer_order(&ids, &windows()?, single_root)? {
+            return Err(fault(
+                "visual_window_changed",
+                "Selected visual layer order changed during capture; discard the composite.",
             ));
         }
         for source in additional {
@@ -427,7 +504,7 @@ impl NativeMac {
         root.details["family"] = json!({"scope":"selected_root_verified_attached_sheets_and_explicit_visual_selections",
             "layers":layers,"complete":family.complete && explicit_omissions.is_empty(),"reasons":family.reasons,"input_authority":false,
             "explicit_source_omissions":explicit_omissions,"automatic_foreign_owner_inference":false,
-            "composition_order":if !before.on_screen_inventory_match && ids.len() == 1 { "single_exact_offscreen_root_no_inter_window_order" } else { "native_window_inventory_back_to_front_pre_post_checked" },
+            "composition_order":if single_root.is_some() { "single_exact_verified_root_no_inter_window_order" } else { "native_window_inventory_back_to_front_pre_post_checked" },
             "selection_updated":false,"new_reference":false,"all_same_pid_windows_included":false,
             "foreign_pid_requires_explicit_selection":true,"atomic":false,
             "root_relay_attempts":memo.relay_attempts,"retained_root_checks":memo.retained_root_checks});
@@ -564,19 +641,176 @@ mod offscreen_order_tests {
     #[test]
     fn one_exact_offscreen_root_has_only_one_layer() {
         assert_eq!(
-            capture_layer_order(&["cgwindow:8".into()], &[], true).unwrap(),
+            capture_layer_order(
+                &["cgwindow:8".into()],
+                &[],
+                Some(SingleRootLayer { pid: 12, window: 8 })
+            )
+            .unwrap(),
             vec![0]
         );
     }
     #[test]
-    fn on_screen_or_multi_layer_missing_order_still_refuses() {
-        assert!(capture_layer_order(&["cgwindow:8".into()], &[], false).is_err());
+    fn unverified_single_or_multi_layer_missing_order_still_refuses() {
+        assert!(capture_layer_order(&["cgwindow:8".into()], &[], None).is_err());
         assert!(
-            capture_layer_order(&["cgwindow:8".into(), "cgwindow:9".into()], &[], true).is_err()
+            capture_layer_order(&["cgwindow:8".into(), "cgwindow:9".into()], &[], None).is_err()
         );
     }
     #[test]
     fn empty_layers_do_not_invent_an_offscreen_root() {
-        assert!(capture_layer_order(&[], &[], true).unwrap().is_empty());
+        assert!(capture_layer_order(&[], &[], None).unwrap().is_empty());
+    }
+    fn row(id: u32, pid: u32) -> Window {
+        Window {
+            id,
+            pid,
+            rect: Rect {
+                x: 0.,
+                y: 0.,
+                w: 10.,
+                h: 10.,
+            },
+            alpha: 1.,
+            title: None,
+        }
+    }
+    #[test]
+    fn source22_single_root_verified_scope_does_not_need_inventory_order() {
+        let ids = vec!["cgwindow:8".into()];
+        let scope = single_root_layer_scope(12, 8, &ids, 0, true, true);
+        assert!(scope.is_some());
+        assert_eq!(capture_layer_order(&ids, &[], scope).unwrap(), vec![0]);
+        assert_eq!(
+            capture_layer_order(&ids, &[row(8, 12)], scope).unwrap(),
+            vec![0]
+        );
+        println!(
+            "{}",
+            json!({"probe":"source22_single_root_order", "verified_single_root_without_catalog_order":true, "Native_capture_or_input_executed":false, "input_authority":false})
+        );
+    }
+    #[test]
+    fn source22_single_root_unknown_owner_or_changed_identity_has_no_scope() {
+        let ids = vec!["cgwindow:8".into()];
+        for (pid, window, additional, owner_complete, native_match) in [
+            (12, 8, 0, false, true),
+            (12, 8, 0, true, false),
+            (12, 8, 1, true, true),
+            (0, 8, 0, true, true),
+            (12, 0, 0, true, true),
+        ] {
+            let scope = single_root_layer_scope(
+                pid,
+                window,
+                &ids,
+                additional,
+                owner_complete,
+                native_match,
+            );
+            assert!(scope.is_none());
+            assert!(capture_layer_order(&ids, &[], scope).is_err());
+        }
+        for ids in [
+            vec![],
+            vec!["cgwindow:9".into()],
+            vec!["cgwindow:8".into(), "cgwindow:8".into()],
+        ] {
+            assert!(single_root_layer_scope(12, 8, &ids, 0, true, true).is_none());
+        }
+    }
+    #[test]
+    fn source22_single_root_duplicate_or_foreign_native_rows_are_rejected() {
+        let ids = vec!["cgwindow:8".into()];
+        let scope = single_root_layer_scope(12, 8, &ids, 0, true, true);
+        for catalog in [
+            vec![row(8, 99)],
+            vec![row(8, 12), row(8, 12)],
+            vec![row(8, 12), row(8, 99)],
+        ] {
+            assert_eq!(
+                capture_layer_order(&ids, &catalog, scope).unwrap_err().code,
+                "live_layer_order_unknown"
+            );
+        }
+        assert!(capture_layer_order(&["cgwindow:9".into()], &[], scope).is_err());
+        assert!(
+            capture_layer_order(&["cgwindow:8".into(), "cgwindow:8".into()], &[], scope).is_err()
+        );
+    }
+    #[test]
+    fn source22_single_root_multilayer_and_requested_additions_keep_native_order() {
+        let ids = vec!["cgwindow:8".into(), "cgwindow:9".into()];
+        let scope = single_root_layer_scope(12, 8, &ids, 0, true, true);
+        assert!(scope.is_none());
+        assert!(capture_layer_order(&ids, &[], scope).is_err());
+        assert_eq!(
+            capture_layer_order(&ids, &[row(8, 12), row(9, 13)], scope).unwrap(),
+            vec![1, 0]
+        );
+        let root_only = vec!["cgwindow:8".into()];
+        let requested = single_root_layer_scope(12, 8, &root_only, 1, true, true);
+        assert!(requested.is_none());
+        assert!(capture_layer_order(&root_only, &[], requested).is_err());
+    }
+    #[test]
+    fn source22_single_root_actual_child_classification_unknown_never_grants_scope() {
+        let ids = vec!["cgwindow:8".into()];
+        for (native_type, role, reason) in [
+            (false, Ok("AXSheet"), "owner_child_native_type_unknown"),
+            (
+                true,
+                Err("owner_child_role_read_unavailable"),
+                "owner_child_role_read_unavailable",
+            ),
+            (
+                true,
+                Err("owner_child_role_value_invalid"),
+                "owner_child_role_value_invalid",
+            ),
+            (true, Ok(""), "owner_child_role_unknown"),
+            (true, Ok("AXUnknown"), "owner_child_role_unknown"),
+        ] {
+            let make_family = || Family {
+                sheets: vec![],
+                complete: true,
+                reasons: vec![],
+            };
+            let mut before = make_family();
+            let mut after = make_family();
+            let calls = std::cell::Cell::new(0);
+            for family in [&mut before, &mut after] {
+                assert!(!family.child_is_sheet(native_type, || {
+                    calls.set(calls.get() + 1);
+                    role.map(str::to_owned)
+                }));
+                assert!(!family.complete);
+                assert_eq!(family.reasons, vec![reason]);
+            }
+            assert_eq!(calls.get(), if native_type { 2 } else { 0 });
+            // Both walks can agree on the same unknown result; that is not
+            // positive family completeness and cannot mint the single-root scope.
+            assert!(before.same(&after));
+            let scope =
+                single_root_layer_scope(12, 8, &ids, 0, before.complete && after.complete, true);
+            assert!(scope.is_none());
+            assert!(capture_layer_order(&ids, &[], scope).is_err());
+        }
+        for role in ["AXButton", "AXGroup", "AXStaticText"] {
+            let mut family = Family {
+                sheets: vec![],
+                complete: true,
+                reasons: vec![],
+            };
+            assert!(!family.child_is_sheet(true, || Ok(role.into())));
+            assert!(family.complete && family.reasons.is_empty());
+        }
+        let mut sheet = Family {
+            sheets: vec![],
+            complete: true,
+            reasons: vec![],
+        };
+        assert!(sheet.child_is_sheet(true, || Ok("AXSheet".into())));
+        assert!(sheet.complete && sheet.reasons.is_empty());
     }
 }
