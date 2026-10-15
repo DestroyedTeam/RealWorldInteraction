@@ -1,3 +1,17 @@
+<!-- RWI_F80_SELECTION_RELIABILITY_CURRENT -->
+## 当前：过期目录自动准备已实现并真实macOS验收；双向切窗及完整余项继续 · 2026-10-16
+
+- **F77修复的精确分支**：平台中性的`Gateway.invoke`在`computer.attach_window`共用`attach_with_fresh_catalog`，直接工具/JS一致。仅原始`catalog_expired`且Native未dispatch、operation终态/释放/无pending/无cleanup不确定/未取消/输入域未fence、有效原context证明时，才进行最多8页的exact-PID只读发现；必须同catalog、完整有界行数、原window/PID/native_epoch与同device/Agent/context，方可再发一次原样attach。不同epoch/窗口/上下文、部分/畸形/重复行、循环cursor、容量/其他错误或不确定结果拒绝。正常成功无额外RPC；不涉及输入、激活、bind_window、context刷新、TTL放宽或盲重试。
+- **输出不把细节删丢**：自动准备回复只增加简短`selection_preparation`和`details_ref`；原始拒绝、每页目录与最终结果仍在同一MCP保留缓存，`computer.result`实读通过，缓存不可用时保留内联详情。旧target、按钮/坐标、未知字段与操作引用不改写，成功回执不充当应用目标完成。
+- **F79真实Native闭环**：新独立MCP子进程、原paired mac-host、专用虚拟屏窗口53597/cgwindow2753。先获exact selection，再等待10500ms超过Native10秒TTL，客户端只发一次attach：原生过期拒绝完整保留→内部重新发现→同observed epoch绑定成功。独立targets见child，snapshot返回实际测试窗口PNG，再detach/targets仅root。MCP EOF退出0，receiver按45秒期限自然退出0、精确PID缺席；Native拖拽down/move/up均0，前台身份前后相同。仅接受本范围，不把observed fingerprint冒充不可复用的Native窗口出生证明。
+- **完整离线和同冻结输入回滚**：Source481；fmt/workspace/全targets全features Clippy(-D warnings)/architecture四门0，1344 passed/0 failed/11 ignored/48 suites。专项BASELINE0项→MODIFIED14项→独立copy ROLLBACK0项→严格reapply14项，退出均0；同一冻结Rust TLS评估器＋真实MCP子进程，直接和JS均为拒绝→自动准备成功→回滚拒绝→重施成功，四phase child全0。相同四角色managed383，全局原始基线81存在/302不存在，完整patch重建和Root/M保护拒绝均验到；不重放Native输入。
+- **失败照实保留**：初次--lib命令因包无lib目标101，改--bin后0；新测试的借用错误101，修正后0。协议测试首次把rwi.call返回的{data,media}误当平面对象而101；只修检查路径后冻结v2，用同一driver完成四phase，未改产品迁就oracle。F79首个新窗口虽reported running/NSWindow编号已出，但首次CG目录仍0行，评估器101且未发attach/输入；旧fixture自然0退出。新v2只在准备阶段最多20次/100ms读取同PID/window/display/run-id，待Native真正发布后开始新的过期场景，不把准备状态当可见证据。
+- **原范围仍在**：F71/F75两方向拖拽中途Command+Tab的独立原生前台变化和77/78move结果保留；241/129ms发送时间戳间隔及probe丢记录仍非性能/保真通过。Live已实际缩为198×200pt、指针隐藏/关闭和清图验收保留；小窗按钮/材质、原生键盘/VO、真正Host图片/PiP/严格会话绑定仍自主完善，不要求休息中的用户配合或先代签选择。Unicode/IME完整KD之后缺文字、cold hover、前台冲突/模态/隐藏/层叠与分范围性能/资源/输出余项继续。
+- **部署/提交边界**：F77当前为源码、完整回归、真实MCP子进程和真实Native接受；生产安装MCP仍F57 SHA4ec…，Agent F41/PID97795及签名/四权限/CA/配对/Host配置12文件未变，未声称当前Codex会话已加载新实现。F78把已验的测试器与状态分为本地622ec13、77b7ae2两提交，尚未push；按有意义的批次继续，不为每个动作触发Action。公开仓库/PR1及此前CI历史不改写。full_goal_complete=false。
+- 实机原图与步骤：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f79-native-expired-window-attachment-2026-10-16/README.md；双向切窗：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f75-native-foreground-to-background-commandtab-2026-10-16/README.md。
+
+--- 以下旧历史按当时状态完整保留 ---
+
 <!-- RWI_F76_INVERSE_CMDTAB_CURRENT -->
 ## 当前：拖拽中途双向切窗已自主实机验到；调用目录过期与输入链路余项继续修复 · 2026-10-16
 
