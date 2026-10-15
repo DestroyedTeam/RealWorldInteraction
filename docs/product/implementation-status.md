@@ -1,3 +1,40 @@
+<!-- RWI_F42_ACTUAL_SMALL_NATIVE_DEPLOYMENT_CURRENT -->
+## 当前：200pt原生预览与后台图像基础已实际部署，四权限保留；Host播放器仍未完成 · 2026-10-16
+
+- **真实部署，而非候选已写好**：F40按Source471／同373角色完整源码与1294项通过结果构建Agent和中立MCP，7个build/sign/strict-verify实际exit0；F41在新鲜独占协作lease、全context durable终态／资源检查及旧PID/birth/instance/hash复核后原子替换Agent。新PID **97795**、instance **dc4e9c72-3a99-4e6d-9163-6e3f134a1ee7**、签名二进制SHA256 **96683d03db1b6e383266538fd9a2ad1ec5f1fe95bf6757956f1a4e7ff0cbc9fc**。实际加载的RWI再次targets确认新实例、AX／listen_event／post_event／screen_capture四权限true，input_domain_fenced=false。原leaf24B346A95EC8F450F7D8433A2E1876568DBCB2F8继续复用；CA／配对／Host配置没改，只保护表中Agent executable变化，无授权重置或人工配合。不声称HID或所有Live空闲硬件证明。
+- **本次“稍微小一点”已进入安装二进制**：MAX_PREVIEW_WIDTH_PT与MAX_PREVIEW_HEIGHT_PT 220→200pt；高清PNG／max_edge、44×44pt点击区、4pt间隔、既有eye.slash／play.fill／xmark动作和无激活逻辑不变。不是复制未经测量的Computer Use私有像素规格。Native原生窗口实际观看仍未在本轮证明；不能把参数部署、单元测试或旧F35原图当成新浮层/PiP已经显示。
+- **同输入真实恢复与再应用**：旧几何5 tests→新6→独立copy回滚5→严格补丁再应用6，四次均exit0，精确assert分别约束220／200／220／200pt；原Source471所有hash恢复后再与新Source471匹配，Root与已安装文件未被此copy回滚触及。另新增尺寸／44pt控制2 tests保持0→2→0→2；完整fmt/workspace/Clippy-all-targets-all-features(-D warnings)/architecture为0000、1294 passed／0 failed／11 ignored／45 suites，12项旧架构债务没抬限。首次一处旧宽屏高度golden漏改导致真实101，按实际probe的132.6328125修正，原容差1e-6不变，保留错误事件。
+- **MCP与Host分开报告**：当前安装MCP仍62b20999…且本任务未热刷新；F38候选实际新进程使用原production profile，仅initialize／tools/list／mac-host targets，退出0；52个总工具=50个模型可见＋2个app-only。这是新进程协议／只读Native连接验证，非当前Host已加载新版、非GUI操作或模型理解力实测。单次init2.14ms、list4.49ms、targets44.82ms仅当时cold MCP＋TLS只读样本，不是Native采集/输入/吞吐/SLA比较。targets文本与structured各16864 bytes的重复已实测，后续优化不得丢身份、权限、错误、按钮或坐标；JSON bytes不是token数。
+- **研究与用户休息约束**：F37独立实时打开7份官方资料，只确认macOS Computer Use有可移走PiP，未证明精确尺寸／完整按钮清单；Standard调研与独立review未通过（insufficient／TASK_STALE／PROPOSAL_INSUFFICIENT；无签名pass），不拿它授权整套视觉改造。现Windows UIOS draft也不是本Mac/Host设计，release-check/report非零如实保留。本次只有机械大小修正；没有伪造真人切窗、组件presence或验收，也不再让用户睡前反复人工配合。
+- **后续完整范围不丢**：真正Host画面组件/PiP、实际渲染与隐藏恢复关闭/任务切换/严格chat绑定；Chrome后台Unicode23/19原缺字；cold hover／modern tooltip；前后台／Command+Tab／冲突／模态／隐藏；MCP输出、耗时及资源回收、合理PR批次继续。host_image_only后台基础已随Agent部署，但当前控制卡没有播放器，MCP未接线前不启用空白Host模式，不宣称上述项目已完成。full_goal_complete=false。
+- 证据：/Volumes/ChatGPT/Real World Interaction/work/f41-small-live-agent-deploy-2026-10-16/RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f41-small-live-agent-deploy-2026-10-16/POST_DEPLOY_LOADED_TARGETS.raw.json；/Volumes/ChatGPT/Real World Interaction/work/f41-small-live-agent-deploy-2026-10-16/LEGACY_SIZE_ROUNDTRIP_RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f39-smaller-native-preview-2026-10-16/same-four-roles373/FULL_REGRESSION_RESULT.json。
+
+--- 以下旧记录保留当时状态，不能把旧“尚未部署”覆盖本节实测 ---
+
+<!-- RWI_F39_SMALLER_NATIVE_OVERVIEW_CURRENT -->
+## 当前：原生 Live 既有双轴上限220→200pt，高清源图与44pt控件不变 · 2026-10-16
+
+- **按“稍微小一点”做机械调整**：仅把 MAX_PREVIEW_WIDTH_PT／MAX_PREVIEW_HEIGHT_PT 从220降到200，保持已有按源比例适配、透明留白、48pt标题区、44×44pt点击区及4pt间隔；hide／resume／close行为、SF Symbols、无激活/无输入与源窗口身份完全不改。不是全新风格，也不是猜测或照搬Computer Use的官方像素尺寸。
+- **质量与体积解耦**：只改观看面板大小，不改 max_edge／PNG编码或采集分辨率。Source471已有源1320×1104的实际窗口原图证据保留；新的纯几何测试分别打印4种capture edge×4种源比例的真实 panel_size 结果并验证比例及控件不重叠，不能把它们当作已看见原生浮层或Host PiP。
+- **研究不伪装验收**：独立F37实时打开7个官方来源，确认Computer Use macOS有可移走的PiP；未找到权威精确尺寸/完整按钮清单。Standard Style Catalog证据不足已明确insufficient，不能授权材质/图标/Host播放器的全面视觉改造；本次只执行现有大小上限这一机械请求。用户休息，无人工配合请求。
+- **部署边界**：F38 Source471的Agent与中立MCP已用原稳定证书构建并严格验证，7命令exit0，未安装。当前加载Agent仍F35／MCP仍旧版，F39尚未部署；正式Host图像播放器、真实可见性/隐藏恢复关闭/任务切换/严格chat绑定仍待完成。完整前后台、Unicode缺字、cold hover、模态/冲突等计划保留，不因本次调整关闭。
+- 源码与独立回滚证据见 /Volumes/ChatGPT/Real World Interaction/work/f39-smaller-native-preview-2026-10-16/；full_goal_complete=false。
+
+--- 以下完整旧历史按当时状态保留 ---
+
+<!-- RWI_F36_DISPLAY_FREE_HOST_BACKEND_CURRENT -->
+## 当前：缓存图像 Agent 已部署；无物理预览屏的 Host 后端源码通过，真实播放器尚未完成 · 2026-10-16
+
+- **部署已实际发生**：F35 使用既有稳定签名证书部署 Source470 Agent，PID77210／instance ec563f07-9ef8-4bcc-affc-d85b6d08e354，二进制 faca2188d3b65905d1cd33238cb13626b61b0b6b10879bca31ba25bfdb4f41ff。已由当前加载的 RWI targets 实测 cached_live_image_v1 及 AX／监听／发送／截屏四权限有效；仅保护表中 Agent executable 变化。CA、配对、证书和 Host 配置未替换；MCP 仍是旧安装 62b20999…，0a1d557…候选未安装、未声称当前任务热刷新。
+- **F36 真正修改的是内部 LiveOptions.host_image_only**：仅供未来适配器图像播放器，要求有效 Host view binding、拒绝携带 Native viewer display；Host 路线不枚举预览显示器、不创建额外 Native 面板，仍保留同一个 export_latest PNG Arc。hide／pause／stop／presence 超时撤销图像。原 Native 模式继续要求显式 display，模型公开 schema 不暴露内部模式；模型绕过传 true／false／null 都在 RPC 前拒绝。源窗口身份、权限、精确捕获及无重放约束不变。
+- **源码验证与原失败保留**：Core3／Native8／MCP1 新测试，原 BASELINE 均0。完整 fmt／workspace／all-targets-all-features Clippy(-D warnings)／architecture 均0，1292 passed／0 failed／11 ignored／45 suites；12项既有架构债务未抬限。首次巨大 json! 宏编译101真实保留，改为单独赋值新增 capability，不提高 recursion limit。相同四角色的独立复制恢复与再应用继续保留原81 PRESENT全球基线，新增路径记为ABSENT，不能把源码测试当作 Host 渲染或应用兼容阳性。
+- **自主原生回归已实际运行**：F35 自有 Receiver PID84541 位于 BetterDisplay UUID13E4E9B0-47F2-4043-9CDC-878D5441BD41，仅 discover／attach／show_live／capture_visual，无键鼠输入。原始精确窗口 PNG 为1320×1104、120832 bytes、SHA256 a514666eb6af6089569ec2e8bf8ca7ee743d87b1d77d66eeb931a68ace5f1c03，未缩图重编码。它是单次窗口捕获，不是 Live 播放证明；MCP Apps 面板列表实际为空，Live 0帧且挂起，未伪造组件 presence。原 Live 已 duration_expired／worker_done，原 start operation 回读 terminal／resources_released；已 detach。Receiver 原4分钟生命周期正常结束exit0，不操作用户游戏、文档或已有浏览器。
+- **热刷新与句柄边界**：旧 root 只读 discover 实际 resource_unknown；重新 targets 同一调用内立即 discover 成功，未重放输入，也未据此猜测精确过期原因。官方 app-server 有 config/mcpServer/reload，但本机 CLI control socket 实际 ENOENT／exit1，且 schema 无 RWI 单服务参数；未开启并行 daemon、全局重启其它 MCP 或改 Host 配置来冒充 RWI 热刷新。
+- **还没有完成的部分**：当前 HTML 仍是控制卡，F36 不接通 blank card 的 host_image_only，也未部署 F36 或声称 PiP／Host 实际画面／严格 chat 绑定／隐藏恢复关闭／任务切换通过。既有 Native 220pt 是历史独立实现，不是 Host 图像播放器。下一步继续真实播放器及更紧凑的隐藏／关闭，再推进 Chrome 后台 Unicode23/19 原缺字、cold hover／modern tooltip、前后台／Command+Tab／冲突／模态／隐藏与分层耗时及输出优化；full_goal_complete=false。用户休息，不再要求人工配合，自动化也不伪造真人事件。
+- 证据：/Volumes/ChatGPT/Real World Interaction/work/f35-cached-live-agent-deploy-2026-10-16/RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f35-cached-live-agent-deploy-2026-10-16/native-live/；/Volumes/ChatGPT/Real World Interaction/work/f36-host-image-mode-2026-10-16/REPAIRED_FULL_REGRESSION_RESULT.json。
+
+--- 以下旧历史按当时状态完整保留，不倒改历史结论 ---
+
 <!-- RWI_F33_CACHED_LIVE_IMAGE_CURRENT -->
 ## 当前：真实MCP子进程＋固定证书TLS的图像协议5项通过；真正Host画面仍未完成 · 2026-10-16
 
