@@ -1,3 +1,45 @@
+<!-- RWI_F50_ERROR_MCP_DEPLOY_CURRENT -->
+<!-- RWI_F49_HOTKEY_ERROR_CURRENT -->
+## 当前：无人配合Command+Tab与拒绝已验；错误呈现MCP已部署，新进程验到 · 2026-10-16
+
+- F48只操作虚拟屏上两个自有Receiver：AX前置A→B，一次RWI全局cmd+tab后独立targets与两个接收端环境记录均回到A。4个系统键/修饰键事件、配对松开已记录；回执即时after仍是B，所以只用独立后读认定切换，不把发送返回当目标完成。切换后3个目标的旧定位失效，旧帧操作被unknown_frame在Native输入前拒绝；新帧独立语义正例Safe count 0→1。另一独立case携带旧B前台tuple时被foreground_changed在发送前拒绝，A保持前台。6个原操作终态/释放、两绑定detach、两个专用应用自然exit0；exact-PID库存各0窗口、ps exit1/stdout空，原11924/window421前台自然恢复。没有真人切窗证明，也没有对原应用发输入；3张实际1320×1104 PNG保留，不重新编码。
+- 真实发现并保留：上项foreground_changed原生拒绝正确，但当前Host返回MCP isError=false，错误藏在receipt.dispatch_error。F49仅在当前computer.hotkey调用的公共invoke路径提升错误标志，并把缺失的根code/message从原错误复制；不覆盖已有诊断、不改原receipt/operation_ref/uncertainty，不新增调用/重试/输入权限。成功hotkey及成功computer.operation历史查询仍为非错误；同一路径覆盖直接MCP与JS trace，避免只修一个外层显示。
+- 使用同一冻结Rust协议评估器与F48记录数据、实际MCP子进程＋synthetic pinned TLS：基线direct/JS错误标志false→候选true，根code=foreground_changed；原receipt保留、成功/历史查询false，3次Prepare/Execute无重试。这里消费旧回执数据，不重放真实键盘输入，也不把fixture协议结果冒称当前Host已刷新。
+- 源码5个单元边界＋2个真实MCP进程协议测试通过；Source475完整fmt/workspace/全targets全features Clippy(-D warnings)/architecture为0000，1313 passed/0 failed/11 ignored。复制回滚、再应用与同四角色以本阶段实际记录为准。Agent仍F41；F50已原子部署中性MCP，安装后新进程验证通过，当前Host旧进程未重启，不需要人工授权或换证书。
+- **部署/恢复闭环**：同一记录回执数据下direct MCP与JS错误标志false→true→false→true，4个冻结Rust评估器exit0；成功调用与历史查询始终false，完整原receipt不改。F50 release候选及安装后协议复验均通过，安装后真实Mac只读连接也exit0；仅用户级MCP executable受保护hash改变，Agent、CA/配对/Host配置和权限没改，旧文件保留。当前聊天旧进程未刷新，不冒称它已变新。原件：/Volumes/ChatGPT/Real World Interaction/work/f50-hotkey-error-mcp-deploy-2026-10-16/RESULT.json。
+- F47有界只读耗时：每模式3次预热、20次交错采样，default中位8.005ms（6.157～9.923），summary 7.592ms（6.149～9.927）；单进程MCP/stdIO/JSON＋真实Mac Describe/TLS范围，不是Native输入/Live帧率/CPU/P99或速度优越性证明。JSON中位34046→21279 bytes，保留完整结构化信息；Native观察和动作耗时仍分别统计。
+- 剩余目标未缩减：真实Host image/PiP与200pt浮层效果、隐藏恢复关闭/任务切换/严格chat绑定；后台Unicode/IME与第三方cold hover/modern tooltip负例；执行中前后台转换、冲突/模态/隐藏/层叠完整矩阵及PR流程。用户休息，不请求人工配合；不把模拟Command+Tab升级为真人输入连续性。full_goal_complete=false。
+- 原始证据：/Volumes/ChatGPT/Real World Interaction/work/f48-native-owned-command-tab-2026-10-16/NATIVE_RESULT.json；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f48-native-command-tab-2026-10-16/chronological；/Volumes/ChatGPT/Real World Interaction/work/f49-hotkey-receipt-error-2026-10-16/probe-baseline/RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f49-hotkey-receipt-error-2026-10-16/probe-modified/RESULT.json。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F46_NEUTRAL_SUMMARY_DEPLOY_CURRENT -->
+## 当前：新版摘要MCP已原子部署并由新进程验到；本聊天旧进程未刷新 · 2026-10-16
+
+- **不再请求人工配合**：用户休息；后续用专用授权夹具、离线门和可自动回读的实机检查推进。没有自行解锁、重新授权、操作游戏/已有文档，synthetic切窗也不会被写成真人事件。
+- **实际部署**：中性MCP文件已原子替换到用户/Host级固定路径；release候选与安装后新进程均验证structured_summary_v1成功，子进程exit0，代码签名verify为0。仅该MCP受保护文件hash改变；旧文件保留。Agent仍F41 PID97795/instance dc4e9c72-3a99-4e6d-9163-6e3f134a1ee7；稳定代码签名、CA/配对、profile、Host配置与四项权限均未改。没有停止/重启Codex，也不把磁盘新文件冒称本聊天已重载。
+- **输出与兼容性**：computer.targets.text_projection新增structured_summary_v1。安装后只读Mac样本文本＋结构化JSON 34042→21276 bytes（约37.5%），完整结构化身份/权限/按钮/坐标/未知字段保留；缺省与exact_duplicates_v1兼容行为不变。仅JSON字节，不是token节省或模型准确率/Native输入吞吐结论。
+- **验收链完整**：同输入实际MCP BASELINE拒绝新枚举→MODIFIED返回摘要→复制回滚后再次拒绝→重新应用再次摘要；四个子进程均exit0，REQUESTS摘要完全相同。定向测试0→12→0→12，全为0；Source473完整fmt/workspace/Clippy/architecture为0000，1306 passed/0 failed/11 ignored。首轮transport测试101、architecture603>600/1均原样保留；修正按职责移动投影序列化，没有抬高架构门。375路径同四角色、全局81原有/294原始缺失、严格patch重建和Root/M回滚拒绝均实测。
+- **Live小窗边界**：Native双轴上限220→200pt已随F41部署，保留44pt命中区、隐藏/关闭既有动作，截图细节分辨率不随小窗下降。机械尺寸测试的220→200→220→200历史实测保留；真实Host画面/PiP、200pt实际浮层渲染和切换/关闭仍不伪称通过。今日再次核对[官方Computer Use说明](https://learn.chatgpt.com/use-cases/use-your-computer-with-codex)：只明确macOS后台、可移动PiP与可选宠物关联，未给出固定窗口尺寸/完整按钮清单，因此200pt是本产品参数，不冒充官方精确值；不新增宠物入口。旧Windows UIOS草稿与独立研究未通过结果保留，read-only release-check/report仍为1，不宣称正式UI发布。
+- **余项没有缩减**：实际Host image player/严格chat绑定、Live隐藏恢复关闭；Chrome后台完整Unicode/IME原缺字；第三方cold hover/modern tracking；前后台/Command+Tab/冲突、模态/隐藏/层叠窗口以及分范围耗时/资源。下一步对新安装MCP的已选Mac只读调用做有界交错采样，明确metadata wall-time与Native输入/Live耗时的区别，再继续真实窗口验收；不让一个精简修复替代整体验收。full_goal_complete=false。
+- 原始证据：/Volumes/ChatGPT/Real World Interaction/work/f45-targets-structured-summary-2026-10-16/same-four-roles375/ROLE_RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f46-neutral-summary-mcp-deploy-2026-10-16/RESULT.json。上次远程CI仅覆盖9994643旧提交；本次Source473尚未提交/推送，不冒称远程已验到新代码。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F45_TARGETS_STRUCTURED_SUMMARY_CURRENT -->
+## 当前：新显式摘要模式真实MCP样本减少约37% JSON重复；默认兼容输出与完整结构化信息保留 · 2026-10-16
+
+- **问题已按真实链路定位**：F43新进程连接当前F41 Agent成功，52总工具；旧exact_duplicates_v1请求被接受但文本仍17019 bytes、与structuredContent完全重复。现设备state.service是healthy字符串，旧精确别名器只处理runtime_status／service_process_status相同对象，因此按原设计回到完整输出；不伪称旧选项压缩成功，不把它当Native执行失败。
+- **新增text_projection: structured_summary_v1**：仅显式选择、且消费完整structuredContent的调用方使用。缺省仍为完整JSON文本，exact_duplicates_v1语义保留；无效/未知模式在Native RPC前拒绝。只精简content.text中的capabilities／executor_features等大块说明，逐项标明structuredContent内原路径；完整结构化数据不删，完整target/identity/runtime权限、controls/buttons/坐标及未知字段保留，其他工具不受此模式影响。不缩短Native句柄、不新增输入权限、不改Agent/配对/Host配置；短小/异常/图片回复或不省体积时保留旧完整文本，不能用摘要替代完整结果。
+- **实际同一组请求**：旧二进制对structured_summary_v1返回invalid_arguments；新候选返回accepted_summary，两个MCP子进程均exit0、相同REQUESTS.json摘要。当前Mac只读样本default文本17023 bytes；摘要4257，structured JSON17025完整保留；文本+structured从34046→21282 bytes，约37.5%。这是JSON字节、一次readonly MCP/TLS样本，非token数、非模型理解力/吞吐/SLA或Native点击/采集速度提升。当前会话仍旧MCP，新模式尚未作为Host内已部署验收。
+- **覆盖与失败不遮掩**：新增10个纯函数/模式测试＋2个真实MCP子进程/pinned TLS synthetic描述测试，覆盖默认兼容、无效类型/未知设备零peer调用、当前service形状、结构化数据与控件坐标保留、离线/未知字段、图片/错误/标记碰撞、巨大整数一致和不扩张文本。首轮10 unit＋1 transport通过、1 transport失败/101，确切原因是不同RPC的transport计数与缓存ref/指纹本就变化；只在跨RPC比较中验证并排除5个单调计数和3个每次生成缓存字段，仍比较其余全部数据。单次formatter的structuredContent精确相等另有严格测试，不放宽产品校验，不伪造全树跨RPC相等。
+- **标准与部署边界**：[MCP工具规范](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)为兼容旧客户端建议结构化结果同时附序列化JSON文本，因此保留默认行为，新增明确opt-in，而不是悄悄改所有客户端的数据格式。Agent仍F41 PID97795，200pt上限/四权限的既有实测保留；本阶段无GUI/输入/截屏或Host重启。Source473完整门与同四角色复制回滚、再应用以及同输入真实MCP回滚probe以实际事件为准，不把候选写好当部署。
+- **完整门首轮失败已保留**：fmt、workspace与Clippy为0，architecture为1：gateway.rs 603行超过600。将本次文本投影序列化/体积门移入既有presentation模块，保留gateway入口、默认语义与全部测试；不抬高上限，重新执行完整门并记录修正前后事件。
+- **完整剩余范围仍在**：真正Host画面/PiP与实际渲染、隐藏恢复关闭/任务切换/严格chat绑定；Chrome后台Unicode原缺字、cold hover/modern tooltip、前后台/Command+Tab/冲突/模态/隐藏与资源/耗时优化继续。用户休息，不请求人工配合，不用synthetic事件伪称真人事件。full_goal_complete=false。
+- 证据：/Volumes/ChatGPT/Real World Interaction/work/f45-targets-structured-summary-2026-10-16/native-baseline/RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f45-targets-structured-summary-2026-10-16/native-modified/RESULT.json；/Volumes/ChatGPT/Real World Interaction/work/f45-targets-structured-summary-2026-10-16/F45_FINAL_MODIFIED.command_execution.json。
+
+--- 以下旧历史按当时状态完整保留 ---
+
 <!-- RWI_F42_ACTUAL_SMALL_NATIVE_DEPLOYMENT_CURRENT -->
 ## 当前：200pt原生预览与后台图像基础已实际部署，四权限保留；Host播放器仍未完成 · 2026-10-16
 
