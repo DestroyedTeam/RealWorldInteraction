@@ -386,6 +386,9 @@ pub(crate) fn probe_move_constructor(
     })
 }
 
+mod key_memory;
+pub(crate) use key_memory::probe_key_constructor;
+
 mod tracking_memory;
 pub(crate) use tracking_memory::{
     probe_tracking_constructor_roundtrip, probe_tracking_serialization_roundtrip,

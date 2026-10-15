@@ -176,3 +176,43 @@ mod scalar_text_partition_tests {
         assert_eq!(utf16_chunks("A🙂B", 1), expected);
     }
 }
+
+#[cfg(test)]
+mod f27_key_constructor_memory_tests {
+    use super::*;
+
+    #[test]
+    fn f27_key_constructor_memory_actual_default_pair_and_public_factory_matrix() {
+        let mut reports = Vec::new();
+        for text in ["A", "后", "\u{301}", "🙂", "𝄞", "👩", "\u{200d}", "💻"] {
+            let units: Vec<u16> = text.encode_utf16().collect();
+            let (down, up) = key_events(0, CGEventFlags::empty(), Some(&units)).unwrap();
+            for (kind, event) in [(10, &down), (11, &up)] {
+                let report = crate::nsevent_probe::probe_key_constructor(event, text).unwrap();
+                assert_eq!(report["public_nsevent"]["constructed"]["event_type"], kind);
+                assert_eq!(report["expected_utf16"], serde_json::json!(units));
+                assert_eq!(report["post_calls"], 0);
+                assert_eq!(report["window_created"], false);
+                assert_eq!(report["receiver_effect_verified"], false);
+                reports.push(report);
+            }
+        }
+        assert_eq!(reports.len(), 16);
+        println!("F27_KEY_MEMORY {}", serde_json::json!({"cases":reports}));
+    }
+
+    #[test]
+    fn f27_key_constructor_memory_invalid_payloads_refused_before_factory() {
+        let (down, _) = key_events(0, CGEventFlags::empty(), Some(&[65])).unwrap();
+        for text in ["", "AB", "🙂🙂"] {
+            assert_eq!(
+                crate::nsevent_probe::probe_key_constructor(&down, text),
+                Err("invalid_key_constructor_fixture")
+            );
+        }
+        assert_eq!(
+            crate::nsevent_probe::probe_key_constructor(&down, "后"),
+            Err("key_probe_current_payload_differs")
+        );
+    }
+}
