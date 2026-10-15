@@ -348,12 +348,14 @@ mod tests {
             // client completed its unchanged post-reply kernel peer check.
             drop(describe);
             let (mut mutation, _) = listener.accept().unwrap();
-            thread::sleep(Duration::from_millis(10)); // context changed while connection work was in flight.
-            server_changed.store(true, Ordering::Release);
-            accepted.send(()).unwrap();
+            // Complete fixture setup before releasing the client's guard: it
+            // can reject and close its peer immediately after this signal.
             mutation
                 .set_read_timeout(Some(Duration::from_secs(1)))
                 .unwrap();
+            thread::sleep(Duration::from_millis(10)); // context changed while connection work was in flight.
+            server_changed.store(true, Ordering::Release);
+            accepted.send(()).unwrap();
             let mut first = [0u8; 4];
             mutation.read(&mut first).unwrap()
         });
