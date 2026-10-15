@@ -15,7 +15,7 @@ const BODY_LIMIT: usize = 4 * 1024;
 const EVENTS_PER_WINDOW: usize = 512;
 const REQUEST_LIMIT: usize = 10_000;
 const WINDOW_IDS: [&str; 3] = ["a", "b", "c"];
-const EVENT_TYPES: [&str; 14] = [
+const EVENT_TYPES: [&str; 22] = [
     "page_loaded",
     "heartbeat",
     "window_focus",
@@ -26,10 +26,18 @@ const EVENT_TYPES: [&str; 14] = [
     "pointerenter",
     "pointerleave",
     "keydown",
+    "keypress",
+    "beforeinput",
+    "compositionstart",
+    "compositionupdate",
+    "compositionend",
     "input",
     "scroll",
     "wheel",
     "pagehide",
+    "mousedown",
+    "mouseup",
+    "mousemove",
 ];
 
 fn invalid(message: &str) -> io::Error {
@@ -131,6 +139,26 @@ struct Request {
     origin: Option<String>,
     body: Vec<u8>,
 }
+
+#[derive(Debug)]
+struct NoRequest {
+    kind: io::ErrorKind,
+    raw_os_error: Option<i32>,
+}
+impl std::fmt::Display for NoRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "phase=before_request_line header_bytes=0 outcome=closed_without_response kind={:?} raw_os_error={:?}",
+            self.kind, self.raw_os_error
+        )
+    }
+}
+impl std::error::Error for NoRequest {}
+fn is_no_request(error: &io::Error) -> bool {
+    error.get_ref().is_some_and(|cause| cause.is::<NoRequest>())
+}
+
 fn read_request(stream: &mut TcpStream) -> io::Result<Request> {
     // BSD accept may inherit O_NONBLOCK; socket deadlines require blocking I/O.
     stream.set_nonblocking(false)?;
@@ -142,7 +170,22 @@ fn read_request(stream: &mut TcpStream) -> io::Result<Request> {
     let header_end = loop {
         let mut byte = [0];
         remaining_read_timeout(stream, deadline)?;
-        stream.read_exact(&mut byte)?;
+        stream.read_exact(&mut byte).map_err(|error| {
+            if bytes.is_empty() {
+                // An idle/speculative or cancelled TCP connection is not an
+                // HTTP request. Close it without manufacturing an HTTP error
+                // document; partial requests still use the existing budgets.
+                io::Error::new(
+                    error.kind(),
+                    NoRequest {
+                        kind: error.kind(),
+                        raw_os_error: error.raw_os_error(),
+                    },
+                )
+            } else {
+                error
+            }
+        })?;
         bytes.push(byte[0]);
         if bytes.ends_with(b"\r\n\r\n") {
             break bytes.len();
@@ -218,6 +261,7 @@ fn respond(stream: &mut TcpStream, status: &str, mime: &str, body: &[u8]) -> io:
 struct WindowState {
     received: u64,
     dropped: u64,
+    event_type_counts: BTreeMap<String, u64>,
     events: VecDeque<Value>,
 }
 struct Oracle {
@@ -254,6 +298,11 @@ impl Oracle {
             .get_mut(id)
             .ok_or_else(|| invalid("unknown window"))?;
         window.received += 1;
+        // Counts are accepted client reports, not native/physical dispatches.
+        *window
+            .event_type_counts
+            .entry(event["type"].as_str().unwrap().to_owned())
+            .or_default() += 1;
         let receipt = json!({"received_unix_ms":unix_ms(),"server_sequence":window.received,"page_event":event});
         if window.events.len() == EVENTS_PER_WINDOW {
             window.events.pop_front();
@@ -264,7 +313,7 @@ impl Oracle {
     }
     fn state(&self, status: &str) -> Value {
         let windows: BTreeMap<_, _> = self.windows.iter().map(|(id, window)| {
-            (id, json!({"received":window.received,"dropped":window.dropped,"events":window.events}))
+            (id, json!({"received":window.received,"dropped":window.dropped,"event_type_counts":window.event_type_counts,"events":window.events}))
         }).collect();
         json!({"schema_version":1,"run":self.run,"started_unix_ms":self.started_ms,
             "sampled_unix_ms":unix_ms(),"status":status,"windows":windows,
@@ -412,6 +461,7 @@ fn run() -> io::Result<()> {
                 if !peer.ip().is_loopback() {
                     continue;
                 }
+                let handling_started = Instant::now();
                 if let Err(error) = handle(
                     &mut stream,
                     address,
@@ -420,7 +470,13 @@ fn run() -> io::Result<()> {
                     &mut log,
                     &state_path,
                 ) {
-                    eprintln!("request {requests}: {error}");
+                    eprintln!(
+                        "connection {requests}: elapsed_ms={} {error}",
+                        handling_started.elapsed().as_millis()
+                    );
+                    if is_no_request(&error) {
+                        continue;
+                    }
                     let _ = respond(
                         &mut stream,
                         "400 Bad Request",

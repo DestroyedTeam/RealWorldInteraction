@@ -52,18 +52,36 @@ struct UI {
     summary: Retained<AnyObject>,
     tooltip_text: Retained<NSString>,
     tooltip_tag: isize,
+    /// Only this receiver's public addTrackingRect return; never a decoded pointer.
+    legacy_tracking_tag: Option<isize>,
+    legacy_registration: Option<rwi_macos::cooperative_tracking::OwnedRegistration>,
+    cooperative_provider: Option<rwi_macos::cooperative_tracking::OwnerServer>,
+    cooperative_timer: Option<Retained<AnyObject>>,
     lifetime_timer: Option<Retained<AnyObject>>,
     environment_timer: Option<Retained<AnyObject>>,
     self_foreground_timer: Option<Retained<AnyObject>>,
     command_tab_timer: Option<Retained<AnyObject>>,
     command_tab_actor: Option<command_tab::native::Actor>,
     native_dnd_objects: Option<native_dnd::Objects>,
+    semantic_ui_objects: Option<super::semantic_alternate_ui::native::Objects>,
     // AppKit target and delegate are unretained properties. Keep them alive.
     _actions: Retained<AnyObject>,
 }
 thread_local! {
     static UI_STATE: RefCell<Option<UI>> = const { RefCell::new(None) };
+    // Only the opt-in own canvas writes this after its real drawRect callback.
+    static LIVE_FRESHNESS_CANVAS_DRAW_TICK: Cell<Option<u64>> = const { Cell::new(None) };
+    static COOPERATIVE_CLOSE_GUARD: RefCell<Option<rwi_macos::cooperative_tracking::BusyState>> = const { RefCell::new(None) };
+    static COOPERATIVE_CLOSE_PENDING: Cell<bool> = const { Cell::new(false) };
     static DISPATCH_BORROW_SKIPS: Cell<u64> = const { Cell::new(0) };
+    // Independent selector diagnostics survive unavailable or reentrant UI_STATE.
+    static DEFAULT_RESPONDER_DIAGNOSTICS: Cell<super::model::DefaultResponderDiagnostics> =
+        const { Cell::new(super::model::DefaultResponderDiagnostics {
+            selector_calls: 0, borrow_skips: 0, no_ui_calls: 0, other_button_calls: 0,
+        }) };
+    // Selector may be called reentrantly before/inside UI dispatch. No RefCell borrow.
+    static FIRST_MOUSE: Cell<super::first_mouse::FirstMouseProbe> =
+        const { Cell::new(super::first_mouse::FirstMouseProbe::new(true)) };
     // Record failures even while teardown temporarily owns UI outside this slot.
     static CALLBACK_FAILURES: Cell<u64> = const { Cell::new(0) };
     // Completion can be reentrant during panel teardown; never borrow UI there.
@@ -166,6 +184,66 @@ fn callback(f: impl FnOnce()) {
         });
     }
 }
+/// Read runtime class metadata, not a selector on an unknown tracking item.
+fn passive_tracking_type(object: &AnyObject, expected: &AnyClass) -> bool {
+    let mut current = Some(object.class());
+    for _ in 0..64 {
+        let Some(class) = current else {
+            return false;
+        };
+        if std::ptr::eq(class, expected) {
+            return true;
+        }
+        current = class.superclass();
+    }
+    false
+}
+fn passive_tracking_descriptors(
+    areas: &AnyObject,
+    hover: &AnyObject,
+    hover_window_matches: bool,
+    count: usize,
+) -> Option<super::model::TrackingAreaProbe> {
+    let expected = class(c"NSTrackingArea").ok()?;
+    let rows = (0..count.min(super::model::TRACKING_DESCRIPTOR_LIMIT)).map(|index| {
+        let mut row = super::model::TrackingAreaDescriptor {
+            index,
+            options: None,
+            rect: None,
+            owner_is_hover: None,
+            owner_window_matches: None,
+            native_type_matches: false,
+        };
+        // NSArray is retained by the caller. No item/owner pointer is stored in
+        // Rust state, survives this main-thread sample, or is serialized.
+        let raw: *mut AnyObject = unsafe { msg_send![areas, objectAtIndex:index] };
+        let Some(area) = (unsafe { raw.as_ref() }) else {
+            return row;
+        };
+        if !passive_tracking_type(area, expected) {
+            return row;
+        }
+        row.native_type_matches = true;
+        unsafe {
+            let options: usize = msg_send![area, options];
+            row.options = u64::try_from(options).ok();
+            row.rect = super::model::passive_visible_rect(geometry(msg_send![area, rect]));
+            let owner: *mut AnyObject = msg_send![area, owner];
+            if !owner.is_null() {
+                let own = std::ptr::eq(owner.cast_const(), hover);
+                row.owner_is_hover = Some(own);
+                // The known retained hover's window was just read by the caller.
+                // Never send window or any selector to a nil/arbitrary weak owner.
+                if own {
+                    row.owner_window_matches = Some(hover_window_matches);
+                }
+            }
+        }
+        row
+    });
+    Some(super::model::TrackingAreaProbe::bounded(count, rows))
+}
+
 impl UI {
     /// Diagnostic oracle for this allocated receiving fixture only. It neither
     /// changes native session state nor acknowledges an application goal.
@@ -238,6 +316,7 @@ impl UI {
             &mut self.environment_timer,
             &mut self.self_foreground_timer,
             &mut self.command_tab_timer,
+            &mut self.cooperative_timer,
         ] {
             if let Some(timer) = slot.take() {
                 // The run loop, timer target and all UI owners are on this main thread.
@@ -286,12 +365,16 @@ impl UI {
     }
     fn close_own_cover(&mut self) {
         if let Some(cover) = self.cover.take() {
-            // Only our retained, non-key, own cover. It has no delegate, so this
+            // Only our retained own auxiliary window. It has no delegate, so this
             // does not recursively close or stop the primary receiver window.
             unsafe {
                 let _: () = msg_send![&*cover, close];
                 let visible: bool = msg_send![&*cover, isVisible];
                 self.state.cover_visible = Some(visible);
+                if self.state.interactive_sibling_window_key.is_some() {
+                    let key: bool = msg_send![&*cover, isKeyWindow];
+                    self.state.interactive_sibling_window_key = Some(key);
+                }
                 if visible {
                     self.state.output_error = Some("own_cover_close_not_observed".into());
                 }
@@ -299,6 +382,12 @@ impl UI {
         }
     }
     fn sample_environment(&mut self) {
+        if self.state.live_freshness_ticks == Some(true) {
+            self.state.live_freshness_last_canvas_draw_tick =
+                LIVE_FRESHNESS_CANVAS_DRAW_TICK.with(Cell::get);
+        }
+        self.state.default_responder_mouse.diagnostics =
+            DEFAULT_RESPONDER_DIAGNOSTICS.with(Cell::get);
         self.state.system_panels.file.completion_callbacks_dropped =
             FILE_PANEL_RESPONSES_DROPPED.with(Cell::get);
         FILE_PANEL_RESPONSES.with(|queue| {
@@ -337,7 +426,19 @@ impl UI {
             self.state.responder.first_responder_region =
                 first.as_ref().and_then(|object| self.region(object));
             let areas: Retained<AnyObject> = msg_send![&*self.hover, trackingAreas];
-            self.state.responder.hover_tracking_areas = Some(msg_send![&*areas, count]);
+            let total: usize = msg_send![&*areas, count];
+            self.state.responder.hover_tracking_areas = Some(total);
+            self.state.responder.allows_inactive_tooltips = Some(msg_send![
+                &*self.window,
+                allowsToolTipsWhenApplicationIsInactive
+            ]);
+            self.state.responder.hover_visible_rect =
+                super::model::passive_visible_rect(geometry(msg_send![&*self.hover, visibleRect]));
+            let hover_window: *mut AnyObject = msg_send![&*self.hover, window];
+            let window_matches = std::ptr::eq(hover_window.cast_const(), &*self.window);
+            self.state.responder.hover_window_matches = Some(window_matches);
+            self.state.responder.hover_tracking_descriptors =
+                passive_tracking_descriptors(&areas, &self.hover, window_matches, total);
             self.state.actual_window_frame = Some(geometry(msg_send![&*self.window, frame]));
             let screen: *mut AnyObject = msg_send![&*self.window, screen];
             self.state.actual_display_id = screen_id(screen);
@@ -345,6 +446,10 @@ impl UI {
                 self.state.cover_window_number = Some(msg_send![&**cover, windowNumber]);
                 self.state.cover_frame = Some(geometry(msg_send![&**cover, frame]));
                 self.state.cover_visible = Some(msg_send![&**cover, isVisible]);
+                if self.state.interactive_sibling_window_key.is_some() {
+                    self.state.interactive_sibling_window_key =
+                        Some(msg_send![&**cover, isKeyWindow]);
+                }
                 let screen: *mut AnyObject = msg_send![&**cover, screen];
                 self.state.cover_display_id = screen_id(screen);
                 let ordered: Retained<AnyObject> = msg_send![&*self.app, orderedWindows];
@@ -380,6 +485,11 @@ impl UI {
             let bounds: NSRect = msg_send![clip, bounds];
             self.state.scroll.clip_origin = Some([bounds.origin.x, bounds.origin.y]);
         }
+        if let Some(objects) = &self.semantic_ui_objects
+            && let Some(sample) = objects.snapshot()
+        {
+            self.state.semantic_alternate_ui = Some(sample);
+        }
         self.state.frontmost_pid = frontmost_pid();
         self.state.app_frontmost = self
             .state
@@ -391,6 +501,7 @@ impl UI {
         self.flush_sampled();
     }
     fn flush_sampled(&mut self) {
+        self.state.first_mouse = FIRST_MOUSE.with(Cell::get);
         self.state.ax_provider_probe = super::ax_delay::snapshot();
         if let Err(error) = self.store.persist(&self.state) {
             self.state.output_error = Some(error.to_string());
@@ -460,6 +571,17 @@ impl UI {
     }
 }
 
+fn passive_event_mouse_delta(event: &AnyObject, native_type: usize) -> [Option<f64>; 2] {
+    super::model::passive_mouse_move_delta(native_type, || unsafe {
+        // Lazy public getters only for actual MouseMoved; absent selectors stay unknown.
+        let has_x: bool = msg_send![event, respondsToSelector:sel!(deltaX)];
+        let has_y: bool = msg_send![event, respondsToSelector:sel!(deltaY)];
+        let x: Option<f64> = has_x.then(|| -> f64 { msg_send![event, deltaX] });
+        let y: Option<f64> = has_y.then(|| -> f64 { msg_send![event, deltaY] });
+        [x, y]
+    })
+}
+
 fn dispatch_subtype(event: &AnyObject, native_type: usize) -> Option<i16> {
     // Lazy getter: enter/exit must still be forwarded/recorded, but calling
     // subtype on a tracking NSEvent raises rather than returning an unknown.
@@ -468,6 +590,67 @@ fn dispatch_subtype(event: &AnyObject, native_type: usize) -> Option<i16> {
 }
 
 impl UI {
+    fn register_legacy_tracking(&mut self) -> Result<(), String> {
+        if self.legacy_registration.is_some() || self.legacy_tracking_tag.is_some() {
+            return Err("legacy registration exists; no overwrite".into());
+        }
+        let registration =
+            rwi_macos::cooperative_tracking::OwnedRegistration::register(&self.hover, &self.window)
+                .map_err(|e| e.to_string())?;
+        let tag = registration
+            .public_tag_decimal()
+            .ok_or("own registration absent")?
+            .parse::<isize>()
+            .map_err(|_| "own public tag encoding changed")?;
+        let number: isize = unsafe { msg_send![&*self.window, windowNumber] };
+        self.legacy_tracking_tag = Some(tag);
+        COOPERATIVE_CLOSE_GUARD.with(|g| *g.borrow_mut() = Some(registration.busy_state()));
+        self.legacy_registration = Some(registration);
+        self.state.legacy_tracking = Some(super::model::LegacyTrackingProbe {
+            requested: true,
+            registration_live: true,
+            public_tag_decimal: Some(tag.to_string()),
+            registered_window_number: Some(number),
+            owner_is_own_hover: Some(true),
+            registration_user_data_is_null: Some(true),
+            assume_inside: Some(false),
+            registration_sequence: Some(self.state.sequence),
+            ..Default::default()
+        });
+        self.flush();
+        Ok(())
+    }
+    fn remove_legacy_tracking(&mut self) {
+        if cooperative_busy() {
+            COOPERATIVE_CLOSE_PENDING.with(|p| p.set(true));
+            return;
+        }
+        self.cooperative_provider.take();
+        let tag = self.legacy_tracking_tag.take();
+        let actual_remove = if let Some(mut registration) = self.legacy_registration.take() {
+            match registration.unregister() {
+                Ok(removed) => removed,
+                Err(error) => {
+                    self.state.output_error = Some(error.to_string());
+                    false
+                }
+            }
+        } else {
+            false
+        };
+        COOPERATIVE_CLOSE_GUARD.with(|g| g.borrow_mut().take());
+        if tag.is_some()
+            && let Some(probe) = self.state.legacy_tracking.as_mut()
+        {
+            probe.registration_live = false;
+            if actual_remove {
+                probe.removal_count = probe.removal_count.saturating_add(1);
+            }
+        }
+        if let Some(status) = self.state.cooperative_tracking.as_mut() {
+            status["provider_closed"] = serde_json::json!(true);
+        }
+    }
     fn framework_pointer(&self) -> Option<FrameworkPointerSnapshot> {
         // Public getters only. Never set a pointer, active/key state or responder,
         // synthesize tracking messages, or count these reads as received events.
@@ -543,6 +726,7 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
                     None
                 };
                 let framework_pointer = own_window_match.then(|| ui.framework_pointer()).flatten();
+                let [delta_x, delta_y] = passive_event_mouse_delta(event, native_type);
                 ui.state.dispatch_probe.receive(DispatchEvent {
                     sequence: 0,
                     stage,
@@ -551,6 +735,8 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
                     window_point: [point.x, point.y],
                     subtype: dispatch_subtype(event, native_type),
                     timestamp_seconds: msg_send![event, timestamp],
+                    delta_x,
+                    delta_y,
                     own_window_match,
                     hit_region,
                     framework_pointer,
@@ -574,6 +760,9 @@ fn persist_dispatch_only() {
                 return;
             };
             ui.state.dispatch_probe.borrow_skips = DISPATCH_BORROW_SKIPS.with(Cell::get);
+            ui.state.first_mouse = FIRST_MOUSE.with(Cell::get);
+            ui.state.default_responder_mouse.diagnostics =
+                DEFAULT_RESPONDER_DIAGNOSTICS.with(Cell::get);
             // JSON-only after super returns: no environment query, redraw,
             // selection, activation or control mutation. IO overhead is explicit.
             if let Err(error) = ui.store.persist(&ui.state) {
@@ -584,6 +773,70 @@ fn persist_dispatch_only() {
         })
     });
 }
+fn note_default_responder_diagnostic(
+    update: impl FnOnce(&mut super::model::DefaultResponderDiagnostics),
+) {
+    DEFAULT_RESPONDER_DIAGNOSTICS.with(|cell| {
+        let mut value = cell.get();
+        update(&mut value);
+        cell.set(value);
+    });
+}
+extern "C" fn default_button_mouse_moved(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
+    note_default_responder_diagnostic(|d| d.selector_calls = d.selector_calls.saturating_add(1));
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let Ok(mut borrowed) = cell.try_borrow_mut() else {
+                note_default_responder_diagnostic(|d| {
+                    d.borrow_skips = d.borrow_skips.saturating_add(1)
+                });
+                return;
+            };
+            let Some(ui) = borrowed.as_mut() else {
+                note_default_responder_diagnostic(|d| {
+                    d.no_ui_calls = d.no_ui_calls.saturating_add(1)
+                });
+                return;
+            };
+            if !std::ptr::eq(this, &*ui.button) {
+                note_default_responder_diagnostic(|d| {
+                    d.other_button_calls = d.other_button_calls.saturating_add(1)
+                });
+                return;
+            }
+            unsafe {
+                let native_type: usize = msg_send![event, type];
+                let window_number: isize = msg_send![event, windowNumber];
+                let point: NSPoint = msg_send![event, locationInWindow];
+                let first: *mut AnyObject = msg_send![&*ui.window, firstResponder];
+                let [delta_x, delta_y] = passive_event_mouse_delta(event, native_type);
+                ui.state
+                    .default_responder_mouse
+                    .receive(super::model::DefaultResponderMove {
+                        sequence: 0,
+                        native_type,
+                        window_number,
+                        window_point: [point.x, point.y],
+                        timestamp_seconds: msg_send![event, timestamp],
+                        delta_x,
+                        delta_y,
+                        own_window_match: ui.state.window_number == Some(window_number),
+                        current_first_responder_match: std::ptr::eq(first.cast_const(), this),
+                        receiving_app_active: msg_send![&*ui.app, isActive],
+                        receiving_window_key: msg_send![&*ui.window, isKeyWindow],
+                    });
+            }
+        });
+    });
+    // No UI borrow crosses super; never redirect to hover or change its responder.
+    let superclass = AnyClass::get(c"NSButton").expect("registered button superclass");
+    unsafe {
+        let _: () = msg_send![super(this, superclass), mouseMoved:event];
+    }
+    // Existing JSON-only recorder after super: no setters/redraw/activation.
+    persist_dispatch_only();
+}
+
 extern "C" fn application_send_event(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
     let recorded = record_dispatch(this, event, DispatchStage::Application);
     // Both base classes are permanent AppKit classes validated before registering
@@ -1030,6 +1283,7 @@ extern "C" fn window_closed(_this: &AnyObject, _cmd: Sel, _notification: &AnyObj
             ui.close_own_modal();
             ui.close_own_cover();
             ui.close_system_panels();
+            ui.remove_legacy_tracking();
             let pending_native_drag = ui.state.native_dnd.note_pending_native_shutdown();
             ui.state.close();
             ui.flush();
@@ -1074,6 +1328,74 @@ extern "C" fn native_fixture_close(_this: &AnyObject, _cmd: Sel, _sender: &AnyOb
             // Delegate callbacks run without a RefCell borrow spanning AppKit.
             unsafe {
                 let _: () = msg_send![&*window, close];
+            }
+        }
+    });
+}
+
+fn cooperative_busy() -> bool {
+    COOPERATIVE_CLOSE_GUARD.with(|g| g.borrow().as_ref().is_some_and(|b| b.is_busy()))
+}
+extern "C" fn window_should_close(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) -> Bool {
+    let busy = cooperative_busy();
+    if busy {
+        COOPERATIVE_CLOSE_PENDING.with(|p| p.set(true));
+    }
+    if !busy {
+        callback(|| {
+            with_detached_ui(|ui| ui.remove_legacy_tracking());
+        });
+    }
+    Bool::new(!busy)
+}
+extern "C" fn cooperative_polled(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
+    callback(|| {
+        // Take only the provider/registration, not the UI. UI stays installed;
+        // no RefCell borrow spans NSApplication.sendEvent or its real callbacks.
+        let work = UI_STATE.with(|cell| {
+            let Ok(mut borrowed) = cell.try_borrow_mut() else {
+                return None;
+            };
+            let ui = borrowed.as_mut()?;
+            if ui.state.status != "running"
+                || !ui
+                    .cooperative_timer
+                    .as_ref()
+                    .is_some_and(|t| std::ptr::eq(&**t, timer))
+            {
+                return None;
+            }
+            Some((
+                ui.cooperative_provider.take()?,
+                ui.legacy_registration.take()?,
+                ui.app.clone(),
+            ))
+        });
+        let Some((mut provider, mut registration, app)) = work else {
+            return;
+        };
+        let result = provider.poll(&mut registration, &app);
+        let stats = provider.stats();
+        let close = UI_STATE.with(|cell| {
+            let mut borrowed = cell.borrow_mut();
+            let ui = borrowed.as_mut()?;
+            ui.cooperative_provider = Some(provider);
+            ui.legacy_registration = Some(registration);
+            if let Some(status) = ui.state.cooperative_tracking.as_mut() {
+                status["provider_stats"] =
+                    serde_json::to_value(stats).unwrap_or(serde_json::Value::Null);
+            }
+            if let Err(error) = result {
+                ui.state.output_error = Some(error.to_string());
+            }
+            ui.sample_environment();
+            ui.flush();
+            (COOPERATIVE_CLOSE_PENDING.with(|p| p.replace(false)) && !cooperative_busy())
+                .then(|| ui.window.clone())
+        });
+        if let Some(window) = close {
+            unsafe {
+                let _: () = msg_send![&*window,performClose:std::ptr::null_mut::<AnyObject>()];
             }
         }
     });
@@ -1184,6 +1506,10 @@ fn note_own_actor_phase(phase: crate::native_dnd::Phase) {
 }
 extern "C" fn lifetime_expired(_this: &AnyObject, _cmd: Sel, timer: &AnyObject) {
     callback(|| {
+        if cooperative_busy() {
+            COOPERATIVE_CLOSE_PENDING.with(|p| p.set(true));
+            return;
+        }
         let window = UI_STATE.with(|cell| {
             let mut borrowed = cell.borrow_mut();
             let ui = borrowed.as_mut()?;
@@ -1243,8 +1569,13 @@ extern "C" fn flipped(_this: &AnyObject, _cmd: Sel) -> Bool {
     Bool::YES
 }
 extern "C" fn first_mouse(_this: &AnyObject, _cmd: Sel, _event: *mut AnyObject) -> Bool {
-    // These harmless fixture controls intentionally receive inactive clicks.
-    Bool::YES
+    // Default YES calibration remains; explicit NO changes only this own client.
+    FIRST_MOUSE.with(|state| {
+        let mut probe = state.get();
+        let accepted = probe.called();
+        state.set(probe);
+        Bool::new(accepted)
+    })
 }
 
 fn receive(this: &AnyObject, event: &AnyObject, kind: MouseKind) {
@@ -1282,6 +1613,17 @@ fn receive(this: &AnyObject, event: &AnyObject, kind: MouseKind) {
                         .then(|| [msg_send![event, deltaX], msg_send![event, deltaY]]),
                 }
             };
+            // Lazy scalar getters only for the actual received 8/9 kind. No
+            // trackingArea object decoding and no event-tag/address export.
+            if region == Region::HoverZone && matches!(receipt.native_type, 8 | 9)
+                && let Some(tag) = ui.legacy_tracking_tag {
+                let actual: isize = unsafe { msg_send![event, trackingNumber] };
+                let data: *mut std::ffi::c_void = unsafe { msg_send![event, userData] };
+                let exact_window = ui.state.window_number == Some(receipt.window_number);
+                if let Some(probe) = ui.state.legacy_tracking.as_mut() {
+                    probe.note_event(receipt.native_type, exact_window, actual == tag, data.is_null());
+                }
+            }
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .ok()
@@ -1382,6 +1724,24 @@ extern "C" fn draw(this: &AnyObject, _cmd: Sel, _dirty: NSRect) {
                 let _: () = msg_send![color, setFill];
                 let bounds: NSRect = msg_send![this, bounds];
                 let _: () = msg_send![class(c"NSBezierPath").unwrap(), fillRect:bounds];
+                if region == Region::Canvas && ui.state.live_freshness_ticks == Some(true) {
+                    // Eight large black/white bits survive compact Live scaling. The
+                    // low byte wraps; use the independently exported full tick too.
+                    let tick = ui.state.environment_probe_ticks;
+                    for bit in 0..8 {
+                        let value = if (tick >> bit) & 1 == 0 {
+                            0.08f64
+                        } else {
+                            0.95f64
+                        };
+                        let ink: *mut AnyObject = msg_send![class(c"NSColor").unwrap(),
+                            colorWithSRGBRed:value, green:value, blue:value, alpha:1.0f64];
+                        let _: () = msg_send![ink, setFill];
+                        let _: () = msg_send![class(c"NSBezierPath").unwrap(),
+                            fillRect:rect(f64::from(bit) * 45., 24., 45., 150.)];
+                    }
+                    LIVE_FRESHNESS_CANVAS_DRAW_TICK.with(|last| last.set(Some(tick)));
+                }
                 if region == Region::Canvas {
                     let path = ui.state.drag.active.as_ref().or(ui
                         .state
@@ -1466,6 +1826,14 @@ fn classes() -> Result<FixtureClasses, String> {
             text_changed as extern "C" fn(_, _, _),
         );
         actions.add_method(
+            sel!(windowShouldClose:),
+            window_should_close as extern "C" fn(_, _, _) -> _,
+        );
+        actions.add_method(
+            sel!(cooperativePolled:),
+            cooperative_polled as extern "C" fn(_, _, _),
+        );
+        actions.add_method(
             sel!(windowWillClose:),
             window_closed as extern "C" fn(_, _, _),
         );
@@ -1493,6 +1861,10 @@ fn classes() -> Result<FixtureClasses, String> {
         button.add_method(
             sel!(acceptsFirstMouse:),
             first_mouse as extern "C" fn(_, _, _) -> _,
+        );
+        button.add_method(
+            sel!(mouseMoved:),
+            default_button_mouse_moved as extern "C" fn(_, _, _),
         );
         receiver.add_method(sel!(drawRect:), draw as extern "C" fn(_, _, _));
         receiver.add_method(sel!(mouseDown:), mouse_down as extern "C" fn(_, _, _));
@@ -1590,10 +1962,18 @@ pub fn run(options: Options) -> Result<(), String> {
     } else {
         None
     };
+    // Fix the own-client policy before any own NSView/NSButton is constructed.
+    FIRST_MOUSE.with(|probe| {
+        probe.set(super::first_mouse::FirstMouseProbe::new(
+            options.first_mouse_acceptance,
+        ))
+    });
     let mut state = State::new(options.run_id);
+    state.first_mouse = FIRST_MOUSE.with(Cell::get);
     state.requested_display_id = Some(options.display_id);
     state.lifetime_ms = Some(options.lifetime_ms);
     state.environment_sample_ms = options.environment_sample_ms;
+    state.live_freshness_ticks = options.live_freshness_ticks.then_some(true);
     state.system_panels.enabled = options.system_panel_controls;
     state.native_dnd.enabled = options.native_dnd_controls;
     state.self_foreground_on_first_down_after_ms = options.self_foreground_on_first_down_after_ms;
@@ -1665,8 +2045,14 @@ pub fn run(options: Options) -> Result<(), String> {
             let screen_frame = explicit_screen_frame(options.display_id)?;
             // Public NSWindowStyleMask: titled | closable | miniaturizable.
             const ROOT_WINDOW_STYLE: usize = 1 | 2 | 4;
+            // Existing default layout is unchanged; opt-in semantic control uses its own extra row.
+            let content_height = if options.semantic_alternate_ui {
+                580.
+            } else {
+                520.
+            };
             let decoration: NSRect = msg_send![class(c"NSWindow")?,
-                frameRectForContentRect:rect(0., 0., 660., 520.), styleMask:ROOT_WINDOW_STYLE];
+                frameRectForContentRect:rect(0., 0., 660., content_height), styleMask:ROOT_WINDOW_STYLE];
             let placed = if options.boundary_canvas_right {
                 screen_frame
                     .place_boundary_canvas_right(decoration.size.width, decoration.size.height)?
@@ -1692,7 +2078,14 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*window, setDelegate:&*actions];
             let _: () = msg_send![&*window, setAcceptsMouseMovedEvents:true];
             let _: () = msg_send![&*window, setFrame:requested_frame, display:false, animate:false];
-            let content = view(class(c"NSView")?, rect(0., 0., 660., 520.));
+            let content = view(class(c"NSView")?, rect(0., 0., 660., content_height));
+            let semantic_ui_objects = if options.semantic_alternate_ui {
+                let objects = super::semantic_alternate_ui::native::Objects::new()?;
+                let _: () = msg_send![&*content, addSubview:&*objects.control];
+                Some(objects)
+            } else {
+                None
+            };
             label(
                 &content,
                 "RWI receiver · harmless local controls only",
@@ -1799,14 +2192,16 @@ pub fn run(options: Options) -> Result<(), String> {
             let tooltip_tag: isize = msg_send![&*hover,
                 addToolTipRect:rect(0., 0., 612., 50.),
                 owner:&*hover, userData:std::ptr::null_mut::<std::ffi::c_void>()];
-            let allocated: Allocated<AnyObject> = msg_send![class(c"NSTrackingArea")?, alloc];
-            // MouseEnteredAndExited | MouseMoved | ActiveAlways | InVisibleRect.
-            // ActiveAlways tests receiving while inactive, not a promise that any
-            // producer's process-directed mouse event will create tracking events.
-            let tracking: Retained<AnyObject> = msg_send![allocated,
+            if !options.legacy_tracking_calibration {
+                let allocated: Allocated<AnyObject> = msg_send![class(c"NSTrackingArea")?, alloc];
+                // MouseEnteredAndExited | MouseMoved | ActiveAlways | InVisibleRect.
+                // ActiveAlways tests receiving while inactive, not a promise that any
+                // producer's process-directed mouse event will create tracking events.
+                let tracking: Retained<AnyObject> = msg_send![allocated,
                 initWithRect:rect(0., 0., 612., 50.), options:0x283usize,
                 owner:&*hover, userInfo:std::ptr::null_mut::<AnyObject>()];
-            let _: () = msg_send![&*hover, addTrackingArea:&*tracking];
+                let _: () = msg_send![&*hover, addTrackingArea:&*tracking];
+            }
             state.hover.tooltip_registered = true;
             let _: () = msg_send![&*content, addSubview:&*hover];
             label(
@@ -1894,12 +2289,17 @@ pub fn run(options: Options) -> Result<(), String> {
                     summary,
                     tooltip_text: tooltip,
                     tooltip_tag,
+                    legacy_tracking_tag: None,
+                    legacy_registration: None,
+                    cooperative_provider: None,
+                    cooperative_timer: None,
                     lifetime_timer: None,
                     environment_timer: None,
                     self_foreground_timer: None,
                     command_tab_timer: None,
                     command_tab_actor,
                     native_dnd_objects,
+                    semantic_ui_objects,
                     _actions: actions,
                 })
             });
@@ -1928,6 +2328,39 @@ pub fn run(options: Options) -> Result<(), String> {
                 return Err(
                     "fixture window did not match its explicit display/geometry allocation; stopped without fallback".into(),
                 );
+            }
+            if options.legacy_tracking_calibration {
+                let registered = with_detached_ui(|ui| ui.register_legacy_tracking())
+                    .ok_or("own UI missing before legacy registration")?;
+                if let Err(error) = registered {
+                    with_detached_ui(|ui| {
+                        ui.state.status = "error";
+                        ui.state.output_error = Some(error.clone());
+                        ui.remove_legacy_tracking();
+                        ui.flush();
+                    });
+                    let _: () = msg_send![&*window, orderOut:std::ptr::null_mut::<AnyObject>()];
+                    let released = UI_STATE.with(|cell| cell.borrow_mut().take());
+                    drop(released);
+                    return Err(error);
+                }
+            }
+            if let Some(config) = &options.cooperative_owner {
+                let provider = rwi_macos::cooperative_tracking::OwnerServer::start(
+                    &config.directory,
+                    config.agent_pid,
+                    &config.agent_birth,
+                )
+                .map_err(|e| e.to_string())?;
+                UI_STATE.with(|cell| {
+                    let mut borrowed=cell.borrow_mut();let ui=borrowed.as_mut().unwrap();
+                    let id=ui.legacy_registration.as_ref().unwrap().registration_id().to_owned();
+                    ui.state.cooperative_tracking=Some(serde_json::json!({"provider_configured":true,"provider_closed":false,
+                        "owner_endpoint":provider.endpoint(),"registration_id":id,"allowed_agent_pid":config.agent_pid,
+                        "allowed_agent_birth":config.agent_birth,"Native_peer_authenticated_by_controller_JSON":false,
+                        "provider_stats":provider.stats(),"goal_verified":false,"generic_modern_hover_verified":false}));
+                    ui.cooperative_provider=Some(provider);ui.flush();
+                });
             }
             if options.cover_controls {
                 // A real second own window covers the harmless button. Ground
@@ -1969,6 +2402,78 @@ pub fn run(options: Options) -> Result<(), String> {
                     cell.borrow_mut().as_mut().unwrap().cover = Some(cover);
                 });
             }
+            if options.interactive_sibling_window {
+                // Ordinary key-capable own sibling, not the legacy borderless cover.
+                // Build on the same allocated screen; never makeKey, activate,
+                // send input, install an actor/global hook or fall back to main.
+                let sibling_result = (|| -> Result<(Retained<AnyObject>, bool), String> {
+                    const SIBLING_STYLE: usize = 1 | 2 | 4 | 8;
+                    let decoration: NSRect = msg_send![class(c"NSWindow")?,
+                        frameRectForContentRect:rect(0., 0., 320., 180.), styleMask:SIBLING_STYLE];
+                    let sibling_frame = rect(
+                        actual.origin.x + actual.size.width + 24.,
+                        actual.origin.y,
+                        decoration.size.width,
+                        decoration.size.height,
+                    );
+                    if !screen_frame.contains(geometry(sibling_frame)) {
+                        return Err("interactive sibling does not fit allocated display".into());
+                    }
+                    let sibling_content = view(class(c"NSView")?, rect(0., 0., 320., 180.));
+                    label(
+                        &sibling_content,
+                        "RWI same-PID sibling · ready",
+                        rect(16., 80., 288., 24.),
+                    )?;
+                    let content_rect: NSRect = msg_send![class(c"NSWindow")?,
+                        contentRectForFrameRect:sibling_frame, styleMask:SIBLING_STYLE];
+                    let allocated: Allocated<AnyObject> = msg_send![class(c"NSWindow")?, alloc];
+                    let sibling: Retained<AnyObject> = msg_send![allocated,
+                        initWithContentRect:content_rect, styleMask:SIBLING_STYLE,
+                        backing:2usize, defer:false];
+                    let _: () = msg_send![&*sibling, setReleasedWhenClosed:false];
+                    let title = UI_STATE.with(|cell| {
+                        let borrowed = cell.borrow();
+                        NSString::from_str(&format!(
+                            "RWI interactive sibling · {}",
+                            borrowed.as_ref().unwrap().state.run_id
+                        ))
+                    });
+                    let _: () = msg_send![&*sibling, setTitle:&*title];
+                    let _: () = msg_send![&*sibling, setContentView:&*sibling_content];
+                    let _: () = msg_send![&*sibling,
+                        setFrame:sibling_frame, display:false, animate:false];
+                    let _: () = msg_send![&*sibling, orderFront:std::ptr::null_mut::<AnyObject>()];
+                    let observed: NSRect = msg_send![&*sibling, frame];
+                    let sibling_screen: *mut AnyObject = msg_send![&*sibling, screen];
+                    let key: bool = msg_send![&*sibling, isKeyWindow];
+                    if !geometry(sibling_frame).same(geometry(observed))
+                        || !screen_frame.contains(geometry(observed))
+                        || screen_id(sibling_screen) != Some(options.display_id)
+                        || observed.origin.x < actual.origin.x + actual.size.width + 23.99
+                    {
+                        let _: () = msg_send![&*sibling, close];
+                        return Err(
+                            "interactive sibling placement readback mismatch; no fallback".into(),
+                        );
+                    }
+                    // Record actual initial Key, including true; it is not proof of
+                    // background startup, continuous identity or absence of effects.
+                    Ok((sibling, key))
+                })();
+                match sibling_result {
+                    Ok((sibling, key)) => UI_STATE.with(|cell| {
+                        let mut borrowed = cell.borrow_mut();
+                        let ui = borrowed.as_mut().unwrap();
+                        ui.cover = Some(sibling);
+                        ui.state.interactive_sibling_window_key = Some(key);
+                    }),
+                    Err(error) => {
+                        let _: () = msg_send![&*window, close];
+                        return Err(error);
+                    }
+                }
+            }
             UI_STATE.with(|cell| {
                 let mut borrowed = cell.borrow_mut();
                 let ui = borrowed.as_mut().unwrap();
@@ -1993,6 +2498,16 @@ pub fn run(options: Options) -> Result<(), String> {
             UI_STATE.with(|cell| {
                 cell.borrow_mut().as_mut().unwrap().lifetime_timer = Some(timer);
             });
+            if options.cooperative_owner.is_some() {
+                let timer:Retained<AnyObject>=UI_STATE.with(|cell| {
+                    let borrowed=cell.borrow();let ui=borrowed.as_ref().unwrap();
+                    msg_send![timer_class,timerWithTimeInterval:0.025f64,target:&*ui._actions,selector:sel!(cooperativePolled:),userInfo:std::ptr::null_mut::<AnyObject>(),repeats:true]
+                });
+                let _: () = msg_send![main_loop,addTimer:&*timer,forMode:NSRunLoopCommonModes];
+                UI_STATE.with(|cell| {
+                    cell.borrow_mut().as_mut().unwrap().cooperative_timer = Some(timer)
+                });
+            }
             if let Some(ms) = options.environment_sample_ms {
                 let timer: Retained<AnyObject> = UI_STATE.with(|cell| {
                     let borrowed = cell.borrow();
@@ -2034,6 +2549,7 @@ pub fn run(options: Options) -> Result<(), String> {
                 ui.close_own_modal();
                 ui.close_own_cover();
                 ui.close_system_panels();
+                ui.remove_legacy_tracking();
                 if ui.state.status != "closed" {
                     ui.state.status = "error";
                     if ui.state.output_error.is_none() {

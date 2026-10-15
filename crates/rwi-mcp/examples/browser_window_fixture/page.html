@@ -17,9 +17,18 @@ output{display:block;font:18px monospace;white-space:pre-wrap}
 'use strict';
 const windowId='__ID__', endpoint='/__TOKEN__/__ID__/events';
 let count=0, sequence=0, lastPointerAt=-1000, oracleOffline=false;
+let documentMouseSequence=0;
+const documentMouseCounts={mousedown:0,mouseup:0,mousemove:0};
 const text=document.getElementById('text'), scroll=document.getElementById('scroll');
-function emit(type,event){
+function emit(type,event,observerFamily=null){
+  const target=event&&event.target instanceof Element?event.target:null;
+  const bounds=target?target.getBoundingClientRect():null;
+  const nearestButton=target?target.closest('button'):null;
   const raw={window:windowId,type,clientSequence:++sequence,clientUnixMs:Date.now(),
+    observerFamily:observerFamily||(type.startsWith('pointer')?'hover_pointer':'page_or_control'),
+    nativeEventType:event?event.type:null,documentMouseSequence,
+    documentMouseCounts:{...documentMouseCounts},nearestButtonId:nearestButton?nearestButton.id:null,
+    targetBounds:bounds?{x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height}:null,
     performanceNowMs:performance.now(),eventTimeStamp:event?event.timeStamp:null,
     isTrusted:event?event.isTrusted:null,documentFocused:document.hasFocus(),
     visibilityState:document.visibilityState,activeElementId:document.activeElement?document.activeElement.id:null,
@@ -30,20 +39,35 @@ function emit(type,event){
     screenX:event&&'screenX'in event?event.screenX:null,screenY:event&&'screenY'in event?event.screenY:null,
     button:event&&'button'in event?event.button:null,buttons:event&&'buttons'in event?event.buttons:null,
     key:event&&'key'in event?event.key:null,code:event&&'code'in event?event.code:null,
+    keyCode:event&&'keyCode'in event?event.keyCode:null,charCode:event&&'charCode'in event?event.charCode:null,
+    isComposing:event&&'isComposing'in event?event.isComposing:null,
     altKey:event&&'altKey'in event?event.altKey:null,ctrlKey:event&&'ctrlKey'in event?event.ctrlKey:null,
     metaKey:event&&'metaKey'in event?event.metaKey:null,shiftKey:event&&'shiftKey'in event?event.shiftKey:null,
     deltaX:event&&'deltaX'in event?event.deltaX:null,deltaY:event&&'deltaY'in event?event.deltaY:null,
     deltaMode:event&&'deltaMode'in event?event.deltaMode:null,repeat:event&&'repeat'in event?event.repeat:null,
     inputType:event&&'inputType'in event?event.inputType:null,data:event&&'data'in event?event.data:null};
   // Observational heartbeat must not continuously mutate visual grounding.
-  if(type!=='heartbeat')document.getElementById('status').textContent=JSON.stringify({type,counter:count,inputValue:text.value,focused:raw.documentFocused,visibility:raw.visibilityState});
+  if(type!=='heartbeat'&&observerFamily!=='document_mouse_capture')document.getElementById('status').textContent=JSON.stringify({type,counter:count,inputValue:text.value,focused:raw.documentFocused,visibility:raw.visibilityState});
   fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(raw),keepalive:type==='pagehide'})
     .then(async res=>{await res.text();if(!res.ok)throw new Error('oracle response failed');})
     .catch(()=>{if(!oracleOffline){oracleOffline=true;document.getElementById('status').textContent+=' (oracle offline)';}});
 }
+// One capture observer per compatibility-mouse event. Hover pointer events
+// keep a separate family; neither family is a physical/native dispatch count.
+function observeDocumentMouse(event){
+  documentMouseSequence++;documentMouseCounts[event.type]++;
+  emit(event.type,event,'document_mouse_capture');
+}
+for(const kind of ['mousedown','mouseup','mousemove']){
+  document.addEventListener(kind,observeDocumentMouse,{capture:true,passive:true});
+}
 document.getElementById('counter').addEventListener('click',event=>{count++;document.getElementById('count').textContent=count;emit('click',event);});
 text.addEventListener('input',event=>emit('input',event));
 document.addEventListener('keydown',event=>emit('keydown',event));
+// Passive receiving-chain observers never issue or cancel input.
+for(const kind of ['keypress','beforeinput','compositionstart','compositionupdate','compositionend']){
+  document.addEventListener(kind,event=>emit(kind,event,'receiving_chain'),{capture:true,passive:true});
+}
 scroll.addEventListener('scroll',event=>emit('scroll',event));
 scroll.addEventListener('wheel',event=>emit('wheel',event),{passive:true});
 const hover=document.getElementById('hover');

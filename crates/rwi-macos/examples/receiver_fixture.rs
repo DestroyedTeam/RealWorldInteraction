@@ -9,12 +9,18 @@ mod ax_delay;
 #[path = "receiver_fixture/command_tab.rs"]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod command_tab;
+#[path = "receiver_fixture/first_mouse.rs"]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod first_mouse;
 #[path = "receiver_fixture/model.rs"]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod model;
 #[path = "receiver_fixture/native_dnd.rs"]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod native_dnd;
+#[path = "receiver_fixture/semantic_alternate_ui.rs"]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod semantic_alternate_ui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(options) = model::Options::parse(std::env::args().skip(1))? else {
@@ -28,6 +34,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "configuration_valid":true,"gui_created":false,"input_sent":false,
                 "native_binding_verified":false,"native_dnd_controls":options.native_dnd_controls,
                 "command_tab":options.command_tab,
+                "first_mouse_acceptance_requested":options.first_mouse_acceptance,
+                "first_mouse_native_selector_observed":false,
+                "semantic_alternate_ui_requested":options.semantic_alternate_ui,
+                "semantic_native_callbacks_observed":false,
+                "legacy_tracking_calibration_requested":options.legacy_tracking_calibration,
+                "legacy_tracking_registered":false,
+                "cooperative_owner_configured":options.cooperative_owner.is_some(),
+                "cooperative_owner_native_peer_authenticated":false,
+                "cooperative_native_dispatches":0,
+                "legacy_tracking_native_callbacks_observed":false,
                 "native_timeline":{
                     "implemented":true,"enabled":options.native_dnd_controls,
                     "max_events":native_dnd::MAX_TIMELINE_EVENTS,

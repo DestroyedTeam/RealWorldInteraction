@@ -1,5 +1,6 @@
 //! Pure receiving-state oracle and bounded atomic JSON output; no AppKit calls.
 use super::command_tab;
+use super::first_mouse::FirstMouseProbe;
 use serde::Serialize;
 use std::{
     collections::VecDeque,
@@ -13,7 +14,9 @@ Usage: receiver_fixture --open-window --run-id RUN_ID --state-dir ABS_NEW_DIRECT
 Creates only its own RWI acceptance window. Root must allocate that exact window\n\
 before native testing; default behavior uses only its own window on that display.\n\
 An explicit peer-pinned Command+Tab test actor and --native-dnd-controls are default-off; --check-only validates allocated configuration without GUI/input.\n\
-Default own-window lifetime is 120000 ms; no timer is started by help/no arguments.";
+Default own-window lifetime is 120000 ms; no timer is started by help/no arguments.\n\
+Own-client --first-mouse=true|false policy is default YES; check-only creates no GUI.\n\
+Default-off --legacy-tracking-calibration registers only its own displayed hover view with NULL userData; not a generic modern hover oracle.";
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
 
@@ -24,6 +27,8 @@ pub struct Options {
     pub display_id: u32,
     pub lifetime_ms: u32,
     pub cover_controls: bool,
+    /// Default-off ordinary same-PID sibling on the allocated display.
+    pub interactive_sibling_window: bool,
     /// Explicit non-overlapping second own app on the allocated display.
     pub right_side: bool,
     /// Explicit read-only geometry fixture: last quarter outside the selected screen.
@@ -36,9 +41,19 @@ pub struct Options {
     /// Default-off native pasteboard source/destination, not a canvas drag oracle.
     pub native_dnd_controls: bool,
     pub environment_sample_ms: Option<u32>,
+    /// Default-off visual producer for one own Live freshness acceptance case.
+    pub live_freshness_ticks: bool,
     pub regular_app: bool,
+    /// Own receiving-client policy only. Default YES remains unchanged.
+    pub first_mouse_acceptance: bool,
     /// Own-client calibration only; never an RWI input preparation or fallback.
     pub hover_first_responder: bool,
+    /// Separate default-off legacy public owner/tag calibration; no input actor.
+    pub legacy_tracking_calibration: bool,
+    /// Owner explicitly grants one actual Agent PID/birth; default absent, not a backend oracle.
+    pub cooperative_owner: Option<CooperativeOwnerConfig>,
+    /// Independent semantic control; never changes the existing pointer hover.
+    pub semantic_alternate_ui: bool,
     /// Explicit own-app lifecycle test, never enabled by ordinary fixtures.
     pub self_foreground_after_ms: Option<u32>,
     /// Explicit receiving-fixture actor; armed once by its first actual canvas down.
@@ -49,6 +64,12 @@ pub struct Options {
     pub command_tab: Option<command_tab::Config>,
     /// Validation only: no state directory, framework call, window or timer.
     pub check_only: bool,
+}
+#[derive(Debug)]
+pub struct CooperativeOwnerConfig {
+    pub directory: PathBuf,
+    pub agent_pid: u32,
+    pub agent_birth: String,
 }
 impl Options {
     #[cfg(test)]
@@ -82,6 +103,7 @@ impl Options {
         let mut display_id = None;
         let mut lifetime_ms = None;
         let mut cover_controls = false;
+        let mut interactive_sibling_window = false;
         let mut right_side = false;
         let mut boundary_right = false;
         let mut boundary_canvas_right = false;
@@ -89,8 +111,14 @@ impl Options {
         let mut system_panel_controls = false;
         let mut native_dnd_controls = false;
         let mut environment_sample_ms = None;
+        let mut live_freshness_ticks = false;
         let mut regular_app = false;
+        let mut first_mouse_acceptance = None;
         let mut hover_first_responder = false;
+        let mut legacy_tracking_calibration = false;
+        let mut cooperative_directory: Option<PathBuf> = None;
+        let mut cooperative_agent_pid: Option<u32> = None;
+        let mut cooperative_agent_birth: Option<String> = None;
         let mut self_foreground_after_ms = None;
         let mut self_foreground_on_first_down_after_ms = None;
         let mut legacy_self_foreground = false;
@@ -100,11 +128,34 @@ impl Options {
         let mut command_tab_peer_window = None;
         let mut command_tab_peer_bundle = None;
         let mut check_only = false;
+        let mut semantic_alternate_ui = false;
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => return Ok(None),
+                "--cooperative-owner-dir" if cooperative_directory.is_none() => {
+                    cooperative_directory = Some(PathBuf::from(
+                        args.next().ok_or("cooperative owner directory missing")?,
+                    ))
+                }
+                "--cooperative-agent-pid" if cooperative_agent_pid.is_none() => {
+                    cooperative_agent_pid = Some(
+                        args.next()
+                            .ok_or("cooperative Agent PID missing")?
+                            .parse()
+                            .map_err(|_| "Agent PID must be u32")?,
+                    )
+                }
+                "--cooperative-agent-start" if cooperative_agent_birth.is_none() => {
+                    cooperative_agent_birth =
+                        Some(args.next().ok_or("cooperative Agent birth missing")?)
+                }
                 "--open-window" if !open => open = true,
                 "--check-only" if !check_only => check_only = true,
+                "--live-freshness-ticks" if !live_freshness_ticks => live_freshness_ticks = true,
+                "--semantic-alternate-ui" if !semantic_alternate_ui => semantic_alternate_ui = true,
+                "--legacy-tracking-calibration" if !legacy_tracking_calibration => {
+                    legacy_tracking_calibration = true
+                }
                 "--command-tab-on-first-down-after-ms" if command_tab_delay.is_none() => {
                     command_tab_delay = Some(
                         args.next()
@@ -134,6 +185,9 @@ impl Options {
                         Some(args.next().ok_or("Command+Tab peer bundle missing")?);
                 }
                 "--cover-controls" if !cover_controls => cover_controls = true,
+                "--interactive-sibling-window" if !interactive_sibling_window => {
+                    interactive_sibling_window = true;
+                }
                 "--right-side" if !right_side => right_side = true,
                 "--boundary-right" if !boundary_right => boundary_right = true,
                 "--boundary-canvas-right" if !boundary_canvas_right => boundary_canvas_right = true,
@@ -141,6 +195,11 @@ impl Options {
                 "--system-panel-controls" if !system_panel_controls => system_panel_controls = true,
                 "--native-dnd-controls" if !native_dnd_controls => native_dnd_controls = true,
                 "--regular-app" if !regular_app => regular_app = true,
+                "--first-mouse=true" | "--first-mouse=false"
+                    if first_mouse_acceptance.is_none() =>
+                {
+                    first_mouse_acceptance = Some(arg == "--first-mouse=true");
+                }
                 "--hover-first-responder" if !hover_first_responder => hover_first_responder = true,
                 "--legacy-self-foreground" if !legacy_self_foreground => {
                     legacy_self_foreground = true
@@ -215,6 +274,7 @@ impl Options {
             && display_id.is_none()
             && lifetime_ms.is_none()
             && !cover_controls
+            && !interactive_sibling_window
             && !right_side
             && !boundary_right
             && !boundary_canvas_right
@@ -222,7 +282,9 @@ impl Options {
             && !system_panel_controls
             && !native_dnd_controls
             && environment_sample_ms.is_none()
+            && !live_freshness_ticks
             && !regular_app
+            && first_mouse_acceptance.is_none()
             && !hover_first_responder
             && self_foreground_after_ms.is_none()
             && self_foreground_on_first_down_after_ms.is_none()
@@ -233,6 +295,7 @@ impl Options {
             && command_tab_peer_window.is_none()
             && command_tab_peer_bundle.is_none()
             && !check_only
+            && !semantic_alternate_ui
         {
             return Ok(None);
         }
@@ -256,6 +319,71 @@ impl Options {
             .filter(|id| *id != 0)
             .ok_or("--display-id must be a nonzero u32")?;
         let lifetime_ms = lifetime_ms.unwrap_or(120_000);
+        if live_freshness_ticks
+            && (!regular_app
+                || environment_sample_ms.is_none()
+                || native_dnd_controls
+                || semantic_alternate_ui)
+        {
+            return Err("Live freshness ticks require a regular own window, environment samples and the ordinary canvas".into());
+        }
+        if legacy_tracking_calibration
+            && (!regular_app
+                || hover_first_responder
+                || interactive_sibling_window
+                || cover_controls
+                || modal_controls
+                || system_panel_controls
+                || native_dnd_controls
+                || semantic_alternate_ui
+                || boundary_right
+                || boundary_canvas_right
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || legacy_self_foreground
+                || ax_windows_delay_ms.is_some()
+                || command_tab_delay.is_some()
+                || command_tab_peer_pid.is_some()
+                || command_tab_peer_window.is_some()
+                || command_tab_peer_bundle.is_some())
+        {
+            return Err("legacy tracking requires one ordinary --regular-app owner without responder primers, geometry, panels or actors".into());
+        }
+        if interactive_sibling_window
+            && (cover_controls
+                || right_side
+                || boundary_right
+                || boundary_canvas_right
+                || modal_controls
+                || system_panel_controls
+                || native_dnd_controls
+                || semantic_alternate_ui
+                || hover_first_responder
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || legacy_self_foreground
+                || ax_windows_delay_ms.is_some()
+                || command_tab_delay.is_some()
+                || command_tab_peer_pid.is_some()
+                || command_tab_peer_window.is_some()
+                || command_tab_peer_bundle.is_some())
+        {
+            return Err("interactive sibling requires ordinary allocated geometry without cover, panels, calibration or actors".into());
+        }
+        if semantic_alternate_ui
+            && (native_dnd_controls
+                || cover_controls
+                || modal_controls
+                || system_panel_controls
+                || boundary_right
+                || boundary_canvas_right
+                || hover_first_responder
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || command_tab_delay.is_some())
+        {
+            return Err("semantic UI control cannot combine with pointer calibration, geometry, panel or input actors".into());
+        }
         if native_dnd_controls
             && (cover_controls
                 || modal_controls
@@ -331,12 +459,45 @@ impl Options {
         } else {
             None
         };
+        let cooperative_owner = if cooperative_directory.is_some()
+            || cooperative_agent_pid.is_some()
+            || cooperative_agent_birth.is_some()
+        {
+            let directory =
+                cooperative_directory.ok_or("cooperative private directory required")?;
+            let agent_pid = cooperative_agent_pid
+                .filter(|p| *p > 0 && *p <= i32::MAX as u32)
+                .ok_or("cooperative Agent PID required")?;
+            let agent_birth = cooperative_agent_birth.ok_or("cooperative Agent birth required")?;
+            if !legacy_tracking_calibration
+                || environment_sample_ms.is_none()
+                || !agent_birth.starts_with(&format!("{agent_pid}:"))
+            {
+                return Err("cooperative owner requires independent legacy calibration, environment samples and exact Agent PID/birth; actual peer identity is checked at runtime".into());
+            }
+            let endpoint = directory.join("owner.sock");
+            rwi_core::MovePointerOptions::validate_cooperative_selector(
+                endpoint
+                    .to_str()
+                    .ok_or("socket directory encoding invalid")?,
+                "r",
+            )
+            .map_err(|e| e.to_string())?;
+            Some(CooperativeOwnerConfig {
+                directory,
+                agent_pid,
+                agent_birth,
+            })
+        } else {
+            None
+        };
         Ok(Some(Self {
             run_id,
             state_dir,
             display_id,
             lifetime_ms,
             cover_controls,
+            interactive_sibling_window,
             right_side,
             boundary_right,
             boundary_canvas_right,
@@ -344,8 +505,13 @@ impl Options {
             system_panel_controls,
             native_dnd_controls,
             environment_sample_ms,
+            live_freshness_ticks,
             regular_app,
+            first_mouse_acceptance: first_mouse_acceptance.unwrap_or(true),
             hover_first_responder,
+            legacy_tracking_calibration,
+            cooperative_owner,
+            semantic_alternate_ui,
             self_foreground_after_ms,
             self_foreground_on_first_down_after_ms,
             legacy_self_foreground,
@@ -702,6 +868,78 @@ impl MouseEvent {
     }
 }
 
+/// Passive default-button sink only; never mutates hover, focus, tracking or input sequence.
+#[derive(Debug, Clone, Serialize)]
+pub struct DefaultResponderMove {
+    pub sequence: u64,
+    pub native_type: usize,
+    pub window_number: isize,
+    pub window_point: [f64; 2],
+    pub timestamp_seconds: f64,
+    /// Public AppKit MouseMoved raw delta; absent/nonfinite is unknown, not zero.
+    pub delta_x: Option<f64>,
+    pub delta_y: Option<f64>,
+    pub own_window_match: bool,
+    pub current_first_responder_match: bool,
+    pub receiving_app_active: bool,
+    pub receiving_window_key: bool,
+}
+/// Subclass selector calls may precede UI creation or be reentrant. Separate from App/Window.
+#[derive(Clone, Copy, Default, Serialize)]
+pub struct DefaultResponderDiagnostics {
+    pub selector_calls: u64,
+    pub borrow_skips: u64,
+    pub no_ui_calls: u64,
+    pub other_button_calls: u64,
+}
+#[derive(Default, Serialize)]
+pub struct DefaultResponderMouse {
+    pub diagnostics: DefaultResponderDiagnostics,
+    pub events: u64,
+    pub invalid_events: u64,
+    pub dropped_records: u64,
+    pub records: VecDeque<DefaultResponderMove>,
+}
+impl DefaultResponderMouse {
+    pub fn receive(&mut self, mut event: DefaultResponderMove) {
+        if event.native_type != 5
+            || event.window_number <= 0
+            || !event.own_window_match
+            || !event
+                .window_point
+                .into_iter()
+                .chain([event.timestamp_seconds])
+                .all(f64::is_finite)
+        {
+            self.invalid_events = self.invalid_events.saturating_add(1);
+            return;
+        }
+        self.events = self.events.saturating_add(1);
+        let [delta_x, delta_y] =
+            passive_mouse_move_delta(event.native_type, || [event.delta_x, event.delta_y]);
+        event.delta_x = delta_x;
+        event.delta_y = delta_y;
+        event.sequence = self.events;
+        if self.records.len() == HISTORY_LIMIT {
+            self.records.pop_front();
+            self.dropped_records = self.dropped_records.saturating_add(1);
+        }
+        self.records.push_back(event);
+    }
+}
+
+/// Passive type mask and finite projection; no getter call for other event types.
+/// Raw AppKit components, never HID motion or view/desktop coordinate differences.
+pub fn passive_mouse_move_delta(
+    native_type: usize,
+    getters: impl FnOnce() -> [Option<f64>; 2],
+) -> [Option<f64>; 2] {
+    if native_type != 5 {
+        return [None, None];
+    }
+    getters().map(|component| component.filter(|value| value.is_finite()))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DispatchStage {
@@ -727,6 +965,9 @@ pub struct DispatchEvent {
     /// Tracking enter/exit events do not support the ordinary mouse accessor.
     pub subtype: Option<i16>,
     pub timestamp_seconds: f64,
+    /// Public AppKit MouseMoved raw delta; absent/nonfinite is unknown, not zero.
+    pub delta_x: Option<f64>,
+    pub delta_y: Option<f64>,
     pub own_window_match: bool,
     /// Public own-content hitTest snapshot, not a received view callback.
     pub hit_region: Option<DispatchRegion>,
@@ -781,6 +1022,10 @@ impl DispatchProbe {
             DispatchStage::Window => self.window_events += 1,
         }
         self.own_window_events += u64::from(event.own_window_match);
+        let [delta_x, delta_y] =
+            passive_mouse_move_delta(event.native_type, || [event.delta_x, event.delta_y]);
+        event.delta_x = delta_x;
+        event.delta_y = delta_y;
         event.sequence = self.application_events + self.window_events;
         if self.records.len() == HISTORY_LIMIT {
             self.records.pop_front();
@@ -936,6 +1181,194 @@ pub struct ResponderProbe {
     pub first_responder_region: Option<Region>,
     pub accepts_mouse_moved: Option<bool>,
     pub hover_tracking_areas: Option<usize>,
+    pub allows_inactive_tooltips: Option<bool>,
+    pub hover_visible_rect: Option<Rect>,
+    pub hover_window_matches: Option<bool>,
+    pub hover_tracking_descriptors: Option<TrackingAreaProbe>,
+}
+
+/// Readback coordinates are view-local AppKit points, never a desktop delta.
+/// Empty visible rectangles are valid measurements; nonfinite/negative sizes are unknown.
+pub fn passive_visible_rect(rect: Rect) -> Option<Rect> {
+    [rect.x, rect.y, rect.width, rect.height]
+        .into_iter()
+        .all(f64::is_finite)
+        .then_some(rect)
+        .filter(|r| r.width >= 0. && r.height >= 0.)
+}
+pub const TRACKING_DESCRIPTOR_LIMIT: usize = 8;
+#[derive(Serialize)]
+pub struct TrackingAreaDescriptor {
+    pub index: usize,
+    pub options: Option<u64>,
+    pub rect: Option<Rect>,
+    pub owner_is_hover: Option<bool>,
+    pub owner_window_matches: Option<bool>,
+    pub native_type_matches: bool,
+}
+impl TrackingAreaDescriptor {
+    fn sanitized(mut self) -> Self {
+        if !self.native_type_matches {
+            self.options = None;
+            self.rect = None;
+            self.owner_is_hover = None;
+            self.owner_window_matches = None;
+        } else {
+            self.rect = self.rect.and_then(passive_visible_rect);
+            if self.owner_is_hover != Some(true) {
+                self.owner_window_matches = None;
+            }
+        }
+        self
+    }
+}
+#[derive(Serialize)]
+pub struct TrackingAreaProbe {
+    pub registered_count: usize,
+    pub descriptor_limit: usize,
+    pub truncated: bool,
+    pub descriptors: Vec<TrackingAreaDescriptor>,
+}
+impl TrackingAreaProbe {
+    pub fn bounded(count: usize, rows: impl IntoIterator<Item = TrackingAreaDescriptor>) -> Self {
+        Self {
+            registered_count: count,
+            descriptor_limit: TRACKING_DESCRIPTOR_LIMIT,
+            truncated: count > TRACKING_DESCRIPTOR_LIMIT,
+            descriptors: rows
+                .into_iter()
+                .take(count.min(TRACKING_DESCRIPTOR_LIMIT))
+                .map(TrackingAreaDescriptor::sanitized)
+                .collect(),
+        }
+    }
+}
+#[cfg(test)]
+mod passive_tracking_getter_tests {
+    use super::*;
+    fn rect(width: f64, height: f64) -> Rect {
+        Rect {
+            x: 0.,
+            y: 0.,
+            width,
+            height,
+        }
+    }
+    fn row(index: usize) -> TrackingAreaDescriptor {
+        TrackingAreaDescriptor {
+            index,
+            options: Some(0x283),
+            rect: Some(rect(612., 50.)),
+            owner_is_hover: Some(true),
+            owner_window_matches: Some(true),
+            native_type_matches: true,
+        }
+    }
+    #[test]
+    fn f05_passive_default_unknown() {
+        let v = serde_json::to_value(ResponderProbe::default()).unwrap();
+        for k in [
+            "allows_inactive_tooltips",
+            "hover_visible_rect",
+            "hover_window_matches",
+            "hover_tracking_descriptors",
+        ] {
+            assert!(v.get(k).is_some_and(serde_json::Value::is_null));
+        }
+        assert!(v["hover_tracking_areas"].is_null());
+    }
+    #[test]
+    fn f05_passive_measured_false() {
+        let p = ResponderProbe {
+            allows_inactive_tooltips: Some(false),
+            ..Default::default()
+        };
+        assert_eq!(
+            serde_json::to_value(p).unwrap()["allows_inactive_tooltips"],
+            false
+        );
+    }
+    #[test]
+    fn f05_passive_two_areas_explicit_index_one() {
+        let mut first = row(0);
+        first.options = Some(0x200);
+        first.owner_is_hover = None;
+        let p = TrackingAreaProbe::bounded(2, [first, row(1)]);
+        assert_eq!(p.registered_count, 2);
+        assert_eq!(p.descriptors.len(), 2);
+        assert!(!p.truncated);
+        assert_eq!(p.descriptors[1].options, Some(0x283));
+        assert_eq!(p.descriptors[1].index, 1);
+        assert_eq!(p.descriptors[0].owner_window_matches, None);
+    }
+    #[test]
+    fn f05_passive_total_nine_bounded_eight() {
+        let p = TrackingAreaProbe::bounded(9, (0..9).map(row));
+        assert_eq!(p.registered_count, 9);
+        assert_eq!(p.descriptor_limit, 8);
+        assert_eq!(p.descriptors.len(), 8);
+        assert!(p.truncated);
+        assert_eq!(p.descriptors[7].index, 7);
+    }
+    #[test]
+    fn f05_passive_mismatched_type_and_owner_unknown() {
+        let mut unknown = row(0);
+        unknown.native_type_matches = false;
+        let mut foreign = row(1);
+        foreign.owner_is_hover = Some(false);
+        let mut nil = row(2);
+        nil.owner_is_hover = None;
+        let p = TrackingAreaProbe::bounded(3, [unknown, foreign, nil]);
+        let v = serde_json::to_value(p).unwrap();
+        for k in ["options", "rect", "owner_is_hover", "owner_window_matches"] {
+            assert!(v["descriptors"][0][k].is_null());
+        }
+        assert_eq!(v["descriptors"][1]["owner_is_hover"], false);
+        assert!(v["descriptors"][1]["owner_window_matches"].is_null());
+        assert!(v["descriptors"][2]["owner_window_matches"].is_null());
+    }
+    #[test]
+    fn f05_passive_detached_view_false() {
+        let mut r = row(0);
+        r.owner_window_matches = Some(false);
+        let p = ResponderProbe {
+            hover_window_matches: Some(false),
+            hover_tracking_descriptors: Some(TrackingAreaProbe::bounded(1, [r])),
+            ..Default::default()
+        };
+        let v = serde_json::to_value(p).unwrap();
+        assert_eq!(v["hover_window_matches"], false);
+        assert_eq!(
+            v["hover_tracking_descriptors"]["descriptors"][0]["owner_window_matches"],
+            false
+        );
+    }
+    #[test]
+    fn f05_passive_zero_rect_retained() {
+        let v = serde_json::to_value(passive_visible_rect(rect(0., 0.))).unwrap();
+        assert_eq!(v["width"], 0.);
+        assert_eq!(v["height"], 0.);
+    }
+    #[test]
+    fn f05_passive_nonfinite_rect_none() {
+        for bad in [
+            Rect {
+                x: f64::NAN,
+                ..rect(1., 1.)
+            },
+            Rect {
+                y: f64::INFINITY,
+                ..rect(1., 1.)
+            },
+            rect(f64::NEG_INFINITY, 1.),
+        ] {
+            assert!(passive_visible_rect(bad).is_none());
+            let mut r = row(0);
+            r.rect = Some(bad);
+            let p = TrackingAreaProbe::bounded(1, [r]);
+            assert!(serde_json::to_value(p).unwrap()["descriptors"][0]["rect"].is_null());
+        }
+    }
 }
 
 /// Own application metadata, not proof of a Dock entry or a user's selection.
@@ -1099,6 +1532,44 @@ fn environment_history_is_bounded_and_accounts_for_eviction() {
     assert_eq!(state.safe_button_actions, 0);
 }
 
+/// Only our addTrackingRect return is exported. Event tags are equality checks,
+/// never pointers/modern trackingArea objects or new registration assertions.
+#[derive(Default, Serialize)]
+pub struct LegacyTrackingProbe {
+    pub requested: bool,
+    pub registration_live: bool,
+    pub public_tag_decimal: Option<String>,
+    pub registered_window_number: Option<isize>,
+    pub owner_is_own_hover: Option<bool>,
+    pub registration_user_data_is_null: Option<bool>,
+    pub assume_inside: Option<bool>,
+    pub registration_sequence: Option<u64>,
+    pub removal_count: u64,
+    pub actual_enter_exit_callbacks: u64,
+    pub last_native_type: Option<usize>,
+    pub last_exact_own_window: Option<bool>,
+    pub last_event_tag_matches_registered: Option<bool>,
+    pub last_event_user_data_is_null: Option<bool>,
+}
+impl LegacyTrackingProbe {
+    pub fn note_event(
+        &mut self,
+        native_type: usize,
+        exact_window: bool,
+        tag_matches: bool,
+        null_data: bool,
+    ) {
+        if !self.registration_live || !matches!(native_type, 8 | 9) {
+            return;
+        }
+        self.actual_enter_exit_callbacks = self.actual_enter_exit_callbacks.saturating_add(1);
+        self.last_native_type = Some(native_type);
+        self.last_exact_own_window = Some(exact_window);
+        self.last_event_tag_matches_registered = Some(tag_matches);
+        self.last_event_user_data_is_null = Some(null_data);
+    }
+}
+
 #[derive(Serialize)]
 pub struct State {
     pub schema_version: u32,
@@ -1111,6 +1582,9 @@ pub struct State {
     pub cover_visible: Option<bool>,
     pub cover_above_primary: Option<bool>,
     pub cover_display_id: Option<u32>,
+    /// Actual key readback for the opt-in sibling; absent in all old fixtures.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interactive_sibling_window_key: Option<bool>,
     pub app_active: Option<bool>,
     pub window_key: Option<bool>,
     pub frontmost_pid: Option<i32>,
@@ -1122,6 +1596,12 @@ pub struct State {
     pub environment_sample_ms: Option<u32>,
     pub environment_sampled_unix_ms: Option<u64>,
     pub environment_probe_ticks: u64,
+    /// Absent in all existing fixtures; not proof of compositor freshness.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub live_freshness_ticks: Option<bool>,
+    /// Actual own drawRect callback submitted this tick; not a capture/flush receipt.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub live_freshness_last_canvas_draw_tick: Option<u64>,
     pub environment_history: EnvironmentHistory,
     pub application_identity: ApplicationIdentity,
     pub self_foreground_after_ms: Option<u32>,
@@ -1140,12 +1620,21 @@ pub struct State {
     pub modal: ModalOracle,
     pub system_panels: SystemPanels,
     pub hover: Hover,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legacy_tracking: Option<LegacyTrackingProbe>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cooperative_tracking: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_alternate_ui: Option<super::semantic_alternate_ui::Oracle>,
     pub drag: Drag,
     pub native_dnd: super::native_dnd::Oracle,
     pub text: TextOracle,
     pub scroll: ScrollOracle,
     pub dispatch_probe: DispatchProbe,
     pub responder: ResponderProbe,
+    pub default_responder_mouse: DefaultResponderMouse,
+    /// Configured policy and actual selector calls; not a received mouse callback.
+    pub first_mouse: FirstMouseProbe,
     pub invalid_events: u64,
     pub dropped_records: u64,
     pub records: VecDeque<Record>,
@@ -1168,6 +1657,7 @@ impl State {
             cover_visible: None,
             cover_above_primary: None,
             cover_display_id: None,
+            interactive_sibling_window_key: None,
             app_active: None,
             window_key: None,
             frontmost_pid: None,
@@ -1179,6 +1669,8 @@ impl State {
             environment_sample_ms: None,
             environment_sampled_unix_ms: None,
             environment_probe_ticks: 0,
+            live_freshness_ticks: None,
+            live_freshness_last_canvas_draw_tick: None,
             environment_history: EnvironmentHistory::default(),
             application_identity: ApplicationIdentity::default(),
             self_foreground_after_ms: None,
@@ -1197,12 +1689,17 @@ impl State {
             modal: ModalOracle::default(),
             system_panels: SystemPanels::default(),
             hover: Hover::default(),
+            legacy_tracking: None,
+            cooperative_tracking: None,
+            semantic_alternate_ui: None,
             drag: Drag::default(),
             native_dnd: super::native_dnd::Oracle::default(),
             text: TextOracle::default(),
             scroll: ScrollOracle::default(),
             dispatch_probe: DispatchProbe::default(),
             responder: ResponderProbe::default(),
+            default_responder_mouse: DefaultResponderMouse::default(),
+            first_mouse: FirstMouseProbe::new(true),
             invalid_events: 0,
             dropped_records: 0,
             records: VecDeque::new(),
@@ -1411,6 +1908,17 @@ impl State {
         self.record("native_scroll_clip_readback", None);
     }
     pub fn summary(&self) -> String {
+        if self.live_freshness_ticks == Some(true) {
+            return format!(
+                "C4 own {} · tick {:08}\nRun {}\nCanvas callback {:?} · safe {} · seq {}",
+                self.pid,
+                self.environment_probe_ticks,
+                self.run_id,
+                self.live_freshness_last_canvas_draw_tick,
+                self.safe_button_actions,
+                self.sequence
+            );
+        }
         if self.native_dnd.enabled {
             let d = &self.native_dnd;
             return format!(
@@ -1520,6 +2028,190 @@ impl Store {
 mod tests {
     use super::*;
     #[test]
+    fn passive_delta_never_calls_getters_for_non_mouse_moved() {
+        let calls = std::cell::Cell::new(0);
+        for kind in [0, 1, 6, 7, 8, 9, 10, 22, 25, 26, 27, usize::MAX] {
+            assert_eq!(
+                passive_mouse_move_delta(kind, || {
+                    calls.set(calls.get() + 1);
+                    [Some(1.0), Some(2.0)]
+                }),
+                [None, None]
+            );
+        }
+        assert_eq!(calls.get(), 0);
+    }
+    #[test]
+    fn passive_delta_components_are_finite_or_explicit_unknown() {
+        assert_eq!(
+            passive_mouse_move_delta(5, || [Some(2.5), Some(-7.25)]),
+            [Some(2.5), Some(-7.25)]
+        );
+        assert_eq!(
+            passive_mouse_move_delta(5, || [None, Some(0.0)]),
+            [None, Some(0.0)]
+        );
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(
+                passive_mouse_move_delta(5, || [Some(value), Some(-6.0)]),
+                [None, Some(-6.0)]
+            );
+        }
+    }
+    #[test]
+    fn passive_delta_unknown_does_not_drop_events_or_claim_hover() {
+        let mut state = State::new("pure-passive-delta".into());
+        let mut app = dispatch(DispatchStage::Application);
+        app.delta_x = Some(f64::NAN);
+        app.delta_y = Some(-6.0);
+        state.dispatch_probe.receive(app);
+        let mut button = default_responder_move();
+        button.delta_x = Some(f64::INFINITY);
+        button.delta_y = Some(0.0);
+        state.default_responder_mouse.receive(button);
+        assert_eq!(state.dispatch_probe.application_events, 1);
+        assert_eq!(state.dispatch_probe.invalid_events, 0);
+        assert_eq!(state.default_responder_mouse.events, 1);
+        assert_eq!(state.default_responder_mouse.invalid_events, 0);
+        let json = serde_json::to_value(&state).unwrap();
+        assert_eq!(
+            json["dispatch_probe"]["records"][0]["delta_x"],
+            serde_json::Value::Null
+        );
+        assert_eq!(json["dispatch_probe"]["records"][0]["delta_y"], -6.0);
+        assert_eq!(
+            json["default_responder_mouse"]["records"][0]["delta_x"],
+            serde_json::Value::Null
+        );
+        assert_eq!(
+            json["default_responder_mouse"]["records"][0]["delta_y"],
+            0.0
+        );
+        assert_eq!(
+            (
+                state.hover.moves,
+                state.hover.enters,
+                state.hover.exits,
+                state.hover.tooltip_requests
+            ),
+            (0, 0, 0, 0)
+        );
+        assert_eq!(state.sequence, 0);
+        assert_eq!(state.safe_button_actions, 0);
+        assert!(!state.responder.calibration_requested);
+        assert!(state.records.is_empty());
+    }
+    fn default_responder_move() -> DefaultResponderMove {
+        DefaultResponderMove {
+            sequence: 0,
+            native_type: 5,
+            window_number: 42,
+            window_point: [50.0, 372.0],
+            timestamp_seconds: 1.5,
+            delta_x: None,
+            delta_y: None,
+            own_window_match: true,
+            current_first_responder_match: true,
+            receiving_app_active: false,
+            receiving_window_key: false,
+        }
+    }
+    #[test]
+    fn default_responder_schema_diagnostics_do_not_claim_native_callbacks() {
+        let state = State::new("pure-default-sink".into());
+        let json = serde_json::to_value(&state).unwrap();
+        let sink = &json["default_responder_mouse"];
+        for key in ["events", "invalid_events", "dropped_records"] {
+            assert_eq!(sink[key], serde_json::json!(0));
+        }
+        for key in [
+            "selector_calls",
+            "borrow_skips",
+            "no_ui_calls",
+            "other_button_calls",
+        ] {
+            assert_eq!(sink["diagnostics"][key], serde_json::json!(0));
+        }
+        assert_eq!(sink["records"], serde_json::json!([]));
+        assert_eq!(state.sequence, 0);
+        assert_eq!(state.hover.moves, 0);
+        assert_eq!(state.dispatch_probe.application_events, 0);
+        assert_eq!(state.dispatch_probe.window_events, 0);
+    }
+    #[test]
+    fn default_responder_native_move_records_preserve_raw_state_without_hover() {
+        let mut state = State::new("pure-default-sink".into());
+        state
+            .default_responder_mouse
+            .receive(default_responder_move());
+        let event = &state.default_responder_mouse.records[0];
+        assert_eq!(state.default_responder_mouse.events, 1);
+        assert_eq!(event.sequence, 1);
+        assert_eq!(event.window_point, [50.0, 372.0]);
+        assert!(event.current_first_responder_match);
+        assert!(!event.receiving_app_active);
+        assert!(!event.receiving_window_key);
+        assert_eq!(state.sequence, 0);
+        assert_eq!(state.hover.moves, 0);
+        assert_eq!(state.hover.enters, 0);
+        assert_eq!(state.hover.exits, 0);
+        assert_eq!(state.hover.tooltip_requests, 0);
+        assert!(!state.hover.inside);
+        assert_eq!(state.safe_button_actions, 0);
+        assert!(state.records.is_empty());
+        assert_eq!(state.dispatch_probe.application_events, 0);
+        assert_eq!(state.dispatch_probe.window_events, 0);
+    }
+    #[test]
+    fn default_responder_rejects_non_move_unmatched_window_and_nonfinite_values() {
+        let mut sink = DefaultResponderMouse::default();
+        let mut bad = default_responder_move();
+        bad.native_type = 1;
+        sink.receive(bad);
+        for number in [0, -1] {
+            let mut bad = default_responder_move();
+            bad.window_number = number;
+            sink.receive(bad);
+        }
+        let mut bad = default_responder_move();
+        bad.own_window_match = false;
+        sink.receive(bad);
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for index in 0..3 {
+                let mut bad = default_responder_move();
+                if index < 2 {
+                    bad.window_point[index] = value;
+                } else {
+                    bad.timestamp_seconds = value;
+                }
+                sink.receive(bad);
+            }
+        }
+        assert_eq!(sink.invalid_events, 13);
+        assert_eq!(sink.events, 0);
+        assert_eq!(sink.dropped_records, 0);
+        assert!(sink.records.is_empty());
+    }
+    #[test]
+    fn default_responder_records_are_bounded_and_nonfirst_state_is_not_filtered() {
+        let mut sink = DefaultResponderMouse::default();
+        for _ in 0..HISTORY_LIMIT + 3 {
+            let mut event = default_responder_move();
+            event.current_first_responder_match = false;
+            sink.receive(event);
+        }
+        assert_eq!(sink.events, (HISTORY_LIMIT + 3) as u64);
+        assert_eq!(sink.records.len(), HISTORY_LIMIT);
+        assert_eq!(sink.dropped_records, 3);
+        assert_eq!(sink.records.front().unwrap().sequence, 4);
+        assert_eq!(
+            sink.records.back().unwrap().sequence,
+            (HISTORY_LIMIT + 3) as u64
+        );
+        assert!(!sink.records.back().unwrap().current_first_responder_match);
+        assert_eq!(sink.invalid_events, 0);
+    }
+    #[test]
     fn dispatch_probe_schema_is_explicit_and_independent_from_view_receipts() {
         let state = State::new("schema-probe".into());
         let json = serde_json::to_value(&state).unwrap();
@@ -1551,6 +2243,8 @@ mod tests {
             window_point: [12.25, 34.5],
             subtype: Some(-3),
             timestamp_seconds: 1.5,
+            delta_x: None,
+            delta_y: None,
             own_window_match: true,
             hit_region: Some(DispatchRegion::HoverZone),
             framework_pointer: None,
@@ -2754,5 +3448,256 @@ mod native_dnd_configuration_tests {
                 .is_err()
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod interactive_sibling_contract {
+    use super::*;
+    fn parse(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "own-interactive-sibling",
+                "--state-dir",
+                "/tmp/rwi-own-interactive-sibling",
+                "--display-id",
+                "4",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn interactive_sibling_defaults_off_and_preserves_legacy_cover() {
+        let ordinary = parse(&[]).unwrap().unwrap();
+        assert!(!ordinary.interactive_sibling_window);
+        assert!(!ordinary.cover_controls);
+        let cover = parse(&["--cover-controls"]).unwrap().unwrap();
+        assert!(cover.cover_controls);
+        assert!(!cover.interactive_sibling_window);
+        let state = State::new("own-interactive-sibling".into());
+        assert!(state.interactive_sibling_window_key.is_none());
+        assert!(
+            !serde_json::to_value(state)
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .contains_key("interactive_sibling_window_key")
+        );
+    }
+    #[test]
+    fn interactive_sibling_explicit_check_only_keeps_allocated_identity() {
+        for extra in [
+            vec!["--interactive-sibling-window"],
+            vec!["--interactive-sibling-window", "--check-only"],
+        ] {
+            let expected_check_only = extra.contains(&"--check-only");
+            let options = parse(&extra).unwrap().unwrap();
+            assert!(options.interactive_sibling_window);
+            assert!(!options.cover_controls);
+            assert_eq!(options.display_id, 4);
+            assert_eq!(options.run_id, "own-interactive-sibling");
+            assert_eq!(options.check_only, expected_check_only);
+            assert!(options.command_tab.is_none());
+            assert!(options.self_foreground_after_ms.is_none());
+            assert!(options.self_foreground_on_first_down_after_ms.is_none());
+        }
+    }
+    #[test]
+    fn interactive_sibling_duplicate_or_cover_and_actor_mix_is_invalid() {
+        for extra in [
+            vec![
+                "--interactive-sibling-window",
+                "--interactive-sibling-window",
+            ],
+            vec!["--interactive-sibling-window", "--cover-controls"],
+            vec!["--cover-controls", "--interactive-sibling-window"],
+            vec!["--interactive-sibling-window", "--right-side"],
+            vec![
+                "--interactive-sibling-window",
+                "--regular-app",
+                "--self-foreground-after-ms",
+                "100",
+            ],
+        ] {
+            assert!(parse(&extra).is_err());
+        }
+        assert!(Options::parse(["--interactive-sibling-window".into()]).is_err());
+    }
+}
+
+#[cfg(test)]
+mod registered_tracking_contract {
+    use super::*;
+    fn parse(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "new-legacy",
+                "--state-dir",
+                "/tmp/new-legacy",
+                "--display-id",
+                "5",
+                "--regular-app",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn f05_registered_tracking_fixture_default_off_no_actor_composition() {
+        assert!(!parse(&[]).unwrap().unwrap().legacy_tracking_calibration);
+        assert!(
+            parse(&["--legacy-tracking-calibration"])
+                .unwrap()
+                .unwrap()
+                .legacy_tracking_calibration
+        );
+        for extra in [
+            vec!["--hover-first-responder"],
+            vec!["--interactive-sibling-window"],
+            vec!["--native-dnd-controls"],
+            vec!["--semantic-alternate-ui"],
+            vec!["--self-foreground-after-ms", "1000"],
+        ] {
+            let mut args = vec!["--legacy-tracking-calibration"];
+            args.extend(extra);
+            assert!(parse(&args).is_err());
+        }
+        assert!(
+            parse(&[
+                "--legacy-tracking-calibration",
+                "--legacy-tracking-calibration"
+            ])
+            .is_err()
+        );
+        let state = serde_json::to_value(State::new("pure".into())).unwrap();
+        assert!(state.get("legacy_tracking").is_none());
+    }
+    #[test]
+    fn f05_registered_tracking_fixture_probe_never_fakes_modern_move_or_matching_tag() {
+        let mut p = LegacyTrackingProbe {
+            requested: true,
+            registration_live: true,
+            ..Default::default()
+        };
+        p.note_event(5, true, true, true);
+        assert_eq!(p.actual_enter_exit_callbacks, 0);
+        p.note_event(8, false, false, true);
+        assert_eq!(p.actual_enter_exit_callbacks, 1);
+        assert_eq!(p.last_event_tag_matches_registered, Some(false));
+        assert_eq!(p.last_exact_own_window, Some(false));
+        p.registration_live = false;
+        p.note_event(9, true, true, true);
+        assert_eq!(p.actual_enter_exit_callbacks, 1);
+    }
+}
+
+#[cfg(test)]
+mod cooperative_owner_options {
+    use super::*;
+    fn parse(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "cooperative-new",
+                "--state-dir",
+                "/tmp/own-coop-state",
+                "--display-id",
+                "5",
+                "--regular-app",
+                "--environment-sample-ms",
+                "100",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn f05_cooperative_tracking_fixture_provider_default_off_and_exact_grant() {
+        assert!(parse(&[]).unwrap().unwrap().cooperative_owner.is_none());
+        assert!(parse(&["--cooperative-owner-dir", "/tmp/owner-new"]).is_err());
+        let options = parse(&[
+            "--legacy-tracking-calibration",
+            "--cooperative-owner-dir",
+            "/tmp/owner-new",
+            "--cooperative-agent-pid",
+            "42",
+            "--cooperative-agent-start",
+            "42:1:2",
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(options.cooperative_owner.unwrap().agent_birth, "42:1:2");
+        let state = serde_json::to_value(State::new("no-provider".into())).unwrap();
+        assert!(state.get("cooperative_tracking").is_none());
+    }
+}
+
+#[cfg(test)]
+mod live_freshness_ticks_contract {
+    use super::*;
+    fn options(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "c4-pure",
+                "--state-dir",
+                "/tmp/rwi-c4-pure",
+                "--display-id",
+                "5",
+                "--regular-app",
+                "--check-only",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn live_freshness_ticks_default_off() {
+        assert!(!options(&[]).unwrap().unwrap().live_freshness_ticks);
+    }
+    #[test]
+    fn live_freshness_ticks_explicit_check_only() {
+        let o = options(&["--environment-sample-ms", "500", "--live-freshness-ticks"])
+            .unwrap()
+            .unwrap();
+        assert!(o.live_freshness_ticks && o.check_only);
+    }
+    #[test]
+    fn live_freshness_ticks_missing_sample_and_duplicate_reject() {
+        assert!(options(&["--live-freshness-ticks"]).is_err());
+        assert!(
+            options(&[
+                "--environment-sample-ms",
+                "500",
+                "--live-freshness-ticks",
+                "--live-freshness-ticks"
+            ])
+            .is_err()
+        );
+    }
+    #[test]
+    fn live_freshness_ticks_summary_changes_without_input_or_draw_proof() {
+        let mut s = State::new("c4-pure".into());
+        assert!(!s.summary().starts_with("C4 own"));
+        s.live_freshness_ticks = Some(true);
+        s.environment_sample_ms = Some(500);
+        s.status = "running";
+        let before = s.summary();
+        s.note_environment_probe(1000);
+        assert_ne!(before, s.summary());
+        assert_eq!(s.environment_probe_ticks, 1);
+        assert!(s.live_freshness_last_canvas_draw_tick.is_none());
+        assert_eq!((s.sequence, s.safe_button_actions), (0, 0));
     }
 }

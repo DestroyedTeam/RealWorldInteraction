@@ -62,6 +62,58 @@ fn http_observation_parser_preserves_body_and_refuses_ambiguous_framing() {
     }
 }
 #[test]
+fn empty_eof_is_not_a_request_and_diagnostics_do_not_copy_a_route() {
+    let error = request(b"").err().unwrap();
+    assert!(is_no_request(&error));
+    assert_eq!(error.kind(), io::ErrorKind::UnexpectedEof);
+    let diagnostic = error.to_string();
+    assert!(diagnostic.contains("phase=before_request_line"));
+    assert!(diagnostic.contains("header_bytes=0"));
+    assert!(diagnostic.contains("outcome=closed_without_response"));
+    assert!(!diagnostic.contains('/'));
+    assert!(!diagnostic.contains("token"));
+}
+#[test]
+fn idle_empty_connection_is_bounded_and_does_not_become_a_request() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let _client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+    let (mut stream, _) = listener.accept().unwrap();
+    let started = Instant::now();
+    let error = read_request(&mut stream).err().unwrap();
+    assert!(is_no_request(&error));
+    assert!(matches!(
+        error.kind(),
+        io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+    ));
+    assert!(started.elapsed() < Duration::from_secs(2));
+}
+#[test]
+fn partial_header_eof_and_complete_malformed_request_still_require_errors() {
+    for raw in [
+        b"G".as_slice(),
+        b"GET /secret-token/b/ HTTP/1.0\r\nHost: 127.0.0.1:1234\r\n\r\n".as_slice(),
+    ] {
+        let error = request(raw).err().unwrap();
+        assert!(!is_no_request(&error));
+        assert!(!error.to_string().contains("secret-token"));
+    }
+}
+#[test]
+fn partial_header_idle_keeps_its_error_and_original_read_budget() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+    client.write_all(b"G").unwrap();
+    let (mut stream, _) = listener.accept().unwrap();
+    let started = Instant::now();
+    let error = read_request(&mut stream).err().unwrap();
+    assert!(!is_no_request(&error));
+    assert!(matches!(
+        error.kind(),
+        io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+    ));
+    assert!(started.elapsed() < Duration::from_secs(2));
+}
+#[test]
 fn page_is_only_a_received_event_oracle_not_an_input_bridge() {
     let html = page("r91-test", "test-token", "a");
     for forbidden in [
@@ -210,4 +262,173 @@ fn allocated_token_is_optional_exact_bounded_and_not_duplicated() {
             .len(),
         128
     );
+}
+
+#[test]
+fn r95_document_mouse_capture_is_readonly_and_separate_from_hover_family() {
+    let html = page("r95-test", "test-token", "a");
+    assert_eq!(
+        html.matches(
+            "document.addEventListener(kind,observeDocumentMouse,{capture:true,passive:true})"
+        )
+        .count(),
+        1
+    );
+    for required in [
+        "['mousedown','mouseup','mousemove']",
+        "documentMouseCounts={mousedown:0,mouseup:0,mousemove:0}",
+        "emit(event.type,event,'document_mouse_capture')",
+        "'hover_pointer':'page_or_control'",
+        "observerFamily!=='document_mouse_capture'",
+        "documentMouseSequence++",
+        "nativeEventType:event?event.type:null",
+        "getBoundingClientRect()",
+        "nearestButtonId",
+    ] {
+        assert!(html.contains(required), "{required}");
+    }
+    for forbidden in [
+        "dispatchEvent",
+        ".click(",
+        ".focus(",
+        "Input.dispatch",
+        "preventDefault(",
+        "stopPropagation(",
+    ] {
+        assert!(!html.contains(forbidden), "{forbidden}");
+    }
+    assert_eq!(
+        html.matches("hover.addEventListener('pointermove'").count(),
+        1
+    );
+    assert_eq!(
+        html.matches("hover.addEventListener('pointerenter'")
+            .count(),
+        1
+    );
+    assert_eq!(
+        html.matches("hover.addEventListener('pointerleave'")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn r95_document_mouse_reception_types_are_raw_and_counted_separately() {
+    let mut oracle = Oracle::new("r95-test");
+    for (sequence, kind) in ["mousedown", "mouseup", "mousemove"]
+        .into_iter()
+        .enumerate()
+    {
+        let event = json!({"window":"a","type":kind,"nativeEventType":kind,
+            "observerFamily":"document_mouse_capture","documentMouseSequence":sequence+1,
+            "isTrusted":false,"counter":0,"clientX":100,"clientY":80});
+        let receipt = oracle
+            .accept("a", &serde_json::to_vec(&event).unwrap())
+            .unwrap();
+        assert_eq!(receipt["page_event"], event);
+        assert_eq!(oracle.windows["a"].event_type_counts[kind], 1);
+    }
+    let hover = json!({"window":"a","type":"pointermove","observerFamily":"hover_pointer"});
+    oracle
+        .accept("a", &serde_json::to_vec(&hover).unwrap())
+        .unwrap();
+    assert_eq!(oracle.windows["a"].event_type_counts["mousemove"], 1);
+    assert_eq!(oracle.windows["a"].event_type_counts["pointermove"], 1);
+    assert_eq!(oracle.windows["a"].received, 4);
+    assert!(oracle.windows["b"].event_type_counts.is_empty());
+    assert_eq!(
+        oracle.state("test")["windows"]["a"]["event_type_counts"]["mousedown"],
+        1
+    );
+    assert_eq!(oracle.state("test")["input_sent_by_server"], false);
+}
+
+#[test]
+fn r95_document_mouse_counts_survive_bounded_ring_eviction() {
+    let mut oracle = Oracle::new("r95-test");
+    oracle
+        .accept(
+            "a",
+            br#"{"window":"a","type":"mousedown","observerFamily":"document_mouse_capture"}"#,
+        )
+        .unwrap();
+    for _ in 0..EVENTS_PER_WINDOW {
+        oracle
+            .accept("a", br#"{"window":"a","type":"heartbeat"}"#)
+            .unwrap();
+    }
+    assert_eq!(oracle.windows["a"].events.len(), EVENTS_PER_WINDOW);
+    assert_eq!(oracle.windows["a"].dropped, 1);
+    assert_eq!(oracle.windows["a"].event_type_counts["mousedown"], 1);
+    assert_eq!(
+        oracle.windows["a"].event_type_counts["heartbeat"],
+        EVENTS_PER_WINDOW as u64
+    );
+}
+
+#[test]
+fn receiver_observer_page_fields_and_new_listeners_are_passive() {
+    let html = page("observer-test", "test-token", "a");
+    for field in ["keyCode", "charCode", "isComposing"] {
+        assert!(html.contains(&format!(
+            "{field}:event&&'{field}'in event?event.{field}:null"
+        )));
+    }
+    assert_eq!(html.matches("document.addEventListener(kind,event=>emit(kind,event,'receiving_chain'),{capture:true,passive:true})").count(), 1);
+    for forbidden in [
+        "preventDefault",
+        "stopPropagation",
+        "dispatchEvent",
+        ".focus(",
+        ".click(",
+    ] {
+        assert!(!html.contains(forbidden));
+    }
+    assert_eq!(HEADER_LIMIT, 8192);
+    assert_eq!(BODY_LIMIT, 4096);
+    assert_eq!(EVENTS_PER_WINDOW, 512);
+    assert_eq!(REQUEST_LIMIT, 10_000);
+}
+
+#[test]
+fn receiver_observer_text_chain_receipts_preserve_raw_fields_and_isolation() {
+    let mut oracle = Oracle::new("observer-test");
+    for (sequence, kind) in [
+        "keypress",
+        "beforeinput",
+        "compositionstart",
+        "compositionupdate",
+        "compositionend",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let event = json!({"window":"a","type":kind,"nativeEventType":kind,"observerFamily":"receiving_chain","clientSequence":sequence+1,"keyCode":229,"charCode":0,"isComposing":false,"isTrusted":false,"data":"🙂"});
+        let receipt = oracle
+            .accept("a", &serde_json::to_vec(&event).unwrap())
+            .unwrap();
+        assert_eq!(receipt["page_event"], event);
+        assert_eq!(oracle.windows["a"].event_type_counts[kind], 1);
+    }
+    assert_eq!(oracle.windows["a"].received, 5);
+    assert_eq!(oracle.windows["b"].received, 0);
+    assert_eq!(oracle.windows["c"].received, 0);
+}
+
+#[test]
+fn receiver_observer_unknown_command_and_byte_budget_still_fail_closed() {
+    let mut oracle = Oracle::new("observer-test");
+    for event in [
+        json!({"window":"a","type":"composition_commit_command"}),
+        json!({"window":"b","type":"beforeinput"}),
+        json!({"window":"a","type":"beforeinput","data":"🙂".repeat(BODY_LIMIT)}),
+    ] {
+        assert!(
+            oracle
+                .accept("a", &serde_json::to_vec(&event).unwrap())
+                .is_err()
+        );
+    }
+    assert_eq!(oracle.windows["a"].received, 0);
 }
