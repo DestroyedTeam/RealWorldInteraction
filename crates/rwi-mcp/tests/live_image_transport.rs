@@ -30,6 +30,7 @@ const IMAGE: &str = "computer.live_panel_image";
 #[derive(Default)]
 struct State {
     calls: Mutex<Vec<Request>>,
+    targets_fixture: Mutex<Option<Value>>,
     prepared: Mutex<BTreeMap<String, Value>>,
     binding: Mutex<String>,
     visible: AtomicBool,
@@ -76,10 +77,12 @@ impl Peer {
                     let mut instance = "image-fixture-instance";
                     let result = match &r.call {
                         Call::Describe => DeviceResult::value(
-                            json!({"availability":"available","service":"healthy","context_valid":true,"targets":[{"target":TARGET}],"executor_features":{"cached_live_image_v1":{"implemented":true}}}),
+                            s.targets_fixture.lock().unwrap().clone().unwrap_or_else(||
+                                json!({"availability":"available","service":"healthy","context_valid":true,"targets":[{"target":TARGET}],"executor_features":{"cached_live_image_v1":{"implemented":true}}})
+                            ),
                         ),
                         Call::OpenContext => DeviceResult::value(
-                            json!({"context":"image-fixture-context","targets":[{"target":TARGET}]}),
+                            json!({"context":"image-fixture-context","targets":s.targets_fixture.lock().unwrap().as_ref().and_then(|v|v.get("targets")).cloned().unwrap_or_else(||json!([{"target":TARGET}]))}),
                         ),
                         Call::CloseContext => DeviceResult::value(json!({"closed":true})),
                         Call::Prepare { tool, arguments } if tool == "computer.live" => {
@@ -325,6 +328,8 @@ fn image(cap: &Value, sequence: u64) -> Value {
 fn presence(cap: &Value, sequence: u64, visible: bool, close: bool) -> Value {
     json!({"view_key":cap["view_key"],"page":cap["page"],"sequence":sequence,"visible":visible,"close":close})
 }
+#[path = "live_image_transport/targets_summary.rs"]
+mod targets_summary;
 #[tokio::test]
 async fn f33_live_image_real_mcp_negotiates_app_only_tool_and_rejects_forged_capability_before_rpc()
 {

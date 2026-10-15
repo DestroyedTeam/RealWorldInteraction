@@ -327,13 +327,7 @@ fn mcp_result(mut result: DeviceResult) -> CallToolResult {
     reply
 }
 fn mcp_result_with_text_projection(result: DeviceResult, text: Option<Value>) -> CallToolResult {
-    let mut reply = mcp_result(result);
-    if reply.is_error == Some(false)
-        && let Some(text) = text
-    {
-        reply.content[0] = Content::text(serde_json::to_string(&text).expect("JSON value"));
-    }
-    reply
+    presentation::apply_text_projection(mcp_result(result), text)
 }
 const SERVER_INSTRUCTIONS: &str = "RWI: use computer.targets({device_id}) for a known device; omit only for all peers (offline peers may delay). Add include_timings only if exposed by the tool input schema: adapter wall time, not native CPU; elapsed_ms is pre-cache. Never replay uncertain input. Keep GUI and terminal evidence separate.";
 
@@ -474,16 +468,11 @@ impl Gateway {
         mut p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let requested_text_projection = if p.name == "computer.targets" {
-            match presentation::take_targets_text_projection(
-                p.arguments.get_or_insert_with(Default::default),
-            ) {
+        let requested_text_projection =
+            match presentation::targets_text_request(&p.name, &mut p.arguments) {
                 Ok(requested) => requested,
                 Err(error) => return Ok(mcp_result(error)),
-            }
-        } else {
-            false
-        };
+            };
         if p.name == "computer.result" {
             let args = serde_json::from_value::<presentation::ResultArgs>(Value::Object(
                 p.arguments.unwrap_or_default(),
@@ -540,8 +529,8 @@ impl Gateway {
             && let Ok(mut cache) = self.presentation.lock()
         {
             result = cache.project(&p.name, result);
-            if requested_text_projection {
-                text_projection = cache.targets_text_projection(&result);
+            if let Some(mode) = requested_text_projection {
+                text_projection = cache.targets_text_for(&result, mode);
             }
         }
         Ok(mcp_result_with_text_projection(result, text_projection))

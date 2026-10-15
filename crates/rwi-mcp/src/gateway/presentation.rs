@@ -8,6 +8,7 @@ use std::{
 };
 
 mod targets;
+mod targets_summary;
 
 const COMPACT_BYTES: usize = 16 * 1024;
 const PAGE_BYTES: usize = 8 * 1024;
@@ -59,10 +60,13 @@ fn error(code: &str, message: &str) -> DeviceResult {
     DeviceResult::error(code, message)
 }
 
-#[derive(Deserialize, schemars::JsonSchema)]
+/// Optional text encoding only. StructuredSummaryV1 is for callers consuming
+/// complete structuredContent; omit for unchanged legacy full JSON text.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
-enum TargetsTextProjection {
+pub(super) enum TargetsTextProjection {
     ExactDuplicatesV1,
+    StructuredSummaryV1,
 }
 
 pub(super) fn targets_text_schema(schema: &mut Value) {
@@ -71,21 +75,63 @@ pub(super) fn targets_text_schema(schema: &mut Value) {
 }
 pub(super) fn take_targets_text_projection(
     arguments: &mut serde_json::Map<String, Value>,
-) -> Result<bool, DeviceResult> {
+) -> Result<Option<TargetsTextProjection>, DeviceResult> {
     match arguments.remove("text_projection") {
-        None => Ok(false),
+        None => Ok(None),
         Some(value) => serde_json::from_value::<TargetsTextProjection>(value)
-            .map(|_| true)
+            .map(Some)
             .map_err(|_| {
                 DeviceResult::error(
                     "invalid_arguments",
-                    "text_projection must be exact_duplicates_v1; omit it for unchanged full text.",
+                    "text_projection must be exact_duplicates_v1 or structured_summary_v1; omit it for unchanged full text.",
                 )
             }),
     }
 }
 
+pub(super) fn targets_text_request(
+    tool: &str,
+    arguments: &mut Option<serde_json::Map<String, Value>>,
+) -> Result<Option<TargetsTextProjection>, DeviceResult> {
+    if tool != "computer.targets" {
+        return Ok(None);
+    }
+    take_targets_text_projection(arguments.get_or_insert_with(Default::default))
+}
+
+pub(super) fn apply_text_projection(
+    mut reply: rmcp::model::CallToolResult,
+    text: Option<Value>,
+) -> rmcp::model::CallToolResult {
+    if reply.is_error == Some(false)
+        && let Some(mut text) = text
+    {
+        super::portable_numbers(&mut text);
+        let encoded = serde_json::to_string(&text).expect("JSON value");
+        let full = reply
+            .content
+            .first()
+            .and_then(|c| c.as_text())
+            .map(|c| c.text.as_str());
+        if targets_summary::fits(full, &text, &encoded) {
+            reply.content[0] = rmcp::model::Content::text(encoded);
+        }
+    }
+    reply
+}
+
 impl Presentation {
+    pub(super) fn targets_text_for(
+        &self,
+        result: &DeviceResult,
+        mode: TargetsTextProjection,
+    ) -> Option<Value> {
+        match mode {
+            TargetsTextProjection::ExactDuplicatesV1 => self.targets_text_projection(result),
+            TargetsTextProjection::StructuredSummaryV1 => targets_summary::project(result),
+        }
+    }
+
     /// Retain nested-call metadata without projecting or treating it as native
     /// execution history. Same explicit adapter-local lifetime as observations.
     pub fn retain(&mut self, tool: &str, data: Value) -> Option<String> {

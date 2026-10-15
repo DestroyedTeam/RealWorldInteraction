@@ -405,10 +405,13 @@ fn f16_aliases_are_per_device_not_cross_peer_and_do_not_replace_existing_markers
 fn f16_typed_opt_in_is_adapter_only_and_default_absence_is_unchanged() {
     let mut arguments = json!({"device_id":"fixture"}).as_object().unwrap().clone();
     let original = arguments.clone();
-    assert!(!take_targets_text_projection(&mut arguments).unwrap());
+    assert_eq!(take_targets_text_projection(&mut arguments).unwrap(), None);
     assert_eq!(arguments, original);
     arguments.insert("text_projection".into(), json!("exact_duplicates_v1"));
-    assert!(take_targets_text_projection(&mut arguments).unwrap());
+    assert_eq!(
+        take_targets_text_projection(&mut arguments).unwrap(),
+        Some(TargetsTextProjection::ExactDuplicatesV1)
+    );
     assert_eq!(arguments, original);
     assert!(
         rwi_core::device::catalog::validate("computer.targets", &Value::Object(arguments)).is_ok()
@@ -438,7 +441,7 @@ fn f16_opt_in_schema_has_only_one_optional_typed_addition() {
     assert_eq!(schema["properties"]["text_projection"]["type"], "string");
     assert_eq!(
         schema["properties"]["text_projection"]["enum"],
-        json!(["exact_duplicates_v1"])
+        json!(["exact_duplicates_v1", "structured_summary_v1"])
     );
     schema["properties"]
         .as_object_mut()
