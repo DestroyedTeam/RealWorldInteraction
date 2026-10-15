@@ -1,3 +1,17 @@
+<!-- RWI_F16_POINTER_RECHECK_CURRENT -->
+## 当前：隔离页面悬停／点击已实机验收，移动后布局变化已修正（2026-10-15）
+
+- **源码与回归**：唯一Root 455份源码、同355受管路径。最新fmt／workspace tests／Clippy／架构检查实际全exit0：1192 passed／11 ignored／44 suites。初始browser input同输入BASELINE／MODIFIED／ROLLBACK／REAPPLY为0/11/0/11项；本次pre_press修正为0/2/0/2项，进程均exit0，完整原始hash已在各自copy回滚并严格重建；历史错误与原测试101保留。
+- **工具与边界**：`browser.act`只有device_id、session_ref、request_id、observation_ref、element_ref、action六字段，支持hover／单次左击；必须显式独立input授权及本Agent自建隔离Chrome。snapshot返回短element_ref，保留坐标、disabled等关键事实；原观察30s、按资源串行、durable原请求查询、禁止重放。无JS入口、用户profile／调试端口附着、Native frame借用、自动前台或全局键鼠fallback。
+- **A1真实负例**：hover效果及trusted recipient通过；click虽3个ACK、driver wall31ms，却仍counter0／recipient0。移出hover使in-flow提示收起，同一按钮上移51.5 CSS像素，原实现仍在旧点[137,319]按下。原PNG、ACK、失败和空的首次Native发现均保留；没有重放或改fixture躲过问题。
+- **实际修正**：`pre_press`在一次mouseMoved后、唯一mousePressed前重新检查同一backend node、文档／viewport、当前布局、AX enabled及hit target，再按该点发一次down/up。没有第二次move或重试。`Receipt::uncertain`区分已ACK且无按下的已知move partial，与丢ACK或有down无up的真实资源不确定，避免无理由扩大fence。
+- **独立新A2**：同一原始fixture binary／HTML、新nonce／新私有会话，fresh Host真正typed调用各一次；初始move[137,319]、实际down/up[137,268]、pre_press_revalidated=true。独立HTTP hover=1、click=1且trusted=true；新页面counter1，Root另走精确Native窗口截图也读到“Click counter 1／Click received 1”。原PNG保留1920×1266，另一路窗口PNG1920×1440；后者含工具栏，二者不是同一捕获边界，不改图／缩图／重编码。
+- **耗时与清理**：A2 driver wall hover50ms／click48ms，仅Agent该段wall，不是CPU／MCP／Host／模型或全流程延迟，更不冒充CU性能比较。自有Chrome精确close224ms、code0、无强杀；完整CG0、ps无PID，Rust HTTP fixture原进程exit0。临时策略恢复原ABSENT；Agent c1315be5…、MCP dea4204a…，稳定24B签名、CA／配对、四项TCC保留，无人工参与。
+- **Live与剩余目标**：已验证220×219pt小浮层、隐藏与X关闭分开、源截图质量不随HUD缩小而降低。已检索官方Computer Use资料，但未建立其精确窗口／按钮几何，不称1:1。严格Host聊天生命周期仍非当前presence lease等价；普通Mac应用cold Native hover／现代Native tooltip及完整Unicode keyboard／composition仍未完成。页面tooltip与Unicode读取不替代这些目标。`full_goal_complete=false`。
+- **交付**：F15三条逻辑提交已推公开[现有PR1](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)，a7f28f9的CI38697636045已绿；本F16批次尚待架构／行为／本次实机修正／文档拆分提交及新head CI，不以F15绿覆盖本批。原始按时序图片与实证见 `/Volumes/ChatGPT/Real World Interaction/outputs/validation/f16-owned-browser-input-2026-10-15/REPORT.md`。调用／保存证据中的工具错误亦保留，不与页面输入效果混算。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
 <!-- RWI_F15_CONTENT_SNAPSHOT_CSS_CURRENT -->
 ## 当前：独立内容快照已实机验收；物理／CSS坐标误标已修正（2026-10-15）
 
