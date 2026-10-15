@@ -59,6 +59,9 @@ impl Runtime {
                     tool.name,
                     "computer.move_window"
                         | "computer.focus_window"
+                        | "computer.focus_element"
+                        | "computer.set_text"
+                        | "computer.select_window_local"
                         | "computer.hotkey"
                         | "computer.live"
                         | "computer.attach_window"
@@ -68,6 +71,12 @@ impl Runtime {
                     || implementation
                         && if platform == "macos" {
                             macos_tool_implemented(tool.name)
+                                && (tool.name != "computer.set_text"
+                                    || native_capabilities["set_text"]["implemented"] == true)
+                                && (tool.name != "computer.focus_element"
+                                    || semantic_focus_native_implemented(&native_capabilities))
+                                && (tool.name != "computer.select_window_local"
+                                    || window_local_native_implemented(&native_capabilities))
                         } else {
                             !macos_only && (!native_lifecycle || platform == "windows")
                         };
@@ -232,6 +241,9 @@ fn macos_tool_implemented(tool: &str) -> bool {
             | "computer.recover_input"
             | "computer.move_window"
             | "computer.focus_window"
+            | "computer.focus_element"
+            | "computer.set_text"
+            | "computer.select_window_local"
             | "computer.pointer_feedback"
             | "computer.hotkey"
     )
@@ -286,6 +298,15 @@ mod global_keyboard_tests {
         );
     }
 }
+fn semantic_focus_native_implemented(caps: &serde_json::Value) -> bool {
+    // Pure policy/parser presence must not advertise device support.
+    caps["focus_element"]["implemented"] == true
+}
+
+fn window_local_native_implemented(caps: &serde_json::Value) -> bool {
+    caps["select_window_local"]["implemented"] == true
+}
+
 fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static str> {
     let permissions = &caps["permissions"];
     if matches!(
@@ -296,6 +317,9 @@ fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static s
             | "computer.verify"
             | "computer.move_window"
             | "computer.focus_window"
+            | "computer.focus_element"
+            | "computer.set_text"
+            | "computer.select_window_local"
     ) && permissions["accessibility"] != true
     {
         return Some("accessibility_permission_missing");
@@ -342,6 +366,9 @@ fn macos_prerequisite(tool: &str, caps: &serde_json::Value) -> Option<&'static s
             | "computer.verify"
             | "computer.move_window"
             | "computer.focus_window"
+            | "computer.focus_element"
+            | "computer.set_text"
+            | "computer.select_window_local"
     ) {
         // Background operation: the exact window must be discovered and bound
         // first; it does not need to be frontmost.
@@ -469,5 +496,146 @@ mod diagnostic_tests {
             json!({"status":"not_authorized"})
         );
         assert_eq!(denied.data["service"], "healthy");
+    }
+}
+
+#[cfg(test)]
+mod semantic_focus_capability_tests {
+    use super::*;
+    #[test]
+    fn semantic_focus_support_requires_actual_native_implementation() {
+        for caps in [
+            json!({}),
+            json!({"focus_element":{"implemented":null}}),
+            json!({"focus_element":{"implemented":false,"available":true}}),
+        ] {
+            assert!(!semantic_focus_native_implemented(&caps));
+        }
+        let actual =
+            json!({"focus_element":{"implemented":true},"permissions":{"accessibility":true}});
+        assert!(semantic_focus_native_implemented(&actual));
+        assert!(macos_tool_implemented("computer.focus_element"));
+        assert_eq!(
+            macos_prerequisite("computer.focus_element", &actual),
+            Some("selected_window_required")
+        );
+        assert_eq!(
+            macos_prerequisite(
+                "computer.focus_element",
+                &json!({"focus_element":{"implemented":true}})
+            ),
+            Some("accessibility_permission_missing")
+        );
+    }
+    #[test]
+    fn semantic_focus_unsupported_platform_is_not_advertised() {
+        let dir = tempfile::tempdir().unwrap();
+        let policy = Principal {
+            journal_identity: None,
+            certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
+            observe: true,
+            input: true,
+        };
+        let runtime = Runtime::new(Config {
+            version: 1,
+            device_id: "semantic-focus-test".into(),
+            bind: "127.0.0.1:0".parse().unwrap(),
+            identity: rwi_link_trust::IdentityPaths::in_profile(dir.path()),
+            principals: vec![policy.clone()],
+            state_root: dir.path().join("state"),
+            platform: PlatformPolicy::Unsupported {
+                platform: "offline-test".into(),
+            },
+        })
+        .unwrap();
+        let result = runtime.describe(&policy);
+        let cap = result.data["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["id"] == "computer.focus_element")
+            .unwrap();
+        assert_eq!(cap["implemented"], false);
+        assert_eq!(cap["available"], false);
+        assert_eq!(cap["authorized"], true);
+    }
+}
+
+#[cfg(test)]
+mod window_local_capability_tests {
+    use super::*;
+    #[test]
+    fn window_local_requires_actual_native_support_and_accessibility() {
+        for caps in [
+            json!({}),
+            json!({"select_window_local":{"implemented":null}}),
+            json!({"select_window_local":{"implemented":false,"available":true}}),
+        ] {
+            assert!(!window_local_native_implemented(&caps));
+        }
+        let caps = json!({"select_window_local":{"implemented":true},"permissions":{"accessibility":true}});
+        assert!(window_local_native_implemented(&caps));
+        assert!(macos_tool_implemented("computer.select_window_local"));
+        assert_eq!(
+            macos_prerequisite("computer.select_window_local", &caps),
+            Some("selected_window_required")
+        );
+        assert_eq!(
+            macos_prerequisite(
+                "computer.select_window_local",
+                &json!({"select_window_local":{"implemented":true}})
+            ),
+            Some("accessibility_permission_missing")
+        );
+    }
+    #[test]
+    fn window_local_unsupported_platform_is_not_advertised_as_available() {
+        let dir = tempfile::tempdir().unwrap();
+        let policy = Principal {
+            journal_identity: None,
+            certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
+            observe: true,
+            input: true,
+        };
+        let runtime = Runtime::new(Config {
+            version: 1,
+            device_id: "window-local-test".into(),
+            bind: "127.0.0.1:0".parse().unwrap(),
+            identity: rwi_link_trust::IdentityPaths::in_profile(dir.path()),
+            principals: vec![policy.clone()],
+            state_root: dir.path().join("state"),
+            platform: PlatformPolicy::Unsupported {
+                platform: "offline-test".into(),
+            },
+        })
+        .unwrap();
+        let d = runtime.describe(&policy);
+        let cap = d.data["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["id"] == "computer.select_window_local")
+            .unwrap();
+        assert_eq!(cap["implemented"], false);
+        assert_eq!(cap["available"], false);
+        assert_eq!(cap["authorized"], true);
+    }
+}
+
+#[cfg(test)]
+mod explicit_set_text_capability_tests {
+    #[test]
+    fn explicit_set_text_capability_requires_native_implementation_and_existing_ax() {
+        assert!(super::macos_tool_implemented("computer.set_text"));
+        let no = serde_json::json!({"permissions":{"accessibility":false}});
+        assert_eq!(
+            super::macos_prerequisite("computer.set_text", &no),
+            Some("accessibility_permission_missing")
+        );
+        let yes = serde_json::json!({"permissions":{"accessibility":true}});
+        assert_eq!(
+            super::macos_prerequisite("computer.set_text", &yes),
+            Some("selected_window_required")
+        );
     }
 }

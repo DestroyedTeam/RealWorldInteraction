@@ -4,6 +4,7 @@ mod pending;
 use crate::{ffi, geometry::Rect};
 use block2::RcBlock;
 mod image;
+mod timing;
 #[cfg(test)]
 use core_graphics::{
     color_space::CGColorSpace,
@@ -39,6 +40,7 @@ pub struct Capture {
     /// bottom one logical point is also excluded (compositor edge dithering);
     /// synthetic pointer paths cannot target that excluded edge.
     pub content_sha: String,
+    pub timings: timing::CaptureTimings,
 }
 #[derive(Clone)]
 pub struct Capturer {
@@ -102,6 +104,7 @@ impl Capturer {
         max_edge: Option<u32>,
         include_offscreen: bool,
     ) -> Result<Capture> {
+        let caller_started = Instant::now();
         let on_screen_only = Bool::from(offscreen_policy::onscreen_only(
             max_edge,
             include_offscreen,
@@ -127,7 +130,10 @@ impl Capturer {
                 None => class(c"SCStreamConfiguration")?,
             };
             let screenshot_class = class(c"SCScreenshotManager")?;
+            // Starts before callback creation; explicitly includes request setup, not pure native wait.
+            let shareable_started = Instant::now();
             let callback = RcBlock::new(move |content: *mut AnyObject, error: *mut AnyObject| {
+                let shareable_request_ms = timing::elapsed_ms(shareable_started);
                 let _keep_native_scope = &callback_pending;
                 autoreleasepool(|_| {
                     let result = callback_result(|| -> Result<()> {
@@ -223,8 +229,11 @@ impl Capturer {
                             let completed = callback_pending.clone();
                             let keep_filter = filter.clone();
                             let keep_configuration = configuration.clone();
+                            let screenshot_started = Instant::now();
                             let completion = RcBlock::new(
                                 move |output: *const c_void, error: *mut AnyObject| {
+                                    let screenshot_request_ms =
+                                        timing::elapsed_ms(screenshot_started);
                                     let _ = (&keep_filter, &keep_configuration, &completed);
                                     let result = if output.is_null() || !error.is_null() {
                                         Err(fault(
@@ -247,6 +256,10 @@ impl Capturer {
                                             }
                                             let mut capture =
                                                 encode_native_image(image, width, height, rect.h)?;
+                                            capture.timings.shareable_request_to_callback_ms =
+                                                Some(shareable_request_ms);
+                                            capture.timings.screenshot_request_to_callback_ms =
+                                                Some(screenshot_request_ms);
                                             capture.native_size =
                                                 [native_width as u32, native_height as u32];
                                             Ok(capture)
@@ -282,7 +295,12 @@ impl Capturer {
                 return Err(error);
             }
             match rx.recv_timeout(Duration::from_millis(50)) {
-                Ok(result) => return result,
+                Ok(result) => {
+                    return result.map(|mut capture| {
+                        capture.timings.caller_total_ms = Some(timing::elapsed_ms(caller_started));
+                        capture
+                    });
+                }
                 Err(mpsc::RecvTimeoutError::Timeout)
                     if started.elapsed() < Duration::from_secs(6) => {}
                 Err(_) => {
@@ -413,6 +431,12 @@ mod tests {
             0,
         );
         let capture = unsafe { encode_native_image(image.as_ptr().cast(), 2, 2, 2.0) }.unwrap();
+        let same = unsafe { encode_native_image(image.as_ptr().cast(), 2, 2, 2.0) }.unwrap();
+        assert_eq!(capture.png, same.png);
+        assert_eq!(capture.content_sha, same.content_sha);
+        assert!(capture.timings.shareable_request_to_callback_ms.is_none());
+        assert!(capture.timings.screenshot_request_to_callback_ms.is_none());
+        assert!(capture.timings.caller_total_ms.is_none());
         let mut reader = png::Decoder::new(std::io::Cursor::new(capture.png))
             .read_info()
             .unwrap();

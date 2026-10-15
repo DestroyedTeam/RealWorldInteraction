@@ -429,6 +429,7 @@ fn classified(class: TextClass) -> AxElement {
         },
         text_class: class,
         value: Some("secret".into()),
+        focus_availability: None,
     }
 }
 #[test]

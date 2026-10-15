@@ -65,6 +65,80 @@ pub trait Backend: Send {
             "Native window move is not implemented on this platform; nothing was moved.",
         ))
     }
+    /// Read-only exact-object focus eligibility. Native facts are trusted backend
+    /// values, never Deserialize/model-supplied custody or a cached sidecar.
+    fn focus_element_preflight(
+        &mut self,
+        _reference: &Resolved,
+    ) -> Result<crate::semantic_focus::FocusNativeFacts> {
+        Err(fault(
+            "capability_unavailable",
+            "Semantic focus preflight is not implemented by this backend; no fallback.",
+        ))
+    }
+    /// Explicit semantic mutation: at most the approved zero/one AXFocused write.
+    /// No pointer/key/activation fallback. Platform backends default unsupported.
+    fn focus_element(
+        &mut self,
+        _expected: &Binding,
+        _reference: &Resolved,
+        _plan: crate::semantic_focus::FocusWritePlan,
+    ) -> Result<crate::semantic_focus::FocusReadback> {
+        Err(fault(
+            "capability_unavailable",
+            "Semantic element focus is not implemented by this backend; no setter or fallback.",
+        ))
+    }
+    /// Explicit whole plain-text value replacement. No default implementation.
+    fn set_text_preflight(
+        &mut self,
+        _reference: &Resolved,
+    ) -> Result<crate::set_text::SetTextNativeFacts> {
+        Err(fault(
+            "capability_unavailable",
+            "Whole text replacement is unsupported; no typing/focus fallback.",
+        ))
+    }
+    fn set_text(
+        &mut self,
+        _expected: &Binding,
+        _reference: &Resolved,
+        _text: &str,
+    ) -> Result<crate::set_text::SetTextReadback> {
+        Err(fault(
+            "capability_unavailable",
+            "Whole text replacement is unsupported; no typing/focus fallback.",
+        ))
+    }
+    /// Route-specific readonly window revalidation. Existing placement callers
+    /// keep their old behavior; native implementations may omit capture/tree.
+    fn window_local_revalidate(&mut self, reference: &Resolved) -> Result<Scene> {
+        self.revalidate(reference)
+    }
+    /// Trusted fresh exact selected-window facts; neutral platforms unsupported.
+    fn select_window_local_preflight(
+        &mut self,
+        _reference: &Resolved,
+        _kind: crate::window_local::WindowLocalKind,
+    ) -> Result<crate::window_local::WindowLocalNativeFacts> {
+        Err(fault(
+            "capability_unavailable",
+            "Explicit local window selection is unsupported; no fallback.",
+        ))
+    }
+    /// At most one explicit Main OR Key attribute write, never activate/type/raise.
+    fn select_window_local(
+        &mut self,
+        _expected: &Binding,
+        _reference: &Resolved,
+        _kind: crate::window_local::WindowLocalKind,
+        _plan: crate::window_local::WindowLocalWritePlan,
+    ) -> Result<crate::window_local::WindowLocalReadback> {
+        Err(fault(
+            "capability_unavailable",
+            "This window-local kind is unsupported; no setter or fallback.",
+        ))
+    }
     /// Explicit foreground operation, never a background-input fallback.
     fn focus_window(
         &mut self,

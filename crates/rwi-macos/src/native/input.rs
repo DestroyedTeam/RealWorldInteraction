@@ -9,6 +9,8 @@ mod dispatch;
 mod mouse_gesture;
 mod request;
 use request::native_action_request;
+mod pointer_surface;
+use pointer_surface::native_pointer_requires_axpress;
 mod move_pointer;
 use anchor_native::AxObject;
 use continuation::{Facts, Kind, Sequence};
@@ -31,14 +33,21 @@ impl NativeMac {
         }
         let requested_native_action =
             native_action_request(intent, target.native_action.as_deref(), value)?;
-        let experimental_click = matches!(intent, Intent::Click)
-            && rwi_core::ClickDeliveryOptions::from_click_value(value)?.is_some();
+        let click_options = match intent {
+            Intent::Click => rwi_core::ClickDeliveryOptions::from_click_value(value)?,
+            _ => None,
+        };
+        let experimental_click = click_options.is_some();
         let move_options = if matches!(intent, Intent::MovePointer) {
             rwi_core::MovePointerOptions::parse(value)?
         } else {
             rwi_core::MovePointerOptions::BackgroundWindow {}
         };
         let foreground_pointer = move_options.requires_foreground();
+        let cooperative_pointer = matches!(
+            move_options,
+            rwi_core::MovePointerOptions::BackgroundCooperativeTrackingExperimental { .. }
+        );
         // The global combined-session timer cannot prove a human or receiving
         // window. Scope a possible conflict to native foreground/focused identity.
         // Only an explicit native semantic action can use exact sibling isolation.
@@ -78,6 +87,11 @@ impl NativeMac {
             ));
         }
         require_surface_action(self.semantic_only, intent, target.native_action.as_deref())?;
+        // Explicit actions retain their marked reference and fresh advertisement checks.
+        // Do not make their authority depend on ordinary-pointer surface classification.
+        if let Some(action) = requested_native_action {
+            return self.dispatch_native_action(expected, target, action);
+        }
         let mut sequence = Sequence::new(intent);
         let counter = self.dispatches.clone();
         let delivery = crate::background::Delivery {
@@ -106,13 +120,11 @@ impl NativeMac {
                 "This target requires an advertised native action; experimental pointer delivery cannot substitute AXPress or fall back.",
             ));
         }
-        if let Some(action) = requested_native_action {
-            return self.dispatch_native_action(expected, target, action);
-        }
         if pointer && !native_press {
             validate_capture_fringe(delivery.frame, target.point, intent)?;
         }
-        if pointer && !foreground_pointer && !crate::background::pointer_delivery_available() {
+        let background_pointer = pointer && !foreground_pointer && !cooperative_pointer;
+        if background_pointer && !crate::background::pointer_delivery_available() {
             return Err(fault(
                 "background_delivery_unavailable",
                 "Window-local background event addressing is unavailable on this macOS build; no input dispatched.",
@@ -173,7 +185,29 @@ impl NativeMac {
                     ));
                 }
                 Intent::MovePointer => {
-                    let event = move_pointer::event(target.point)?;
+                    if let rwi_core::MovePointerOptions::BackgroundCooperativeTrackingExperimental { phase, owner_endpoint, registration_id } = &move_options {
+                        let title=expected.mutation_context.as_ref().map(|c|c.window_title.as_str())
+                            .ok_or_else(||fault("cooperative_context_unknown","Exact native window title/epoch context is required."))?;
+                        let frame=[delivery.frame.x,delivery.frame.y,delivery.frame.w,delivery.frame.h];
+                        let client=crate::cooperative_tracking::client::Client::prepare(owner_endpoint,registration_id,
+                            crate::cooperative_tracking::client::ExpectedNativeTarget {
+                                pid:self.pid,birth:&self.process,window:self.window,frame,title,
+                                native_epoch:&expected.native_epoch,
+                            })?;
+                        client.matches_context(self.window,frame,title,&expected.native_epoch)?;
+                        let local=crate::background::window_local(target.point,delivery.frame);
+                        let base=[local[0],delivery.frame.h-local[1]];
+                        client.execute(*phase,base,|| {
+                            // AFTER final socket connection/peer/request construction,
+                            // immediately BEFORE its first mutation byte is written.
+                            self.read_input_batch(true,expected,target,intent)?
+                                .validate(expected,target,Kind::Pointer)?;
+                            let call=operation::native_call("macos_cooperative_tracking_owner_once")?;
+                            dispatch::count(&counter);
+                            Ok(call)
+                        })?;
+                    } else {
+                    let event = move_pointer::event_for(target.point, &delivery, &move_options)?;
                     let skylight_move = if matches!(
                         move_options,
                         rwi_core::MovePointerOptions::BackgroundSkylightExperimental {}
@@ -209,6 +243,7 @@ impl NativeMac {
                             }
                         },
                     )?;
+                    }
                 }
                 Intent::Drag(path) => {
                     self.dispatch_drag(expected, target, path)?;
@@ -230,12 +265,14 @@ impl NativeMac {
                         1
                     } {
                         let (press, release) = gesture.click_pair(n)?;
-                        if experimental_click {
-                            let pair = crate::background::skylight::prepare_click_pair(
+                        if let Some(options) = &click_options {
+                            let pair = crate::background::skylight::prepare_selected_click_pair(
                                 &press,
                                 &release,
+                                gesture.source(),
                                 &delivery,
                                 target.point,
+                                options,
                             )?;
                             // Same native/semantic/context/lease checks and counted
                             // pair custody. Up is cleanup of this exact down; no
@@ -264,7 +301,7 @@ impl NativeMac {
                     let text = value.ok_or_else(|| {
                         fault("value_required", "Text intent requires Unicode value.")
                     })?;
-                    for chunk in utf16_chunks(text, 20) {
+                    for chunk in utf16_scalar_chunks(text) {
                         let (down, up) = key_events(0, CGEventFlags::empty(), Some(&chunk))?;
                         sequence.pair(
                             expected,
@@ -342,30 +379,20 @@ impl NativeMac {
     }
     fn native_press_required(&self, target: &Resolved) -> Result<bool> {
         if target.scope.element.is_none() {
+            // Existing bitmap-coordinate path keeps its independent native guards.
             return Ok(false);
         }
         let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(self.pid as i32))? };
         unsafe {
             ffi::AXUIElementSetMessagingTimeout(application.0, 0.25);
         }
-        let value = application.attr("AXWindows")?;
-        let windows = unsafe { ffi::array(value.0, 64)? };
-        if !windows
-            .iter()
-            .any(|w| ffi::window_number_for_ax_element(w) == Some(self.window))
-        {
-            return Ok(true);
-        }
-        // A window that is present in AXWindows can still be a sheet/panel that
-        // synthetic background clicks do not reach (observed live: an NSOpenPanel
-        // accepted the click with dispatch=returned and nothing happened). Any
-        // window that is not the application's main window therefore takes the
-        // native accessibility action instead.
-        let main = application
-            .attr("AXMainWindow")
-            .ok()
-            .and_then(|element| ffi::window_number_for_ax_element(&element));
-        Ok(main.is_some_and(|number| number != self.window))
+        // Resolve this exact pinned window, including actual sheets, without using
+        // AXMainWindow as a proxy for its kind or changing focus/activation.
+        let window = self.resolve_window_element(&application, self.window_record()?.rect)?;
+        let role = window.attr("AXRole").ok().and_then(|v| v.string().ok());
+        let subrole = window.attr("AXSubrole").ok().and_then(|v| v.string().ok());
+        let modal = window.attr("AXModal").ok().and_then(|v| v.boolean());
+        native_pointer_requires_axpress(role.as_deref(), subrole.as_deref(), modal)
     }
     fn dispatch_native_action(
         &mut self,

@@ -10,9 +10,13 @@ mod keyboard;
 mod label_hit;
 mod live_family;
 pub(crate) use live_family::LiveFamilyCapture;
+mod focus_availability;
+mod focused_window;
 mod metadata;
 mod objects;
 mod semantic;
+mod semantic_focus;
+mod window_local;
 pub(crate) use semantic::focused_dialog_window;
 mod visual;
 mod window_record_probe;
@@ -66,6 +70,7 @@ struct AxElement {
     element: Element,
     text_class: TextClass,
     value: Option<String>,
+    focus_availability: Option<focus_availability::Availability>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TextClass {
@@ -199,7 +204,7 @@ fn window_inventory_relative(options: u32, relative: u32) -> Result<WindowInvent
         parse_window_inventory(array)
     }
 }
-fn exact_window_inventory(window: u32) -> Result<WindowInventory> {
+pub(crate) fn exact_window_inventory(window: u32) -> Result<WindowInventory> {
     use core_foundation::{array::CFArray, base::TCFType};
     let _call = operation::native_call("macos_exact_visual_window_description")?;
     let ids = CFArray::from_copyable(&[window as usize]);
@@ -475,6 +480,18 @@ fn read_classified_value(
 ) -> Option<String> {
     if class.readable() { read() } else { None }
 }
+/// Project only a value already read under the native classification gate.
+/// Known empty strings stay explicit; absent/failed/secure reads stay unknown.
+fn bounded_observed_ax_value(value: Option<&str>) -> (Option<String>, bool) {
+    match value {
+        Some(text) => (
+            Some(text.chars().take(64).collect()),
+            text.chars().count() > 64,
+        ),
+        None => (None, false),
+    }
+}
+
 // AXValue is not always CFString: checkboxes/radio buttons commonly use
 // CFNumber (including mixed state 2), and sliders may expose fractions.
 // Keep the existing text-classification gate at the caller; never stringify
@@ -644,13 +661,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
     } else {
         None
     };
-    let (ax_value, ax_value_truncated) = match &value {
-        Some(text) if !text.is_empty() => {
-            let truncated = text.chars().count() > 64;
-            (Some(text.chars().take(64).collect::<String>()), truncated)
-        }
-        _ => (None, false),
-    };
+    let (ax_value, ax_value_truncated) = bounded_observed_ax_value(value.as_deref());
     Ok(AxElement {
         element: Element {
             id,
@@ -671,6 +682,7 @@ fn element_description(el: &Cf) -> Result<AxElement> {
         },
         text_class,
         value,
+        focus_availability: None,
     })
 }
 fn element_at_point(root: &Cf, point: [f64; 2]) -> Result<Option<Cf>> {
@@ -799,6 +811,7 @@ fn ax_tree(
     let start = Instant::now();
     let mut pending = VecDeque::new();
     let mut coverage = coverage::Coverage::default();
+    let mut focus_budget = focus_availability::Budget::default();
     match window.children() {
         Ok(children) => pending.extend(children.into_iter().map(|child| (child, 1))),
         Err(_) => coverage.child_reads_failed += 1,
@@ -826,7 +839,11 @@ fn ax_tree(
             diagnostics,
             objects,
         ) {
-            Ok(e) => {
+            Ok(mut e) => {
+                // Observation-only sidecar: at most four classified plain-text probes.
+                // Exact input revalidation does not walk this tree or read this field.
+                e.focus_availability = focus_budget
+                    .observe(e.text_class, || node.attribute_settable_status("AXFocused"));
                 coverage.described += 1;
                 out.push(e);
             }
@@ -852,8 +869,90 @@ fn ax_tree(
             Err(_) => coverage.child_reads_failed += 1,
         }
     }
-    Ok((out, coverage.evidence(pending.len())))
+    let mut evidence = coverage.evidence(pending.len());
+    if let Some(availability) = focus_availability::project(&out) {
+        evidence["editable_focus_availability"] = availability;
+    }
+    Ok((out, evidence))
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod known_empty_ax_value_tests {
+    use super::*;
+
+    fn wire_value(value: Option<&str>) -> serde_json::Value {
+        let (value, value_truncated) = bounded_observed_ax_value(value);
+        serde_json::to_value(Element {
+            id: "plain-fixture".into(),
+            name: "Plain field".into(),
+            role: Some("AXTextField".into()),
+            actions: vec![],
+            enabled: None,
+            selected: None,
+            description: None,
+            value,
+            value_truncated,
+            point: [1., 2.],
+            visible: None,
+            occluded: None,
+            state_revision: None,
+        })
+        .unwrap()
+    }
+
+    #[test]
+    fn known_empty_ax_value_native_projection_and_wire_keep_empty_distinct() {
+        let empty = wire_value(Some(""));
+        assert_eq!(
+            empty.get("value").and_then(serde_json::Value::as_str),
+            Some("")
+        );
+        assert!(empty.get("value_truncated").is_none());
+        let unavailable = wire_value(None);
+        assert!(unavailable.get("value").is_none());
+        assert_ne!(empty, unavailable);
+        assert_eq!(
+            bounded_observed_ax_value(Some("0")),
+            (Some("0".into()), false)
+        );
+    }
+
+    #[test]
+    fn known_empty_ax_value_secure_unknown_do_not_read_or_become_empty() {
+        let reads = std::cell::Cell::new(0);
+        for class in [TextClass::Secure, TextClass::Unknown] {
+            let value = read_classified_value(class, || {
+                reads.set(reads.get() + 1);
+                Some(String::new())
+            });
+            assert_eq!(bounded_observed_ax_value(value.as_deref()), (None, false));
+        }
+        assert_eq!(reads.get(), 0);
+        let plain = read_classified_value(TextClass::Plain, || {
+            reads.set(reads.get() + 1);
+            Some(String::new())
+        });
+        assert_eq!(
+            bounded_observed_ax_value(plain.as_deref()),
+            (Some(String::new()), false)
+        );
+        assert_eq!(reads.get(), 1);
+    }
+
+    #[test]
+    fn known_empty_ax_value_existing_64_scalar_bound_and_unicode_are_unchanged() {
+        for text in ["x".repeat(64), "🙂".repeat(64)] {
+            assert_eq!(
+                bounded_observed_ax_value(Some(&text)),
+                (Some(text.clone()), false)
+            );
+            let longer = format!("{text}Z");
+            assert_eq!(bounded_observed_ax_value(Some(&longer)), (Some(text), true));
+        }
+        let text = "é中🙂𝄞";
+        assert_eq!(wire_value(Some(text))["value"], text);
+    }
+}

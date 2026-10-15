@@ -42,6 +42,12 @@ pub(super) fn utf16_chunks(text: &str, limit: usize) -> Vec<Vec<u16>> {
     }
     out
 }
+/// One Unicode scalar per text pair: one or two UTF-16 units, never a split
+/// surrogate. This preserves code units, not grapheme atomicity or normalization.
+pub(super) fn utf16_scalar_chunks(text: &str) -> Vec<Vec<u16>> {
+    utf16_chunks(text, 1)
+}
+
 pub(super) fn parse_chord(value: &str) -> Result<(u16, CGEventFlags)> {
     let mut flags = CGEventFlags::empty();
     let mut key = None;
@@ -117,4 +123,56 @@ pub(super) fn parse_chord(value: &str) -> Result<(u16, CGEventFlags)> {
         key.ok_or_else(|| fault("invalid_chord", "Chord contains no key."))?,
         flags,
     ))
+}
+
+#[cfg(test)]
+mod scalar_text_partition_tests {
+    use super::*;
+
+    #[test]
+    fn scalar_text_partition_preserves_exact_utf16_and_bounded_scalar_payloads() {
+        let long = "λ🙂".repeat(512);
+        for text in [
+            "RWI-S17-b07fb1046",
+            "RWI-DIAG-focus-diag-native-9bced78ebf-唯一",
+            "中文漢字",
+            "🙂𝄞𐐷",
+            "",
+            long.as_str(),
+        ] {
+            let chunks = utf16_scalar_chunks(text);
+            assert_eq!(chunks.len(), text.chars().count());
+            assert_eq!(chunks.concat(), text.encode_utf16().collect::<Vec<_>>());
+            assert!(chunks.iter().all(|chunk| {
+                (1..=2).contains(&chunk.len())
+                    && String::from_utf16(chunk).is_ok_and(|text| text.chars().count() == 1)
+            }));
+        }
+    }
+
+    #[test]
+    fn scalar_text_partition_keeps_surrogates_at_the_old_twenty_unit_boundary() {
+        let text = "1234567890123456789🙂B";
+        let chunks = utf16_scalar_chunks(text);
+        assert_eq!(chunks.len(), 21);
+        assert_eq!(chunks[19], vec![0xd83d, 0xde42]);
+        assert_eq!(String::from_utf16(&chunks.concat()).unwrap(), text);
+    }
+
+    #[test]
+    fn scalar_text_partition_is_not_grapheme_segmentation_or_normalization() {
+        for (text, scalars) in [("e\u{301}", 2), ("👩\u{200d}👩\u{200d}👧\u{200d}👦", 7)] {
+            let chunks = utf16_scalar_chunks(text);
+            assert_eq!(chunks.len(), scalars);
+            assert_eq!(String::from_utf16(&chunks.concat()).unwrap(), text);
+        }
+        assert_ne!(utf16_scalar_chunks("é"), utf16_scalar_chunks("e\u{301}"));
+    }
+
+    #[test]
+    fn scalar_text_partition_does_not_change_old_helper_zero_limit_semantics() {
+        let expected = vec![vec![65], vec![0xd83d, 0xde42], vec![66]];
+        assert_eq!(utf16_chunks("A🙂B", 0), expected);
+        assert_eq!(utf16_chunks("A🙂B", 1), expected);
+    }
 }

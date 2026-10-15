@@ -140,3 +140,49 @@ async fn hover_contract_invalid_identity_or_location_never_calls_device() {
         assert!(serde_json::from_value::<HoverArgs>(args).is_err());
     }
 }
+
+#[test]
+fn f05_registered_tracking_mcp_schema_and_string_boundary() {
+    let schema = serde_json::to_value(schemars::schema_for!(HoverArgs))
+        .unwrap()
+        .to_string();
+    assert!(schema.contains("background_appkit_tracking_experimental"));
+    assert!(schema.contains("tracking_number"));
+    for phase in ["entered", "exited"] {
+        let args: HoverArgs = serde_json::from_value(json!({"target":"t","request_id":"new-registration-carrier",
+            "at":{"kind":"element","frame":"f","element":"e"},
+            "options":{"delivery":"background_appkit_tracking_experimental","phase":phase,"tracking_number":"9007199254740993"}})).unwrap();
+        let options = serde_json::to_string(&args.options.unwrap()).unwrap();
+        assert!(rwi_core::MovePointerOptions::parse(Some(&options)).is_ok());
+        assert!(options.contains("9007199254740993"));
+    }
+    for tag in [json!(73), json!(73.0), serde_json::Value::Null] {
+        assert!(serde_json::from_value::<HoverArgs>(json!({"target":"t","request_id":"never-dispatch",
+            "at":{"kind":"element","frame":"f","element":"e"},
+            "options":{"delivery":"background_appkit_tracking_experimental","phase":"entered","tracking_number":tag}})).is_err());
+    }
+}
+
+#[test]
+fn f05_cooperative_tracking_mcp_wire_never_deserializes_authority_or_tag() {
+    let options = json!({"delivery":"background_cooperative_tracking_experimental","phase":"exited",
+        "owner_endpoint":"/tmp/own-private/owner.sock","registration_id":"owned-1"});
+    let arg = json!({"target":"t","request_id":"coop-once","at":{"kind":"element","frame":"f","element":"e"},"options":options});
+    let parsed: HoverArgs = serde_json::from_value(arg.clone()).unwrap();
+    assert!(
+        rwi_core::MovePointerOptions::parse(Some(
+            &serde_json::to_string(&parsed.options.unwrap()).unwrap()
+        ))
+        .is_ok()
+    );
+    for field in [
+        "tracking_number",
+        "userData",
+        "trusted_witness",
+        "expected_peer_pid",
+    ] {
+        let mut bad = arg.clone();
+        bad["options"][field] = json!("foreign");
+        assert!(serde_json::from_value::<HoverArgs>(bad).is_err());
+    }
+}

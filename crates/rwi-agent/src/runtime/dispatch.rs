@@ -27,6 +27,144 @@ fn native_fault_diagnostic_survives_dispatch_transport() {
             .is_none()
     );
 }
+// The semantic focus route returns its durable receipt as a nested object.
+// Normalize only this exact tool for fence policy, never for model presentation.
+fn needs_execution_input_fence(
+    tool: &str,
+    writes: bool,
+    entered: bool,
+    resources_released: bool,
+    native_call_pending: bool,
+    result: &DeviceResult,
+) -> bool {
+    if !matches!(
+        tool,
+        "computer.focus_element" | "computer.select_window_local" | "computer.set_text"
+    ) {
+        return needs_input_fence(writes, entered, resources_released, result);
+    }
+    if !writes {
+        return false;
+    }
+    if !resources_released
+        || native_call_pending
+        || result.data["resource_release_uncertain"] == true
+        || result
+            .data
+            .get("cleanup")
+            .is_some_and(|v| v["resources_released"] != true)
+    {
+        return true;
+    }
+    let mut normalized = result.clone();
+    if let Some(receipt) = result.data.get("receipt").and_then(Value::as_object) {
+        for key in ["dispatch", "dispatch_error"] {
+            if let Some(value) = receipt.get(key) {
+                normalized.data[key] = value.clone();
+            }
+        }
+    }
+    // A missing counter/protocol receipt cannot turn entered native work into a
+    // clean predispatch refusal. The precise no-HID exception requires positive
+    // backend output, exact one-write counters and the durable no-replay receipt.
+    let returned = normalized.data["dispatch"] == "returned";
+    let uncertain = entered && !returned;
+    let ordinary = needs_input_fence(writes, entered, resources_released, &normalized);
+    let no_held_input = match tool {
+        "computer.set_text" => set_text_no_held_input_proof(&normalized),
+        "computer.focus_element" => semantic_focus_no_held_input_proof(&normalized),
+        "computer.select_window_local" => window_local_no_held_input_proof(&normalized),
+        _ => false,
+    };
+    (uncertain || ordinary) && !no_held_input
+}
+
+fn semantic_focus_no_held_input_proof(result: &DeviceResult) -> bool {
+    let error = &result.data["dispatch_error"];
+    let proof = &error["diagnostic"];
+    let before = proof["native_dispatch_count_before"].as_u64();
+    let after = proof["native_dispatch_count_after"].as_u64();
+    error["code"] == "semantic_focus_unconfirmed"
+        && proof["version"] == 1
+        && proof["operation_kind"] == "semantic_focus"
+        && proof["native_setter_attempts"] == 1
+        && proof["native_dispatch_counter_known"] == true
+        && proof["native_call_pending"] == false
+        && proof["native_resources_released"] == true
+        && proof["api"] == "AXUIElementSetAttributeValue"
+        && proof["attribute"] == "AXFocused"
+        && proof["native_setter_attempted"] == true
+        && proof["native_status"]
+            .as_i64()
+            .is_some_and(|status| i32::try_from(status).is_ok())
+        && proof["held_input_resources"] == false
+        && proof["replay_allowed"] == false
+        && before
+            .zip(after)
+            .is_some_and(|(n, next)| n.checked_add(1) == Some(next))
+        && result.data["receipt"]["replay"] == "forbidden"
+        && result.data["resource_release_uncertain"] != true
+}
+
+// Actual operation resources_released/native_call_pending are mandatory
+// in needs_execution_input_fence BEFORE this AX-only no-held-input proof.
+fn set_text_no_held_input_proof(result: &DeviceResult) -> bool {
+    let error = &result.data["dispatch_error"];
+    let proof = &error["diagnostic"];
+    let before = proof["native_dispatch_count_before"].as_u64();
+    let after = proof["native_dispatch_count_after"].as_u64();
+    error["code"] == "set_text_unconfirmed"
+        && proof["version"] == 1
+        && proof["operation_kind"] == "set_text"
+        && proof["native_setter_attempts"] == 1
+        && proof["native_dispatch_counter_known"] == true
+        && proof["api"] == "AXUIElementSetAttributeValue"
+        && proof["attribute"] == "AXValue"
+        && proof["native_setter_attempted"] == true
+        && proof["native_status"]
+            .as_i64()
+            .is_some_and(|status| i32::try_from(status).is_ok())
+        && proof["held_input_resources"] == false
+        && proof["replay_allowed"] == false
+        && before
+            .zip(after)
+            .is_some_and(|(n, next)| n.checked_add(1) == Some(next))
+        && result.data["receipt"]["replay"] == "forbidden"
+        && result.data["resource_release_uncertain"] != true
+}
+
+fn window_local_no_held_input_proof(result: &DeviceResult) -> bool {
+    let error = &result.data["dispatch_error"];
+    let proof = &error["diagnostic"];
+    let before = proof["native_dispatch_count_before"].as_u64();
+    let after = proof["native_dispatch_count_after"].as_u64();
+    let exact_kind = matches!(
+        (proof["kind"].as_str(), proof["attribute"].as_str()),
+        (Some("main"), Some("AXMain")) | (Some("key"), Some("AXFocused"))
+    );
+    error["code"] == "window_local_selection_unconfirmed"
+        && proof["version"] == 1
+        && proof["operation_kind"] == "window_local_selection"
+        && exact_kind
+        && proof["native_window_role"] == "AXWindow"
+        && proof["native_setter_attempts"] == 1
+        && proof["native_dispatch_counter_known"] == true
+        && proof["native_call_pending"] == false
+        && proof["native_resources_released"] == true
+        && proof["api"] == "AXUIElementSetAttributeValue"
+        && proof["native_setter_attempted"] == true
+        && proof["native_status"]
+            .as_i64()
+            .is_some_and(|s| i32::try_from(s).is_ok())
+        && proof["held_input_resources"] == false
+        && proof["replay_allowed"] == false
+        && before
+            .zip(after)
+            .is_some_and(|(n, next)| n.checked_add(1) == Some(next))
+        && result.data["receipt"]["replay"] == "forbidden"
+        && result.data["resource_release_uncertain"] != true
+}
+
 fn needs_input_fence(
     writes: bool,
     entered: bool,
@@ -335,7 +473,8 @@ impl Runtime {
             result=worker_entry.envelope(result);
             result.data["operation"]=worker_entry.status().data;
             result.data["native_dispatch_entered"]=json!(entered.load(Ordering::Acquire));
-            if needs_input_fence(worker_entry.writes, entered.load(Ordering::Acquire), operation.status().resources_released, &result) {
+            let native_status = operation.status();
+            if needs_execution_input_fence(&worker_entry.tool, worker_entry.writes, entered.load(Ordering::Acquire), native_status.resources_released, native_status.native_call_pending, &result) {
                 worker_context.domain.fenced.store(true,Ordering::Release);
             }
             result.data["input_domain_fenced"]=json!(worker_context.domain.fenced.load(Ordering::Acquire));
@@ -410,5 +549,288 @@ impl Runtime {
         result.data["result_kind"] = json!("cached_read");
         result.data["native_execution"] = json!(false);
         result
+    }
+}
+
+#[cfg(test)]
+mod semantic_focus_fence_tests {
+    use super::*;
+    fn uncertain() -> DeviceResult {
+        DeviceResult::value(
+            json!({"receipt":{"dispatch":"uncertain","replay":"forbidden","goal_verified":false,"system_accepted":null,"dispatch_error":{"code":"focus_setter_uncertain"}},"focus_readback":{"state":"unknown","setter_status":null},"input_domain_fenced":false}),
+        )
+    }
+    fn exact_proof() -> DeviceResult {
+        let mut result = uncertain();
+        result.data["receipt"]["dispatch_error"] = json!({"code":"semantic_focus_unconfirmed","diagnostic":{"version":1,"operation_kind":"semantic_focus","native_setter_attempts":1,"native_dispatch_counter_known":true,"native_call_pending":false,"native_resources_released":true,"api":"AXUIElementSetAttributeValue","attribute":"AXFocused","native_setter_attempted":true,"native_status":-25202,"native_dispatch_count_before":4,"native_dispatch_count_after":5,"held_input_resources":false,"replay_allowed":false}});
+        result
+    }
+    fn fence(result: &DeviceResult, entered: bool, release: bool, pending: bool) -> bool {
+        needs_execution_input_fence(
+            "computer.focus_element",
+            true,
+            entered,
+            release,
+            pending,
+            result,
+        )
+    }
+    #[test]
+    fn semantic_focus_nested_uncertainty_now_fences_but_old_tool_policy_is_unchanged() {
+        let result = uncertain();
+        assert!(
+            !needs_input_fence(true, true, true, &result),
+            "old top-level predicate reproduces the gap"
+        );
+        assert!(fence(&result, true, true, false));
+        assert!(!needs_execution_input_fence(
+            "computer.act_checked",
+            true,
+            true,
+            true,
+            false,
+            &result
+        ));
+        assert!(fence(&result, false, false, false));
+        assert!(fence(&result, false, true, true));
+        let mut missing = DeviceResult::value(json!({"focus_readback":null}));
+        assert!(fence(&missing, true, true, false));
+        missing.data["receipt"] =
+            json!({"dispatch":"rejected_before_dispatch","replay":"forbidden"});
+        assert!(!fence(&missing, false, true, false));
+    }
+    #[test]
+    fn semantic_focus_clean_return_or_no_write_is_not_a_goal_or_held_input_uncertainty() {
+        for (entered, accepted, goal) in [(true, json!(true), false), (false, Value::Null, true)] {
+            let result = DeviceResult::value(
+                json!({"receipt":{"dispatch":"returned","replay":"forbidden","system_accepted":accepted,"goal_verified":goal}}),
+            );
+            assert!(!fence(&result, entered, true, false));
+            assert!(fence(&result, entered, false, false));
+            assert!(fence(&result, entered, true, true));
+        }
+    }
+    #[test]
+    fn semantic_focus_no_hid_exception_requires_complete_exact_native_counter_evidence() {
+        let exact = exact_proof();
+        assert!(!fence(&exact, true, true, false));
+        assert!(fence(&exact, true, false, false));
+        assert!(fence(&exact, true, true, true));
+        for key in [
+            "version",
+            "operation_kind",
+            "native_setter_attempts",
+            "native_dispatch_counter_known",
+            "native_call_pending",
+            "native_resources_released",
+            "api",
+            "attribute",
+            "native_setter_attempted",
+            "native_status",
+            "native_dispatch_count_before",
+            "native_dispatch_count_after",
+            "held_input_resources",
+            "replay_allowed",
+        ] {
+            let mut incomplete = exact.clone();
+            incomplete.data["receipt"]["dispatch_error"]["diagnostic"]
+                .as_object_mut()
+                .unwrap()
+                .remove(key);
+            assert!(fence(&incomplete, true, true, false), "{key}");
+        }
+        for (key, value) in [
+            ("version", json!(2)),
+            ("operation_kind", json!("click")),
+            ("native_setter_attempts", json!(2)),
+            ("native_dispatch_counter_known", json!(false)),
+            ("native_call_pending", json!(true)),
+            ("native_resources_released", json!(false)),
+            ("api", json!("AXUIElementPerformAction")),
+            ("attribute", json!("AXFocusedUIElement")),
+            ("native_setter_attempted", json!(false)),
+            ("held_input_resources", json!(true)),
+            ("replay_allowed", json!(true)),
+            ("native_status", json!(i64::from(i32::MAX) + 1)),
+            ("native_status", json!(i64::from(i32::MIN) - 1)),
+            ("native_status", json!("unknown")),
+            ("native_dispatch_count_after", json!(4)),
+            ("native_dispatch_count_before", json!(u64::MAX)),
+        ] {
+            let mut wrong = exact.clone();
+            wrong.data["receipt"]["dispatch_error"]["diagnostic"][key] = value;
+            assert!(fence(&wrong, true, true, false), "{key}");
+        }
+        let mut cleanup = exact.clone();
+        cleanup.data["resource_release_uncertain"] = json!(true);
+        assert!(fence(&cleanup, true, true, false));
+        let mut cleanup_unknown = exact.clone();
+        cleanup_unknown.data["cleanup"] = json!({"code":"release_uncertain"});
+        assert!(fence(&cleanup_unknown, true, true, false));
+        let mut replay = exact.clone();
+        replay.data["receipt"]["replay"] = json!("allowed");
+        assert!(fence(&replay, true, true, false));
+        let mut saturated_unknown = exact.clone();
+        saturated_unknown.data["receipt"]["dispatch_error"]["diagnostic"]["native_dispatch_count_before"] =
+            json!(u64::MAX);
+        saturated_unknown.data["receipt"]["dispatch_error"]["diagnostic"]["native_dispatch_count_after"] =
+            Value::Null;
+        assert!(fence(&saturated_unknown, true, true, false));
+        let mut wrong_code = exact;
+        wrong_code.data["receipt"]["dispatch_error"]["code"] = json!("native_action_unconfirmed");
+        assert!(fence(&wrong_code, true, true, false));
+    }
+}
+
+#[cfg(test)]
+mod window_local_fence_tests {
+    use super::*;
+    fn exact(kind: &str) -> DeviceResult {
+        DeviceResult::value(
+            json!({"receipt":{"dispatch":"uncertain","replay":"forbidden","dispatch_error":{"code":"window_local_selection_unconfirmed","diagnostic":{"version":1,"operation_kind":"window_local_selection","kind":kind,"native_window_role":"AXWindow","api":"AXUIElementSetAttributeValue","attribute":if kind=="main"{"AXMain"}else{"AXFocused"},"native_setter_attempted":true,"native_setter_attempts":1,"native_status":-25202,"native_dispatch_counter_known":true,"native_dispatch_count_before":4,"native_dispatch_count_after":5,"native_call_pending":false,"native_resources_released":true,"held_input_resources":false,"replay_allowed":false}}}}),
+        )
+    }
+    fn fence(r: &DeviceResult, release: bool, pending: bool) -> bool {
+        needs_execution_input_fence(
+            "computer.select_window_local",
+            true,
+            true,
+            release,
+            pending,
+            r,
+        )
+    }
+    #[test]
+    fn window_local_no_hid_exception_requires_exact_kind_window_and_one_setter_counter() {
+        for kind in ["main", "key"] {
+            let r = exact(kind);
+            assert!(!fence(&r, true, false));
+            assert!(fence(&r, false, false));
+            assert!(fence(&r, true, true));
+            for key in [
+                "version",
+                "operation_kind",
+                "kind",
+                "native_window_role",
+                "api",
+                "attribute",
+                "native_setter_attempted",
+                "native_setter_attempts",
+                "native_status",
+                "native_dispatch_counter_known",
+                "native_dispatch_count_before",
+                "native_dispatch_count_after",
+                "native_call_pending",
+                "native_resources_released",
+                "held_input_resources",
+                "replay_allowed",
+            ] {
+                let mut bad = r.clone();
+                bad.data["receipt"]["dispatch_error"]["diagnostic"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove(key);
+                assert!(fence(&bad, true, false), "{kind} missing {key}");
+            }
+            for (key, value) in [
+                ("native_setter_attempts", json!(2)),
+                ("native_window_role", json!("AXTextField")),
+                ("kind", json!("focused")),
+                ("native_dispatch_count_before", json!(u64::MAX)),
+                ("native_dispatch_count_after", json!(6)),
+                ("native_call_pending", json!(true)),
+                ("native_resources_released", json!(false)),
+                ("held_input_resources", json!(true)),
+                ("replay_allowed", json!(true)),
+            ] {
+                let mut bad = r.clone();
+                bad.data["receipt"]["dispatch_error"]["diagnostic"][key] = value;
+                assert!(fence(&bad, true, false), "{kind} {key}");
+            }
+            let mut wrong = r.clone();
+            wrong.data["receipt"]["dispatch_error"]["diagnostic"]["attribute"] =
+                json!(if kind == "main" {
+                    "AXFocused"
+                } else {
+                    "AXMain"
+                });
+            assert!(fence(&wrong, true, false));
+            assert!(
+                needs_execution_input_fence("computer.focus_element", true, true, true, false, &r),
+                "window proof must not exempt original element-focus route"
+            );
+        }
+    }
+    #[test]
+    fn window_local_nested_unknown_or_cleanup_fences_while_returned_partial_has_no_held_input() {
+        let unknown =
+            DeviceResult::value(json!({"receipt":{"dispatch":"uncertain","replay":"forbidden"}}));
+        assert!(fence(&unknown, true, false));
+        let returned = DeviceResult::value(
+            json!({"receipt":{"dispatch":"returned","replay":"forbidden","goal_verified":false},"window_readback":{"state":"partial","typing_authorized":false}}),
+        );
+        assert!(!fence(&returned, true, false));
+        assert!(fence(&returned, false, false));
+        assert!(fence(&returned, true, true));
+        let mut cleanup = exact("main");
+        cleanup.data["cleanup"] = json!({"resources_released":null});
+        assert!(fence(&cleanup, true, false));
+        let mut release = exact("key");
+        release.data["resource_release_uncertain"] = json!(true);
+        assert!(fence(&release, true, false));
+    }
+}
+
+#[cfg(test)]
+mod explicit_set_text_fence_tests {
+    #[test]
+    fn explicit_set_text_uncertain_fences_unless_exact_once_ax_no_held_input_evidence() {
+        use super::*;
+        let mut result = DeviceResult::value(
+            json!({"receipt":{"dispatch":"uncertain","replay":"forbidden","goal_verified":false,"dispatch_error":{"code":"set_text_unconfirmed"}}}),
+        );
+        assert!(needs_execution_input_fence(
+            "computer.set_text",
+            true,
+            true,
+            true,
+            false,
+            &result
+        ));
+        result.data["receipt"]["dispatch_error"]["diagnostic"] = json!({"version":1,"operation_kind":"set_text","native_setter_attempts":1,"native_dispatch_counter_known":true,"api":"AXUIElementSetAttributeValue","attribute":"AXValue","native_setter_attempted":true,"native_status":-25204,"native_dispatch_count_before":4,"native_dispatch_count_after":5,"held_input_resources":false,"replay_allowed":false});
+        assert!(!needs_execution_input_fence(
+            "computer.set_text",
+            true,
+            true,
+            true,
+            false,
+            &result
+        ));
+        assert!(needs_execution_input_fence(
+            "computer.set_text",
+            true,
+            true,
+            true,
+            true,
+            &result
+        ));
+        assert!(needs_execution_input_fence(
+            "computer.set_text",
+            true,
+            true,
+            false,
+            false,
+            &result
+        ));
+        result.data["receipt"]["dispatch_error"]["diagnostic"]["native_dispatch_count_after"] =
+            6.into();
+        assert!(needs_execution_input_fence(
+            "computer.set_text",
+            true,
+            true,
+            true,
+            false,
+            &result
+        ));
     }
 }

@@ -174,6 +174,37 @@ impl Executor {
                 let a = args!(PointerFeedbackArgs);
                 value(self.engine.feedback(&a.target, a.visible, a.point)?)
             }
+            "computer.set_text" => {
+                let a = args!(SetTextArgs);
+                let request = rwi_core::set_text::SetTextRequest {
+                    target: a.target,
+                    frame: a.frame,
+                    element: a.element,
+                    request_id: a.request_id,
+                    text: a.text,
+                };
+                value(self.engine.set_text(&request, &a.lease)?)
+            }
+            "computer.focus_element" => {
+                let a = args!(FocusElementArgs);
+                let request = rwi_core::semantic_focus::FocusElementRequest {
+                    target: a.target,
+                    frame: a.frame,
+                    element: a.element,
+                    request_id: a.request_id,
+                };
+                value(self.engine.focus_element(&request, &a.lease)?)
+            }
+            "computer.select_window_local" => {
+                let a = args!(WindowLocalArgs);
+                let request = rwi_core::window_local::WindowLocalRequest {
+                    target: a.target,
+                    frame: a.frame,
+                    kind: a.kind,
+                    request_id: a.request_id,
+                };
+                value(self.engine.select_window_local(&request, &a.lease)?)
+            }
             "computer.focus_window" => {
                 let a = args!(FocusWindowArgs);
                 value(self.engine.focus_window(

@@ -10,12 +10,18 @@ impl Engine {
         target: &str,
         region: Option<[u32; 4]>,
     ) -> Result<Observation> {
+        // Monotonic wall diagnostics only: no new native read or input authority.
+        let observation_started = Instant::now();
+        let wall_ms = |start: Instant| start.elapsed().as_secs_f64() * 1000.0;
         operation::checkpoint("observe")?;
+        let phase = Instant::now();
         let mut scene = self.scene(target, region)?;
+        let scene_ms = wall_ms(phase);
         operation::checkpoint("capture_returned")?;
         let frame = id();
         let mut artifact = None;
         let mut hash = None;
+        let phase = Instant::now();
         if scene.png.len() > MAX_FRAME_BYTES {
             return Err(fault(
                 "screenshot_size_limit",
@@ -39,6 +45,8 @@ impl Engine {
             artifact = Some(aid);
             hash = Some(h);
         }
+        let artifact_retention_ms = wall_ms(phase);
+        let phase = Instant::now();
         if serde_json::to_vec(&scene)
             .map_err(|_| fault("invalid_scene", "Inspect adapter metadata."))?
             .len()
@@ -49,6 +57,8 @@ impl Engine {
                 "Narrow the accessibility tree.",
             ));
         }
+        let scene_budget_serialization_ms = wall_ms(phase);
+        let phase = Instant::now();
         self.snapshots.push_back((
             frame.clone(),
             Snapshot {
@@ -62,6 +72,8 @@ impl Engine {
         while self.snapshots.len() > SNAPSHOT_LIMIT {
             self.snapshots.pop_front();
         }
+        let snapshot_retention_ms = wall_ms(phase);
+        let phase = Instant::now();
         let popups = match &scene.binding {
             Some(binding) => self
                 .backend(target)?
@@ -69,12 +81,36 @@ impl Engine {
                 .unwrap_or_default(),
             None => Vec::new(),
         };
+        let popups_ms = wall_ms(phase);
+        let phase = Instant::now();
         let mut adapter_status = self.backend(target)?.capabilities();
+        let capabilities_ms = wall_ms(phase);
         if let Some(capabilities) = adapter_status.as_object_mut() {
             capabilities.insert(
                 "input_proposal_max_age_ms".into(),
                 serde_json::json!(INPUT_PROPOSAL_MAX_AGE_SECS * 1000),
             );
+            // Snapshot's default projection does not include this field. The
+            // original observation/details cache retains it for explicit reads.
+            capabilities.entry("observation_wall_timings".to_owned()).or_insert_with(|| {
+                serde_json::json!({
+                    "units":"ms",
+                    "clock":"monotonic_wall",
+                    "source_scope":"core_engine_observe_only",
+                    "excludes":["Agent_admission_queue","Agent_serialization","device_RPC","MCP","Host"],
+                    "cpu_measured":false,
+                    "phase_accounting_complete":false,
+                    "success_only":true,
+                    "input_authority_created":false,
+                    "scene_ms":scene_ms,
+                    "artifact_retention_ms":artifact_retention_ms,
+                    "scene_budget_serialization_ms":scene_budget_serialization_ms,
+                    "snapshot_retention_ms":snapshot_retention_ms,
+                    "popups_ms":popups_ms,
+                    "capabilities_ms":capabilities_ms,
+                    "total_ms":wall_ms(observation_started)
+                })
+            });
         }
         Ok(Observation {
             frame,
@@ -347,5 +383,174 @@ impl Engine {
             self.refs.pop_front();
         }
         Ok(r)
+    }
+}
+
+#[cfg(all(test, feature = "fixture"))]
+mod observation_wall_tests {
+    use super::*;
+    use crate::fixture::Fixture;
+    use std::sync::{Arc, Mutex};
+
+    struct CountingFixture {
+        fixture: Fixture,
+        reads: Arc<Mutex<Vec<&'static str>>>,
+        capabilities: serde_json::Value,
+        popup_error: bool,
+    }
+    impl Backend for CountingFixture {
+        fn identity(&self) -> Identity {
+            self.fixture.identity()
+        }
+        fn capabilities(&self) -> serde_json::Value {
+            self.reads.lock().unwrap().push("capabilities");
+            self.capabilities.clone()
+        }
+        fn observe(&mut self) -> Result<Scene> {
+            self.reads.lock().unwrap().push("scene");
+            self.fixture.observe()
+        }
+        fn popups(&mut self, _: &Scope) -> Result<Vec<Popup>> {
+            self.reads.lock().unwrap().push("popups");
+            if self.popup_error {
+                Err(fault("fixture_popup_error", "Read-only test error."))
+            } else {
+                Ok(Vec::new())
+            }
+        }
+        fn act(
+            &mut self,
+            _: &Binding,
+            _: &Resolved,
+            _: &Intent,
+            _: Option<&str>,
+        ) -> Result<Option<bool>> {
+            panic!("Observation diagnostics must never dispatch input")
+        }
+        fn inspect(
+            &mut self,
+            scope: &Scope,
+            predicate: &Predicate,
+            expected: &str,
+        ) -> Result<Oracle> {
+            self.fixture.inspect(scope, predicate, expected)
+        }
+    }
+
+    #[test]
+    fn observation_wall_instrument_single_reads_preserve_scene_artifact_and_capabilities() {
+        let directory = tempfile::tempdir().unwrap();
+        let fixture = Fixture::default();
+        fixture.0.lock().unwrap().png_bytes = 257;
+        let expected_scene = fixture.clone().observe().unwrap();
+        let original = expected_scene.png.clone();
+        let mut expected_caps = fixture.capabilities();
+        expected_caps["future_capability"] = serde_json::json!({"unchanged":[1,2]});
+        let reads = Arc::new(Mutex::new(Vec::new()));
+        let mut engine = Engine::new(directory.path().into()).unwrap();
+        engine
+            .register(
+                "fixture".into(),
+                Box::new(CountingFixture {
+                    fixture: fixture.clone(),
+                    reads: reads.clone(),
+                    capabilities: expected_caps.clone(),
+                    popup_error: true,
+                }),
+            )
+            .unwrap();
+        reads.lock().unwrap().clear();
+        let observed = engine.observe("fixture").unwrap();
+        assert_eq!(*reads.lock().unwrap(), ["scene", "popups", "capabilities"]);
+        assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        assert_eq!(
+            serde_json::to_value(&observed.scene).unwrap(),
+            serde_json::to_value(&expected_scene).unwrap()
+        );
+        assert!(observed.popups.is_empty()); // Keep the original popup-error behavior.
+        assert_eq!(observed.png_sha256, Some(digest(&original)));
+        let (saved, _) = engine
+            .original(
+                "fixture",
+                &observed.frame,
+                observed.artifact_id.as_ref().unwrap(),
+            )
+            .unwrap();
+        assert_eq!(saved, original);
+        let mut actual_caps = observed.adapter_status;
+        let timings = actual_caps
+            .as_object_mut()
+            .unwrap()
+            .remove("observation_wall_timings")
+            .unwrap();
+        expected_caps["input_proposal_max_age_ms"] =
+            serde_json::json!(INPUT_PROPOSAL_MAX_AGE_SECS * 1000);
+        assert_eq!(actual_caps, expected_caps);
+        assert_eq!(timings["units"], "ms");
+        assert_eq!(timings["clock"], "monotonic_wall");
+        assert_eq!(timings["source_scope"], "core_engine_observe_only");
+        assert_eq!(timings["cpu_measured"], false);
+        assert_eq!(timings["phase_accounting_complete"], false);
+        assert_eq!(timings["input_authority_created"], false);
+        let phases = [
+            "scene_ms",
+            "artifact_retention_ms",
+            "scene_budget_serialization_ms",
+            "snapshot_retention_ms",
+            "popups_ms",
+            "capabilities_ms",
+        ];
+        let sum: f64 = phases
+            .into_iter()
+            .map(|key| {
+                let value = timings[key].as_f64().unwrap();
+                assert!(value.is_finite() && value >= 0.0);
+                value
+            })
+            .sum();
+        let total = timings["total_ms"].as_f64().unwrap();
+        assert!(total.is_finite() && total >= 0.0 && sum <= total + 0.001);
+    }
+
+    #[test]
+    fn observation_wall_instrument_nonobject_and_existing_field_keep_original_shapes() {
+        let shapes = [
+            serde_json::Value::Null,
+            serde_json::json!(true),
+            serde_json::json!(3),
+            serde_json::json!("future"),
+            serde_json::json!([1, 2]),
+            serde_json::json!({"observation_wall_timings":{"future_field":"preserve"}}),
+        ];
+        for capabilities in shapes {
+            let directory = tempfile::tempdir().unwrap();
+            let fixture = Fixture::default();
+            let reads = Arc::new(Mutex::new(Vec::new()));
+            let mut engine = Engine::new(directory.path().into()).unwrap();
+            engine
+                .register(
+                    "fixture".into(),
+                    Box::new(CountingFixture {
+                        fixture: fixture.clone(),
+                        reads: reads.clone(),
+                        capabilities: capabilities.clone(),
+                        popup_error: true,
+                    }),
+                )
+                .unwrap();
+            reads.lock().unwrap().clear();
+            let observed = engine.observe("fixture").unwrap();
+            let mut expected = capabilities;
+            if let Some(object) = expected.as_object_mut() {
+                object.insert(
+                    "input_proposal_max_age_ms".into(),
+                    serde_json::json!(INPUT_PROPOSAL_MAX_AGE_SECS * 1000),
+                );
+            }
+            assert_eq!(observed.adapter_status, expected);
+            assert_eq!(*reads.lock().unwrap(), ["scene", "popups", "capabilities"]);
+            assert!(observed.popups.is_empty());
+            assert_eq!(fixture.0.lock().unwrap().calls, 0);
+        }
     }
 }

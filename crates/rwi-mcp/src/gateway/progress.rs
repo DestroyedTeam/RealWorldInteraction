@@ -40,6 +40,9 @@ pub(super) fn stage(tool: &str) -> &'static str {
         "computer.resolve_view" => "Validating screenshot coordinates",
         "computer.claim" => "Acquiring short input lease",
         "computer.act" | "computer.act_checked" => "Dispatching one input operation",
+        "computer.set_text" => "Replacing one exact plain AXValue and reading native state",
+        "computer.focus_element" => "Requesting exact semantic focus and reading native state",
+        "computer.select_window_local" => "Select exact app-local main/key window once",
         _ => "Processing request",
     }
 }

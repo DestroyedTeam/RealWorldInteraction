@@ -1,5 +1,5 @@
 //! Exact existing bitmap conversion/PNG logic moved without behavior changes.
-use super::{Capture, validate_pixels};
+use super::{Capture, timing, validate_pixels};
 use crate::ffi;
 use core_graphics::{
     color_space::CGColorSpace,
@@ -16,6 +16,7 @@ pub(super) unsafe fn encode_native_image(
     h: usize,
     logical_height: f64,
 ) -> Result<Capture> {
+    let bitmap_started = std::time::Instant::now();
     // Borrowed callback image is retained exactly once, then released by CGImage.
     let image = unsafe { CGImage::from_ptr(ffi::CFRetain(ptr).cast_mut().cast()) };
     if image.width() != w || image.height() != h {
@@ -41,6 +42,8 @@ pub(super) unsafe fn encode_native_image(
         &image,
     );
     let pixels = context.data();
+    let bitmap_ms = timing::elapsed_ms(bitmap_started);
+    let unpremultiply_started = std::time::Instant::now();
     for rgba in pixels.chunks_exact_mut(4) {
         let a = rgba[3] as u32;
         if a != 0 && a != 255 {
@@ -49,12 +52,25 @@ pub(super) unsafe fn encode_native_image(
             }
         }
     }
+    let unpremultiply_ms = timing::elapsed_ms(unpremultiply_started);
+    let digest_started = std::time::Instant::now();
     let content_sha = content_digest(pixels, w, h, logical_height);
+    let digest_ms = timing::elapsed_ms(digest_started);
+    let png_started = std::time::Instant::now();
+    let png = encode_rgba(w, h, pixels)?;
+    let png_ms = timing::elapsed_ms(png_started);
     Ok(Capture {
-        png: encode_rgba(w, h, pixels)?,
+        png,
         size: [w as u32, h as u32],
         native_size: [w as u32, h as u32],
         content_sha,
+        timings: timing::CaptureTimings {
+            bitmap_conversion_ms: Some(bitmap_ms),
+            unpremultiply_ms: Some(unpremultiply_ms),
+            content_digest_ms: Some(digest_ms),
+            png_encode_ms: Some(png_ms),
+            ..Default::default()
+        },
     })
 }
 

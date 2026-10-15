@@ -226,6 +226,7 @@ impl NativeMac {
         }
         if let Ok(mut saved) = self.last_observation.lock() {
             *saved = visual_only_consistency(ax_error, attempts, capture_ms);
+            saved["capture_phases"] = capture.timings.details();
         }
         Ok(visual_only_scene(self.identity.clone(), capture, ax_error))
     }
@@ -327,6 +328,7 @@ impl NativeMac {
             },
             details: json!({
                 "capture_backend":"ScreenCaptureKit.SCScreenshotManager",
+                "capture_phases":capture.timings.brief(),
                 "source_space":"macos_desktop_points",
                 "title": before.record.title,
                 "display": before.record.display,
@@ -411,6 +413,7 @@ mod tests {
                 size: [2, 2],
                 native_size: [2, 2],
                 content_sha: String::new(),
+                timings: Default::default(),
             },
             &ax_failure("AXWindows", -25205),
         );
@@ -477,6 +480,7 @@ mod tests {
                 size: [2, 2],
                 native_size: [2, 2],
                 content_sha: String::new(),
+                timings: Default::default(),
             },
             &timeout,
         );

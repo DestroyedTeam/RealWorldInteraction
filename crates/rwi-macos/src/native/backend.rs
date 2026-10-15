@@ -12,6 +12,8 @@ impl NativeMac {
             "implemented":true,
             "default_delivery":"background_window",
             "background_skylight_experimental":crate::background::skylight::click_capabilities(input_enabled, semantic_only),
+            "background_skylight_appkit_experimental":crate::background::skylight::appkit_click_capabilities(input_enabled, semantic_only),
+            "background_public_appkit_experimental":crate::background::skylight::public_appkit_click_capabilities(input_enabled, semantic_only),
         })
     }
 }
@@ -63,6 +65,16 @@ impl Backend for NativeMac {
         caps["pointer_click"] =
             Self::pointer_click_capabilities(self.allow_input, self.semantic_only);
         caps["window_selected"] = serde_json::json!(true);
+        caps["set_text"]["available"] = serde_json::json!(
+            self.allow_input && !self.semantic_only && unsafe { ffi::AXIsProcessTrusted() } != 0
+        );
+        caps["focus_element"]["available"] = serde_json::json!(
+            self.allow_input && !self.semantic_only && unsafe { ffi::AXIsProcessTrusted() } != 0
+        );
+
+        caps["select_window_local"]["available"] = serde_json::json!(
+            self.allow_input && !self.semantic_only && unsafe { ffi::AXIsProcessTrusted() } != 0
+        );
         // The legacy pinned constructor does not gain dynamic catalog operations.
         caps["window_discovery"]["implemented"] = serde_json::json!(false);
         caps["pointer_feedback"] = crate::overlay::status_json();
@@ -146,6 +158,7 @@ impl Backend for NativeMac {
                         "controls_source":"post_capture_native_metadata","input_revalidation_required":true,
                         "attempts":attempt+1,"before_elements":null,"after_elements":after.elements.len(),"control_tree_walks":1,
                         "metadata_before_ms":before_ms,"capture_ms":capture_ms,"metadata_after_ms":after_ms,
+                        "capture_phases":capture.timings.brief(),
                         "ax_coverage_before":before.coverage,"ax_coverage_after":after.coverage});
                 }
                 let mut scene = self.metadata_scene(
@@ -216,6 +229,53 @@ impl Backend for NativeMac {
     fn popups(&mut self, _scope: &rwi_core::Scope) -> Result<Vec<rwi_core::Popup>> {
         Ok(crate::native::popups_for_pid(self.pid))
     }
+    fn set_text_preflight(
+        &mut self,
+        r: &Resolved,
+    ) -> Result<rwi_core::set_text::SetTextNativeFacts> {
+        self.set_text_preflight_native(r)
+    }
+    fn set_text(
+        &mut self,
+        expected: &Binding,
+        r: &Resolved,
+        text: &str,
+    ) -> Result<rwi_core::set_text::SetTextReadback> {
+        self.dispatch_set_text(expected, r, text)
+    }
+    fn focus_element_preflight(
+        &mut self,
+        r: &Resolved,
+    ) -> Result<rwi_core::semantic_focus::FocusNativeFacts> {
+        self.semantic_focus_preflight(r)
+    }
+    fn focus_element(
+        &mut self,
+        expected: &Binding,
+        r: &Resolved,
+        plan: rwi_core::semantic_focus::FocusWritePlan,
+    ) -> Result<rwi_core::semantic_focus::FocusReadback> {
+        self.dispatch_semantic_focus(expected, r, plan)
+    }
+    fn window_local_revalidate(&mut self, r: &Resolved) -> Result<Scene> {
+        self.window_local_revalidate_scene(r)
+    }
+    fn select_window_local_preflight(
+        &mut self,
+        r: &Resolved,
+        kind: rwi_core::window_local::WindowLocalKind,
+    ) -> Result<rwi_core::window_local::WindowLocalNativeFacts> {
+        self.window_local_preflight(r, kind)
+    }
+    fn select_window_local(
+        &mut self,
+        expected: &Binding,
+        r: &Resolved,
+        kind: rwi_core::window_local::WindowLocalKind,
+        plan: rwi_core::window_local::WindowLocalWritePlan,
+    ) -> Result<rwi_core::window_local::WindowLocalReadback> {
+        self.dispatch_window_local(expected, r, kind, plan)
+    }
     fn focus_window(
         &mut self,
         r: &Resolved,
@@ -279,7 +339,7 @@ impl Backend for NativeMac {
         let meta = self.metadata()?;
         let matched = match predicate {
             Predicate::WindowTitle => meta.title == expected,
-            Predicate::FocusedWindow => meta.binding.focus_window == expected,
+            Predicate::FocusedWindow => focused_window::matched(self, &meta, expected)?,
             Predicate::ElementValue => {
                 let id = scope
                     .element
@@ -313,7 +373,12 @@ impl Backend for NativeMac {
             scope: scope.clone(),
             assurance: "native-attested".into(),
             matched,
-            source: "independent-AX-readback; no screenshot/input receipt inference".into(),
+            source: if matches!(predicate, Predicate::FocusedWindow) {
+                "application AXFocusedWindow; exact selected AX object/context; not OS global foreground"
+            } else {
+                "independent-AX-readback; no screenshot/input receipt inference"
+            }
+            .into(),
         })
     }
 }

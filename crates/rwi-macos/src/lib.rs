@@ -8,6 +8,8 @@ mod capture;
 #[cfg(target_os = "macos")]
 mod catalog;
 #[cfg(target_os = "macos")]
+pub mod cooperative_tracking;
+#[cfg(target_os = "macos")]
 mod desktop;
 #[cfg(target_os = "macos")]
 mod ffi;

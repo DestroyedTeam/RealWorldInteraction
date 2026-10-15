@@ -17,14 +17,32 @@ pub fn definitions() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
             name: "computer.hotkey",
-            description: "Explicit foreground/system keyboard input on an authorized macOS desktop, e.g. cmd+tab. Supply original desktop target, shared input lease, stable request_id and fresh expected_foreground from targets. Posts one bounded balanced key/modifier sequence into the system stream, not to a PID. Yields to recent HID activity or changed foreground/session; always releases its own posted keys. No text, auto-focus, background fallback or replay. Receipt is not a verified switch; independently observe foreground. Unsupported/scoped-window backends refuse.",
+            description: "Explicit foreground/system keyboard input on an authorized macOS desktop, e.g. cmd+tab. Supply original desktop target, shared input lease, stable request_id and fresh expected_foreground from targets. Posts one bounded balanced key/modifier sequence into the system stream, not to a PID. Yields to recent HID activity or changed foreground/session; always releases its own posted keys. No text, auto-focus, background fallback or replay. Receipt is not a verified switch; independently observe foreground. Unsupported/scoped-window backends refuse. After dispatch processing, same-desktop old frames/refs in this executor are invalidated; snapshot then resolve before element input.",
             input_schema: serde_json::to_value(schemars::schema_for!(HotkeyArgs)).unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
+            name: "computer.set_text",
+            description: "Explicitly replace the entire writable CFString AXValue of one exact ordinary nonsecure macOS AXTextField/AXTextArea. Plain UTF-8 text (empty clears), original frame, stable request_id and internal lease. One guarded public AXValue setter, no focus/activation/keys/clipboard/append/automatic fallback/replay. Separate full AX value readback is not DOM, composition or keyboard goal. Unsupported/secure/unknown/specialized roles refuse.",
+            input_schema: serde_json::to_value(schemars::schema_for!(SetTextArgs)).unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
+            name: "computer.focus_element",
+            description: "Explicit semantic focus of one exact plain editable element from the original frame. Internal device call requires lease and stable request_id; at most one AXFocused=true setter after fresh native policy checks. Never a click/action, window activation, value setter or keyboard fallback. Read back element focus, exact application focused element/window and OS foreground separately; acknowledgement alone is not success. Unsupported backends refuse; no retry/replay.",
+            input_schema: serde_json::to_value(schemars::schema_for!(FocusElementArgs)).unwrap(),
             writes: true,
         },
         ToolDefinition {
             name: "computer.focus_window",
             description: "Explicitly bring one bound macOS visual window to foreground via public AX APIs, never a background-input fallback. Resolve kind=window from a <=10s frame; supply lease, stable request_id, and exact expected_foreground from targets/metadata. Guard identity/context/current foreground and HID activity. Each AX request once, no keys/warp/unhide/restore/retry. Receipt is not a goal or input grant; inspect fresh native foreground independently. Unsupported backends refuse.",
             input_schema: serde_json::to_value(schemars::schema_for!(FocusWindowArgs)).unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
+            name: "computer.select_window_local",
+            description: "Explicitly select this exact ordinary macOS visual window as app-local main or key. Fresh frame, kind main|key, durable request_id and internal lease; at most one requested attribute setter, no raise/frontmost/activation, element focus, keys, click, fallback or replay. Read exact window/application main/key CF axes and OS foreground separately; selected main is not key, editable readiness or typing authorization. Unsupported kind/provider/platform refuses.",
+            input_schema: serde_json::to_value(schemars::schema_for!(WindowLocalArgs)).unwrap(),
             writes: true,
         },
         ToolDefinition {
@@ -227,6 +245,18 @@ pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
             let _: ActArgs = serde_json::from_value(args.clone())?;
             Ok(())
         }
+        "computer.set_text" => {
+            let _: SetTextArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.focus_element" => {
+            let _: FocusElementArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
+        "computer.select_window_local" => {
+            let _: WindowLocalArgs = serde_json::from_value(args.clone())?;
+            Ok(())
+        }
         "computer.act_checked" => {
             let _: CheckedActArgs = serde_json::from_value(args.clone())?;
             Ok(())
@@ -403,6 +433,134 @@ mod foreground_contract_tests {
                 tool.input_schema["properties"].get(field).is_some(),
                 "{field}"
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod semantic_focus_wire_tests {
+    #[test]
+    fn semantic_focus_device_catalog_requires_internal_lease_and_rejects_options() {
+        let valid = serde_json::json!({"target":"t", "frame":"f", "element":"e", "request_id":"once", "lease":"l"});
+        assert!(super::validate("computer.focus_element", &valid).is_ok());
+        assert!(super::executable("computer.focus_element"));
+        let defs = super::definitions();
+        let rows: Vec<_> = defs
+            .iter()
+            .filter(|d| d.name == "computer.focus_element")
+            .collect();
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].writes);
+        assert_eq!(
+            rows[0].input_schema["properties"]
+                .as_object()
+                .unwrap()
+                .len(),
+            5
+        );
+        for field in ["target", "frame", "element", "request_id", "lease"] {
+            let mut incomplete = valid.clone();
+            incomplete.as_object_mut().unwrap().remove(field);
+            assert!(
+                super::validate("computer.focus_element", &incomplete).is_err(),
+                "{field}"
+            );
+        }
+        for field in ["value", "options", "fallback", "include_timings", "intent"] {
+            let mut extra = valid.clone();
+            extra[field] = serde_json::json!(true);
+            assert!(
+                super::validate("computer.focus_element", &extra).is_err(),
+                "{field}"
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod window_local_wire_tests {
+    #[test]
+    fn device_window_selection_requires_internal_lease_and_exact_kind() {
+        let valid = serde_json::json!({"target":"t","frame":"f","kind":"main","request_id":"once","lease":"l"});
+        assert!(super::validate("computer.select_window_local", &valid).is_ok());
+        assert!(super::executable("computer.select_window_local"));
+        let defs = super::definitions();
+        let rows: Vec<_> = defs
+            .iter()
+            .filter(|d| d.name == "computer.select_window_local")
+            .collect();
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].writes);
+        assert_eq!(
+            rows[0].input_schema["properties"]
+                .as_object()
+                .unwrap()
+                .len(),
+            5
+        );
+        for f in ["target", "frame", "kind", "request_id", "lease"] {
+            let mut v = valid.clone();
+            v.as_object_mut().unwrap().remove(f);
+            assert!(
+                super::validate("computer.select_window_local", &v).is_err(),
+                "{f}"
+            );
+        }
+        for f in [
+            "element",
+            "value",
+            "options",
+            "fallback",
+            "include_timings",
+            "intent",
+            "expected_foreground",
+        ] {
+            let mut v = valid.clone();
+            v[f] = serde_json::json!(true);
+            assert!(
+                super::validate("computer.select_window_local", &v).is_err(),
+                "{f}"
+            );
+        }
+        for kind in [
+            serde_json::json!("focused"),
+            serde_json::Value::Null,
+            serde_json::json!(true),
+        ] {
+            let mut v = valid.clone();
+            v["kind"] = kind;
+            assert!(super::validate("computer.select_window_local", &v).is_err());
+        }
+    }
+}
+
+#[cfg(test)]
+mod explicit_set_text_wire_tests {
+    #[test]
+    fn explicit_set_text_native_catalog_requires_six_fields_and_advertises_write() {
+        let valid = serde_json::json!({"target":"t","frame":"f","element":"e","request_id":"once","text":"🙂","lease":"l"});
+        super::validate("computer.set_text", &valid).unwrap();
+        assert!(super::executable("computer.set_text"));
+        let defs = super::definitions();
+        let d = defs.iter().find(|d| d.name == "computer.set_text").unwrap();
+        assert!(d.writes);
+        assert_eq!(d.input_schema["properties"].as_object().unwrap().len(), 6);
+        for field in ["target", "frame", "element", "request_id", "text", "lease"] {
+            let mut bad = valid.clone();
+            bad.as_object_mut().unwrap().remove(field);
+            assert!(super::validate("computer.set_text", &bad).is_err());
+        }
+        for field in [
+            "append",
+            "options",
+            "fallback",
+            "intent",
+            "value",
+            "include_timings",
+        ] {
+            let mut bad = valid.clone();
+            bad[field] = true.into();
+            assert!(super::validate("computer.set_text", &bad).is_err());
         }
     }
 }

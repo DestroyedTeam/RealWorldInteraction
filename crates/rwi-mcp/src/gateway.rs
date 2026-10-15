@@ -209,13 +209,52 @@ impl Gateway {
                     "Device did not supply an authenticated context.",
                 );
             };
-            self.remember(id, &opened.result.data);
             *context = Some(Connection {
                 token: token.into(),
                 instance: opened.instance,
                 targets: opened.result.data["targets"].clone(),
             });
         }
+        // OpenContext acknowledges its catalog, not current native readiness. A
+        // late Describe may also have lost its epoch to another inspector.
+        // In either case validate the exact current token under the existing
+        // context lock; the normal same-token Describe adds no extra RPC.
+        let description = if context.as_ref().map(|c| &c.token) != previous.as_ref() {
+            let current = context.as_ref().unwrap();
+            let token = current.token.clone();
+            let instance = current.instance.clone();
+            let fresh = match self.request(id, Some(token), Call::Describe).await {
+                Ok(r) => r,
+                Err(e) => {
+                    *context = None;
+                    return e;
+                }
+            };
+            let available = fresh.result.data["availability"] == "available";
+            let consistent = fresh.instance == instance
+                && fresh.result.data["context_valid"] == true
+                && fresh.result.data["targets"].is_array();
+            if fresh.result.is_error || !available || !consistent {
+                // Only this locked epoch is retired. Preserve actual status and
+                // diagnostics, but never publish an unvalidated owner catalog.
+                *context = None;
+                let mut result = fresh.result;
+                if !result.is_error && available {
+                    result.is_error = true;
+                    result.data["code"] = json!("context_response_invalid");
+                    result.data["next_step"] =
+                        json!("Inspect a fresh authenticated context; no input was dispatched.");
+                }
+                if let Some(state) = result.data.as_object_mut() {
+                    state.remove("targets");
+                }
+                return result;
+            }
+            context.as_mut().unwrap().targets = fresh.result.data["targets"].clone();
+            fresh
+        } else {
+            description
+        };
         let mut result = description.result;
         if context.as_ref().map(|c| &c.token) == previous.as_ref()
             && result.data["context_valid"] == true
@@ -285,6 +324,15 @@ fn mcp_result(mut result: DeviceResult) -> CallToolResult {
     }
     reply
 }
+fn mcp_result_with_text_projection(result: DeviceResult, text: Option<Value>) -> CallToolResult {
+    let mut reply = mcp_result(result);
+    if reply.is_error == Some(false)
+        && let Some(text) = text
+    {
+        reply.content[0] = Content::text(serde_json::to_string(&text).expect("JSON value"));
+    }
+    reply
+}
 const SERVER_INSTRUCTIONS: &str = "RWI: use computer.targets({device_id}) for a known device; omit only for all peers (offline peers may delay). Add include_timings only if exposed by the tool input schema: adapter wall time, not native CPU; elapsed_ms is pre-cache. Never replay uncertain input. Keep GUI and terminal evidence separate.";
 
 #[cfg(test)]
@@ -329,8 +377,18 @@ impl ServerHandler for Gateway {
         let ui_supported = live_ui::negotiated(&context);
         let mut tools: Vec<_> = device::catalog::definitions()
             .into_iter()
+            // The model route owns a four-field schema and internal lease.
+            .filter(|d| {
+                !matches!(
+                    d.name,
+                    "computer.focus_element" | "computer.select_window_local" | "computer.set_text"
+                )
+            })
             .map(|mut d| {
                 schema_numbers(&mut d.input_schema);
+                if d.name == "computer.targets" {
+                    presentation::targets_text_schema(&mut d.input_schema);
+                }
                 let tool = Tool::new(
                     d.name,
                     d.description,
@@ -421,9 +479,19 @@ impl Gateway {
     /// Shared admission and presentation for direct MCP and adapter callers.
     async fn call_native(
         &self,
-        p: CallToolRequestParams,
+        mut p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        let requested_text_projection = if p.name == "computer.targets" {
+            match presentation::take_targets_text_projection(
+                p.arguments.get_or_insert_with(Default::default),
+            ) {
+                Ok(requested) => requested,
+                Err(error) => return Ok(mcp_result(error)),
+            }
+        } else {
+            false
+        };
         if p.name == "computer.result" {
             let args = serde_json::from_value::<presentation::ResultArgs>(Value::Object(
                 p.arguments.unwrap_or_default(),
@@ -474,12 +542,16 @@ impl Gateway {
             )
             .await;
         portable_numbers(&mut result.data);
+        let mut text_projection = None;
         if matches!(p.name.as_ref(), "computer.observe" | "computer.targets")
             && let Ok(mut cache) = self.presentation.lock()
         {
             result = cache.project(&p.name, result);
+            if requested_text_projection {
+                text_projection = cache.targets_text_projection(&result);
+            }
         }
-        Ok(mcp_result(result))
+        Ok(mcp_result_with_text_projection(result, text_projection))
     }
 }
 pub fn run(path: Option<&Path>) -> io::Result<()> {

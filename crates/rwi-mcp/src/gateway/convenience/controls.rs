@@ -1,4 +1,64 @@
 use super::*;
+use std::collections::BTreeSet;
+
+/// Display-only evidence from the original macOS observation. These IDs were
+/// already classified Plain by Native; writability/focus never grants input here.
+pub(super) fn native_plain_display_candidates(observation: &Value) -> BTreeSet<String> {
+    let empty = BTreeSet::new;
+    if observation["adapter_status"]["adapter"] != "rust-macos-native"
+        || observation["scene"]["assurance"] != "native-attested"
+        || !observation["scene"]["binding"].is_object()
+    {
+        return empty();
+    }
+    let Some(sidecar) = observation.pointer(
+        "/adapter_status/observation_consistency/ax_coverage_after/editable_focus_availability",
+    ) else {
+        return empty();
+    };
+    if sidecar["api"] != "AXUIElementIsAttributeSettable"
+        || sidecar["attribute"] != "AXFocused"
+        || sidecar["scope"] != "returned_classified_plain_text_roles_only"
+        || sidecar["input_authority"] != false
+        || sidecar["absence_proven"] != false
+        || sidecar["probe_limit"] != 4
+    {
+        return empty();
+    }
+    let (Some(entries), Some(rows)) = (
+        sidecar["elements"].as_array(),
+        observation["scene"]["elements"].as_array(),
+    ) else {
+        return empty();
+    };
+    if entries.len() > 4 {
+        return empty();
+    }
+    entries
+        .iter()
+        .filter_map(|entry| {
+            let id = entry["element"].as_str()?;
+            let status = i32::try_from(entry["native_status"].as_i64()?).ok()?;
+            let shape_known = if status == 0 {
+                entry["state"] == "read" && entry["settable"].is_boolean()
+            } else {
+                entry["state"] == "unknown" && entry.get("settable").is_some_and(Value::is_null)
+            };
+            // False/error availability still identifies a classified Plain row.
+            // Missing/budget-omitted IDs and foreign or ambiguous IDs stay unknown.
+            let mut exact = rows.iter().filter(|row| row["id"] == id);
+            let row = exact.next()?;
+            (shape_known
+                && !id.is_empty()
+                && exact.next().is_none()
+                && matches!(
+                    row["role"].as_str(),
+                    Some("AXTextField" | "AXTextArea" | "AXComboBox")
+                ))
+            .then(|| id.to_owned())
+        })
+        .collect()
+}
 
 pub(super) fn eligible_control(e: &Value) -> bool {
     e["actions"]
@@ -6,12 +66,23 @@ pub(super) fn eligible_control(e: &Value) -> bool {
         .is_some_and(|a| a.iter().any(standard_action))
         || !e["control_type"].is_null()
 }
+fn eligible_with_candidates(e: &Value, candidates: &BTreeSet<String>) -> bool {
+    eligible_control(e) || e["id"].as_str().is_some_and(|id| candidates.contains(id))
+}
+#[cfg(test)]
 pub(super) fn control_page(rows: &[Value], args: &ControlsArgs) -> DeviceResult {
+    control_page_with_candidates(rows, args, &BTreeSet::new())
+}
+pub(super) fn control_page_with_candidates(
+    rows: &[Value],
+    args: &ControlsArgs,
+    candidates: &BTreeSet<String>,
+) -> DeviceResult {
     let query = args.query.to_lowercase();
     let matched: Vec<_> = rows
         .iter()
         .filter(|e| {
-            eligible_control(e)
+            eligible_with_candidates(e, candidates)
                 && (query.is_empty()
                     || ["name", "description", "role"].iter().any(|key| {
                         e[*key]
@@ -26,7 +97,7 @@ pub(super) fn control_page(rows: &[Value], args: &ControlsArgs) -> DeviceResult 
         .take(args.limit)
         .map(|e| (*e).clone())
         .collect();
-    let (elements, _) = compact_controls_in_order(&page, args.limit);
+    let (elements, _) = compact_controls_in_order_with_candidates(&page, args.limit, candidates);
     if elements.is_empty() && !page.is_empty() {
         return DeviceResult::error(
             "control_display_budget",
@@ -49,8 +120,19 @@ pub(super) fn standard_action(value: &Value) -> bool {
 }
 // Stable default display ranking only. Every native row remains in the
 // retained observation and explicit control pages keep their original order.
+#[cfg(test)]
 pub(super) fn compact_controls(rows: &[Value], limit: usize) -> (Vec<Value>, usize) {
-    let eligible: Vec<_> = rows.iter().filter(|e| eligible_control(e)).collect();
+    compact_controls_with_candidates(rows, limit, &BTreeSet::new())
+}
+pub(super) fn compact_controls_with_candidates(
+    rows: &[Value],
+    limit: usize,
+    candidates: &BTreeSet<String>,
+) -> (Vec<Value>, usize) {
+    let eligible: Vec<_> = rows
+        .iter()
+        .filter(|e| eligible_with_candidates(e, candidates))
+        .collect();
     let preferred: Vec<_> = eligible
         .iter()
         .filter(|e| !low_priority_unnamed_container(e))
@@ -60,9 +142,9 @@ pub(super) fn compact_controls(rows: &[Value], limit: usize) -> (Vec<Value>, usi
     // metadata and explicit pages are untouched; an all-container tree retains
     // its rows rather than pretending there are no controls.
     if preferred.is_empty() {
-        return compact_controls_in_order(rows, limit);
+        return compact_controls_in_order_with_candidates(rows, limit, candidates);
     }
-    let (out, _) = compact_controls_in_order(&preferred, limit);
+    let (out, _) = compact_controls_in_order_with_candidates(&preferred, limit, candidates);
     (out, eligible.len())
 }
 pub(super) fn low_priority_unnamed_container(e: &Value) -> bool {
@@ -84,8 +166,19 @@ pub(super) fn low_priority_unnamed_container(e: &Value) -> bool {
         )
 }
 // Bounded display projection, never truncation of native authority or evidence.
+#[cfg(test)]
 pub(super) fn compact_controls_in_order(rows: &[Value], limit: usize) -> (Vec<Value>, usize) {
-    let eligible: Vec<_> = rows.iter().filter(|e| eligible_control(e)).collect();
+    compact_controls_in_order_with_candidates(rows, limit, &BTreeSet::new())
+}
+fn compact_controls_in_order_with_candidates(
+    rows: &[Value],
+    limit: usize,
+    candidates: &BTreeSet<String>,
+) -> (Vec<Value>, usize) {
+    let eligible: Vec<_> = rows
+        .iter()
+        .filter(|e| eligible_with_candidates(e, candidates))
+        .collect();
     let mut out = Vec::new();
     let mut used = 0;
     for e in eligible.iter().take(limit) {
@@ -138,6 +231,12 @@ pub(super) fn compact_controls_in_order(rows: &[Value], limit: usize) -> (Vec<Va
             if row.get(key).and_then(Value::as_bool) == Some(redundant) {
                 row.remove(key);
             }
+        }
+        if e["id"].as_str().is_some_and(|id| candidates.contains(id)) {
+            row.insert(
+                "display_candidate".into(),
+                json!({"kind":"classified_plain_text","input_authority":false}),
+            );
         }
         let v = Value::Object(row);
         let bytes = serde_json::to_vec(&v).unwrap().len();

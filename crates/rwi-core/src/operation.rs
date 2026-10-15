@@ -193,6 +193,30 @@ impl Drop for CleanupAudit {
         CLEANUP_AUDITS.with(|a| a.borrow_mut().retain(|s| !Rc::ptr_eq(s, &self.0)));
     }
 }
+/// Read-only remaining native dispatch budget. Does not renew a lease, reset
+/// an operation deadline or create authority for calls outside a leased dispatch.
+pub fn dispatch_budget() -> Result<Duration> {
+    checkpoint("read_cooperative_dispatch_budget")?;
+    let lease = DISPATCH_DEADLINE.with(|d| *d.borrow()).ok_or_else(|| {
+        fault(
+            "dispatch_budget_unavailable",
+            "An original active lease deadline is required.",
+        )
+    })?;
+    let end = CURRENT.with(|c| {
+        c.borrow()
+            .as_ref()
+            .map_or(lease, |op| lease.min(op.deadline))
+    });
+    end.checked_duration_since(Instant::now())
+        .filter(|d| !d.is_zero())
+        .ok_or_else(|| {
+            fault(
+                "lease_expired_during_dispatch",
+                "Original dispatch deadline expired; no renewal or input.",
+            )
+        })
+}
 /// Keep the lease lock through cleanup, but stop sending new batches at expiry.
 pub fn with_dispatch_deadline<T>(deadline: Instant, f: impl FnOnce() -> T) -> T {
     struct Restore(Option<Instant>);
@@ -395,5 +419,23 @@ mod tests {
         });
         op.finish();
         assert!(!op.status().resources_released);
+    }
+}
+
+#[cfg(test)]
+mod cooperative_budget_tests {
+    use super::*;
+    #[test]
+    fn f05_cooperative_tracking_budget_is_original_and_never_renewed() {
+        assert!(dispatch_budget().is_err());
+        with_dispatch_deadline(Instant::now() + Duration::from_millis(100), || {
+            let a = dispatch_budget().unwrap();
+            std::thread::sleep(Duration::from_millis(2));
+            assert!(dispatch_budget().unwrap() < a);
+        });
+        with_dispatch_deadline(Instant::now() - Duration::from_millis(1), || {
+            assert!(dispatch_budget().is_err())
+        });
+        assert!(dispatch_budget().is_err());
     }
 }

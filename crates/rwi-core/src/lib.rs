@@ -3,7 +3,7 @@
 mod foreground;
 pub use foreground::ForegroundState;
 mod move_pointer_options;
-pub use move_pointer_options::MovePointerOptions;
+pub use move_pointer_options::{MovePointerOptions, TrackingPhase};
 mod click_delivery_options;
 pub use click_delivery_options::{ClickDeliveryOptions, ExperimentalClickPhase};
 mod checked_action;
@@ -41,9 +41,15 @@ pub mod operation;
 pub mod operation_journal;
 #[cfg(test)]
 mod pixel_anchor_tests;
+pub mod semantic_focus;
+mod semantic_focus_route;
+pub mod set_text;
+mod set_text_route;
 #[cfg(test)]
 mod tests;
 pub mod trajectory;
+pub mod window_local;
+mod window_local_route;
 
 pub const INLINE_BYTES: usize = 8 * 1024 * 1024;
 pub const ARTIFACT_BUDGET: usize = 64 * 1024 * 1024;

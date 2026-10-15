@@ -284,3 +284,76 @@ fn r92_click_delivery_generic_value_and_compact_request_identity_survive() {
     assert_eq!(projected["goal_verified"], false);
     assert!(projected.get("system_accepted").unwrap().is_null());
 }
+
+#[tokio::test]
+async fn r98_appkit_click_only_uses_its_own_capability_and_exact_json_value() {
+    let encoded = r#"{"delivery":"background_skylight_appkit_experimental"}"#;
+    let mut arguments = arguments(element(), false);
+    arguments.delivery = rwi_core::ClickDeliveryOptions::parse(Some(encoded)).unwrap();
+    for supported in [false, true] {
+        let calls = RefCell::new(Vec::new());
+        let mut caps = support();
+        if supported {
+            caps["targets"][0]["capabilities"]["pointer_click"]["background_skylight_appkit_experimental"] =
+                json!({"implemented":true,"available":true});
+        }
+        let result = click(
+            arguments_for_appkit(&arguments),
+            Some("mac-host".into()),
+            |tool, args, cleanup| {
+                calls.borrow_mut().push((tool, args, cleanup));
+                std::future::ready(if tool == "computer.targets" {
+                    DeviceResult::value(caps.clone())
+                } else {
+                    reply(tool)
+                })
+            },
+        )
+        .await;
+        let calls = calls.borrow();
+        if !supported {
+            assert!(result.is_error);
+            assert_eq!(result.data["code"], "capability_unavailable");
+            assert_eq!(calls.len(), 1);
+            assert_eq!(calls[0].0, "computer.targets");
+        } else {
+            assert!(!result.is_error);
+            assert_eq!(
+                result.data["requested_delivery"],
+                "background_skylight_appkit_experimental"
+            );
+            assert_eq!(result.data["goal_verified"], false);
+            let actions: Vec<_> = calls
+                .iter()
+                .filter(|c| c.0 == "computer.act_checked")
+                .collect();
+            assert_eq!(actions.len(), 1);
+            assert_eq!(actions[0].1["value"], encoded);
+            assert_eq!(actions[0].1["intent"], "click");
+        }
+    }
+    let raw = json!({"target":"t","reference":"r","lease":"l","request_id":"once","intent":"click","value":encoded});
+    device::catalog::validate("computer.act", &raw).unwrap();
+    let parsed: device::api::ActArgs = serde_json::from_value(raw).unwrap();
+    assert_eq!(parsed.value.as_deref(), Some(encoded));
+}
+fn arguments_for_appkit(a: &ClickArgs) -> ClickArgs {
+    let mut clone = arguments(element(), false);
+    clone.delivery = a.delivery.clone();
+    clone
+}
+
+#[test]
+fn public_appkit_click_schema_is_explicit_and_uses_the_existing_prelease_policy() {
+    let a: super::super::ClickArgs = serde_json::from_value(serde_json::json!({"target":"mac:exact","request_id":"new-public-pair","at":{"kind":"view","view_id":"fresh-view","x":1.0,"y":2.0},"delivery":{"delivery":"background_public_appkit_experimental"}})).unwrap();
+    assert_eq!(
+        super::super::click::validate_click_delivery(&a).unwrap(),
+        "click"
+    );
+    assert_eq!(
+        a.delivery.unwrap().delivery_name(),
+        "background_public_appkit_experimental"
+    );
+    let schema = serde_json::to_string(&schemars::schema_for!(super::super::ClickArgs)).unwrap();
+    assert!(schema.contains("background_public_appkit_experimental"));
+}

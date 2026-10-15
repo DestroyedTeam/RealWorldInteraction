@@ -7,6 +7,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod targets;
+
 const COMPACT_BYTES: usize = 16 * 1024;
 const PAGE_BYTES: usize = 8 * 1024;
 const CACHE_BYTES: usize = 64 * 1024 * 1024;
@@ -57,6 +59,32 @@ fn error(code: &str, message: &str) -> DeviceResult {
     DeviceResult::error(code, message)
 }
 
+#[derive(Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+enum TargetsTextProjection {
+    ExactDuplicatesV1,
+}
+
+pub(super) fn targets_text_schema(schema: &mut Value) {
+    schema["properties"]["text_projection"] =
+        serde_json::to_value(schemars::schema_for!(TargetsTextProjection)).expect("JSON schema");
+}
+pub(super) fn take_targets_text_projection(
+    arguments: &mut serde_json::Map<String, Value>,
+) -> Result<bool, DeviceResult> {
+    match arguments.remove("text_projection") {
+        None => Ok(false),
+        Some(value) => serde_json::from_value::<TargetsTextProjection>(value)
+            .map(|_| true)
+            .map_err(|_| {
+                DeviceResult::error(
+                    "invalid_arguments",
+                    "text_projection must be exact_duplicates_v1; omit it for unchanged full text.",
+                )
+            }),
+    }
+}
+
 impl Presentation {
     /// Retain nested-call metadata without projecting or treating it as native
     /// execution history. Same explicit adapter-local lifetime as observations.
@@ -90,11 +118,29 @@ impl Presentation {
     }
 
     /// Borrow the retained original rows without capture, RPC or lifetime renewal.
+    #[cfg(test)]
     pub(super) fn observation_rows(
         &mut self,
         reference: &str,
         frame: &str,
     ) -> Result<&[Value], DeviceResult> {
+        self.observation_data(reference, frame)?["scene"]["elements"]
+            .as_array()
+            .map(Vec::as_slice)
+            .ok_or_else(|| {
+                error(
+                    "observation_shape_unknown",
+                    "Retained data has no native element array.",
+                )
+            })
+    }
+
+    /// Same original observation/ref/frame/TTL, with no projection or renewal.
+    pub(super) fn observation_data(
+        &mut self,
+        reference: &str,
+        frame: &str,
+    ) -> Result<&Value, DeviceResult> {
         self.prune();
         let entry = self.entries.iter().find(|e| e.id == reference)
             .ok_or_else(|| error("observation_expired", "Retained observation is unavailable; obtain a new snapshot, never replay input."))?;
@@ -104,15 +150,13 @@ impl Presentation {
                 "Use observation_ref and frame from the same snapshot.",
             ));
         }
-        entry.data["scene"]["elements"]
-            .as_array()
-            .map(Vec::as_slice)
-            .ok_or_else(|| {
-                error(
-                    "observation_shape_unknown",
-                    "Retained data has no native element array.",
-                )
-            })
+        if !entry.data["scene"]["elements"].is_array() {
+            return Err(error(
+                "observation_shape_unknown",
+                "Retained data has no native element array.",
+            ));
+        }
+        Ok(&entry.data)
     }
 
     pub fn project(&mut self, tool: &str, mut result: DeviceResult) -> DeviceResult {
@@ -146,15 +190,7 @@ impl Presentation {
         let mut data = raw.clone();
         let mut omitted = Vec::new();
         if tool == "computer.targets" {
-            if let Some(devices) = data["devices"].as_array_mut() {
-                for device in devices {
-                    if let Some(state) = device["state"].as_object_mut() {
-                        // Top-level targets remain authoritative routing handles.
-                        state.remove("targets");
-                    }
-                }
-                omitted.push("/devices/*/state/targets (see /targets)");
-            }
+            targets::project_known_fields(&mut data, &mut omitted);
         } else {
             let details = &raw["adapter_status"]["native_details"]["uia"]["walk"]["details"];
             for element in data["scene"]["elements"].as_array_mut().unwrap() {
@@ -246,6 +282,105 @@ impl Presentation {
         });
         result.data = data;
         result
+    }
+
+    /// Explicit opt-in text-only encoding. The legacy structured result and immutable raw
+    /// cache remain unchanged. Each alias resolves within this exact text response.
+    pub(super) fn targets_text_projection(&self, result: &DeviceResult) -> Option<Value> {
+        if result.is_error || !result.images.is_empty() {
+            return None;
+        }
+        let data = &result.data;
+        let presentation = data.get("presentation")?.as_object()?;
+        if presentation.get("version")? != "compact_v1"
+            || presentation.get("source_tool")? != "computer.targets"
+            || presentation.get("details_tool")? != "computer.result"
+            || presentation.contains_key("text_projection")
+            || !data.get("targets")?.is_array()
+        {
+            return None;
+        }
+        let id = presentation.get("result_ref")?.as_str()?;
+        let fingerprint = presentation.get("metadata_sha256")?.as_str()?;
+        // A native/future presentation-shaped value cannot forge cache admission.
+        let entry = self.entries.iter().find(|e| {
+            e.id == id
+                && e.tool == "computer.targets"
+                && e.sha == fingerprint
+                && e.at.elapsed() < TTL
+        })?;
+        let known = [
+            "version",
+            "result_ref",
+            "source_tool",
+            "metadata_sha256",
+            "original_metadata_bytes",
+            "retention",
+            "details_tool",
+            "omitted_sections",
+            "over_budget",
+        ];
+        if presentation
+            .keys()
+            .any(|key| !known.contains(&key.as_str()))
+            || presentation.get("retention")?
+                != "adapter-local; up to 300s, earlier eviction under pressure; lost on adapter exit"
+            || presentation
+                .get("over_budget")
+                .is_some_and(|value| value != true)
+            || presentation.get("original_metadata_bytes")? != &json!(entry.bytes)
+            || presentation.get("omitted_sections")?
+                != &json!(["/devices/*/state/targets (see /targets)"])
+        {
+            return None;
+        }
+        let mut expected = entry.data.clone();
+        for device in expected.get_mut("devices")?.as_array_mut()? {
+            device.get_mut("state")?.as_object_mut()?.remove("targets");
+        }
+        expected["presentation"] = data["presentation"].clone();
+        if expected != *data {
+            return None;
+        }
+        let devices = data.get("devices")?.as_array()?;
+        let raw_devices = entry.data.get("devices")?.as_array()?;
+        if devices.is_empty() || devices.len() != raw_devices.len() {
+            return None;
+        }
+        let mut duplicates = serde_json::Map::new();
+        for (i, device) in devices.iter().enumerate() {
+            if device.get("is_error")? != false || device.get("device_id")?.as_str()?.is_empty() {
+                return None;
+            }
+            let state = device.get("state")?.as_object()?;
+            if state.get("availability")? != "available" || state.contains_key("dispatch_error") {
+                return None;
+            }
+            let runtime = state.get("runtime_status")?.as_object()?;
+            let service = state.get("service_process_status")?.as_object()?;
+            if runtime.is_empty() || runtime != service {
+                return None;
+            }
+            let canonical = format!("/devices/{i}/state/runtime_status");
+            let duplicate = format!("/devices/{i}/state/service_process_status");
+            if entry.data.pointer(&canonical) != data.pointer(&canonical)
+                || entry.data.pointer(&duplicate) != data.pointer(&duplicate)
+            {
+                return None;
+            }
+            duplicates.insert(duplicate, json!(canonical));
+        }
+        let mut text = data.clone();
+        for device in text["devices"].as_array_mut()? {
+            device["state"]
+                .as_object_mut()?
+                .remove("service_process_status");
+        }
+        text["presentation"]["text_projection"] = json!({
+            "version":"targets_text_v1", "scope":"content.text only; structuredContent unchanged",
+            "exact_duplicates":duplicates
+        });
+        Some(text)
     }
 
     pub fn read(&mut self, args: ResultArgs) -> DeviceResult {

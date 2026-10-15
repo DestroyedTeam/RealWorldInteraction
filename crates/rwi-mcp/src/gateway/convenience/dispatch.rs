@@ -8,7 +8,7 @@ impl Gateway {
         context: RequestContext<RoleServer>,
     ) -> DeviceResult {
         let started = Instant::now();
-        let include_timings = match take_include_timings(&mut args) {
+        let include_timings = match convenience_timing_option(name, &mut args) {
             Ok(value) => value,
             Err(error) => return error,
         };
@@ -33,7 +33,13 @@ impl Gateway {
         // callers can request inline timing; errors/uncertainty keep it by default.
         if let Ok(mut cache) = self.presentation.lock() {
             let reference = cache.retain(name, result.data.clone());
-            if compactable_receipt(&result)
+            if name == "computer.set_text" {
+                result.data = compact_set_text_reply(&result.data, reference);
+            } else if name == "computer.focus_element" {
+                result.data = compact_focus_reply(&result.data, reference);
+            } else if name == "computer.select_window_local" {
+                result.data = compact_window_local_reply(&result.data, reference);
+            } else if compactable_receipt(&result)
                 && !matches!(name, "computer.snapshot" | "computer.controls")
             {
                 result.data = compact_action_reply(&result.data, reference);
@@ -41,6 +47,9 @@ impl Gateway {
                 result.data["details_ref"] = json!(reference);
             }
         }
+        // Equal snapshot coverage is one fact even when inline timings are requested.
+        // The full original reply above remains in the retained details cache.
+        compact_snapshot_reply_diagnostics(name, &mut result);
         if !include_timing_output {
             trim_timing_fields(&mut result.data);
         }
@@ -74,6 +83,33 @@ impl Gateway {
             }
         };
         match name {
+            "computer.set_text" => {
+                let args = match serde_json::from_value::<rwi_core::set_text::SetTextRequest>(args)
+                {
+                    Ok(args) => args,
+                    Err(error) => return invalid(&error.to_string()),
+                };
+                set_text(args, call).await
+            }
+            "computer.focus_element" => {
+                let args = match serde_json::from_value::<
+                    rwi_core::semantic_focus::FocusElementRequest,
+                >(args)
+                {
+                    Ok(args) => args,
+                    Err(error) => return invalid(&error.to_string()),
+                };
+                focus_element(args, call).await
+            }
+            "computer.select_window_local" => {
+                let args = match serde_json::from_value::<rwi_core::window_local::WindowLocalRequest>(
+                    args,
+                ) {
+                    Ok(args) => args,
+                    Err(error) => return invalid(&error.to_string()),
+                };
+                select_window_local(args, call).await
+            }
             "computer.hover" => {
                 let args = match serde_json::from_value::<HoverArgs>(args) {
                     Ok(args) => args,
@@ -115,11 +151,15 @@ impl Gateway {
                         );
                     }
                 };
-                let rows = match cache.observation_rows(&a.observation_ref, &a.frame) {
-                    Ok(rows) => rows,
+                let observation = match cache.observation_data(&a.observation_ref, &a.frame) {
+                    Ok(data) => data,
                     Err(error) => return error,
                 };
-                control_page(rows, &a)
+                let candidates = native_plain_display_candidates(observation);
+                let rows = observation["scene"]["elements"]
+                    .as_array()
+                    .expect("validated original observation rows");
+                control_page_with_candidates(rows, &a, &candidates)
             }
             "computer.snapshot" => {
                 let a = match serde_json::from_value::<SnapshotArgs>(args) {
@@ -172,7 +212,9 @@ impl Gateway {
                     .as_array()
                     .cloned()
                     .unwrap_or_default();
-                let (elements, total) = compact_controls(&rows, a.limit);
+                let candidates = native_plain_display_candidates(d);
+                let (elements, total) =
+                    compact_controls_with_candidates(&rows, a.limit, &candidates);
                 let omitted = total.saturating_sub(elements.len());
                 let (view_id, input_reference_available) =
                     snapshot_input_view(&d["scene"], &image.data);

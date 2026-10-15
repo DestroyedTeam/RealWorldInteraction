@@ -38,6 +38,31 @@ impl Backend for NativeMacDesktop {
             "selection":"fresh exact window/PID/process fingerprint","activation":false,"placement":false,
             "independent_references":true,"physical_lease_shared":true});
         caps["window_selected"] = json!(self.selected.is_some());
+        caps["set_text"]["available"] = json!(
+            self.allow_input
+                && self
+                    .selected
+                    .as_ref()
+                    .is_some_and(|selected| !selected.semantic_only)
+                && unsafe { crate::ffi::AXIsProcessTrusted() } != 0
+        );
+        caps["focus_element"]["available"] = json!(
+            self.allow_input
+                && self
+                    .selected
+                    .as_ref()
+                    .is_some_and(|selected| !selected.semantic_only)
+                && unsafe { crate::ffi::AXIsProcessTrusted() } != 0
+        );
+
+        caps["select_window_local"]["available"] = json!(
+            self.allow_input
+                && self
+                    .selected
+                    .as_ref()
+                    .is_some_and(|selected| !selected.semantic_only)
+                && unsafe { crate::ffi::AXIsProcessTrusted() } != 0
+        );
         apply_selected_click_capabilities(
             &mut caps,
             self.allow_input,
@@ -331,6 +356,61 @@ impl Backend for NativeMacDesktop {
             "relation":selection.relation,"fixed_binding":true,"placed":null,
             "source_live_changed":false,"input_sent":false,"activated":false}),
         })
+    }
+    fn set_text_preflight(
+        &mut self,
+        r: &Resolved,
+    ) -> Result<rwi_core::set_text::SetTextNativeFacts> {
+        self.check_identity()?;
+        self.selected()?.set_text_preflight_native(r)
+    }
+    fn set_text(
+        &mut self,
+        expected: &Binding,
+        r: &Resolved,
+        text: &str,
+    ) -> Result<rwi_core::set_text::SetTextReadback> {
+        self.check_identity()?;
+        self.selected()?.dispatch_set_text(expected, r, text)
+    }
+    fn focus_element_preflight(
+        &mut self,
+        r: &Resolved,
+    ) -> Result<rwi_core::semantic_focus::FocusNativeFacts> {
+        self.check_identity()?;
+        self.selected()?.semantic_focus_preflight(r)
+    }
+    fn focus_element(
+        &mut self,
+        expected: &Binding,
+        r: &Resolved,
+        plan: rwi_core::semantic_focus::FocusWritePlan,
+    ) -> Result<rwi_core::semantic_focus::FocusReadback> {
+        self.check_identity()?;
+        self.selected()?.dispatch_semantic_focus(expected, r, plan)
+    }
+    fn window_local_revalidate(&mut self, r: &Resolved) -> Result<Scene> {
+        self.check_identity()?;
+        self.selected()?.window_local_revalidate_scene(r)
+    }
+    fn select_window_local_preflight(
+        &mut self,
+        r: &Resolved,
+        kind: rwi_core::window_local::WindowLocalKind,
+    ) -> Result<rwi_core::window_local::WindowLocalNativeFacts> {
+        self.check_identity()?;
+        self.selected()?.window_local_preflight(r, kind)
+    }
+    fn select_window_local(
+        &mut self,
+        expected: &Binding,
+        r: &Resolved,
+        kind: rwi_core::window_local::WindowLocalKind,
+        plan: rwi_core::window_local::WindowLocalWritePlan,
+    ) -> Result<rwi_core::window_local::WindowLocalReadback> {
+        self.check_identity()?;
+        self.selected()?
+            .dispatch_window_local(expected, r, kind, plan)
     }
     fn focus_window(&mut self, r: &Resolved, f: &rwi_core::ForegroundState) -> Result<Value> {
         self.check_identity()?;

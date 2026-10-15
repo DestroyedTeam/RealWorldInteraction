@@ -277,6 +277,87 @@ impl Server {
         .await
     }
     #[tool(
+        name = "computer.set_text",
+        description = "Explicit whole plain AXValue replacement. Five fields target/frame/element/request_id/text; empty clears, 0..4096 UTF-8 bytes. Internal lease, one exact native setter, full AX readback separate from DOM/business goal. No typing/focus/activation/clipboard/append/fallback/replay. Unsupported or secure/specialized fields refuse.",
+        annotations(read_only_hint = false, destructive_hint = true)
+    )]
+    async fn set_text(
+        &self,
+        Parameters(a): Parameters<rwi_core::set_text::SetTextRequest>,
+    ) -> CallToolResult {
+        self.execute(move |e| {
+            a.validate()?;
+            if !rwi_core::device::valid_id(&a.request_id) {
+                return Err(fault("invalid_arguments", "Use a stable safe ASCII request_id."));
+            }
+            let lease = e.claim(&a.target, 10000)?;
+            let action = e.set_text(&a, &lease);
+            // Explicit cleanup even after action refusal; never rerun the action.
+            let cleanup = e.release(&lease);
+            if let Err(cleanup) = cleanup {
+                return Ok(CallToolResult::structured_error(json!({
+                    "code":"input_cleanup_unconfirmed", "action":match action {Ok(v)=>v,Err(err)=>json!({"error":err})},
+                    "cleanup":cleanup, "goal_verified":false,"replay_allowed":false
+                })));
+            }
+            value(action?)
+        }).await
+    }
+    #[tool(
+        name = "computer.focus_element",
+        description = "Explicit semantic focus of one exact plain editable element. Four fields: target/frame/element/request_id. Short lease is internal. At most one AXFocused=true setter; separate exact element/app-window focus and OS foreground readback. No activation request, value mutation, click, key, automatic fallback or replay. Unsupported backends refuse.",
+        annotations(read_only_hint = false, destructive_hint = false)
+    )]
+    async fn focus_element(
+        &self,
+        Parameters(a): Parameters<rwi_core::semantic_focus::FocusElementRequest>,
+    ) -> CallToolResult {
+        self.execute(move |e| {
+            a.validate()?;
+            if !rwi_core::device::valid_id(&a.request_id) {
+                return Err(fault("invalid_arguments", "Use a stable safe ASCII request_id."));
+            }
+            let lease = e.claim(&a.target, 10000)?;
+            let action = e.focus_element(&a, &lease);
+            // Explicit cleanup even after action refusal; never rerun the action.
+            let cleanup = e.release(&lease);
+            if let Err(cleanup) = cleanup {
+                return Ok(CallToolResult::structured_error(json!({
+                    "code":"input_cleanup_unconfirmed", "action":match action {Ok(v)=>v,Err(err)=>json!({"error":err})},
+                    "cleanup":cleanup, "goal_verified":false,"replay_allowed":false
+                })));
+            }
+            value(action?)
+        }).await
+    }
+    #[tool(
+        name = "computer.select_window_local",
+        description = "Explicit app-local main/key selection of one exact ordinary macOS visual window. Four fields: target/frame/kind/request_id. Short lease is internal; at most one requested AXMain or window AXFocused setter. No raise/frontmost/activation, element focus, keys, click, fallback or replay. Exact window/app main/key CF readback and OS foreground are independent. Main is not key or typing readiness. Unsupported kinds/backends refuse.",
+        annotations(read_only_hint = false, destructive_hint = false)
+    )]
+    async fn select_window_local(
+        &self,
+        Parameters(a): Parameters<rwi_core::window_local::WindowLocalRequest>,
+    ) -> CallToolResult {
+        self.execute(move |e| {
+            a.validate()?;
+            if !rwi_core::device::valid_id(&a.request_id) {
+                return Err(fault("invalid_arguments", "Use a stable safe ASCII request_id."));
+            }
+            let lease = e.claim(&a.target, 10000)?;
+            let action = e.select_window_local(&a, &lease);
+            // Explicit cleanup even after action refusal; never rerun the action.
+            let cleanup = e.release(&lease);
+            if let Err(cleanup) = cleanup {
+                return Ok(CallToolResult::structured_error(json!({
+                    "code":"input_cleanup_unconfirmed", "action":match action {Ok(v)=>v,Err(err)=>json!({"error":err})},
+                    "cleanup":cleanup, "goal_verified":false,"replay_allowed":false
+                })));
+            }
+            value(action?)
+        }).await
+    }
+    #[tool(
         name = "computer.move_window",
         description = "Explicitly move the bound window onto a requested display (built_in and/or exact id). Lease-scoped and idempotent: it never presses input, never focuses, never replays; invalidates frames/references on this target. Fails closed on unsupported platforms; verify independently afterward.",
         annotations(read_only_hint = false, destructive_hint = true)

@@ -100,6 +100,10 @@ impl MouseGesture {
             )
         }
     }
+    /// Borrow the exact invocation-owned Private source; never replace its table.
+    pub(super) fn source(&self) -> &CGEventSource {
+        &self.source
+    }
     pub(super) fn tracking_event(&self) -> Result<CGEvent> {
         self.event(CGEventType::MouseMoved, self.last_point, 0, 0.0, [0; 2])
     }

@@ -209,7 +209,7 @@ fn move_wiring_preserves_exact_grounding_and_excludes_activation_and_global_fall
     let branch = input.split("Intent::MovePointer => {").nth(1).unwrap();
     let branch = branch.split("Intent::Drag(path) =>").next().unwrap();
     for call in [
-        "move_pointer::event(target.point)",
+        "move_pointer::event_for(",
         "move_pointer::guarded_single",
         "crate::background::skylight::prepare_pointer(",
         "self.read_input_batch(true, expected, target, intent)",
@@ -230,4 +230,138 @@ fn move_wiring_preserves_exact_grounding_and_excludes_activation_and_global_fall
     assert!(branch.contains("foreground_move::guard(self, foreground, target.point)"));
     assert!(!branch.contains("warp"));
     assert!(!Kind::of(&Intent::MovePointer).needs_focus());
+}
+
+#[test]
+fn f05_appkit_move_wiring_changes_constructor_only_not_delivery_or_guards() {
+    let input = include_str!("../../input.rs");
+    let branch = input.split("Intent::MovePointer => {").nth(1).unwrap();
+    let branch = branch.split("Intent::Drag(path) =>").next().unwrap();
+    assert!(branch.contains("move_pointer::event_for("));
+    let constructor = include_str!("../move_pointer.rs");
+    assert!(constructor.contains("MovePointerOptions::BackgroundAppKitExperimental"));
+    assert!(constructor.contains("appkit_event(point, delivery)"));
+    assert!(constructor.contains("event(point)"));
+    assert!(branch.contains("crate::background::deliver_pointer(&event, &delivery, target.point)"));
+    assert!(branch.contains("move_pointer::guarded_single"));
+    assert!(branch.contains("self.read_input_batch(true, expected, target, intent)"));
+    assert!(!branch.contains("activate_background_window"));
+    assert!(!branch.contains("click_pair"));
+    assert!(!branch.contains("makeFirstResponder"));
+    assert!(!branch.contains("authentication"));
+}
+
+fn assert_tracking_memory_scope(kind: usize) {
+    let value = crate::nsevent_probe::probe_tracking_constructor_roundtrip(kind)
+        .expect("a legal tracking factory kind records available, nil or unsupported bridges");
+    assert_eq!(value["fixture"]["event_type"], kind);
+    assert_eq!(value["fixture"]["window_number"], 0);
+    assert_eq!(value["fixture"]["point"], serde_json::json!([10.25, 20.75]));
+    assert_eq!(value["fixture"]["tracking_number"], 73);
+    assert_eq!(value["fixture"]["event_number"], 37);
+    for field in [
+        "activation_calls",
+        "post_calls",
+        "warp_calls",
+        "capture_calls",
+    ] {
+        assert_eq!(value[field], 0, "{field}");
+    }
+    for field in [
+        "tracking_area_read",
+        "pointer_address_exported",
+        "user_data_dereferenced",
+        "tracking_owner_established",
+        "receiver_effect_verified",
+        "window_created",
+    ] {
+        assert_eq!(value[field], false, "{field}");
+    }
+    for stage in ["constructed", "roundtrip"] {
+        let sample = &value[stage];
+        if sample["tracking_getters_read"] == true {
+            assert!(matches!(sample["event_type"].as_u64(), Some(8 | 9)));
+        } else if sample["status"] == "observed_wrong_kind" {
+            assert!(sample["tracking_number"].is_null());
+            assert!(sample["user_data_matches_static_cookie"].is_null());
+        }
+    }
+    println!("{}", value);
+}
+
+#[test]
+fn tracking_event_bridge_scope_entered_memory() {
+    assert_tracking_memory_scope(8);
+}
+
+#[test]
+fn tracking_event_bridge_scope_exited_memory() {
+    assert_tracking_memory_scope(9);
+}
+
+fn assert_tracking_serialization_memory_scope(kind: usize) {
+    let value = crate::nsevent_probe::probe_tracking_serialization_roundtrip(kind)
+        .expect("legal tracking serialization kind records actual nullable carrier stages");
+    // Print literal observations before assertions, including any negative stage.
+    println!("{}", value);
+    assert_eq!(value["fixture"]["event_type"], kind);
+    assert_eq!(value["fixture"]["window_number"], 0);
+    assert_eq!(value["fixture"]["point"], serde_json::json!([10.25, 20.75]));
+    assert_eq!(value["fixture"]["tracking_number"], 73);
+    assert_eq!(value["fixture"]["event_number"], 37);
+    for field in [
+        "activation_calls",
+        "post_calls",
+        "warp_calls",
+        "capture_calls",
+    ] {
+        assert_eq!(value[field], 0, "{field}");
+    }
+    for field in [
+        "data_bytes_exported",
+        "data_address_exported",
+        "pointer_address_exported",
+        "user_data_dereferenced",
+        "foreign_pointer_sent",
+        "tracking_area_read",
+        "tracking_owner_established",
+        "receiver_effect_verified",
+        "window_created",
+    ] {
+        assert_eq!(value[field], false, "{field}");
+    }
+    // This is an independently observed construction prerequisite, not an
+    // assertion that serialization, a remote tracking owner, or hover succeeds.
+    assert_eq!(value["constructed_fixture_fields_match"], true);
+    for stage in [
+        "constructed",
+        "same_event_roundtrip",
+        "serialized_roundtrip",
+    ] {
+        let sample = &value[stage];
+        if sample["tracking_getters_read"] == true {
+            assert!(matches!(sample["event_type"].as_u64(), Some(8 | 9)));
+        } else if sample["status"] == "observed_wrong_kind" {
+            assert!(sample["tracking_number"].is_null());
+            assert!(sample["user_data_matches_static_cookie"].is_null());
+        }
+    }
+    if value["quartz_rebuilt"]["status"] == "observed" {
+        assert_eq!(value["rebuilt_event_distinct_from_original"], true);
+    } else {
+        assert!(value["rebuilt_event_distinct_from_original"].is_null());
+        assert!(value["serialized_selected_metadata_equal"].is_null());
+    }
+    // No assertion upgrades absent/lost metadata to preservation. Equality may
+    // be false/null while this envelope passes; only literal fields decide it.
+}
+
+#[test]
+fn tracking_event_serialization_scope_entered_memory() {
+    assert_tracking_serialization_memory_scope(8);
+}
+
+#[test]
+fn tracking_event_serialization_scope_exited_memory() {
+    assert_tracking_serialization_memory_scope(9);
 }

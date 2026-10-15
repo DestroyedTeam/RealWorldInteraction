@@ -10,6 +10,12 @@ use serde::{Deserialize, Serialize};
 pub enum ClickDeliveryOptions {
     /// macOS private SPI experiment: no activation, auth, primer or fallback.
     BackgroundSkylightExperimental {},
+    /// Same private delivery, but a public AppKit mouse factory constructs the
+    /// pair. This is separately negotiated, never an inactive-app promise.
+    BackgroundSkylightAppkitExperimental {},
+    /// Same plain public AppKit construction, with explicit public PID posting.
+    /// Never a downgrade from an unavailable private route or an app guarantee.
+    BackgroundPublicAppkitExperimental {},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,14 +68,29 @@ impl ClickDeliveryOptions {
     /// Capability is specific to clicks: movement support cannot authorize it.
     /// This check is a policy prerequisite, not native authority or app evidence.
     pub fn require_capability(&self, capabilities: &serde_json::Value) -> Result<()> {
-        let route = &capabilities["pointer_click"]["background_skylight_experimental"];
+        let route = &capabilities["pointer_click"][self.delivery_name()];
         if route["implemented"] != true || route["available"] != true {
             return Err(fault(
                 "capability_unavailable",
-                "Experimental macOS SkyLight click delivery is unavailable; no fallback.",
+                if matches!(self, Self::BackgroundPublicAppkitExperimental {}) {
+                    "Explicit public AppKit click delivery is unavailable; no fallback."
+                } else {
+                    "Experimental macOS SkyLight click delivery is unavailable; no fallback."
+                },
             ));
         }
         Ok(())
+    }
+
+    /// Stable request identity and the exact selected-window capability key.
+    pub fn delivery_name(&self) -> &'static str {
+        match self {
+            Self::BackgroundSkylightExperimental {} => "background_skylight_experimental",
+            Self::BackgroundSkylightAppkitExperimental {} => {
+                "background_skylight_appkit_experimental"
+            }
+            Self::BackgroundPublicAppkitExperimental {} => "background_public_appkit_experimental",
+        }
     }
 
     /// Exactly one left down/up pair, no move/primer, double-click or retry.
@@ -248,3 +269,158 @@ mod tests {
 
 #[cfg(test)]
 mod engine_tests;
+
+#[cfg(test)]
+mod appkit_click_policy_tests {
+    use super::*;
+    const VALUE: &str = r#"{"delivery":"background_skylight_appkit_experimental"}"#;
+
+    #[test]
+    fn r98_appkit_click_is_explicit_strict_and_separate_from_the_old_route() {
+        assert_eq!(ClickDeliveryOptions::from_click_value(None).unwrap(), None);
+        let route = ClickDeliveryOptions::parse(Some(VALUE)).unwrap().unwrap();
+        assert_eq!(
+            route,
+            ClickDeliveryOptions::BackgroundSkylightAppkitExperimental {}
+        );
+        assert_eq!(serde_json::to_string(&route).unwrap(), VALUE);
+        assert_eq!(
+            route.delivery_name(),
+            "background_skylight_appkit_experimental"
+        );
+        assert_eq!(
+            route.event_pair(),
+            [
+                ExperimentalClickPhase::LeftMouseDown,
+                ExperimentalClickPhase::LeftMouseUp
+            ]
+        );
+        let old_only = serde_json::json!({"pointer_click":{"background_skylight_experimental":{"implemented":true,"available":true}}});
+        assert_eq!(
+            route.require_capability(&old_only).unwrap_err().code,
+            "capability_unavailable"
+        );
+        for (implemented, available) in [(false, true), (true, false)] {
+            let cap = serde_json::json!({"pointer_click":{"background_skylight_appkit_experimental":{"implemented":implemented,"available":available}}});
+            assert_eq!(
+                route.require_capability(&cap).unwrap_err().code,
+                "capability_unavailable"
+            );
+        }
+        route.require_capability(&serde_json::json!({"pointer_click":{"background_skylight_appkit_experimental":{"implemented":true,"available":true}}})).unwrap();
+        for key in [
+            "constructor",
+            "activation",
+            "modifiers",
+            "subtype",
+            "timestamp",
+            "fallback",
+            "field58",
+        ] {
+            let mut v = serde_json::from_str::<serde_json::Value>(VALUE).unwrap();
+            v.as_object_mut()
+                .unwrap()
+                .insert(key.into(), serde_json::json!(true));
+            assert_eq!(
+                ClickDeliveryOptions::parse(Some(&v.to_string()))
+                    .unwrap_err()
+                    .code,
+                "invalid_input_value"
+            );
+        }
+    }
+
+    #[test]
+    fn r98_appkit_click_json_cannot_become_ax_action_or_other_intent() {
+        assert!(
+            ClickDeliveryOptions::from_click_value(Some(VALUE))
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(ClickDeliveryOptions::native_action_value(Some(VALUE)), None);
+        assert_eq!(
+            crate::Intent::DoubleClick
+                .validate(Some(VALUE))
+                .unwrap_err()
+                .code,
+            "invalid_input_value"
+        );
+        assert_eq!(
+            crate::Intent::ContextMenu
+                .validate(Some(VALUE))
+                .unwrap_err()
+                .code,
+            "invalid_input_value"
+        );
+        crate::Intent::Text.validate(Some(VALUE)).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod public_pid_appkit_tests {
+    use super::*;
+    const VALUE: &str = r#"{"delivery":"background_public_appkit_experimental"}"#;
+    #[test]
+    fn public_pid_appkit_click_is_explicit_strict_and_separately_negotiated() {
+        assert_eq!(ClickDeliveryOptions::from_click_value(None).unwrap(), None);
+        assert_eq!(
+            ClickDeliveryOptions::native_action_value(Some("AXPress")),
+            Some("AXPress")
+        );
+        let policy = ClickDeliveryOptions::from_click_value(Some(VALUE))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            policy.delivery_name(),
+            "background_public_appkit_experimental"
+        );
+        assert_eq!(serde_json::to_string(&policy).unwrap(), VALUE);
+        assert_eq!(
+            policy.event_pair(),
+            [
+                ExperimentalClickPhase::LeftMouseDown,
+                ExperimentalClickPhase::LeftMouseUp
+            ]
+        );
+        for cap in [
+            serde_json::json!({}),
+            serde_json::json!({"pointer_move":{"background_public_appkit_experimental":{"implemented":true,"available":true}}}),
+            serde_json::json!({"pointer_click":{"background_skylight_appkit_experimental":{"implemented":true,"available":true},"background_skylight_experimental":{"implemented":true,"available":true}}}),
+        ] {
+            assert_eq!(
+                policy.require_capability(&cap).unwrap_err().code,
+                "capability_unavailable"
+            );
+        }
+        for available in [false, true] {
+            let cap = serde_json::json!({"pointer_click":{"background_public_appkit_experimental":{"implemented":true,"available":available}}});
+            assert_eq!(policy.require_capability(&cap).is_ok(), available);
+        }
+        for invalid in [
+            "null",
+            r#"{"delivery":"background_public_appkit_experimental","fallback":true}"#,
+            r#"{"delivery":"background_public_appkit_experimental","source_pid":1}"#,
+        ] {
+            assert_eq!(
+                ClickDeliveryOptions::from_click_value(Some(invalid))
+                    .unwrap_err()
+                    .code,
+                "invalid_input_value"
+            );
+        }
+        assert!(
+            ClickDeliveryOptions::from_click_value(Some(
+                r#"{"delivery":"background_skylight_appkit_experimental"}"#
+            ))
+            .unwrap()
+            .is_some()
+        );
+        assert!(
+            ClickDeliveryOptions::from_click_value(Some(
+                r#"{"delivery":"background_skylight_experimental"}"#
+            ))
+            .unwrap()
+            .is_some()
+        );
+    }
+}

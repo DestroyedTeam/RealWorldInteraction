@@ -98,6 +98,15 @@ impl Cf {
         }
         unsafe { Self::owned(out) }
     }
+    /// Read-only status-preserving probe. The Boolean is valid only for AXError 0.
+    pub fn attribute_settable_status(&self, name: &str) -> (i32, u8) {
+        let name = CFString::new(name);
+        let mut settable = 0;
+        let status = unsafe {
+            AXUIElementIsAttributeSettable(self.0, name.as_concrete_TypeRef().cast(), &mut settable)
+        };
+        (status, settable)
+    }
     pub fn attribute_settable(&self, name: &str) -> Result<bool> {
         let name = CFString::new(name);
         let mut settable = 0;

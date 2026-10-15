@@ -95,7 +95,7 @@ where
         Ok(intent) => intent,
         Err(error) => return error,
     };
-    let explicit = a.delivery.is_some();
+    let requested_delivery = a.delivery.as_ref().map(|delivery| delivery.delivery_name());
     let tool = if matches!(&a.at, ClickTarget::Element { .. }) {
         "computer.act_checked"
     } else {
@@ -157,8 +157,8 @@ where
         }
     };
     let mut result = leased(&a.target, &a.request_id, tool, action, call).await;
-    if explicit {
-        result.data["requested_delivery"] = json!("background_skylight_experimental");
+    if let Some(requested_delivery) = requested_delivery {
+        result.data["requested_delivery"] = json!(requested_delivery);
         result.data["goal_verified"] = json!(false);
     }
     result

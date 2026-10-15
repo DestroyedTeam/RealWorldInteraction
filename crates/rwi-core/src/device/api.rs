@@ -108,6 +108,36 @@ pub struct ActArgs {
 }
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct SetTextArgs {
+    pub target: String,
+    pub frame: String,
+    pub element: String,
+    pub request_id: String,
+    pub text: String,
+    pub lease: String,
+}
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FocusElementArgs {
+    pub target: String,
+    pub frame: String,
+    pub element: String,
+    pub request_id: String,
+    /// Internal device lease, acquired by the four-field model convenience call.
+    pub lease: String,
+}
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct WindowLocalArgs {
+    pub target: String,
+    pub frame: String,
+    pub kind: crate::window_local::WindowLocalKind,
+    pub request_id: String,
+    /// Internal device lease, acquired by the strict four-field model call.
+    pub lease: String,
+}
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CheckedActArgs {
     pub target: String,
     pub frame: String,

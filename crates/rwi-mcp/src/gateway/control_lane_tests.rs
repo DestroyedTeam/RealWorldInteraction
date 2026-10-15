@@ -13,6 +13,7 @@ struct DescribeRace {
     stale_valid: bool,
     describes: AtomicUsize,
     opens: AtomicUsize,
+    fresh_describes: AtomicUsize,
     entered: tokio::sync::Notify,
     release: tokio::sync::Notify,
 }
@@ -30,21 +31,32 @@ struct Peer {
 
 impl Peer {
     async fn new() -> Self {
-        Self::new_inner(None).await
+        Self::new_inner(None, None).await
     }
 
     async fn new_describe_race(stale_valid: bool) -> Self {
-        Self::new_inner(Some(Arc::new(DescribeRace {
-            stale_valid,
-            describes: AtomicUsize::new(0),
-            opens: AtomicUsize::new(0),
-            entered: tokio::sync::Notify::new(),
-            release: tokio::sync::Notify::new(),
-        })))
+        Self::new_inner(
+            Some(Arc::new(DescribeRace {
+                stale_valid,
+                describes: AtomicUsize::new(0),
+                opens: AtomicUsize::new(0),
+                fresh_describes: AtomicUsize::new(0),
+                entered: tokio::sync::Notify::new(),
+                release: tokio::sync::Notify::new(),
+            })),
+            None,
+        )
         .await
     }
 
-    async fn new_inner(describe_race: Option<Arc<DescribeRace>>) -> Self {
+    async fn new_fresh_reply(result: DeviceResult, instance: &str) -> Self {
+        Self::new_inner(None, Some((result, instance.into()))).await
+    }
+
+    async fn new_inner(
+        describe_race: Option<Arc<DescribeRace>>,
+        fresh_reply: Option<(DeviceResult, String)>,
+    ) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path().canonicalize().unwrap().join("private");
         std::fs::DirBuilder::new()
@@ -68,6 +80,7 @@ impl Peer {
             let release = release.clone();
             let calls = calls.clone();
             let describe_race = describe_race.clone();
+            let fresh_reply = fresh_reply.clone();
             tokio::spawn(rwi_native_link::device::serve(
                 listener,
                 tls,
@@ -76,9 +89,44 @@ impl Peer {
                     let release = release.clone();
                     let calls = calls.clone();
                     let describe_race = describe_race.clone();
+                    let fresh_reply = fresh_reply.clone();
                     async move {
                         calls.lock().unwrap().push(request.call.clone());
+                        let fresh_context = request.context.as_deref().filter(|token| {
+                            *token == "context" || token.starts_with("new-context-")
+                        });
+                        let reply_instance =
+                            if matches!(&request.call, Call::Describe) && fresh_context.is_some() {
+                                fresh_reply
+                                    .as_ref()
+                                    .map(|reply| reply.1.as_str())
+                                    .unwrap_or("instance")
+                            } else {
+                                "instance"
+                            }
+                            .to_owned();
                         let result = match request.call {
+                            Call::Describe if fresh_context.is_some() => {
+                                let token = fresh_context.unwrap();
+                                if let Some(race) = &describe_race {
+                                    race.fresh_describes.fetch_add(1, Ordering::SeqCst);
+                                }
+                                fresh_reply
+                                    .as_ref()
+                                    .map(|reply| reply.0.clone())
+                                    .unwrap_or_else(|| {
+                                        DeviceResult::value(json!({
+                                            "availability":"available", "context_valid":true,
+                                            "targets":[{"target": token.strip_prefix("new-context-")
+                                                .map(|count| format!("new-target-{count}"))
+                                                .unwrap_or_else(|| "fresh-target".into())}],
+                                            "sample_context":token,
+                                            "native_context":{"epoch":token},
+                                            "runtime_status":{"pid":77},
+                                            "input_domain_fenced":true
+                                        }))
+                                    })
+                            }
                             Call::Describe if describe_race.is_some() => {
                                 let race = describe_race.as_ref().unwrap();
                                 assert_eq!(request.context.as_deref(), Some("old-context"));
@@ -96,7 +144,7 @@ impl Peer {
                                         "availability":"available", "context_valid":false,
                                         "targets":[]
                                     })),
-                                    _ => panic!("Describe must not retry or replay"),
+                                    _ => panic!("The old epoch Describe must not retry or replay"),
                                 }
                             }
                             Call::Describe => DeviceResult::value(json!({
@@ -141,7 +189,7 @@ impl Peer {
                             version: device::PROTOCOL_VERSION,
                             id: request.id,
                             device: request.device,
-                            instance: "instance".into(),
+                            instance: reply_instance,
                             result,
                         }
                     }
@@ -242,8 +290,20 @@ async fn assert_late_describe_preserves_new_context(stale_valid: bool) {
     };
     let opens = race.opens.load(Ordering::SeqCst);
     let describes = race.describes.load(Ordering::SeqCst);
+    let fresh_describes = race.fresh_describes.load(Ordering::SeqCst);
     peer.stop().await;
     assert_eq!(describes, 2, "The original two descriptions never replay");
+    assert_eq!(
+        fresh_describes, 2,
+        "Opener and late inspector each read the new token once"
+    );
+    for result in [&second, &late] {
+        assert_eq!(result.data["context_valid"], true);
+        assert_eq!(result.data["sample_context"], "new-context-1");
+        assert_eq!(result.data["native_context"]["epoch"], "new-context-1");
+        assert_eq!(result.data["runtime_status"]["pid"], 77);
+        assert_eq!(result.data["input_domain_fenced"], true);
+    }
     assert_eq!(
         opens, 1,
         "A late old Describe must not reopen the new context"
@@ -348,4 +408,111 @@ async fn host_eof_interrupts_ordinary_call_waiting_for_context_lock() {
         result.expect("EOF must stop context-lock wait").data["code"],
         "host_disconnected"
     );
+}
+
+#[tokio::test]
+async fn targets_fresh_context_first_open_returns_actual_describe_and_fence() {
+    let peer = Peer::new().await;
+    let open = peer.hold_open().await;
+    peer.release.notify_one();
+    let result = tokio::time::timeout(Duration::from_secs(5), open)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!result.is_error);
+    assert_eq!(result.data["context_valid"], true);
+    assert_eq!(result.data["sample_context"], "context");
+    assert_eq!(result.data["native_context"]["epoch"], "context");
+    assert_eq!(result.data["runtime_status"]["pid"], 77);
+    assert_eq!(result.data["input_domain_fenced"], true);
+    assert_eq!(result.data["targets"], json!([{"target":"fresh-target"}]));
+    let calls = peer.calls.lock().unwrap().clone();
+    assert_eq!(calls.len(), 3);
+    assert!(matches!(calls[0], Call::Describe));
+    assert!(matches!(calls[1], Call::OpenContext));
+    assert!(matches!(calls[2], Call::Describe));
+    peer.stop().await;
+}
+
+#[tokio::test]
+async fn targets_fresh_context_valid_fast_path_has_no_extra_rpc() {
+    let peer = Peer::new().await;
+    *peer.gateway.routes["device"].context.lock().await = Some(Connection {
+        token: "context".into(),
+        instance: "instance".into(),
+        targets: json!([{"target":"cached-target"}]),
+    });
+    let result = peer.gateway.inspect_device("device").await;
+    assert!(!result.is_error);
+    assert_eq!(result.data["sample_context"], "context");
+    assert_eq!(result.data["targets"], json!([{"target":"fresh-target"}]));
+    let calls = peer.calls.lock().unwrap().clone();
+    assert_eq!(calls.len(), 1);
+    assert!(matches!(calls[0], Call::Describe));
+    peer.stop().await;
+}
+
+#[tokio::test]
+async fn targets_fresh_context_late_old_describe_cannot_mix_epochs() {
+    assert_late_describe_preserves_new_context(false).await;
+    assert_late_describe_preserves_new_context(true).await;
+}
+
+#[tokio::test]
+async fn targets_fresh_context_failure_and_restart_do_not_offer_or_reopen() {
+    let cases = [
+        (
+            DeviceResult::value(json!({"availability":"available", "context_valid":false,
+            "targets":[{"target":"unvalidated"}]})),
+            "instance",
+        ),
+        (
+            DeviceResult::value(json!({"availability":"unavailable", "context_valid":true,
+            "targets":[{"target":"unvalidated"}], "reason":"native_permission_changed"})),
+            "instance",
+        ),
+        (
+            DeviceResult::value(json!({"availability":"available", "context_valid":true,
+            "targets":null})),
+            "instance",
+        ),
+        (
+            DeviceResult::error("permission_denied", "Actual fresh rejection"),
+            "instance",
+        ),
+        (
+            DeviceResult::value(json!({"availability":"available", "context_valid":true,
+            "targets":[{"target":"unvalidated"}]})),
+            "new-agent-instance",
+        ),
+    ];
+    for (reply, instance) in cases {
+        let peer = Peer::new_fresh_reply(reply.clone(), instance).await;
+        let open = peer.hold_open().await;
+        peer.release.notify_one();
+        let result = tokio::time::timeout(Duration::from_secs(5), open)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(result.is_error || result.data["availability"] == "unavailable");
+        assert!(result.data.get("targets").is_none());
+        if reply.data["availability"] == "unavailable" {
+            assert_eq!(result.data["reason"], "native_permission_changed");
+            assert_eq!(result.data["context_valid"], true);
+        }
+        if reply.is_error {
+            assert_eq!(result.data["code"], "permission_denied");
+        }
+        assert!(peer.gateway.routes["device"].context.lock().await.is_none());
+        let calls = peer.calls.lock().unwrap().clone();
+        assert_eq!(calls.len(), 3);
+        assert_eq!(
+            calls
+                .iter()
+                .filter(|call| matches!(call, Call::OpenContext))
+                .count(),
+            1
+        );
+        peer.stop().await;
+    }
 }

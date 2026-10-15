@@ -166,6 +166,7 @@ fn keyboard_cannot_substitute_pixels_or_a_different_focused_element() {
         element: grounded().3.elements.remove(0),
         text_class: TextClass::Plain,
         value: Some("synthetic".into()),
+        focus_availability: None,
     };
     for requested in [None, Some("other")] {
         assert!(require_keyboard_target(&element, requested).is_err());
@@ -538,4 +539,59 @@ fn pointer_delivery_policy_never_prepares_application_receiver() {
             100
         ));
     }
+}
+
+#[test]
+fn ordinary_standard_window_keeps_pointer_click_independent_of_main_window() {
+    for _is_main in [true, false] {
+        assert!(
+            !native_pointer_requires_axpress(
+                Some("AXWindow"),
+                Some("AXStandardWindow"),
+                Some(false)
+            )
+            .unwrap()
+        );
+    }
+}
+#[test]
+fn actual_sheet_dialog_or_raw_modal_retains_native_press_protection() {
+    for (role, subrole, modal) in [
+        (Some("AXSheet"), None, None),
+        (Some("AXSheet"), Some("AXSheet"), Some(false)),
+        (Some("AXWindow"), Some("AXDialog"), None),
+        (Some("AXWindow"), Some("AXSystemDialog"), Some(false)),
+        (Some("AXWindow"), Some("AXStandardWindow"), Some(true)),
+        (None, None, Some(true)),
+    ] {
+        assert!(native_pointer_requires_axpress(role, subrole, modal).unwrap());
+    }
+}
+#[test]
+fn unknown_pointer_surface_is_not_a_standard_window_or_implicit_axpress() {
+    for (role, subrole, modal) in [
+        (None, None, None),
+        (Some("AXWindow"), Some("AXStandardWindow"), None),
+        (Some("AXWindow"), None, Some(false)),
+        (Some("AXWindow"), Some("AXUnknown"), Some(false)),
+        (Some("AXPopover"), None, Some(false)),
+        (Some("AXGroup"), Some("AXStandardWindow"), Some(false)),
+    ] {
+        let error = native_pointer_requires_axpress(role, subrole, modal).unwrap_err();
+        assert_eq!(error.code, "native_click_surface_unknown");
+        let d = error.diagnostic.unwrap();
+        assert_eq!(d["role"], serde_json::json!(role));
+        assert_eq!(d["subrole"], serde_json::json!(subrole));
+        assert_eq!(d["raw_modal"], serde_json::json!(modal));
+        assert_eq!(d["native_input_dispatched"], false);
+        assert_eq!(d["replay_allowed"], false);
+    }
+    // Existing semantic-only policy is not weakened by the ordinary-window fix.
+    assert_eq!(
+        require_surface_action(true, &Intent::Click, None)
+            .unwrap_err()
+            .code,
+        "semantic_action_required"
+    );
+    assert!(require_surface_action(true, &Intent::Click, Some("AXPress")).is_ok());
 }

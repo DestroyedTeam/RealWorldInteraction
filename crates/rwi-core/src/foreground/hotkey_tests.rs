@@ -243,3 +243,146 @@ fn global_hotkey_refuses_window_attachments_and_expired_shared_lease() {
         );
     }
 }
+
+#[test]
+fn hotkey_grounding_metadata_clears_same_desktop_caches_and_keeps_other_desktop() {
+    let mut h = Harness::new(false, true, true);
+    let other = Fixture::default();
+    other.0.lock().unwrap().identity.desktop = "other-desktop".into();
+    h.engine.register("other".into(), Box::new(other)).unwrap();
+    let mut old = Vec::new();
+    for target in ["desktop", "alias", "other"] {
+        let observed = h.engine.observe(target).unwrap();
+        let resolved = h
+            .engine
+            .resolve(target, &observed.frame, Locator::Window)
+            .unwrap();
+        old.push((target, observed.frame, resolved.reference));
+    }
+    let lease = h.engine.claim("desktop", 60000).unwrap();
+    let result = h.send(&lease, "grounding-once", "cmd+tab").unwrap();
+    assert_eq!(
+        result["grounding_invalidated"],
+        serde_json::json!({
+            "scope":"same_native_desktop", "target_count":2,
+            "context":"current_executor", "next":"snapshot_then_resolve"
+        })
+    );
+    assert_eq!(result["receipt"]["dispatch"], "returned");
+    assert_eq!(result["receipt"]["goal_verified"], false);
+    assert_eq!(result["receipt"]["replay"], "forbidden");
+    assert_eq!(result["keyboard"]["synthetic_keyboard_dispatch"], true);
+    for (target, frame, reference) in old {
+        let retained = target == "other";
+        assert_eq!(
+            h.engine.snapshots.iter().any(|(id, _)| id == &frame),
+            retained
+        );
+        assert_eq!(
+            h.engine.refs.iter().any(|r| r.reference == reference),
+            retained
+        );
+    }
+    assert_eq!(h.attempts.load(Ordering::SeqCst), 1);
+    assert_eq!(h.effects.load(Ordering::SeqCst), 2);
+    h.engine.release(&lease).unwrap();
+}
+
+#[test]
+fn hotkey_grounding_metadata_preserves_rejected_and_uncertain_receipts() {
+    for (known, partial) in [(true, false), (false, false), (true, true)] {
+        let mut h = Harness::new(partial, known, true);
+        let observed = h.engine.observe("alias").unwrap();
+        let resolved = h
+            .engine
+            .resolve("alias", &observed.frame, Locator::Window)
+            .unwrap();
+        if !partial {
+            h.foreground.lock().unwrap().pid = 79;
+        }
+        let lease = h.engine.claim("desktop", 60000).unwrap();
+        let result = h.send(&lease, "grounding-refused", "cmd+tab").unwrap();
+        assert_eq!(
+            result["receipt"]["dispatch"],
+            if known && !partial {
+                "rejected_before_dispatch"
+            } else {
+                "uncertain"
+            }
+        );
+        assert_eq!(result["receipt"]["replay"], "forbidden");
+        assert_eq!(result["receipt"]["goal_verified"], false);
+        assert!(result.get("keyboard").is_none());
+        assert_eq!(
+            result["grounding_invalidated"],
+            serde_json::json!({
+                "scope":"same_native_desktop", "target_count":2,
+                "context":"current_executor", "next":"snapshot_then_resolve"
+            })
+        );
+        assert!(
+            !h.engine
+                .refs
+                .iter()
+                .any(|r| r.reference == resolved.reference)
+        );
+        assert!(h.engine.snapshots.is_empty());
+        assert_eq!(h.attempts.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            h.effects.load(Ordering::SeqCst),
+            if partial { 2 } else { 0 }
+        );
+        h.engine.release(&lease).unwrap();
+    }
+}
+
+#[test]
+fn hotkey_grounding_metadata_dedup_does_not_claim_or_repeat_invalidation() {
+    let mut h = Harness::new(false, true, true);
+    let lease = h.engine.claim("desktop", 60000).unwrap();
+    let first = h.send(&lease, "grounding-dedup", "cmd+tab").unwrap();
+    assert_eq!(first["grounding_invalidated"]["target_count"], 2);
+    let fresh = h.engine.observe("alias").unwrap();
+    let resolved = h
+        .engine
+        .resolve("alias", &fresh.frame, Locator::Window)
+        .unwrap();
+    let again = h.send(&lease, "grounding-dedup", "cmd+tab").unwrap();
+    assert_eq!(again["deduplicated"], true);
+    assert_eq!(again["receipt"]["replay"], "forbidden");
+    assert!(again.get("grounding_invalidated").is_none());
+    assert!(h.engine.snapshots.iter().any(|(id, _)| id == &fresh.frame));
+    assert!(
+        h.engine
+            .refs
+            .iter()
+            .any(|r| r.reference == resolved.reference)
+    );
+    assert_eq!(h.attempts.load(Ordering::SeqCst), 1);
+    assert_eq!(h.effects.load(Ordering::SeqCst), 2);
+    h.engine.release(&lease).unwrap();
+}
+
+#[test]
+fn hotkey_grounding_metadata_catalog_retains_guards_and_names_fresh_grounding() {
+    let definition = device::catalog::definitions()
+        .into_iter()
+        .find(|d| d.name == "computer.hotkey")
+        .unwrap();
+    for guard in [
+        "shared input lease",
+        "fresh expected_foreground",
+        "replay",
+        "snapshot then resolve before element input",
+        "in this executor",
+    ] {
+        assert!(definition.description.contains(guard));
+    }
+    assert!(definition.input_schema["properties"].get("lease").is_some());
+    assert!(
+        definition.input_schema["properties"]
+            .get("expected_foreground")
+            .is_some()
+    );
+    assert!(definition.writes);
+}

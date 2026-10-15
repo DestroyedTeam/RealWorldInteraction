@@ -8,20 +8,29 @@ mod click;
 mod controls;
 mod dispatch;
 mod drag_between;
+mod focus_element;
 mod inputs;
 mod schema;
+mod set_text;
 mod snapshots;
+mod window_local;
 use click::*;
 use controls::*;
 #[cfg(test)]
 use dispatch::CallTimings;
 use drag_between::*;
+use focus_element::*;
 use inputs::*;
 use schema::*;
+use set_text::*;
 use snapshots::*;
+use window_local::*;
 
 pub(super) fn tools() -> Vec<Tool> {
     vec![
+        focus_element_tool(),
+        set_text_tool(),
+        window_local_tool(),
         tool::<SnapshotArgs>(
             "computer.snapshot",
             "Inspect selected window: compact controls and screenshot in one call. Default max_edge=2048 for text detail; use computer.image with an original-pixel crop for a readable tile. AX-incompatible macOS windows may return visual_only=true with image but no controls, input binding, or resolvable view_id; computer.image remains read-only. Semantic-only dialogs have no image or pixel mapping. Terminal, released AXWindows read errors may include a separate exact-current-bound-window visual read; the AX error stays explicit and no frame, view or input authority is created. Full metadata via computer.result. No JS, activation or permission grant.",
@@ -36,7 +45,7 @@ pub(super) fn tools() -> Vec<Tool> {
         ),
         tool::<HoverArgs>(
             "computer.hover",
-            "Send one checked mouse-move to an exact snapshot element or delivered-view coordinate; no button press/release or AX action. Requires pointer_move.implemented on the selected device (Windows currently unsupported). Stable request_id; short lease and release handled internally. No JS, dwell, activation, real-cursor warp, global fallback or retry. Motion history is unknown. Returns a dispatch receipt, not tooltip success; independently inspect application state afterward.",
+            "Send one checked mouse-move to an exact snapshot element or delivered-view coordinate; no button or AX action. Omit options for unchanged addressed native default. Independent background_cooperative_tracking_experimental uses {phase,owner_endpoint,registration_id}: a live cooperative owner authenticated by native socket PID/process birth/audit token; the owner dispatches its own registered-tag Enter/Exit synchronously on its UI thread via public NSApplication, never a caller pointer/tag or trusted witness. Ordinary third-party/modern cold tracking remains unsupported by this route; no activation, automatic fallback or input retry. Explicit background_appkit_tracking_experimental instead constructs Entered/Exited (8/9) with phase and tracking_number: a canonical nonzero signed i64 decimal STRING from a currently registered public legacy addTrackingRect tag bound to this exact process/window; NULL userData, never guessed modern area/foreign ObjC pointer or an automatic fallback. Caller must establish current tag owner/lifetime independently; scalar parsing and the lease do not attest registration. This carrier is currently unavailable for Native input until authenticated owner registration/lifetime support is implemented; it is not generic cold hover or tooltip success. Optional options={delivery,delta}: experimental background routes require selected-device capability; delta only for background_appkit_experimental, a nonzero integer pair within +/-128, not history. An explicit foreground_system requires expected_foreground and sends a checked system-cursor event. Unsupported Windows/older peer refuses; no downgrade. Stable request_id; short lease/release inside one call. No JS, dwell, activation, automatic global fallback or retry. Motion history unknown. Receipt is not tooltip success; inspect app state afterward.",
         ),
         tool::<RevealArgs>(
             "computer.reveal",
@@ -72,6 +81,9 @@ pub(super) fn handles(name: &str) -> bool {
     matches!(
         name,
         "computer.snapshot"
+            | "computer.focus_element"
+            | "computer.set_text"
+            | "computer.select_window_local"
             | "computer.click"
             | "computer.hover"
             | "computer.reveal"

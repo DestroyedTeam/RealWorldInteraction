@@ -274,6 +274,8 @@ pub(crate) fn native_capabilities(
         "input":"CoreGraphics.CGEvent","oracle":"Accessibility.AXUIElement",
         "native_semantic_actions":["AXPress","AXOpen","AXConfirm","AXShowMenu","AXCancel","AXPick","AXScrollToVisible","AXScrollDownByPage","AXScrollUpByPage","AXScrollLeftByPage","AXScrollRightByPage"],
         "checked_context_policy":"native_element","input_opt_in":allow_input,
+
+
         "semantic_object_identity":{"implemented":true,"scope":"current selected native backend","identity":"retained type-checked AXUIElement plus CFEqual window/object identity and non-reused serial; not attribute hash alone","max_retained_objects":crate::native::AX_TREE_MAX_NODES*2,"revalidation":"selected object only; exact native window membership, process/provider, geometry, role, value, enabled/actions and existing core binding guards","ancestry_max_nodes":32,"ancestry_read_budget_ms":500,"replacement_or_eviction":"fresh observation required; no attribute-search fallback"},
         "permissions":permissions,"permission_prompts":false,
         "evidence":"native_api_observed","hardware_attestation":false,
@@ -298,6 +300,29 @@ pub(crate) fn native_capabilities(
         "lock_state":"unknown","live_acceptance":"per_session_status_required",
         "atomicity":"pre/post validation; neither CGEventPost nor property equality proves the business goal"
     });
+    capabilities["set_text"] = json!({"implemented":true,"available":false,"platform":"macos",
+        "api":"AXUIElementSetAttributeValue","attribute":"AXValue","max_setter_attempts":1,
+        "semantics":"entire current ordinary plain CFString replacement; empty clears",
+        "roles":["AXTextField","AXTextArea"],"specialized_subroles":false,"max_utf8_bytes":4096,
+        "selected_window_required":true,"activation_requested":false,"keyboard_events":false,
+        "clipboard":false,"automatic_fallback":false,"append_or_caret":false,
+        "goal_attested_by_capability":false,"readback":"two full retained-object CFString reads; no DOM or typing claim"});
+    capabilities["focus_element"] = json!({"implemented":true,"available":false,"platform":"macos",
+            "api":"AXUIElementSetAttributeValue","attribute":"AXFocused","max_setter_attempts":1,
+            "selected_window_required":true,"permission":"existing Accessibility; no prompt",
+            "scope":"fresh exact ordinary visual-window plain editable AX element; retained CF/window/provider/context",
+            "write_budget":"zero already-focused or one guarded setter; never 0 -> 1",
+            "activation_requested":false,"click_or_key_fallback":false,"value_written":false,
+            "goal_attested_by_capability":false,"cached_availability_is_authority":false,
+            "readback":"independent element AXFocused + application AXFocusedUIElement CF + application AXFocusedWindow CF; OS foreground separate"});
+    capabilities["select_window_local"] = json!({"implemented":true,"available":false,"platform":"macos",
+        "selected_window_required":true,"kinds":["main","key"],"api":"AXUIElementSetAttributeValue",
+        "attributes":{"main":"AXMain","key":"AXFocused"},"max_setter_attempts":1,
+        "existing_AX_permission_required":true,"kind_support":"fresh exact per-kind settable status required; Main is not a Key fallback",
+        "write_budget":"zero exact already-selected or one guarded setter; never 0 -> 1",
+        "activation_requested":false,"raise_click_key_type_fallback":false,"typing_authorized":false,
+        "element_focus_route_unchanged":true,"readback":"window Main/Focused and exact application MainWindow/FocusedWindow CF; full OS foreground tuple separate",
+        "goal_attested_by_capability":false,"cached_availability_is_authority":false});
     capabilities["paired_pointer_drag"] = json!({"implemented":true,"endpoint_authority":"two independently resolved input targets; same native desktop/shared lease","delivery":"initiating PID/window addressed; native drag manager owns destination routing","fallback":false,"native_goal_attested":false,"required_destination_readback":true});
     capabilities["background_input"]["foreground_transition_scope"] =
         json!("no explicit system-frontmost request; not target AppKit key/order preservation");
@@ -323,6 +348,12 @@ pub(crate) fn native_capabilities(
         "activation_requested":false,"cursor_warp_requested":false,"authentication_requested":false,
         "scope":"experimental macOS pointer-only; exact native binding/lease/permissions still required"
     });
+    capabilities["pointer_move"]["background_appkit_experimental"] =
+        crate::background::appkit_move::capabilities();
+    capabilities["pointer_move"]["background_appkit_tracking_experimental"] =
+        crate::background::appkit_tracking::capabilities();
+    capabilities["pointer_move"]["background_cooperative_tracking_experimental"] =
+        crate::cooperative_tracking::capability();
     capabilities["pointer_move"]["foreground_system"] = json!({
         "implemented":true,"route":"explicit CGEventPost(HID)","moves_system_cursor":true,
         "activation_requested":false,"fallback":false,"native_acknowledgement":false,

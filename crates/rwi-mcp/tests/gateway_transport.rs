@@ -411,9 +411,7 @@ async fn device(root: &std::path::Path, id: &str, slow_close: bool) -> Device {
                 let result = match &r.call {
                     Call::Describe => {
                         let mut metadata = json!({"availability":"available","service":"healthy","context_valid":true});
-                        if name == "window-device" {
-                            metadata["targets"] = json!(*window_targets.lock().unwrap());
-                        }
+                        metadata["targets"] = json!(*window_targets.lock().unwrap());
                         DeviceResult::value(metadata)
                     }
                     Call::OpenContext => DeviceResult::value(

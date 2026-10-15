@@ -55,7 +55,82 @@ pub(super) fn trim_timing_fields(data: &mut Value) {
         object.remove("stage_timings");
         object.remove("elapsed_ms");
     }
+    trim_known_capture_phases(data);
     compact_snapshot_diagnostics(data);
+}
+
+fn trim_known_capture_phases(data: &mut Value) {
+    if data["input_domain_fenced"] != false {
+        return;
+    }
+    for key in [
+        "target",
+        "frame",
+        "view_id",
+        "observation_ref",
+        "details_ref",
+    ] {
+        if data
+            .get(key)
+            .and_then(Value::as_str)
+            .is_none_or(str::is_empty)
+        {
+            return;
+        }
+    }
+    if let Some(operation) = data.get("operation")
+        && (!operation.is_object()
+            || operation["terminal"] != true
+            || operation["resources_released"] != true
+            || operation["native_call_pending"] != false
+            || operation["resource_release_uncertain"] != false)
+    {
+        return;
+    }
+    if !data["window"].is_object() || !data["mapping"].is_object() || !data["elements"].is_array() {
+        return;
+    }
+    let Some(phases) = data
+        .pointer("/consistency/capture_phases")
+        .and_then(Value::as_object)
+    else {
+        return;
+    };
+    let brief = phases.len() == 9;
+    let details = phases.len() == 12
+        && phases.get("cpu_time").and_then(Value::as_bool) == Some(false)
+        && phases
+            .get("request_intervals_include_callback_setup")
+            .and_then(Value::as_bool)
+            == Some(true)
+        && phases
+            .get("phases_do_not_account_for_entire_caller_total")
+            .and_then(Value::as_bool)
+            == Some(true);
+    if phases.get("scope").and_then(Value::as_str) != Some("native_capture_wall")
+        || phases.get("units").and_then(Value::as_str) != Some("ms")
+        || !(brief || details)
+        || [
+            "shareable_request_to_callback_ms",
+            "screenshot_request_to_callback_ms",
+            "bitmap_conversion_ms",
+            "unpremultiply_ms",
+            "content_digest_ms",
+            "png_encode_ms",
+            "caller_total_ms",
+        ]
+        .iter()
+        .any(|key| {
+            phases.get(*key).is_none_or(|value| {
+                !value.is_null() && value.as_f64().is_none_or(|n| !n.is_finite() || n < 0.0)
+            })
+        })
+    {
+        return;
+    }
+    if let Some(consistency) = data.get_mut("consistency").and_then(Value::as_object_mut) {
+        consistency.remove("capture_phases");
+    }
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -116,7 +191,54 @@ pub(super) struct HoverArgs {
     pub(super) target: String,
     pub(super) request_id: String,
     pub(super) at: HoverTarget,
+    /// Omit for unchanged native default. Explicit routes require native capability;
+    /// delta is AppKit-only, a nonzero pair in -128..128, not pointer history.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "hover_options_option"
+    )]
+    #[schemars(with = "HoverOptionsSchema")]
+    pub(super) options: Option<rwi_core::MovePointerOptions>,
 }
+fn hover_options_option<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<rwi_core::MovePointerOptions>, D::Error> {
+    rwi_core::MovePointerOptions::deserialize(deserializer).map(Some)
+}
+
+// Schema-only mirror; runtime parsing and native capability checks stay in core.
+#[derive(JsonSchema)]
+#[serde(tag = "delivery", rename_all = "snake_case", deny_unknown_fields)]
+#[allow(dead_code)]
+enum HoverOptionsSchema {
+    BackgroundWindow {},
+    BackgroundSkylightExperimental {},
+    BackgroundCooperativeTrackingExperimental {
+        phase: rwi_core::TrackingPhase,
+        owner_endpoint: String,
+        registration_id: String,
+    },
+    BackgroundAppkitTrackingExperimental {
+        phase: rwi_core::TrackingPhase,
+        /// Caller-registered public opaque NSInteger; lossless signed decimal string.
+        tracking_number: String,
+    },
+    BackgroundAppkitExperimental {
+        /// Optional declared native delta, not inferred motion history; [0,0] rejected.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[schemars(with = "[HoverDeltaComponentSchema; 2]")]
+        delta: Option<[i32; 2]>,
+    },
+    /// Explicit system-cursor event requires the exact observed foreground tuple.
+    ForegroundSystem {
+        expected_foreground: rwi_core::ForegroundState,
+    },
+}
+#[derive(JsonSchema)]
+#[schemars(transparent)]
+#[allow(dead_code)]
+struct HoverDeltaComponentSchema(#[schemars(range(min = -128, max = 128))] i32);
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub(super) struct RevealArgs {
@@ -253,6 +375,20 @@ pub(super) fn compact_action_reply(data: &Value, details_ref: Option<String>) ->
     reply.insert("goal_verified".into(), json!(false));
     reply.insert("details_ref".into(), json!(details_ref));
     Value::Object(reply)
+}
+pub(super) fn convenience_timing_option(
+    name: &str,
+    args: &mut Value,
+) -> Result<bool, DeviceResult> {
+    if matches!(
+        name,
+        "computer.focus_element" | "computer.select_window_local" | "computer.set_text"
+    ) {
+        // Do not strip an unknown fifth model field before strict deserialization.
+        Ok(false)
+    } else {
+        take_include_timings(args)
+    }
 }
 pub(super) fn duration() -> u64 {
     500

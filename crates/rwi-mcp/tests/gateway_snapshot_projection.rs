@@ -379,13 +379,27 @@ async fn r94_actual_mcp_format_cache_and_bytes_are_fixture_only() {
             if !include_timings {
                 expected.as_object_mut().unwrap().remove("stage_timings");
                 expected.as_object_mut().unwrap().remove("elapsed_ms");
-                if compact {
-                    expected["consistency"]
-                        .as_object_mut()
-                        .unwrap()
-                        .remove("ax_coverage_after");
-                    expected["consistency"]["ax_coverage_after_ref"] = json!("/coverage");
-                }
+            }
+            // Equal coverage is a display-only reference even with inline timings.
+            // The retained full reply above must still contain the original object.
+            if compact {
+                expected["consistency"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("ax_coverage_after");
+                expected["consistency"]["ax_coverage_after_ref"] = json!("/coverage");
+                assert_eq!(
+                    displayed["consistency"]["ax_coverage_after_ref"],
+                    "/coverage"
+                );
+                assert_eq!(
+                    displayed.pointer("/coverage"),
+                    full.pointer("/consistency/ax_coverage_after")
+                );
+            }
+            if include_timings {
+                assert_eq!(displayed["stage_timings"], full["stage_timings"]);
+                assert_eq!(displayed["elapsed_ms"], full["elapsed_ms"]);
             }
             assert_eq!(
                 displayed, &expected,

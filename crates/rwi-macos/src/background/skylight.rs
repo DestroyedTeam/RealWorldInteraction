@@ -11,8 +11,12 @@ use core_graphics::{
 use foreign_types::ForeignType;
 use rwi_core::{Result, fault};
 use std::{ffi::c_void, sync::OnceLock};
+mod appkit_click;
 mod click;
-pub(crate) use click::{click_capabilities, prepare_click_pair};
+mod public_appkit_click;
+pub(crate) use appkit_click::{appkit_click_capabilities, prepare_selected_click_pair};
+pub(crate) use click::click_capabilities;
+pub(crate) use public_appkit_click::capabilities as public_appkit_click_capabilities;
 
 type PostToPid = unsafe extern "C" fn(libc::pid_t, *mut c_void);
 struct Driver {

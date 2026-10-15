@@ -103,6 +103,74 @@ impl Backend for Observed {
     fn popups(&mut self, scope: &Scope) -> Result<Vec<Popup>> {
         self.inner.popups(scope)
     }
+    fn set_text_preflight(
+        &mut self,
+        r: &Resolved,
+    ) -> Result<rwi_core::set_text::SetTextNativeFacts> {
+        self.inner.set_text_preflight(r)
+    }
+    fn set_text(
+        &mut self,
+        binding: &Binding,
+        r: &Resolved,
+        text: &str,
+    ) -> Result<rwi_core::set_text::SetTextReadback> {
+        let before = self.inner.input_dispatch_count();
+        let previous = self.entered.swap(true, Ordering::AcqRel);
+        let result = self.inner.set_text(binding, r, text);
+        let after = self.inner.input_dispatch_count();
+        if !previous && before.is_some_and(|n| n < u64::MAX) && before == after {
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
+    fn focus_element_preflight(
+        &mut self,
+        r: &Resolved,
+    ) -> Result<rwi_core::semantic_focus::FocusNativeFacts> {
+        self.inner.focus_element_preflight(r)
+    }
+    fn focus_element(
+        &mut self,
+        binding: &Binding,
+        r: &Resolved,
+        plan: rwi_core::semantic_focus::FocusWritePlan,
+    ) -> Result<rwi_core::semantic_focus::FocusReadback> {
+        let before = self.inner.input_dispatch_count();
+        let previous = self.entered.swap(true, Ordering::AcqRel);
+        let result = self.inner.focus_element(binding, r, plan);
+        let after = self.inner.input_dispatch_count();
+        if !previous && before.is_some_and(|n| n < u64::MAX) && before == after {
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
+    fn window_local_revalidate(&mut self, r: &Resolved) -> Result<Scene> {
+        self.inner.window_local_revalidate(r)
+    }
+    fn select_window_local_preflight(
+        &mut self,
+        r: &Resolved,
+        kind: rwi_core::window_local::WindowLocalKind,
+    ) -> Result<rwi_core::window_local::WindowLocalNativeFacts> {
+        self.inner.select_window_local_preflight(r, kind)
+    }
+    fn select_window_local(
+        &mut self,
+        binding: &Binding,
+        r: &Resolved,
+        kind: rwi_core::window_local::WindowLocalKind,
+        plan: rwi_core::window_local::WindowLocalWritePlan,
+    ) -> Result<rwi_core::window_local::WindowLocalReadback> {
+        let before = self.inner.input_dispatch_count();
+        let previous = self.entered.swap(true, Ordering::AcqRel);
+        let result = self.inner.select_window_local(binding, r, kind, plan);
+        let after = self.inner.input_dispatch_count();
+        if !previous && before.is_some_and(|n| n < u64::MAX) && before == after {
+            self.entered.store(false, Ordering::Release);
+        }
+        result
+    }
     fn focus_window(&mut self, r: &Resolved, f: &ForegroundState) -> Result<serde_json::Value> {
         let before = self.inner.input_dispatch_count();
         let previous = self.entered.swap(true, Ordering::AcqRel);

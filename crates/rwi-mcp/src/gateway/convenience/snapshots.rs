@@ -1,5 +1,13 @@
 use super::*;
 
+/// Snapshot display only, after the original reply was retained. Timing output
+/// does not require a second identical coverage object; errors stay unmodified.
+pub(super) fn compact_snapshot_reply_diagnostics(name: &str, result: &mut DeviceResult) {
+    if name == "computer.snapshot" && !result.is_error {
+        compact_snapshot_diagnostics(&mut result.data);
+    }
+}
+
 /// Default snapshot display only, after the original reply was retained.
 /// No broad allowlist: unknown fields, limits and mismatched shapes survive.
 pub(super) fn compact_snapshot_diagnostics(data: &mut Value) {
@@ -197,7 +205,8 @@ mod r94_diagnostics_tests {
             "stage_timings":[{"tool":"computer.observe","elapsed_ms":12}],"elapsed_ms":17})
     }
     fn default_reply(name: &str, mut result: DeviceResult, requested: bool) -> DeviceResult {
-        // Exact existing default-reply seam used after retaining full diagnostics.
+        // Exact production reply seam used after retaining full diagnostics.
+        compact_snapshot_reply_diagnostics(name, &mut result);
         if !expose_timings(name, &result, requested) {
             trim_timing_fields(&mut result.data);
         }
@@ -303,14 +312,20 @@ mod r94_diagnostics_tests {
         assert_eq!(result.data, expected);
     }
     #[test]
-    fn r94_errors_uncertainty_and_explicit_timings_keep_full_metadata() {
+    fn r94_errors_uncertainty_keep_full_metadata_and_timings_keep_all_distinct_fields() {
         let raw = snapshot();
         let mut error = DeviceResult::value(&raw);
         error.is_error = true;
         assert_eq!(default_reply("computer.snapshot", error, false).data, raw);
+        let mut timed_expected = raw.clone();
+        timed_expected["consistency"]
+            .as_object_mut()
+            .unwrap()
+            .remove("ax_coverage_after");
+        timed_expected["consistency"]["ax_coverage_after_ref"] = json!("/coverage");
         assert_eq!(
             default_reply("computer.snapshot", DeviceResult::value(&raw), true).data,
-            raw
+            timed_expected
         );
         let mut uncertain = raw.clone();
         uncertain["operation"] = json!({"terminal":false,
@@ -379,5 +394,328 @@ mod r94_diagnostics_tests {
         ] {
             assert_eq!(result.data[key], raw[key], "changed {key}");
         }
+    }
+    #[test]
+    fn source21_snapshot_coverage_explicit_timings_preserves_every_distinct_field() {
+        let raw = snapshot();
+        let mut expected = raw.clone();
+        expected["consistency"]
+            .as_object_mut()
+            .unwrap()
+            .remove("ax_coverage_after");
+        expected["consistency"]["ax_coverage_after_ref"] = json!("/coverage");
+        let after = default_reply("computer.snapshot", DeviceResult::value(&raw), true).data;
+        assert_eq!(after, expected);
+        assert_eq!(after["stage_timings"], raw["stage_timings"]);
+        assert_eq!(after["elapsed_ms"], raw["elapsed_ms"]);
+        assert_eq!(after["elements"], raw["elements"]);
+        assert_eq!(after["coverage"], raw["coverage"]);
+    }
+
+    #[test]
+    fn source21_snapshot_coverage_recorded_projection_is_reversible_and_smaller() {
+        // Root's matching gate supplies one frozen own-fixture reply, never UI.
+        // Ordinary offline CI uses the existing synthetic snapshot above.
+        let (raw, scope) = match std::env::var_os("RWI_S21_SNAPSHOT_FIXTURE") {
+            Some(path) => (
+                serde_json::from_slice::<Value>(&std::fs::read(path).unwrap()).unwrap(),
+                "frozen_recorded_reply",
+            ),
+            None => (snapshot(), "synthetic_reply"),
+        };
+        let before_bytes = serde_json::to_vec(&raw).unwrap().len();
+        let mut after = default_reply("computer.snapshot", DeviceResult::value(&raw), true).data;
+        let after_bytes = serde_json::to_vec(&after).unwrap().len();
+        assert!(after_bytes < before_bytes);
+        assert_eq!(after["consistency"]["ax_coverage_after_ref"], "/coverage");
+        let coverage = after.pointer("/coverage").unwrap().clone();
+        let consistency = after["consistency"].as_object_mut().unwrap();
+        consistency.remove("ax_coverage_after_ref");
+        consistency.insert("ax_coverage_after".into(), coverage);
+        assert_eq!(
+            after, raw,
+            "expanding the same-reply pointer must recover every value"
+        );
+        println!(
+            "{}",
+            json!({"probe":"source21_snapshot_coverage","scope":scope,
+            "before_utf8_bytes":before_bytes,"after_utf8_bytes":after_bytes,
+            "saved_utf8_bytes":before_bytes-after_bytes,"semantic_reconstruction_equal":true,
+            "Native_GUI_executed":false,"CPU_or_token_savings_measured":false})
+        );
+    }
+
+    #[test]
+    fn source21_snapshot_coverage_unknown_and_future_members_are_not_false_or_omitted() {
+        let mut raw = snapshot();
+        raw["coverage"]["complete"] = Value::Null;
+        raw["coverage"]["future_coverage"] = json!({"limit":null,"status":"unknown"});
+        raw["consistency"]["ax_coverage_after"] = raw["coverage"].clone();
+        raw["native_complete"] = json!("unknown");
+        raw["elements"][0]["value"] = json!("");
+        let after = default_reply("computer.snapshot", DeviceResult::value(&raw), true).data;
+        assert_eq!(after["coverage"], raw["coverage"]);
+        assert!(after["coverage"]["complete"].is_null());
+        assert!(after["coverage"]["future_coverage"]["limit"].is_null());
+        assert_eq!(after["native_complete"], "unknown");
+        assert_eq!(after["elements"], raw["elements"]);
+        assert_eq!(after["consistency"]["before_elements"], Value::Null);
+        assert_eq!(
+            after["consistency"]["future_consistency"],
+            raw["consistency"]["future_consistency"]
+        );
+    }
+
+    #[test]
+    fn source21_snapshot_coverage_unequal_error_pending_and_unretained_pass_through() {
+        let mut bad = Vec::new();
+        for (pointer, value) in [
+            ("/details_ref", Value::Null),
+            ("/frame", json!("")),
+            ("/coverage", Value::Null),
+            ("/consistency/ax_coverage_after", json!({"complete":null})),
+        ] {
+            let mut raw = snapshot();
+            *raw.pointer_mut(pointer).unwrap() = value;
+            bad.push(raw);
+        }
+        let mut pending = snapshot();
+        pending["operation"] = json!({"terminal":false,"resources_released":false,
+            "native_call_pending":true,"resource_release_uncertain":true});
+        bad.push(pending);
+        for raw in bad {
+            assert_eq!(
+                default_reply("computer.snapshot", DeviceResult::value(&raw), true).data,
+                raw
+            );
+        }
+        let raw = snapshot();
+        let mut error = DeviceResult::value(&raw);
+        error.is_error = true;
+        assert_eq!(default_reply("computer.snapshot", error, true).data, raw);
+        assert_eq!(
+            default_reply("computer.controls", DeviceResult::value(&raw), true).data,
+            raw
+        );
+        assert_eq!(
+            default_reply("computer.click", DeviceResult::value(&raw), true).data,
+            raw
+        );
+    }
+
+    #[test]
+    fn source21_snapshot_coverage_retained_details_hash_and_original_pointer_are_unchanged() {
+        use crate::gateway::presentation::{Presentation, ResultArgs};
+        let mut raw = snapshot();
+        raw.as_object_mut().unwrap().remove("details_ref");
+        let original_bytes = serde_json::to_vec(&raw).unwrap();
+        let expected_hash = rwi_core::digest(&original_bytes);
+        let mut cache = Presentation::default();
+        let details = cache.retain("computer.snapshot", raw.clone()).unwrap();
+        let mut displayed = raw.clone();
+        displayed["details_ref"] = json!(details);
+        let after = default_reply("computer.snapshot", DeviceResult::value(displayed), true).data;
+        assert_eq!(after["details_ref"], details);
+        let read = cache.read(ResultArgs {
+            result_ref: details,
+            pointer: "/consistency/ax_coverage_after".into(),
+            offset: 0,
+            limit: 16,
+            byte_offset: None,
+        });
+        assert_eq!(read.data["value"], raw["coverage"]);
+        assert_eq!(read.data["metadata_sha256"], expected_hash);
+        assert_eq!(read.data["native_dispatched"], false);
+        assert_eq!(serde_json::to_vec(&raw).unwrap(), original_bytes);
+    }
+}
+
+// Fixed input and real Presentation/cache seams; fixture metadata is not native timing evidence.
+#[cfg(test)]
+mod f16_capture_phase_optin_copy_oracle {
+    use super::*;
+    use crate::gateway::presentation::{Presentation, ResultArgs};
+    fn phases() -> Value {
+        json!({"scope":"native_capture_wall","units":"ms",
+            "shareable_request_to_callback_ms":3.0,"screenshot_request_to_callback_ms":5.0,
+            "bitmap_conversion_ms":1.0,"unpremultiply_ms":0.0,"content_digest_ms":0.25,
+            "png_encode_ms":2.0,"caller_total_ms":null})
+    }
+    fn displayed(mut data: Value, requested: bool, error: bool) -> Value {
+        let mut result = DeviceResult::value(data.take());
+        result.is_error = error;
+        if !expose_timings("computer.snapshot", &result, requested) {
+            trim_timing_fields(&mut result.data);
+        }
+        result.data
+    }
+    fn legacy(mut data: Value) -> Value {
+        data.as_object_mut().unwrap().remove("stage_timings");
+        data.as_object_mut().unwrap().remove("elapsed_ms");
+        compact_snapshot_diagnostics(&mut data);
+        data
+    }
+    fn cached(cache: &mut Presentation, reference: &str, pointer: &str) -> Value {
+        cache
+            .read(ResultArgs {
+                result_ref: reference.into(),
+                pointer: pointer.into(),
+                offset: 0,
+                limit: 64,
+                byte_offset: None,
+            })
+            .data
+    }
+    #[test]
+    fn retained_native_wall_box_is_only_inline_when_requested_or_uncertain() {
+        let original = json!({"adapter_status":{"observation_consistency":{
+            "capture_phases":phases(),"scope":"last_observe"}},"scene":{"elements":[]}});
+        let hash = rwi_core::digest(&serde_json::to_vec(&original).unwrap());
+        let mut cache = Presentation::default();
+        let observation = cache.retain("computer.observe", original.clone()).unwrap();
+        let mut raw = json!({"target":"fixture-target","frame":"fixture-frame","view_id":"fixture-view",
+            "window":{"pid":42,"window":"cgwindow:42","title":"Owned fixture"},
+            "mapping":{"view_size":[1320,1104],"original_to_desktop":[0.5,0,0,0.5,3036,504]},
+            "elements":[{"id":"a".repeat(64),"name":"Close window","role":"AXButton",
+                "actions":["AXPress"],"point":[3052,520],"enabled":false,"visible":null}],
+            "coverage":{"complete":false,"absence_proven":false,"limits":null},
+            "native_complete":false,"mutation_ready":false,"input_domain_fenced":false,
+            "blocked":null,"available_controls":1,"omitted_controls":0,"unknown_future":null,
+            "observation_ref":observation,"consistency":original["adapter_status"]["observation_consistency"],
+            "stage_timings":[{"tool":"computer.observe","elapsed_ms":18}],"elapsed_ms":20});
+        let retained = raw.clone();
+        let retained_hash = rwi_core::digest(&serde_json::to_vec(&retained).unwrap());
+        let details = cache.retain("computer.snapshot", retained.clone()).unwrap();
+        raw["details_ref"] = json!(details);
+        let full = displayed(raw.clone(), true, false);
+        assert_eq!(full, raw);
+        assert_eq!(displayed(raw.clone(), false, true), raw);
+        for operation in [
+            Value::Null,
+            json!({}),
+            json!({"terminal":false,"resources_released":false,
+            "native_call_pending":true,"resource_release_uncertain":true}),
+        ] {
+            let mut uncertain = raw.clone();
+            uncertain["operation"] = operation;
+            assert_eq!(
+                displayed(uncertain.clone(), false, false),
+                legacy(uncertain)
+            );
+        }
+        for value in [json!(true), Value::Null] {
+            let mut fenced = raw.clone();
+            fenced["input_domain_fenced"] = json!(value);
+            assert_eq!(displayed(fenced.clone(), false, false), legacy(fenced));
+        }
+        for key in [
+            "target",
+            "frame",
+            "view_id",
+            "details_ref",
+            "observation_ref",
+        ] {
+            for value in [Value::Null, json!("")] {
+                let mut unavailable = raw.clone();
+                unavailable[key] = value;
+                assert_eq!(
+                    displayed(unavailable.clone(), false, false),
+                    legacy(unavailable)
+                );
+            }
+        }
+        for key in ["window", "mapping", "elements"] {
+            let mut unknown = raw.clone();
+            unknown[key] = Value::Null;
+            assert_eq!(displayed(unknown.clone(), false, false), legacy(unknown));
+        }
+        let mut invalid_boxes = vec![Value::Null, json!({}), json!("unknown")];
+        for (pointer, value) in [
+            ("scope", json!("future")),
+            ("units", json!("ns")),
+            ("png_encode_ms", json!("unknown")),
+            ("png_encode_ms", json!(-1)),
+            ("future_phase", Value::Null),
+        ] {
+            let mut value_box = phases();
+            value_box[pointer] = value;
+            invalid_boxes.push(value_box);
+        }
+        let mut missing = phases();
+        missing.as_object_mut().unwrap().remove("caller_total_ms");
+        invalid_boxes.push(missing);
+        for value_box in invalid_boxes {
+            let mut future = raw.clone();
+            future["consistency"]["capture_phases"] = value_box;
+            assert_eq!(displayed(future.clone(), false, false), legacy(future));
+        }
+        let original_read = cached(
+            &mut cache,
+            &observation,
+            "/adapter_status/observation_consistency/capture_phases",
+        );
+        let details_read = cached(&mut cache, &details, "/consistency/capture_phases");
+        assert_eq!(original_read["value"], phases());
+        assert_eq!(original_read["metadata_sha256"], hash);
+        assert_eq!(details_read["value"], phases());
+        assert_eq!(details_read["metadata_sha256"], retained_hash);
+        assert_eq!(original_read["native_dispatched"], false);
+        assert_eq!(details_read["native_dispatched"], false);
+        let default = displayed(raw.clone(), false, false);
+        let mut expected = legacy(raw.clone());
+        expected["consistency"]
+            .as_object_mut()
+            .unwrap()
+            .remove("capture_phases");
+        let default_ok = default == expected;
+        let mut details_box = phases();
+        details_box["cpu_time"] = json!(false);
+        details_box["request_intervals_include_callback_setup"] = json!(true);
+        details_box["phases_do_not_account_for_entire_caller_total"] = json!(true);
+        let mut detailed = raw.clone();
+        detailed["consistency"]["capture_phases"] = details_box;
+        let mut expected_detailed = legacy(detailed.clone());
+        expected_detailed["consistency"]
+            .as_object_mut()
+            .unwrap()
+            .remove("capture_phases");
+        let detailed_ok = displayed(detailed.clone(), false, false) == expected_detailed;
+        for key in [
+            "cpu_time",
+            "request_intervals_include_callback_setup",
+            "phases_do_not_account_for_entire_caller_total",
+        ] {
+            let mut malformed = detailed.clone();
+            malformed["consistency"]["capture_phases"][key] = Value::Null;
+            assert_eq!(
+                displayed(malformed.clone(), false, false),
+                legacy(malformed)
+            );
+        }
+        let mut completed = raw.clone();
+        completed["operation"] = json!({"terminal":true,"resources_released":true,
+            "native_call_pending":false,"resource_release_uncertain":false});
+        let mut expected_completed = expected.clone();
+        expected_completed["operation"] = completed["operation"].clone();
+        // Baseline must emit the fixed receipt before the final semantic assertion.
+        let completed_ok = displayed(completed, false, false) == expected_completed;
+        assert_eq!(displayed(detailed.clone(), true, false), detailed);
+        println!(
+            "F16_CAPTURE_PHASE_PROJECTION_RECEIPT={}",
+            json!({
+            "scope":"real_MCP_default_projection_and_Presentation_cache_unit_seam_not_native_capture_or_MCP_stdio",
+            "default_only_known_box_removed":default_ok,"details_known_box_removed":detailed_ok,
+            "completed_operation_known_box_removed":completed_ok,
+            "explicit_true_and_error_full":true,"fenced_uncertain_unknown_unretained_preserved":true,
+            "observe_and_snapshot_original_cache_hash_and_values_preserved":true,
+            "UTF8_default_bytes":serde_json::to_vec(&default).unwrap().len(),
+            "UTF8_legacy_bytes":serde_json::to_vec(&legacy(raw)).unwrap().len(),
+            "UTF8_explicit_true_bytes":serde_json::to_vec(&full).unwrap().len(),
+            "tokens_CPU_native_latency_benefit_attested":false,"GUI_or_native_input":false})
+        );
+        assert!(
+            default_ok && detailed_ok && completed_ok,
+            "Expected retained known capture phases hidden only by default; full cache and explicit timings stay intact."
+        );
     }
 }
