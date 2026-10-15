@@ -1,3 +1,68 @@
+<!-- RWI_F21_NATIVE_COMPARE_ACCEPTED_CURRENT -->
+## 当前：F21文字回读已部署并通过新实机比较；无人值守推进，不要求人工配合 · 2026-10-15
+
+- **已完成的具体链路**：唯一Root中新增可选Receipt.text_effect，从Native invocation-local只读样本，经NativeMacDesktop／Observed／Guarded backend、durable Journal到MCP compact投影；原Text/KeyChord事件编码、接收准备、身份与输入保留／no-replay约束不改。ExpectedEdit用明确UTF16选区计算期望，不猜追加、不拆代理对或归一化；输出只有state、原因与长度，不输出全文、不升级goal_verified／system_accepted。
+- **实机发现并修复两处遗漏**：第一例原字段缺失，修复NativeMacDesktop仅对本selected对象做内存drain；第二例回执透传但unknown/not_plain_field，发现新witness未沿用既有snapshot的可空AXSubrole语义。现在仅原API／原属性明确-25205／-25212归为无特殊subrole，超时／无效对象／错误类型／AXUnknown／密码框仍保留unknown且不读／不发布值。旧负例全部保留，没有重放输入或把未知改成成功。
+- **实际部署与新有限验收**：同24B稳定证书重新构建、签名、部署实际exit0；当前Agent61077／07ef84f4、signed917e6f47…；MCP62b20999、CA／配对／Host设置与四项权限不变，不需用户重启或授权。全新虚拟屏Target61456／CG1626和Peer61469／CG1630，只局部聚焦一次、原生Text一次；Host与原durable都回text_effect.state=value_matches_expected，expected／observed均18 UTF16。新鲜AX和独立receiver均精确完整中文／nonBMP／组合字符，14次changes，Peer仍空；前后完整OS foreground四元组逐字段相等且均Peer。Target key=false、内部app_active=true，保留原有receiver preparation边界，不称完全无内部激活、隐藏／遮挡泛化、Chrome或IME通过。978ms仅单次Host wall，不是CPU或CU优劣对比。
+- **回归及回滚实证**：实际fmt／workspace tests／all-targets/all-features Clippy(-D warnings)／architecture ratchet均exit0，1234 passed／0 failed／11 ignored／44 suites；既有12项架构债务仍在。修正同输入BASELINE／MODIFIED／ROLLBACK／REAPPLY=0／3／0／3 tests、退出均0，0表示旧测试不存在，不是旧功能成功；文档probe退出1／0／1／0。独立copy完整461份即时原始hash恢复并严格重建，全363受管路径pristine恢复／DIFF重建均实际0，Root和MODIFIED_FILE回滚拒绝保留，未回滚运行中的Agent或重放GUI。此节为后续仅文档事务，Rust门结果与新文档门由各原事件分开记录。
+- **Live与睡眠期间策略**：保持既有220×219pt小浮层、原生隐藏／恢复与X关闭，44pt真实hit frame／28pt绘制，高质2048源采集独立于预览大小。此次尝试自主展开新卡，但Host自身窗口被Computer Use工具在操作前拒绝；真实0帧，已stop且drained，无绕过或伪造presence，不叫醒用户。公开Apple Panels资料主张小而不抢内容／通常不提供传统最小化；Codex用户PiP／X问题报告不是精确尺寸与完整按钮设计规范，不称1:1。既有外观实机结果保留as-time，本轮未称新真实渲染；严格Host聊天生命周期仍未完成。
+- **清理与剩余计划**：两个新自有窗口各Close一次，原生命周期均exit0；新完整exact-PID catalog均0、ps exit1空stdout/stderr、detach完成，5个原durable均terminal／released／noReplay；3张1320×1104 PNG原字节保存。仍继续Chrome后台nonBMP／完整IME、普通第三方cold Native hover／现代tooltip、遮挡隐藏泛化、严格Host Live、实际模型工具投影／耗时可用性；Root Skill新增说明尚未同步安装缓存，不能称Host已经读到新Skill。full_goal_complete=false。
+- [按时序原图与21项事实审核](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f21-subrole-native-final-2026-10-15/REPORT.md)；`/Volumes/ChatGPT/Real World Interaction/work/f21-subrole-native-final-2026-10-15/RESULT.json`；同四角色修正实证：`/Volumes/ChatGPT/Real World Interaction/work/f21-subrole-readback-fix-2026-10-15/ROLE_RESULT.json`。本批按功能闭合后做合理逻辑提交，不以旧HEAD的CI覆盖未提交源码。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F21_SUBROLE_READBACK_CURRENT -->
+## 当前：修正版回执已真实透传；新发现的普通字段缺省分类正在修复 · 2026-10-15
+
+- **已部署及实机新 case**：稳定24B签名修正版 Agent 56084／cbfb16cb／519abed2… 实际部署exit0；MCP62b20999、CA、配对、Host设置与四项权限不变。新虚拟屏 Target56515／Peer56525，局部聚焦与原生Text各一次，完整中文／nonBMP／组合字符均由新鲜AX和独立receiver读回；完整OS前台四元组始终Peer，Target key=false、内部app_active=true。原旧case没有重放。
+- **不隐藏新缺陷**：本次Host回执与原durable结果均有text_effect，Desktop透传修正已实机通过；但其state=unknown／reason=not_plain_field，不能当值比较通过。源码核对发现，新witness丢掉了既有element_description对AXSubrole“明确无值／不支持”的处理。正在仅将原API／原属性的-25205或-25212归为无特殊subrole，超时、无效对象、错误类型、AXUnknown及secure仍不读／不发布文本；未把本次实际未暴露的原生错误码臆称已观测。此修正尚未部署，需新独立case验值比较。
+- **无人值守与Live**：无需用户切窗、展开卡片、重启或授权。新Live实际MCP Apps侧面板清单为空，0帧，已stop且drained，不伪造presence／不宣称真实新渲染。既有220×219pt小浮层、原生隐藏／恢复与X关闭、44pt真实hit frame／28pt绘制、2048源质量结果按原时间保留；公开Apple Panels指导强调小而不抢内容，Codex用户issue只有PiP／X与缺陷描述，没有足以证实精确几何的公开规范，不称1:1。严格Host聊天生命周期仍未完成。
+- **清理与范围**：两个新测试窗口各AXPress Close一次，原进程均exit0；新完整exact-PID catalog均0、ps exit1空输出、detach完成，5个原durable均terminal／released／noReplay。1320×1104原PNG未编辑／降质。Chrome后台nonBMP／IME、隐藏遮挡泛化、普通第三方cold Native hover／现代tooltip仍未完成；上一Source461的1231 passed不预报本次新修改回归。full_goal_complete=false。
+- [本次按时序原图与结果](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f21-fixed-native-readback-2026-10-15/REPORT.md)；`/Volumes/ChatGPT/Real World Interaction/work/f21-fixed-native-acceptance-2026-10-15/RESULT.json`。本批仍按功能闭合后合理提交，不以旧HEAD CI覆盖未提交修改。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F21_DESKTOP_DELEGATE_CURRENT -->
+## 当前：F21 AppKit可见后台文字有限正例已验；实机发现的回读漏接已修复，待重部署 · 2026-10-15
+
+- **实际部署与权限**：此前Source461 Agent／MCP已真实构建、24B稳定签名并部署。Agent由27265／064f8fef变为43795／dfb3c2b5，安装hash89419472…；MCP为62b20999…，四项权限实测仍true。只改受保护Agent和MCP两文件，其余10项含CA／配对／profile／Host设置不变；无Codex重启／人工授权。旧operator probe的64KiB默认行限已在独立副本改为有界1MiB，原部署runner字节不改；新旧安装读取烟测实际0，但不充当Native GUI验收，也不称当前Root旧gateway已刷新。
+- **真实loaded Host新case**：虚拟屏UUID重发现后，自有Receiver45529／CG1558和独立Peer45541／CG1561分别绑定。只对Target发一次AXFocused局部选择、一次原生Text，文字为 `RWI 中λ🙂𝄞 é👩‍💻`。fresh AX完整值与fixture独立值均完全相同，14次text changes／18 UTF16 units；Peer值仍空。前后OS完整foreground四元组均Peer，Target.window_key=false，未输入游戏或用户文档。Target在虚拟屏可见、未被遮挡／最小化；其内部app_active变true（原有receiver preparation），不把此有限正例称为完全隐藏窗口、无内部激活、Chrome或IME composition通过。
+- **发现的问题不掩盖**：原Text raw回执与原durable结果都缺text_effect，不是推测旧gateway投影。实际NativeMacDesktop封装调用selected NativeMac.act，却继承Backend.take_text_effect的默认None，漏掉了本次样本。输入虽完整，**新回读功能实机未通过**，原请求未重放。Host1016ms只是该次调用wall样本，不能与不同Chrome case当CPU／性能比较。
+- **已落地修正**：当前唯一Root仍同461份源码、同363受管路径；`NativeMacDesktop::take_text_effect`仅对本target保留的selected NativeMac做一次内存drain，不做身份刷新、AX调用、搜索目标或输入。补3项selected／unselected／独立attachment隔离回归；新增fixture构造器仅cfg(test)，无GUI。matching baseline0（旧测试缺失）／modified3均exit0；同四角色的完整还原与重建结果由ROLE_RESULT原件给出，不预报Native重验通过。
+- **最新回归**：本次修正后实际fmt、workspace test、all-targets/all-features Clippy(-D warnings)、architecture ratchet均exit0，1231 passed／0 failed／11 ignored／44 suites；旧1228结果保留as-time。架构仍有既有债务，不称全部完成。当前运行的89419472版仍是漏接修正前版本；下一项按同稳定证书构建／部署修正版Agent，再用新独立case验field透传，不重放旧输入、不要求人工配合。MCP62b20999已具备投影逻辑，Root Skill仍未同步安装缓存。
+- **清理与图片**：两个自有窗口各Close一次，两个原生命周期实际exit0；新完整exact-PID catalog均0、ps stdout空／exit1、target已detach，5个原请求terminal／resources_released／noReplay。3张原PNG保持1320×1104，未编辑／降质；23项原件审核证明这些正负事实，不是全功能成功。GUI操作全部来自本会话loaded RWI，不以CLI startup／Rust内存CF测试代替。
+- **范围保留**：后台Chrome四non-BMP丢失、完整IME预编辑、遮挡／隐藏窗口泛化、普通第三方cold Native hover／现代tooltip、严格Host聊天Live绑定仍未完成。Live既有220×219pt、隐藏／X关闭与高质源图结果继续保留。本批未提交／推送，不借旧HEAD78b0c2a的CI冒充覆盖当前修改；待功能闭合后拆合理commit与PR交付。`full_goal_complete=false`。
+- **原件**：[本轮原图与步骤](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f21-native-appkit-text-effect-2026-10-15/REPORT.md)；`/Volumes/ChatGPT/Real World Interaction/work/f21-native-text-effect-2026-10-15/native-appkit-case/RESULT.json`；本次Source修正／回滚：`/Volumes/ChatGPT/Real World Interaction/work/f21-native-text-effect-2026-10-15/desktop-delegate-fix/ROLE_RESULT.json`。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
+<!-- RWI_F21_NATIVE_TEXT_EFFECT_CURRENT -->
+## 当前：F21 原生文字效果回读已接通并离线验证；部署／实机仍待验 · 2026-10-15
+
+- **实现，不只是计划**：唯一 Root Source461新增 `rwi_core::text_effect::ExpectedEdit`／可选 `Receipt.text_effect`。Intent::Text在既有严格原生预检后，仅对明确plain字段读取完整AXValue及UTF16选区，按真实选区构造预期值，不猜append、不切surrogate、不做Unicode正规化。普通Native按键投递、前台/HID/lease/noReplay守卫不改；无AXValue写、剪贴板、CDP或全局激活fallback。
+- **有界且不升级信任**：实际结果区分value_matches_expected／value_differs_observed／unknown，只输出状态、原因与UTF16数量，不重复原文字。比对是非原子样本，不证明事件因果或业务目标；system_accepted仍独立、goal_verified保持false。原生读值前后复核class、同进程birth／session／window与保留CF对象；未知/secure不读值。准备50ms、回读75ms为soft预算，每次新query前后检查，最多一次25ms只读settle；既有同步AX调用不能因此强行抢占，不声称硬时限或实机提速。可选观察不能吞掉cancel/deadline后继续receiver preparation。
+- **真实接线与旧版兼容**：每次输入清旧样本，Backend默认None；macOS/Observed/guarded wrapper drain一次；Core仅Text把本次样本写进原durable journal，duplicate直接返回旧结果、无新输入。无效/partial输入与readback unknown分别保留，未知回读不改写成“输入未发送”。MCP精简输出保留text_effect与显式null，旧无字段回执可反序列化；Windows仍默认无该原生采样能力，不借macOS单元测试泛化。
+- **本轮回归已运行**：预算前V1为1227 passed／11 ignored，预算后V2实际fmt、workspace test、all-targets/all-features Clippy(-D warnings)与architecture ratchet均exit0；1228 passed／0 failed／11 ignored／44 suites。架构仍有既有债务，不称全部完成。新增26项覆盖UTF16边界、实际选区替换、F20四non-BMP缺失分类、secure/unknown禁读、class变化丢弃证据、NativeRange类型/负值、软预算过期不进下一读、一次drain、旧journal与MCP投影。都是离线/自有内存CF对象，不是实机Native验收。
+- **事务与错误**：初始Source457 baseline的同Core过滤器为0项（旧测试不存在，不是旧功能通过）；初始候选11项、完成接线后17项通过。完整scope27回滚／严格补丁重建由下述同四角色实际命令另记，未在本节提前预报。一次operator编辑断言误中placement与act两个点，exit1与已写状态保留；仅限定act_inner后修正，非Native错误且无GUI输入重放。
+- **当前未部署**：Agent仍c1315be…／MCP4f8d203f…，签名、CA、配对、TCC与保护12文件未改；本轮Root Skill补text_effect解释，但安装缓存仍旧版，未冒称已加载。下一项构建并签名候选，再按既有部署流程实机核对前后台原生文字、字段输出、开销及清理；不要求人工切窗、密码或重启。
+- **完整目标不缩减**：F18/F20后台non-BMP缺字、IME预编辑、普通第三方cold Native hover／现代Native tooltip与严格Host聊天Live生命周期仍未完成。新readback是暴露效果差异，不是输入兼容修复。既有Live220×219pt小浮层、独立隐藏／X关闭和源图质量结果保留；本轮无新GUI截图，不用旧图冒充本轮实机。`full_goal_complete=false`。
+- **原件**：`/Volumes/ChatGPT/Real World Interaction/work/f21-native-text-effect-2026-10-15/FULL_REGRESSION_V2_RESULT.json`；同四角色后续闭合：`/Volumes/ChatGPT/Real World Interaction/work/f21-native-text-effect-2026-10-15/ROLE_RESULT.json`。既有HEAD78b0c2a与其CI只对应旧提交，本批未提交／未推送，不冒充新head CI。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
+<!-- RWI_F20_UNICODE_BOUNDARY_CURRENT -->
+## 当前：F20 后台 AXPress 与 Unicode 新假设实测完成，缺字负例保留 · 2026-10-15
+
+- **无人值守与运行边界**：不要求人工切窗、目视、重启或授权；只使用虚拟屏上的独立私有 Chrome／自有 Receiver。唯一 Root Source457、MCP 4f8d203f…、Agent c1315be5…／064f8fef、稳定签名、CA、配对、四项权限及受保护12文件均未变。本轮不把研究脚本当后端或把旧1202项回归称为新运行。
+- **只读能力探针**：Rust FFI 查询同一已知普通字段及原生 UTF16 选区，前台／后台均 value21 units、selection0/0且四项属性报告settable；0属性写、0 action、0键鼠，只是operator diagnostic，不是MCP输入验收。第二个独立默认Chrome实际列45项参数属性，但AXTextOperation未advertise；opaque marker只读presence/type，未导出／伪造。固定同版Chromium源进一步确认此feature默认disabled；可写标记不等于可用插入效果，因此不盲目新增AXSelectedText工具或修改用户浏览器flags。
+- **真实 loaded RWI 新case**：Peer17387／CG1516在前台，独立Chrome17399／CG1508在虚拟屏后台；原页面仅被动计数，无脚本focus／selection／value写。advertised AXPress只调用一次，实际D0 F1 P1 K0 U0 B0 I0 C0 L0，建立局部字段焦点而未激活页面。随后同一14-scalar文字 `RWI 中λ🙂𝄞 é👩‍💻` 只type_text一次，receipt仍goal_verified=false；独立Native值却是 `RWI 中λ é‍`，D0 F1 P1 K14 U14 B10 I10 C0 L10，四个non-BMP仍未入值。前后完整OS前台tuple同一Peer；不是连续用户来源证明。adapter339ms、Host349ms仅一次wall样本，不是CPU或CU比较。
+- **定位与保留**：17份同commit主源文件均重新核对hash；原ImeCommitText void调用后的reply可与内部focus早退同时存在，主frame/child分支不同。它与本次D0/F1结果一致，但未记录实际target_dom_node_id／Blink分支，不声称根因已证明。完整Unicode keyboard／IME composition仍未通过；AX整值替换、内容路线和键盘不是同一效果。
+- **实际清理与原件**：全部专用Chrome窗口各关闭一次，剩余自身进程精确TERM一次；三例Chrome父进程ps absent／私有profile进程0，Chrome exit status仍unknown，不借open或kill的0代替。两个Peer原生命周期exit0，新完整exact-PID catalog均0、target解绑，四项原durable请求terminal／resources_released／禁止重放。73项固定原件验核exit0，证明这些正／负事实闭合，不是后台功能通过；7张1920×1440原PNG未编辑降质，关键两图已重开目视。原TLS信任2、RTK路径1、上游503与tool观察handle过期均保留并区别于产品失败。
+- **本轮实际修正与完整计划**：macOS Skill补充明确的后台Unicode独立回读及非静默fallback边界；静态文档/结构探针只验证文件状态，不冒充模型行为或Native修复。Live原220×219pt小浮层、隐藏／X关闭与高质源图结果继续保留；严格Host聊天绑定、普通第三方cold Native hover／现代tooltip、完整C3仍在计划中。下一实现优先补原生文字效果的有界只读回执，使模型不把returned当完整入值，不复试已有阴性输入。`full_goal_complete=false`。
+- **原件**：[/73项审计](/Volumes/ChatGPT/Real World Interaction/work/f20-consolidated-audit-2026-10-15/RESULT.json)；[按时序原图与边界报告](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f20-native-axpress-unicode-2026-10-15/REPORT.md)。既有HEAD78b0c2a／CI38721128119只对应F19提交；本F20文档改动不冒充新CI覆盖，无每轮强制提交。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
 <!-- RWI_F19_TYPED_ACTIVATION_CURRENT -->
 ## 当前：F19 两字段前台切窗已部署、真实新 Host 验收闭合；后台未完事项保留 · 2026-10-15
 
