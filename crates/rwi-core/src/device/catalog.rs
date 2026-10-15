@@ -1,4 +1,5 @@
 //! One compiled tool catalog for adapter and agent; never loaded from a test fixture.
+mod browser;
 use super::api::*;
 use serde_json::Value;
 #[derive(serde::Deserialize, schemars::JsonSchema)]
@@ -14,21 +15,8 @@ pub struct ToolDefinition {
     pub writes: bool,
 }
 pub fn definitions() -> Vec<ToolDefinition> {
-    vec![
-        ToolDefinition {
-            name: "browser.snapshot",
-            description: "Read bounded main-document content and original viewport PNG from an exact owned browser.session. Requires separate explicit snapshot grant, not Native TCC or lifecycle-only permission. Returns AX nodes, CSS-document rectangles, document identity and honest partial/nonatomic coverage. No activation, user browser attach, JS, native frame or input authority; not browser chrome/OS dialogs or hover/click. A screenshot is not proof an action succeeded.",
-            input_schema: serde_json::to_value(schemars::schema_for!(super::browser::SnapshotArgs))
-                .unwrap(),
-            writes: false,
-        },
-        ToolDefinition {
-            name: "browser.session",
-            description: "Explicit owned browser-content lifecycle on an authorized macOS Agent: create a NEW isolated Chrome/profile, close one exact session, or query a durable request. Separate browser policy; no existing profile/port attach, native window/TCC binding, automatic activation, fallback or replay. request_id is stable; query uses the ORIGINAL request_id. Content reads use browser.snapshot with its own grant; lifecycle does not authorize hover/click, browser toolbar or OS dialogs. Background creation is requested, not OS focus proof. Sessions expire after 600s; close invalidates browser references even when cleanup is uncertain.",
-            input_schema: serde_json::to_value(schemars::schema_for!(super::browser::SessionArgs))
-                .unwrap(),
-            writes: true,
-        },
+    let mut tools = browser::definitions();
+    tools.extend([
         ToolDefinition {
             name: "computer.hotkey",
             description: "Explicit foreground/system keyboard input on an authorized macOS desktop, e.g. cmd+tab. Supply original desktop target, shared input lease, stable request_id and fresh expected_foreground from targets. Posts one bounded balanced key/modifier sequence into the system stream, not to a PID. Yields to recent HID activity or changed foreground/session; always releases its own posted keys. No text, auto-focus, background fallback or replay. Receipt is not a verified switch; independently observe foreground. Unsupported/scoped-window backends refuse. After dispatch processing, same-desktop old frames/refs in this executor are invalidated; snapshot then resolve before element input.",
@@ -223,7 +211,8 @@ pub fn definitions() -> Vec<ToolDefinition> {
             input_schema: serde_json::to_value(schemars::schema_for!(OperationQueryArgs)).unwrap(),
             writes: false,
         },
-    ]
+    ]);
+    tools
 }
 pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
     match tool {
