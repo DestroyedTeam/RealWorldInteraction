@@ -14,9 +14,12 @@ pub(super) fn key_events(
     flags: CGEventFlags,
     text: Option<&[u16]>,
 ) -> Result<(CGEvent, CGEvent)> {
-    let down = CGEvent::new_keyboard_event(source()?, key, true)
+    // One private source owns the paired key state; down/up must not use
+    // unrelated private tables. Both events are allocated before any dispatch.
+    let event_source = source()?;
+    let down = CGEvent::new_keyboard_event(event_source.clone(), key, true)
         .map_err(|_| fault("input_allocation_failed", "Key event was not allocated."))?;
-    let up = CGEvent::new_keyboard_event(source()?, key, false)
+    let up = CGEvent::new_keyboard_event(event_source, key, false)
         .map_err(|_| fault("input_allocation_failed", "Key event was not allocated."))?;
     for event in [&down, &up] {
         event.set_flags(flags);
@@ -214,5 +217,73 @@ mod f27_key_constructor_memory_tests {
             crate::nsevent_probe::probe_key_constructor(&down, "后"),
             Err("key_probe_current_payload_differs")
         );
+    }
+}
+
+#[cfg(test)]
+mod f28_key_pair_source_tests {
+    use super::*;
+    use core_graphics::event::EventField;
+
+    #[link(name = "CoreGraphics", kind = "framework")]
+    unsafe extern "C" {
+        fn CGEventKeyboardGetUnicodeString(
+            event: *const std::ffi::c_void,
+            max_length: std::os::raw::c_ulong,
+            actual_length: *mut std::os::raw::c_ulong,
+            units: *mut u16,
+        );
+    }
+
+    #[test]
+    fn f28_key_pair_source_private_table_is_shared_only_with_its_own_pair() {
+        let (down, up) = key_events(0, CGEventFlags::empty(), Some(&[65])).unwrap();
+        let first = down.get_integer_value_field(EventField::EVENT_SOURCE_STATE_ID);
+        assert_eq!(
+            first,
+            up.get_integer_value_field(EventField::EVENT_SOURCE_STATE_ID)
+        );
+        assert_ne!(first, CGEventSourceStateID::CombinedSessionState as i64);
+        assert_ne!(first, CGEventSourceStateID::HIDSystemState as i64);
+        let (other_down, other_up) = key_events(0, CGEventFlags::empty(), Some(&[65])).unwrap();
+        let other = other_down.get_integer_value_field(EventField::EVENT_SOURCE_STATE_ID);
+        assert_eq!(
+            other,
+            other_up.get_integer_value_field(EventField::EVENT_SOURCE_STATE_ID)
+        );
+        assert_ne!(first, other);
+    }
+
+    #[test]
+    fn f28_key_pair_source_flags_phase_and_full_unicode_are_unchanged() {
+        for flags in [
+            CGEventFlags::empty(),
+            CGEventFlags::CGEventFlagCommand | CGEventFlags::CGEventFlagShift,
+        ] {
+            let units: Vec<u16> = "🙂".encode_utf16().collect();
+            let (down, up) = key_events(0, flags, Some(&units)).unwrap();
+            for (kind, event) in [(10, &down), (11, &up)] {
+                assert_eq!(event.get_type() as u32, kind);
+                assert_eq!(event.get_flags(), flags);
+                assert_eq!(
+                    event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE),
+                    0
+                );
+                let mut observed = [0u16; 64];
+                let mut length: std::os::raw::c_ulong = 0;
+                // Quartz-only inspection: AppKit characters can enter TIS/TSM,
+                // which must not race the independent F27 constructor matrix.
+                unsafe {
+                    CGEventKeyboardGetUnicodeString(
+                        event.as_ptr().cast(),
+                        64,
+                        &mut length,
+                        observed.as_mut_ptr(),
+                    );
+                }
+                assert!(length <= 64);
+                assert_eq!(&observed[..length as usize], units);
+            }
+        }
     }
 }
