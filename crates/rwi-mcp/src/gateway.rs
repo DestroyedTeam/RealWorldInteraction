@@ -10,6 +10,7 @@ mod convenience;
 mod hotkey_result;
 mod invocation;
 mod numbers;
+mod selection_refresh;
 use numbers::{numeric_inputs, portable_numbers, schema_numbers};
 mod live_ui;
 mod presence;
@@ -374,6 +375,9 @@ impl ServerHandler for Gateway {
                 schema_numbers(&mut d.input_schema);
                 if d.name == "computer.targets" {
                     presentation::targets_text_schema(&mut d.input_schema);
+                }
+                if d.name == "computer.attach_window" {
+                    d.description = "Attach a NEW independent window target from the original desktop and exact discover selection (window/PID/native_epoch, relation initial). An expired catalog may be refreshed once after proven clean pre-dispatch rejection; only the identical selection in a complete bounded PID catalog is eligible. No activation, input, context/epoch substitution or uncertain retry. Other bindings remain unchanged; input leases remain shared. Inspect selection_preparation/details_ref if present.";
                 }
                 let tool = Tool::new(
                     d.name,
