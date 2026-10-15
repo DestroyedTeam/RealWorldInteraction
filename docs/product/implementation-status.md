@@ -1,3 +1,55 @@
+<!-- RWI_F58_COMPACT_NATIVE_LIVE_CURRENT -->
+## 当前：198×200pt真实Native小窗已自主回读，浏览器隐藏/恢复与API停止通过；Host PiP仍待完成 · 2026-10-16
+
+- **本项确实显示了Native画面**：新专用Receiver58仅在虚拟屏，普通loaded computer.live start返回真实浏览器URL。open_in_codex仍queued，实际CUA在独立IAB创建控制页后，其真实JS发布可见性；未伪造presence/调用UI-only工具。Native回读窗口2396在MacBook内建屏、bounds=[1578,921,198,200]、image_present/visible/on_screen均true、已呈现61帧；不是只拿200pt常量或viewer地址当显示证明。
+- **动作与边界逐项核对**：真实页面按钮隐藏后，Native presentation_suspended=true、panel/image清除；页面恢复后又呈现91帧、相同198×200pt。到期前明确RWI API stop回reason=requested、worker_done=true、panel/image清除；浏览器结束提示且按钮disabled。没有点击Native X或验hover样式，也没有证明隐藏期间零采集、用户看到、真正Host图像播放器/PiP、实际切任务或严格active-chat身份。浏览器兼容路线仍依赖其页面可见性，不替代用户要求的会话内实现。
+- **清理/错误完整保留**：测试源没有键鼠输入，临时浏览器tab关闭，源程序自然exit0、精确PID0窗口/ps1且stdout/stderr空、detach，原11924/window421仍前台。getTab最初找不到；创建tab赋值报错但真实tab已经创建，随后只重新选已有tab、不重复创建。五个当时的控制响应均终态/释放，晚查start引用返回execution_ref_expired，不能据此猜未执行/终止；以前述原响应及worker状态为证。
+- **截图不混用**：实际浏览器终态JPEG22032 bytes已原样保存并回读；它不是Native浮层外观图。源窗口单次PNG仍1320×1104原样，采集2048细节策略未降低。Native小窗Machine尺寸/显示与截图清晰度分开，官方未发布的精确按钮/尺寸不冒称1:1。
+- **新版MCP安装事实不变**：F57已安装SHA4ec55ceb68df41eaf4664fddb51ce197bfcef825b18eb2940e0a3002ac0c5e25，候选/安装后codesign与固定驱动均0；只MCP文件改变。当前loaded schema仍无snapshot.text_projection，不强塞参数或全局重启。Agent F41/PID97795、稳定签名、四权限/CA/配对/Host配置不动。Rust478字节未改，原1328/0/11/47完整门与F56模式B/M/R/reapply false/true/false/true及0/14/0/14保留；本节文档仅另做状态恢复/重建。
+- **完整目标仍在**：Host image/PiP、严格任务切换、Native按钮/视觉样式、Unicode/IME、cold hover、前台冲突和隐藏/层叠矩阵继续；F53/F54/F55结果与负例、公开仓库/PR/CI事实不改。用户休息，无人工配合、Native输入重放或伪造UI事件。full_goal_complete=false。
+- 报告与实际浏览器图：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f58-native-compact-live-browser-acceptance-2026-10-16/README.md。
+
+--- 以下旧历史完整保留，仅为当时状态 ---
+
+<!-- RWI_F57_SNAPSHOT_MCP_DEPLOY_CURRENT -->
+## 当前：Snapshot精简MCP已安装，候选及安装后新进程验证通过；当前Host仍旧schema · 2026-10-16
+
+- **实际部署**：Source478 release构建退出0，候选与安装后codesign --verify --strict均0；同一冻结Rust驱动、真实MCP进程＋临时私有合成TLS设备在候选/安装后均验到snapshot参数与实际精简文本、完整按钮/坐标/PNG及具体参数错误。用户级MCP二进制SHA由236e0e43…变为4ec55ceb68df41eaf4664fddb51ce197bfcef825b18eb2940e0a3002ac0c5e25，旧文件已保留。不是重放F55 Native输入，也不是当前Host已刷新证明。
+- **仅中性MCP改变**：保护表12项中只有MCP executable改变；Agent仍F41 PID97795/instance dc4e9c72-3a99-4e6d-9163-6e3f134a1ee7。当前加载RWI实测service healthy、macos、辅助功能/监听/发送/截屏四权限仍true；不重启Agent/Codex、不换签名叶、CA/私钥/配对/profile或Host配置。
+- **会话缓存边界**：本任务当前实际工具定义仍未列出snapshot.text_projection，原desktop context2846e997…仍在。没有向旧schema塞新字段、没有强制全局MCP重载或宣称热刷新；已安装的新进程能力与当前Host加载状态分开记录。用户休息，不请求人工配合。
+- **验收闭环保留**：F56实际BASELINE不支持→MODIFIED精简→独立复制ROLLBACK不支持→REAPPLIED精简，四个同一冻结驱动exit0；过滤测试0/14/0/14，全部exit0，当前Rust478输入hash不变，原fmt/workspace/全targets全features Clippy(-D warnings)/architecture 0000与1328 passed/0 failed/11 ignored/47 suites仍有效。本节只改文档，不把既有Rust门伪装成本轮重跑；新文档标记与同四角色另做恢复/严格重建。重复文本4113→929（合成真实MCP）及4994→1276（F55已存packet/原PNG）只代表JSON文本，图像及结构化按钮/坐标/未知字段保持，不外推token/CPU/Native速度或GUI成功率。
+- **整体任务未收窄**：真正Host Live/PiP与200pt实际呈现、隐藏恢复关闭/切任务/严格chat绑定；Unicode/IME、cold hover、前台冲突与隐藏/层叠矩阵继续。F53执行中前后台连续拖拽、F54模态保护、F55系统面板与后台Colors/uncertain回执负例、F51公开仓库PR/CI事实全部保留。full_goal_complete=false。
+- 部署原件：/Volumes/ChatGPT/Real World Interaction/work/f57-snapshot-summary-neutral-mcp-deploy-2026-10-16/RESULT.json；代码/回滚原件：/Volumes/ChatGPT/Real World Interaction/work/f56-snapshot-structured-summary-2026-10-16/same-four-roles380/ROLE_RESULT.json。
+
+--- 以下旧历史完整保留，仅为当时状态 ---
+
+<!-- RWI_F56_SNAPSHOT_SUMMARY_CURRENT -->
+## 当前：Snapshot结构化感知的精简输出源码已实现；实机面板结果与负例保留 · 2026-10-16
+
+- **新增精确字段**：computer.snapshot.text_projection=structured_summary_v1，仅供读取structuredContent的客户端显式选择。缺省保持原完整文本。只把content.text中的elements/mapping/coverage/consistency重复大段改成明确的structuredContent指针；完整结构化控制、坐标、原Native IDs、未知字段和PNG字节不改。不缩短或重新绑定Native句柄，不新增缓存、事件或调用。错误/不确定/围栏/visual-only/语义无图/缺失形状保留完整文本，小消息不扩张。
+- **修正误导的参数提示**：Snapshot先区分Serde字段/类型错误与真正的max_edge/limit范围错误。未知字段不再被一概说成分辨率/数量越界。新mode错误在Native路由前拒绝；不是放松Native前置条件或自动重试。
+- **实际MCP证据**：同一个冻结Rust协议驱动、真实MCP进程和独立临时固定证书TLS合成设备，默认文本与结构化内容保持一致，12按钮及坐标/原PNG相同。基线mode未公布且拒绝，修改后公布并实际输出summary；未知参数具体提示false→true。合成同数据的成功默认文本4113→按需929 bytes；已录制F55原样PNG/metadata数据在Rust序列化链上4994→1276 bytes。数字仅为重复JSON文本字节，不是token、Native捕获/动作耗时、CPU或模型准确率。13单元边界＋1协议断言通过，另有固定驱动观察项；全量门/独立恢复以实际记录为准。
+- **原失败未抹去**：最初基线脚本期待原始Serde文案而实际得到旧通用范围提示，outer exit1；离线过滤0与原MCP回执保留，不凭已消失PID猜子进程退出码。改用真正隔离TLS驱动观察，未重跑原基线脚本。首次13单元通过但协议101揭示convenience提前返回绕开投影；只补正确入口接线，未放宽断言/门禁。诊断101与后续暂存断言1也保留。
+- **F55实机面板范围**：专用Receiver55后台Colors对象存在但不在on-screen目录的负例保留。明确前置自有应用后，分别发现Colors/Fonts，精确绑定、移到虚拟屏、关闭。Files AXPress原回执为uncertain/-25204，后来独立观察确认只打开一次原面板，只按Cancel，completion_response=0；从未再次打开/选择文件或换输入路线。9个原操作全部终态/释放，4绑定detach，应用自然exit0，精确PID0窗口/ps1空输出；没有把这些标准AppKit个例升级为所有系统/第三方面板通过。
+- **部署与整体边界**：本节为源码/协议验证状态，F56尚未安装或重启Host；当前加载工具schema不能冒认新增字段已刷新。Agent仍F41，F50用户级MCP及CA/配对/权限/Host配置不改。Live真正Host图像播放器/200pt效果/隐藏恢复关闭/切任务与严格chat绑定、Unicode/IME、第三方cold-hover、冲突/隐藏/层叠完整矩阵继续；F51公开仓库/PR/CI已完成事实保留。用户休息，不请求人工配合，不伪造presence，不重放输入。full_goal_complete=false。
+- 证据：/Volumes/ChatGPT/Real World Interaction/work/f56-snapshot-structured-summary-2026-10-16/；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f55-native-owned-system-panels-2026-10-16/README.md。
+
+--- 以下旧历史完整保留，仅为当时状态 ---
+
+<!-- RWI_F53_BG_FG_DRAG_CURRENT -->
+## 当前：无人配合的执行中后台→前台拖拽已实测；Live仍分开验收 · 2026-10-16
+
+- **F52负例保留**：自有Receiver收到一次5秒后台拖拽，独立记录1次按下/78次移动/1次松开，完整绘制且原操作释放。现代activate请求一次但前台始终11924，所以未达到执行中切窗；原请求不重放，不能把刺激无效推断为RWI不支持转换。
+- **F53新刺激实测通过**：新窗口PID53944/cgwindow:2243与新请求身份，既有测试夹具显式legacy自激活。按下后约2076ms，25ms独立采样与接收端环境记录均见后台→前台53944；此时down1/moves32/up0/completed0，拖拽尚在执行。最终1/79/1、completed1、无孤立移动/松开/取消，实际蓝线完整。RWI约5235ms，其中act5216ms包含请求的5秒动作，不称作纯计算耗时。此项仅证明自有AppKit接收端连续性，不是真人Command+Tab/第三方通用兼容/原生系统DND。
+- **回收与不打扰**：两个独立测试应用均自然exit0；各自exact-PID发现0窗口、ps退出1且stdout/stderr空、绑定解除；前台独立回读恢复原11924/window421。未操作游戏、真实浏览器或已有文档，未改权限/Agent/CA/配对/Host配置；没有把legacy激活加入生产默认路径或自动回退。用户休息，继续自主验收，不请求人工配合。
+- **Live大小/官方对照**：F41已部署的双轴200pt上限、44pt命中区与原hide/close动作保持不变，截图原分辨率不随面板缩小。今日重新打开官方Computer Use文档，只能确认macOS后台与可移动PiP，仍无权威精确尺寸/完整按钮外观清单；200pt是RWI自己的机械参数，不冒称1:1官方尺寸。真实Host播放器/200pt浮层效果、隐藏恢复关闭/任务切换/严格chat绑定仍待实测；无组件presence伪造，不把空的expanded-tab列表当inline组件不存在。
+- **其余计划保持**：后台Unicode/IME、cold hover/tooltip、前台全局快捷键、冲突/模态/系统面板/隐藏/层叠、分层耗时/输出与可靠性继续，不用本项收窄总目标。F49记录数据MCP错误flag的BASELINE/MODIFIED/ROLLBACK/REAPPLIED仍false/true/false/true；不是重放Native输入。F50磁盘新版与新进程通过不等于当前Host缓存schema已刷新。
+- **已完成发布事实**：三个逻辑提交已正常push到engineering/governance-native-mcp，HEAD fe7ea52616171277b69c7c1610759a3e79c56fef；仓库已PUBLIC，PR1 OPEN，当前HEAD的macOS/Windows CI run38795424003 success。不重复push、不force/tag/release/merge。证据在work/f51-validated-mcp-logical-git-batch-2026-10-16。
+- 本节仅更新状态文档，不改Rust运行行为；原有Source475/1313测试证据保留。本次另执行当前源码fmt/workspace/全targets全features Clippy(-D warnings)/architecture，结果以本轮实际门禁为准，不能等同GUI验收。full_goal_complete=false。
+- 按时间的原样PNG与完整边界：[F52报告](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f52-native-background-to-self-foreground-2026-10-16/README.md)、[F53报告](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f53-native-explicit-own-foreground-2026-10-16/README.md)。[官方Computer Use](https://learn.chatgpt.com/docs/computer-use)、[PiP使用说明](https://learn.chatgpt.com/use-cases/use-your-computer-with-codex)。
+
+--- 以下完整历史保留，旧“当前”仅为当时记录 ---
+
 <!-- RWI_F50_ERROR_MCP_DEPLOY_CURRENT -->
 <!-- RWI_F49_HOTKEY_ERROR_CURRENT -->
 ## 当前：无人配合Command+Tab与拒绝已验；错误呈现MCP已部署，新进程验到 · 2026-10-16
