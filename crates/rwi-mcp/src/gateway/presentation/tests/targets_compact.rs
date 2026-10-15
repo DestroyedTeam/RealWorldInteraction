@@ -57,13 +57,30 @@ fn targets_compact_keeps_exact_routing_permission_fence_foreground_and_capabilit
         "current_foreground",
         "permissions",
         "atomicity",
-        "background_input",
         "pointer_feedback",
         "mapping",
         "custom_future_policy",
     ] {
         assert_eq!(caps[key], raw["targets"][0]["capabilities"][key], "{key}");
     }
+    let mut background = raw["targets"][0]["capabilities"]["background_input"].clone();
+    let keyboard_detail = background["receiver_preparation"]
+        .as_object_mut()
+        .unwrap()
+        .remove("keyboard")
+        .unwrap();
+    assert_eq!(caps["background_input"], background);
+    let reference = out["presentation"]["result_ref"].as_str().unwrap();
+    assert_eq!(
+        cache
+            .read(args(
+                reference,
+                "/targets/0/capabilities/background_input/receiver_preparation/keyboard",
+                0
+            ))
+            .data["value"],
+        keyboard_detail
+    );
     assert_eq!(caps["focus_element"]["implemented"], true);
     assert_eq!(caps["focus_element"]["available"], false);
     assert_eq!(caps["focus_element"]["attribute"], "AXFocused");
@@ -212,5 +229,266 @@ fn targets_compact_legacy_text_projection_and_unknown_device_shapes_stay_compati
     assert_eq!(
         result.data["devices"][0]["adapter_transport"],
         unknown["devices"][0]["adapter_transport"]
+    );
+}
+
+fn targets_known_policy_fixture() -> Value {
+    let mut raw = native_targets_with_known_detail();
+    let policy = json!({
+        "atomicity": "pre/post validation; neither CGEventPost nor property equality proves the business goal",
+        "native_semantic_actions": ["AXPress", "AXCancel"],
+        "unsupported": ["clipboard", "unattended unlock"],
+        "background_input": {
+            "foreground_transition_scope": "no explicit system-frontmost request; not target AppKit key/order preservation",
+            "receiver_preparation": {
+                "keyboard": "legacy AppKit activation when inactive after payload/focus validation"
+            },
+            "application_effect_attested": false,
+            "native_acknowledgement": false
+        },
+        "local_pixel_grounding": {
+            "evidence": "stable textured local bitmap patch plus native input checks"
+        },
+        "paired_pointer_drag": {
+            "delivery": "initiating PID/window addressed; native drag manager owns destination routing",
+            "endpoint_authority": "two independently resolved input targets; same native desktop/shared lease"
+        },
+        "pointer_move": {
+            "background_appkit_tracking_experimental": {
+                "registration": "caller must establish exact currently registered legacy owner/tag/process/window lifetime",
+                "scope": "experimental registered legacy owner calibration only; not generic modern tracking/tooltip",
+                "implemented": true,
+                "available": false,
+                "reason": "registered_owner_required",
+                "generic_cold_hover_verified": false,
+                "user_data": "NULL only",
+                "tracking_number_encoding": "canonical nonzero signed i64 decimal string (opaque NSInteger)",
+                "value": {
+                    "delivery": "background_appkit_tracking_experimental",
+                    "tracking_number": "9007199254740993"
+                }
+            },
+            "background_cooperative_tracking_experimental": {
+                "mutual_peer": "kernel PID + audit token/pidversion + native process birth, repeated before execution",
+                "registration_lifetime": "owner UI reservation; caller integration must defer close/reparent/remove while busy",
+                "route": "native-authenticated cooperative owner; synchronous owner-main-thread NSApplication.sendEvent",
+                "implemented": true,
+                "available": true,
+                "unknown_registration": "fail_closed",
+                "ordinary_third_party_or_modern_tracking_verified": false,
+                "raw_tag_lane_enabled": false,
+                "retry_input": false,
+                "value": {
+                    "delivery": "background_cooperative_tracking_experimental"
+                }
+            },
+            "foreground_system": {
+                "goal_verification": "independent; not guaranteed tracking or tooltip",
+                "requires": "fresh grounded reference + shared input lease + exact current foreground + idle HID + existing post/listen permissions",
+                "implemented": true,
+                "native_acknowledgement": false,
+                "value": {
+                    "delivery": "foreground_system",
+                    "expected_foreground": "fresh exact selected-window tuple from current_foreground"
+                }
+            },
+            "implemented": true,
+            "default_delivery": "background_window",
+            "event": "mouse_moved",
+            "global_fallback": false
+        },
+        "recovery": "read-only HID + combined session resource state, requiring listen-event preflight and agent idle writer proof",
+        "select_window_local": {
+            "kind_support": "fresh exact per-kind settable status required; Main is not a Key fallback"
+        },
+        "semantic_object_identity": {
+            "identity": "retained type-checked AXUIElement plus CFEqual window/object identity and non-reused serial; not attribute hash alone"
+        },
+        "set_text": {
+            "readback": "two full retained-object CFString reads; no DOM or typing claim",
+            "semantics": "entire current ordinary plain CFString replacement; empty clears",
+            "implemented": true,
+            "available": false,
+            "reason": "selected_window_required",
+            "max_utf8_bytes": 16384,
+            "keyboard_events": false,
+            "append_or_caret": false
+        },
+        "text_input": "only the exact focused, explicitly classified non-secure AX text element; unknown classifications remain unavailable",
+        "visual_only_snapshot": {
+            "capture": "exact bound CGWindowID/PID via ScreenCaptureKit",
+            "trigger": "exact AXWindows read CannotComplete after bounded settle, explicitly unsupported/no-value, or complete unambiguous AX search with no match",
+            "implemented": true,
+            "input_reference": false,
+            "controls": false
+        }
+    });
+    for (key, value) in policy.as_object().unwrap() {
+        raw["targets"][0]["capabilities"][key] = value.clone();
+    }
+    raw
+}
+
+#[test]
+fn targets_known_policy_exact_text_is_delayed_but_readiness_syntax_and_binding_stay_exact() {
+    let raw = targets_known_policy_fixture();
+    let out = Presentation::default()
+        .project("computer.targets", DeviceResult::value(&raw))
+        .data;
+    for pointer in [
+        "/atomicity",
+        "/background_input/foreground_transition_scope",
+        "/background_input/receiver_preparation/keyboard",
+        "/local_pixel_grounding/evidence",
+        "/paired_pointer_drag/delivery",
+        "/paired_pointer_drag/endpoint_authority",
+        "/pointer_move/background_appkit_tracking_experimental/registration",
+        "/pointer_move/background_appkit_tracking_experimental/scope",
+        "/pointer_move/background_cooperative_tracking_experimental/mutual_peer",
+        "/pointer_move/background_cooperative_tracking_experimental/registration_lifetime",
+        "/pointer_move/background_cooperative_tracking_experimental/route",
+        "/pointer_move/foreground_system/goal_verification",
+        "/pointer_move/foreground_system/requires",
+        "/recovery",
+        "/select_window_local/kind_support",
+        "/semantic_object_identity/identity",
+        "/set_text/readback",
+        "/set_text/semantics",
+        "/text_input",
+        "/visual_only_snapshot/capture",
+        "/visual_only_snapshot/trigger",
+    ] {
+        assert!(
+            out["targets"][0]["capabilities"].pointer(pointer).is_none(),
+            "{pointer}"
+        );
+    }
+    for key in [
+        "device_id",
+        "context_valid",
+        "native_context",
+        "input_domain_fenced",
+        "capabilities",
+        "live_desktop_facts",
+    ] {
+        assert_eq!(
+            out["devices"][0]["state"][key], raw["devices"][0]["state"][key],
+            "{key}"
+        );
+    }
+    for key in ["target", "identity", "parent_target", "binding"] {
+        assert_eq!(out["targets"][0][key], raw["targets"][0][key], "{key}");
+    }
+    for pointer in [
+        "/current_foreground",
+        "/permissions",
+        "/pointer_feedback",
+        "/mapping",
+        "/custom_future_policy",
+        "/native_semantic_actions",
+        "/unsupported",
+        "/pointer_move/default_delivery",
+        "/pointer_move/event",
+        "/pointer_move/background_appkit_tracking_experimental/value",
+        "/pointer_move/background_appkit_tracking_experimental/tracking_number_encoding",
+        "/pointer_move/background_appkit_tracking_experimental/user_data",
+        "/pointer_move/background_appkit_tracking_experimental/available",
+        "/pointer_move/background_appkit_tracking_experimental/reason",
+        "/pointer_move/background_cooperative_tracking_experimental/unknown_registration",
+        "/pointer_move/background_cooperative_tracking_experimental/raw_tag_lane_enabled",
+        "/pointer_move/foreground_system/value",
+        "/set_text/available",
+        "/set_text/reason",
+        "/set_text/max_utf8_bytes",
+    ] {
+        assert_eq!(
+            out["targets"][0]["capabilities"].pointer(pointer),
+            raw["targets"][0]["capabilities"].pointer(pointer),
+            "{pointer}"
+        );
+    }
+}
+
+#[test]
+fn targets_known_policy_full_cache_and_fingerprint_remain_exact() {
+    let raw = targets_known_policy_fixture();
+    let mut cache = Presentation::default();
+    let out = cache
+        .project("computer.targets", DeviceResult::value(&raw))
+        .data;
+    assert_eq!(cache.entries[0].data, raw);
+    assert_eq!(
+        out["presentation"]["metadata_sha256"],
+        rwi_core::digest(&serde_json::to_vec(&raw).unwrap())
+    );
+    let id = out["presentation"]["result_ref"].as_str().unwrap();
+    for pointer in [
+        "/targets/0/capabilities/recovery",
+        "/targets/0/capabilities/set_text/semantics",
+        "/targets/0/capabilities/pointer_move/background_cooperative_tracking_experimental/route",
+    ] {
+        assert_eq!(
+            cache.read(args(id, pointer, 0)).data["value"],
+            *raw.pointer(pointer).unwrap()
+        );
+    }
+}
+
+#[test]
+fn targets_known_policy_new_text_null_wrong_types_and_nested_unknowns_are_not_removed() {
+    for replacement in [
+        json!(null),
+        json!(false),
+        json!(17),
+        json!({"future":null}),
+        json!("future policy wording"),
+    ] {
+        let mut raw = targets_known_policy_fixture();
+        raw["targets"][0]["capabilities"]["recovery"] = replacement.clone();
+        raw["targets"][0]["capabilities"]["pointer_move"]["background_cooperative_tracking_experimental"]
+            ["route"] = replacement.clone();
+        raw["targets"][0]["capabilities"]["custom_future_policy"]["recovery"] = replacement.clone();
+        let out = Presentation::default()
+            .project("computer.targets", DeviceResult::value(&raw))
+            .data;
+        assert_eq!(out["targets"][0]["capabilities"]["recovery"], replacement);
+        assert_eq!(
+            out["targets"][0]["capabilities"]["pointer_move"]["background_cooperative_tracking_experimental"]
+                ["route"],
+            replacement
+        );
+        assert_eq!(
+            out["targets"][0]["capabilities"]["custom_future_policy"],
+            raw["targets"][0]["capabilities"]["custom_future_policy"]
+        );
+    }
+}
+
+#[test]
+fn targets_known_policy_unknown_adapter_keeps_all_policy_and_unknown_facts() {
+    let mut raw = targets_known_policy_fixture();
+    raw["targets"][0]["capabilities"]["adapter"] = json!("future-native-adapter");
+    let out = Presentation::default()
+        .project("computer.targets", DeviceResult::value(&raw))
+        .data;
+    assert_eq!(out["targets"][0], raw["targets"][0]);
+}
+
+#[test]
+fn targets_known_policy_errors_and_non_targets_are_unchanged() {
+    let raw = targets_known_policy_fixture();
+    let mut error = DeviceResult::value(&raw);
+    error.is_error = true;
+    assert_eq!(
+        Presentation::default()
+            .project("computer.targets", error)
+            .data,
+        raw
+    );
+    assert_eq!(
+        Presentation::default()
+            .project("computer.operation", DeviceResult::value(&raw))
+            .data,
+        raw
     );
 }

@@ -99,6 +99,110 @@ fn native_capability_prose(value: &mut Value) -> bool {
     omitted
 }
 
+// Only these exact native documentation strings are delayed to the existing raw
+// result_ref. Capability state, syntax examples, bounds and unknown values stay inline.
+const KNOWN_POLICY_DETAIL: &[(&str, &str)] = &[
+    (
+        "/atomicity",
+        "pre/post validation; neither CGEventPost nor property equality proves the business goal",
+    ),
+    (
+        "/background_input/foreground_transition_scope",
+        "no explicit system-frontmost request; not target AppKit key/order preservation",
+    ),
+    (
+        "/background_input/receiver_preparation/keyboard",
+        "legacy AppKit activation when inactive after payload/focus validation",
+    ),
+    (
+        "/local_pixel_grounding/evidence",
+        "stable textured local bitmap patch plus native input checks",
+    ),
+    (
+        "/paired_pointer_drag/delivery",
+        "initiating PID/window addressed; native drag manager owns destination routing",
+    ),
+    (
+        "/paired_pointer_drag/endpoint_authority",
+        "two independently resolved input targets; same native desktop/shared lease",
+    ),
+    (
+        "/pointer_move/background_appkit_tracking_experimental/registration",
+        "caller must establish exact currently registered legacy owner/tag/process/window lifetime",
+    ),
+    (
+        "/pointer_move/background_appkit_tracking_experimental/scope",
+        "experimental registered legacy owner calibration only; not generic modern tracking/tooltip",
+    ),
+    (
+        "/pointer_move/background_cooperative_tracking_experimental/mutual_peer",
+        "kernel PID + audit token/pidversion + native process birth, repeated before execution",
+    ),
+    (
+        "/pointer_move/background_cooperative_tracking_experimental/registration_lifetime",
+        "owner UI reservation; caller integration must defer close/reparent/remove while busy",
+    ),
+    (
+        "/pointer_move/background_cooperative_tracking_experimental/route",
+        "native-authenticated cooperative owner; synchronous owner-main-thread NSApplication.sendEvent",
+    ),
+    (
+        "/pointer_move/foreground_system/goal_verification",
+        "independent; not guaranteed tracking or tooltip",
+    ),
+    (
+        "/pointer_move/foreground_system/requires",
+        "fresh grounded reference + shared input lease + exact current foreground + idle HID + existing post/listen permissions",
+    ),
+    (
+        "/recovery",
+        "read-only HID + combined session resource state, requiring listen-event preflight and agent idle writer proof",
+    ),
+    (
+        "/select_window_local/kind_support",
+        "fresh exact per-kind settable status required; Main is not a Key fallback",
+    ),
+    (
+        "/semantic_object_identity/identity",
+        "retained type-checked AXUIElement plus CFEqual window/object identity and non-reused serial; not attribute hash alone",
+    ),
+    (
+        "/set_text/readback",
+        "two full retained-object CFString reads; no DOM or typing claim",
+    ),
+    (
+        "/set_text/semantics",
+        "entire current ordinary plain CFString replacement; empty clears",
+    ),
+    (
+        "/text_input",
+        "only the exact focused, explicitly classified non-secure AX text element; unknown classifications remain unavailable",
+    ),
+    (
+        "/visual_only_snapshot/capture",
+        "exact bound CGWindowID/PID via ScreenCaptureKit",
+    ),
+    (
+        "/visual_only_snapshot/trigger",
+        "exact AXWindows read CannotComplete after bounded settle, explicitly unsupported/no-value, or complete unambiguous AX search with no match",
+    ),
+];
+
+fn native_known_policy_detail(value: &mut Value) -> bool {
+    let mut omitted = false;
+    for &(pointer, expected) in KNOWN_POLICY_DETAIL {
+        let (parent, key) = pointer.rsplit_once('/').expect("static JSON pointer");
+        let Some(object) = value.pointer_mut(parent).and_then(Value::as_object_mut) else {
+            continue;
+        };
+        if object.get(key).and_then(Value::as_str) == Some(expected) {
+            object.remove(key);
+            omitted = true;
+        }
+    }
+    omitted
+}
+
 pub(super) fn project_known_fields(data: &mut Value, omitted: &mut Vec<&'static str>) {
     let native_bindings: Vec<(String, Value)> = data
         .get("targets")
@@ -219,6 +323,7 @@ pub(super) fn project_known_fields(data: &mut Value, omitted: &mut Vec<&'static 
                 continue;
             }
             prose |= native_capability_prose(caps);
+            prose |= native_known_policy_detail(caps);
         }
     }
     if prose {
