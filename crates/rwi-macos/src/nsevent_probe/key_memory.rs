@@ -4,6 +4,7 @@ use objc2_foundation::NSString;
 
 #[link(name = "CoreGraphics", kind = "framework")]
 unsafe extern "C" {
+    fn CGEventCreateCopy(event: *const c_void) -> *mut c_void;
     fn CGEventKeyboardGetUnicodeString(
         event: *const c_void,
         max_length: std::os::raw::c_ulong,
@@ -11,6 +12,10 @@ unsafe extern "C" {
         units: *mut u16,
     );
 }
+
+// AppKit characters can enter non-thread-safe TIS/TSM. This test-only lock
+// covers every key diagnostic call, not production execution or all Rust tests.
+static KEY_DIAGNOSTIC_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 // Detached key diagnostics only. Never resolve a window, create NSApplication,
 // post an event, activate input context, or infer a third-party receiver effect.
@@ -83,6 +88,21 @@ fn quartz_key_snapshot(event: &CGEvent) -> Result<serde_json::Value, &'static st
     )
 }
 
+fn reconstruct_key_memory(event: &CGEvent) -> Result<CGEvent, &'static str> {
+    let data =
+        unsafe { ffi::Cf::owned(CGEventCreateData(std::ptr::null(), event.as_ptr().cast())) }
+            .map_err(|_| "key_serialization_data_unavailable")?;
+    let raw = unsafe { CGEventCreateFromData(std::ptr::null(), data.0) };
+    if raw.is_null() {
+        return Err("key_deserialization_returned_null");
+    }
+    let rebuilt = unsafe { CGEvent::from_ptr(raw.cast_mut().cast()) };
+    if rebuilt.as_ptr() == event.as_ptr() {
+        return Err("key_deserialization_reused_memory");
+    }
+    Ok(rebuilt)
+}
+
 /// Compare the caller's actual Quartz constructor with the public NSEvent key
 /// factory and a genuinely reconstructed serialized event. No delivery occurs.
 pub(crate) fn probe_key_constructor(
@@ -98,11 +118,20 @@ pub(crate) fn probe_key_constructor(
     if current_quartz["unicode_utf16"] != serde_json::json!(expected) {
         return Err("key_probe_current_payload_differs");
     }
+    let _key_diagnostic = KEY_DIAGNOSTIC_LOCK
+        .lock()
+        .map_err(|_| "key_probe_diagnostic_lock_poisoned")?;
     autoreleasepool(|_| {
         let class = event_class()?;
         if class.class_method(sel!(keyEventWithType:location:modifierFlags:timestamp:windowNumber:context:characters:charactersIgnoringModifiers:isARepeat:keyCode:)).is_none() {
             return Err("key_factory_selector_unavailable");
         }
+        // Reconstruct the default CG event before querying AppKit characters;
+        // this prevents a cached local NSString from standing in for transport.
+        let rebuilt_default = reconstruct_key_memory(current)?;
+        let default_serialized_quartz = quartz_key_snapshot(&rebuilt_default)?;
+        let default_rebuilt_ns = bridge_to_appkit(&rebuilt_default)?;
+        let default_serialized_appkit = appkit_key_snapshot(&default_rebuilt_ns)?;
         let original_ns = bridge_to_appkit(current)?;
         let current_appkit = appkit_key_snapshot(&original_ns)?;
         let characters = NSString::from_str(text);
@@ -135,11 +164,41 @@ pub(crate) fn probe_key_constructor(
         let serialized_quartz = quartz_key_snapshot(&rebuilt)?;
         let restored = bridge_to_appkit(&rebuilt)?;
         let restored_appkit = appkit_key_snapshot(&restored)?;
+        // Independent factory CG copy + only an explicit Unicode-field override.
+        // Do not restore source/flags/window or infer delivery from this memory.
+        let copy_raw = unsafe { CGEventCreateCopy(quartz.as_ptr().cast()) };
+        if copy_raw.is_null() {
+            return Err("key_factory_copy_unavailable");
+        }
+        let overridden = unsafe { CGEvent::from_ptr(copy_raw.cast()) };
+        if overridden.as_ptr() == quartz.as_ptr() {
+            return Err("key_factory_copy_aliases_original");
+        }
+        overridden.set_string_from_utf16_unchecked(&expected);
+        let override_quartz = quartz_key_snapshot(&overridden)?;
+        let override_ns = bridge_to_appkit(&overridden)?;
+        let override_appkit = appkit_key_snapshot(&override_ns)?;
+        let override_rebuilt = reconstruct_key_memory(&overridden)?;
+        let override_serialized_quartz = quartz_key_snapshot(&override_rebuilt)?;
+        let override_rebuilt_ns = bridge_to_appkit(&override_rebuilt)?;
+        let override_serialized_appkit = appkit_key_snapshot(&override_rebuilt_ns)?;
+        if quartz_key_snapshot(&quartz)? != factory_quartz {
+            return Err("key_factory_copy_changed_original");
+        }
+
         Ok(
             serde_json::json!({"probe":"key_constructor_and_serialization_memory_only",
             "expected_utf16":expected,"current":{"quartz":current_quartz,"appkit":current_appkit},
             "public_nsevent":{"constructed":constructed,"quartz":factory_quartz,
                 "serialized_quartz":serialized_quartz,"serialized_appkit":restored_appkit},
+            "default_serialized":{"quartz":default_serialized_quartz,
+                "appkit":default_serialized_appkit,"independent_memory":true,
+                "before_original_appkit_character_getters":true},
+            "factory_copy_unicode_override":{"quartz":override_quartz,"appkit":override_appkit,
+                "serialized_quartz":override_serialized_quartz,
+                "serialized_appkit":override_serialized_appkit,"independent_copy":true,
+                "original_factory_quartz_unchanged":true,"unicode_override_only":true,
+                "source_or_flags_or_window_restored":false},
             "factory_selected_metadata_survived_serialization":constructed==restored_appkit,
             "independent_deserialized_memory":true,"window_created":false,
             "post_calls":0,"activation_calls":0,"warp_calls":0,"capture_calls":0,

@@ -287,3 +287,61 @@ mod f28_key_pair_source_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod f29_key_serialization_tests {
+    use super::*;
+
+    #[test]
+    fn f29_key_serialization_default_and_factory_override_actual_memory_matrix() {
+        let mut reports = Vec::new();
+        for text in ["A", "后", "\u{301}", "🙂", "𝄞", "👩", "\u{200d}", "💻"] {
+            let units: Vec<u16> = text.encode_utf16().collect();
+            let (down, up) = key_events(0, CGEventFlags::empty(), Some(&units)).unwrap();
+            for event in [&down, &up] {
+                let report = crate::nsevent_probe::probe_key_constructor(event, text).unwrap();
+                assert_eq!(report["default_serialized"]["independent_memory"], true);
+                assert_eq!(
+                    report["factory_copy_unicode_override"]["independent_copy"],
+                    true
+                );
+                assert_eq!(
+                    report["factory_copy_unicode_override"]["original_factory_quartz_unchanged"],
+                    true
+                );
+                assert_eq!(
+                    report["factory_copy_unicode_override"]["unicode_override_only"],
+                    true
+                );
+                assert_eq!(
+                    report["current"]["quartz"]["unicode_utf16"],
+                    serde_json::json!(units)
+                );
+                assert_eq!(report["post_calls"], 0);
+                assert_eq!(report["window_created"], false);
+                assert_eq!(report["receiver_effect_verified"], false);
+                reports.push(report);
+            }
+        }
+        assert_eq!(reports.len(), 16);
+        println!(
+            "F29_KEY_SERIALIZATION {}",
+            serde_json::json!({"cases":reports})
+        );
+    }
+
+    #[test]
+    fn f29_key_serialization_rejects_wrong_or_multiscalar_fixture_before_appkit() {
+        let (down, _) = key_events(0, CGEventFlags::empty(), Some(&[65])).unwrap();
+        for text in ["", "AB", "🙂🙂"] {
+            assert_eq!(
+                crate::nsevent_probe::probe_key_constructor(&down, text),
+                Err("invalid_key_constructor_fixture")
+            );
+        }
+        assert_eq!(
+            crate::nsevent_probe::probe_key_constructor(&down, "后"),
+            Err("key_probe_current_payload_differs")
+        );
+    }
+}
