@@ -1,3 +1,65 @@
+<!-- RWI_F33_CACHED_LIVE_IMAGE_CURRENT -->
+## 当前：真实MCP子进程＋固定证书TLS的图像协议5项通过；真正Host画面仍未完成 · 2026-10-16
+
+- **实际链路测试**：新增crates/rwi-mcp/tests/live_image_transport.rs，真实启动rwi-mcp子进程、JSON-RPC协商MCP Apps、临时私有目录内独立TLS synthetic peer。5项覆盖app-only工具与伪页拒绝、非Apps Host零RPC拒绝、精确PNG仅_meta且unchanged不重复图片/关闭撤销、held图像RPC期间hide/resume仍可返回并丢弃旧像素、Agent instance变化在固定连接transport先拒绝。仅synthetic 1×1 PNG，绝非用户截图或原生兼容阳性。
+- **首次失败保留**：初轮4通过1失败/101，错误预期以为变化instance会抵达Gateway response_revoked；实际Native Link连接绑定在client.rs342–344先以device_reply_binding拒绝，Gateway诚实回live_image_transport_unavailable。只改这一测试的确切错误预期并保留无_meta/仅1次cached RPC断言，不改产品或放宽重放/身份校验；修正后5通过。
+- **真实同输入回滚**：新测试过滤器BASELINE0→MODIFIED5→ROLLBACK0→REAPPLIED5，各退出0。Source470完整fmt/workspace/all-targets-all-features Clippy(-D warnings)/architecture见实际门禁；global原始基线仍81个存在/291个缺席。代码角色延用同一四路径，非新建替代角色。
+- **耗时／输出只按测量范围**：本机synthetic70字节PNG样本模型content+structuredContent合计252 JSON bytes，_meta保存原PNG；测试时钟单次elapsed_ms0只是取整的loopback样本，不能外推原生捕获/实际UI/吞吐，更不是优于Computer Use的证据。没有降分辨率、没有截图重编码，也未新增模型工具图片负担。
+- **交付边界**：本阶段未部署Agent/MCP，无Native窗口/输入/屏幕捕获或真实Host图像渲染；现HTML仍控制卡。下一项仍是真正图像组件与host-only无额外原生层、Host渲染/隐藏恢复/关闭/任务切换及严格chat绑定，不能用这5项替代。Native既有220pt与按钮证据仍保留；用户休息，不请求人工配合。
+- **其余整体验收不丢**：Chrome后台Unicode23/19原缺字、cold hover/modern tooltip、foreground/background/Command+Tab冲突、模态/隐藏、MCP可读性/分层性能、合理commits/公开PR仍在完整计划中，full_goal_complete=false。
+- 实际门禁：/Volumes/ChatGPT/Real World Interaction/work/f33-live-image-transport-2026-10-16/REPAIRED_FULL_REGRESSION_RESULT.json。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F32_CACHED_LIVE_IMAGE_CURRENT -->
+## 当前：MCP组件专用PNG通道源码完成；实际Host播放器与host-only呈现仍待接线 · 2026-10-16
+
+- **中立MCP新增app-only computer.live_panel_image**：仅在Host协商MCP Apps HTML时列出；严格ephemeral view_key/page与独立安全整数image sequence，不接受target/device/capture/input/visible/close等字段。复用已存在context直接发送Agent cached-only computer.live_image，不开新context，不走Prepare/Execute或模型JS fallback。
+- **像素不进入模型文本**：单张image/png≤4MiB，核对base64尺寸／PNG头与尺寸≤2048／byte count／SHA／cursor后，白名单只写tool-result _meta["rwi/live_image"]，content/structuredContent无PNG，无resolver坐标、target、凭据或未知backend字段，也不进入presentation结果缓存。相同cursor只回unchanged。原PNG无重压／降采样，头检查不是完整PNG CRC校验。
+- **可见性与并发**：每Gateway全局2个reader，每页1个inflight、≥250ms间隔，独立图片单调序列不占presence sequence。读取不延长原duration或1500ms presence。页替换、隐藏/过期后再恢复、移除/关闭、context/instance变化会使旧ticket无效；transport等待及PNG转换后再次核对并丢弃迟到响应。RAII释放配额，错误不返回backend原消息/图片；不清input writer/fence或借机capture。
+- **实际源码验收**：新增13项pure MCP page/rate/epoch/envelope测试BASELINE0→MODIFIED13；同四角色独立副本另跑ROLLBACK0→REAPPLIED13。最终Source469完整fmt/workspace/all-targets-all-features Clippy(-D warnings)/architecture门禁见实际结果，旧架构债务不消失、不提高上限。首次fmt1为Rust if结构体literal缺括号；修正后首编译101为synthetic safe-integer负例数组推断i32，改成明确u64后继续。原错误stdout/stderr/退出保留，不伪称首次就过。
+- **仍非完成的Live**：HTML仍是旧控制卡，未添加图像DOM、未请求PiP、未启用host-image无Native overlay模式，也未部署Agent/MCP；真实Host渲染、隐藏恢复/关闭/任务切换与严格active-chat绑定仍未验成。Source门禁不是Host UI阳性。已有Native220pt小层、44pt命中/28pt图标、隐藏/X与原图2048质量证据继续保留；用户无需醒来配合。
+- **其他未完计划完整保留**：Chrome后台Unicode23/19缺字、cold hover/modern tooltip、前后台/Command+Tab冲突、modal/hidden、性能与MCP输出、合理commits/public PR继续。已装Agent34776/85b7cc3b/68f27345与MCP62b、证书/CA/四权限未改；full_goal_complete=false。
+- 实际门禁：/Volumes/ChatGPT/Real World Interaction/work/f32-live-image-mcp-2026-10-16/REPAIRED2_FULL_REGRESSION_RESULT.json。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F31_CACHED_LIVE_IMAGE_CURRENT -->
+## 当前：Agent只读Live图像sideband源码完成；MCP组件图像接线继续 · 2026-10-16
+
+- **新增生产路径**：authenticated Call::Cached computer.live_image，严格target+LiveImageQuery；方法不进入普通模型catalog，不走Prepare/Execute，不在512条execution结果池积存PNG。只返回当前已缓存PNG的image-only白名单，精确保留PNG字节，不回坐标、resolver frame、input引用或配对凭据。
+- **并发／回收**：独立2-reader semaphore不等待input/executor/live-control锁；每context最多16个target限流槽、每target≥250ms。close/reap须图像reader空闲；回包前复核closed。读取不清writer/fence，不capture、不续presence、不续原duration；相同cursor无PNG。Native backend同view/session/generation/1500ms presence/2s cache边界继续适用。
+- **源码验收边界**：11个synthetic Agent测试新增过滤器BASELINE0→MODIFIED11；包含持有input+executor时独立读取、ownership/observe拒绝、strict输入、像素hash/4MiB/尺寸/cursor、并发/限流/关闭、旧context、catalog和input fence。完整实际fmt/workspace/Clippy(all-targets/all-features,-D warnings)/architecture门禁与同四角色副本rollback/reapply证据分别记录；不把fixture阳性当真实应用验收。Describe cached_live_image_v1仅声明RPC支持，Native controller仍需可用。
+- **未伪造部署或UI**：本轮未部署／重启Agent/MCP，已装34776/85b7cc3b/68f27345与MCP62b保持。MCP app-only ephemeral page鉴权、metadata-only像素信封、Host真图像组件/PiP/清图/迟到丢弃与实际Host渲染/任务切换仍未完成；不能称控制卡已是播放器，不能以widgetSessionId冒充active chat id。无需休息用户人工配合。
+- **完整目标不缩减**：Chrome后台Unicode原23/19不符、cold hover/modern tooltip、前后台/Command+Tab冲突、modal/hidden、性能/MCP输出和合理commits/PR继续；F29已排除默认CG序列化截断，不能把诊断结果称修复。full_goal_complete=false。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F30_CACHED_LIVE_IMAGE_CURRENT -->
+## 当前：只读Live PNG缓存后端源码已实现；Agent／MCP／真正Host图像仍待接线 · 2026-10-16
+
+- **实际生产源码基础**：Core新增typed LiveImageQuery／Cursor／Reply与LiveController::latest_image默认unsupported；macOS Native Live用同一Arc共享pending与export PNG，presenter取走pending后仍可读缓存，不拷贝PNG／不改2048源采样质量。只保留一份≤4MiB、接受后≤2000ms的导出缓存；较大／不匹配PNG头的新帧不保留旧导出，不降质兜底。头检查不是完整CRC验证。
+- **已有身份／撤销边界继续**：Desktop controller先核对native user/security session/boot身份，再读取同Host view／generation／sequence。读取不抓屏、不选择窗口、不发键鼠、不续1500ms Host presence租期、不延长Live duration；相同cursor只回元数据。隐藏／暂停／停止／presence到期／source重绑均撤销后续读取；已送给客户端的旧字节不能被魔法抹除，后续UI还必须清图并丢弃迟到响应。
+- **真实源码验收**：Native新过滤器BASELINE0→MODIFIED8，Core0→3；回滚／严格重应用由同一四角色独立副本另实跑。最终Source464 fmt／workspace／all-targets/all-features Clippy(-D warnings)／architecture实际0000，1251 passed／0 failed／11 ignored／44 suites，12项架构债务保留；未提高上限，live.rs保持600行内。
+- **原错误与修正**：首次Native编译101/E0308，原recovery测试从pending取出的值已变Arc，但模拟capture_succeeded仍要求owned VisualCapture。仅此测试用Arc::unwrap_or_clone恢复原producer调用，未放宽产品类型或更改捕获器；原错误、失败测试原字节和Source464 manifest完整保留。
+- **仍未完成，不替代目标**：本轮只落地缓存后端，尚无Agent sideband／MCP app-only image envelope／实际Host图像组件，也未部署或重启Agent/MCP，不能称用户已看见实时画面。下一项复用已存在Call::Cached隔离图像读取与5秒输入，保证不在execution结果池积存PNG；再接独立页能力与限流、真正图像组件／PiP以及Host渲染／隐藏恢复／关闭／任务切换实测。Native小层220pt、隐藏／X与原图质量证据保持。
+- **完整计划继续**：F29已排除默认CG序列化截断假设，F28 Chrome后台23/19原缺字仍未修复；IME接收端、cold hover／modern tooltip、前后台／Command+Tab冲突、modal／隐藏遮挡、分层性能与MCP可读性继续。已装Agent34776／85b7cc3b／68f27345、MCP62b与证书／CA／配对／四权限仍原版本，暂无新Native GUI验收；无需休息用户配合，full_goal_complete=false。
+- 原实际门禁：/Volumes/ChatGPT/Real World Interaction/work/f30-live-image-backend-2026-10-16/REPAIRED_FULL_REGRESSION_RESULT.json；实际8＋3源码测试不等于11个真实应用兼容阳性。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F29_SERIALIZATION_CURRENT -->
+## 当前：默认CG序列化完整、keydown字符完整；不可把Chrome后台缺字归因于本段序列化 · 2026-10-16
+
+- **实际新增Rust诊断**：在test-only nsevent_probe::key_memory::probe_key_constructor中，默认生产CG在任何AppKit字符getter前做CGEventCreateData/CreateFromData独立重建；另对公开factory的CG独立copy只覆写完整UTF16，再做独立序列化。原factory CG字段前后精确相等，nullable／phase／raw UTF16保留。专属Mutex只覆盖测试key诊断的TIS/TSM调用，不串行化全部Rust测试或产品输入。默认key_events函数体未改，0post／0窗口／0激活／0截图。
+- **原始8 scalar×Down/Up共16事件的新结果**：默认CG原／序列化后均16/16完整；默认AppKit与序列化AppKit均8/16，其中**全部8个keydown正确，全部8个keyup回到物理键a**。不是默认keydown的nonBMP被截断。公开factory只桥接原CG Unicode为空，独立copy显式覆写后CG与序列化CG均16/16，AppKit与序列化AppKit12/16：补回4个BMP keyup，但4个nonBMP keyup仍a。不能把12/16内存一致性当应用兼容率或后台IME修复，也不应为这个数盲换默认投递器。
+- **真实源码门与四角色**：Source462 fmt／workspace／all-targets/all-features Clippy(-D warnings)／architecture实际0000，1240 passed／0 failed／11 ignored／44 suites，12项既有架构债务保留。新F29测试BASELINE0→MODIFIED2（旧源无新测试，不是旧功能pass），原同命令独立copy回滚0／再应用2、exit0000；新序列化轴16case存在数0／16／0／16，全部462源原hash恢复后严格patch重应用。364管理路径与global pristine81 PRESENT／283 ABSENT不重基；Root／M拒绝guard保留。
+- **真实运行结果不覆盖**：最新已装Agent34776／85b7cc3b／68f27345与MCP62b、稳定证书／CA／配对／四权限不变；没有部署或重启。F28前台18/18通过、后台23/19缺字的8个原durable与6张原图照旧保留，无输入重放。新内存结果仅排除这段默认CG序列化丢UTF16的假设；未观察Chromium内部调用栈，也不证明跨进程每个字段或IME上下文已通过。
+- **完整后续**：Chrome后台完整IME继续按接收端上下文查证，而不是反复换构造器；Live真正Host内图像／非浏览器标签页观察是并行未完重点，不能把原生220pt层或空控制卡叫Host图像PiP。普通cold hover／modern tooltip、前后台／Command+Tab冲突、modal／隐藏遮挡与分层性能／MCP可读性完整计划不缩减。已有Live220小层／隐藏／恢复／X／capture2048及既有有限实机证据保留，不要求休息中的用户配合。full_goal_complete=false。
+- 本轮原始结果：/Volumes/ChatGPT/Real World Interaction/work/f29-key-serialization-boundary-2026-10-15/MODIFIED_MATRIX_OBSERVED.json；实际全门：/Volumes/ChatGPT/Real World Interaction/work/f29-key-serialization-boundary-2026-10-15/FULL_REGRESSION_RESULT.json。公开PR1与F28旧head5719987双平台green是原版本事实，不冒称覆盖本轮尚未提交源码。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
 <!-- RWI_F28_NATIVE_CURRENT -->
 ## 当前：成对按键源修正已部署；前台Unicode通过，Chrome后台nonBMP仍未修复 · 2026-10-15
 
