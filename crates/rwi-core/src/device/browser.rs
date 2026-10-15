@@ -36,6 +36,42 @@ pub struct SnapshotArgs {
 fn snapshot_nodes() -> u16 {
     128
 }
+/// One explicitly authorized page action, never native coordinates or a script.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Action {
+    Hover,
+    Click,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ActArgs {
+    pub device_id: String,
+    pub session_ref: String,
+    pub request_id: String,
+    pub observation_ref: String,
+    pub element_ref: String,
+    pub action: Action,
+}
+impl ActArgs {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if !super::valid_id(&self.device_id)
+            || !super::valid_id(&self.session_ref)
+            || !self.session_ref.starts_with("browser:")
+            || !super::valid_id(&self.request_id)
+            || !super::valid_id(&self.observation_ref)
+            || !self.observation_ref.starts_with("browser-observation:")
+            || !self.element_ref.strip_prefix('e').is_some_and(|s| {
+                !s.is_empty()
+                    && s.bytes().all(|b| b.is_ascii_digit())
+                    && s.parse::<u16>().is_ok_and(|n| (1..=512).contains(&n))
+            })
+        {
+            return Err("browser_act_arguments_invalid");
+        }
+        Ok(())
+    }
+}
 impl SnapshotArgs {
     pub fn validate(&self) -> Result<(), &'static str> {
         if !super::valid_id(&self.device_id)
@@ -89,6 +125,53 @@ impl SessionArgs {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn f16_browser_content_input_typed_refs_never_accept_native_or_arbitrary_coordinates() {
+        let valid = json!({"device_id":"mac","session_ref":"browser:one","request_id":"once","observation_ref":"browser-observation:one","element_ref":"e1","action":"hover"});
+        let a: ActArgs = serde_json::from_value(valid.clone()).unwrap();
+        assert!(a.validate().is_ok());
+        assert!(super::super::catalog::validate("browser.act", &valid).is_ok());
+        assert!(!super::super::catalog::executable("browser.act"));
+        for key in [
+            "target",
+            "frame",
+            "lease",
+            "backend_node_id",
+            "x",
+            "y",
+            "javascript",
+            "fallback",
+            "profile",
+            "cdp_url",
+        ] {
+            let mut v = valid.clone();
+            v[key] = json!("forged");
+            assert!(serde_json::from_value::<ActArgs>(v).is_err(), "{key}");
+        }
+        for (k, v) in [
+            ("element_ref", json!("e0")),
+            ("element_ref", json!("e513")),
+            ("element_ref", json!("7")),
+            ("session_ref", json!("native:one")),
+            ("observation_ref", json!("native:frame")),
+        ] {
+            let mut bad = valid.clone();
+            bad[k] = v;
+            assert!(
+                serde_json::from_value::<ActArgs>(bad)
+                    .unwrap()
+                    .validate()
+                    .is_err()
+            );
+        }
+        let mut v = valid;
+        v["action"] = json!("drag");
+        assert!(serde_json::from_value::<ActArgs>(v).is_err());
+        let defs = super::super::catalog::definitions();
+        let d = defs.iter().find(|d| d.name == "browser.act").unwrap();
+        assert!(d.writes);
+        assert_eq!(d.input_schema["properties"].as_object().unwrap().len(), 6);
+    }
     #[test]
     fn f15_browser_content_snapshot_typed_read_rejects_native_authority_and_unbounded_size() {
         let valid = json!({"device_id":"mac","session_ref":"browser:one"});

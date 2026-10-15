@@ -40,6 +40,7 @@ pub(super) fn policy() -> Policy {
             create: true,
             close: true,
             snapshot: false,
+            input: false,
         }],
     }
 }
@@ -276,6 +277,7 @@ async fn f14_browser_two_granted_principals_cannot_close_each_others_session() {
         create: true,
         close: true,
         snapshot: false,
+        input: false,
     });
     let r = runtime(t.path(), Some(grants), starts, closes.clone());
     let a = r.clone().call(&p, create("open-a")).await;

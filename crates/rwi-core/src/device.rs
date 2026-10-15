@@ -77,6 +77,9 @@ pub enum Call {
     BrowserSnapshot {
         arguments: browser::SnapshotArgs,
     },
+    BrowserAct {
+        arguments: browser::ActArgs,
+    },
     OpenContext,
     CloseContext,
     /// Metadata-only acceptance. No native calls or input-resource acquisition.

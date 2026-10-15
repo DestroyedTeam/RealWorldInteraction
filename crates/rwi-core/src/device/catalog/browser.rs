@@ -4,6 +4,15 @@ use super::ToolDefinition;
 pub(super) fn definitions() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
+            name: "browser.act",
+            description: "Hover or single left click within one Agent-owned page. Requires an explicit input grant plus a fresh browser.snapshot observation_ref and element_ref; consumes that observation. Stable request_id, query the ORIGINAL via browser.session after uncertainty. Rechecks exact document, viewport, node, disabled state and hit target before CDP input. No JS, native lease/frame, OS cursor, activation, scrolling, user browser attach, fallback or replay. Receipt is not a verified page effect; take a new snapshot. Not Native hover, browser toolbar or OS dialogs.",
+            input_schema: serde_json::to_value(schemars::schema_for!(
+                crate::device::browser::ActArgs
+            ))
+            .unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
             name: "browser.snapshot",
             description: "Read bounded main-document content and original viewport PNG from an exact owned browser.session. Requires separate explicit snapshot grant, not Native TCC or lifecycle-only permission. Returns AX nodes, CSS-document rectangles, document identity and honest partial/nonatomic coverage. No activation, user browser attach, JS, native frame or input authority; not browser chrome/OS dialogs or hover/click. A screenshot is not proof an action succeeded.",
             input_schema: serde_json::to_value(schemars::schema_for!(

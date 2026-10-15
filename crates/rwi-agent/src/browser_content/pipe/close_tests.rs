@@ -109,6 +109,7 @@ fn f14_browser_graceful_close_reaps_delayed_child_without_rpc_or_signal_replay()
         target: None,
         version: json!({}),
         close_started: false,
+        content_input_uncertain: false,
         signal: SignalState::default(),
         user_uid: uid,
         exit: None,

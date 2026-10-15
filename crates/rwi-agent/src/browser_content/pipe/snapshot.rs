@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 const MAX_PIXELS: u64 = 8_388_608;
 const MAX_DECODE: usize = 32 * 1024 * 1024;
 
-fn target_matches(v: &Value, target: &str, context: &str) -> io::Result<()> {
+pub(super) fn target_matches(v: &Value, target: &str, context: &str) -> io::Result<()> {
     let v = &v["targetInfo"];
     if v["targetId"] != target
         || v["browserContextId"] != context
@@ -17,7 +17,7 @@ fn target_matches(v: &Value, target: &str, context: &str) -> io::Result<()> {
     }
     Ok(())
 }
-fn frame(v: &Value) -> io::Result<Value> {
+pub(super) fn frame(v: &Value) -> io::Result<Value> {
     let f = &v["frameTree"]["frame"];
     for k in ["id", "loaderId", "url"] {
         if !f[k]
@@ -32,7 +32,7 @@ fn frame(v: &Value) -> io::Result<Value> {
     }
     Ok(json!({"frame_id":f["id"],"loader_id":f["loaderId"],"url":f["url"]}))
 }
-fn document(v: &Value) -> io::Result<u64> {
+pub(super) fn document(v: &Value) -> io::Result<u64> {
     let n = &v["root"];
     if n["nodeType"] != 9 {
         return Err(invalid("browser_snapshot_document_root_missing"));

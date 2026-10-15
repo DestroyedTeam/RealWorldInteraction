@@ -25,6 +25,9 @@ pub(super) struct Grant {
     /// Lifecycle observation never silently becomes permission to read page content.
     #[serde(default)]
     pub snapshot: bool,
+    /// Reading or creating a page never silently authorizes input.
+    #[serde(default)]
+    pub input: bool,
 }
 impl Policy {
     pub fn read(config: &Config) -> io::Result<Self> {
@@ -79,6 +82,7 @@ impl Policy {
                     .iter()
                     .any(|p| p.certificate == g.certificate)
                 || (g.create && (!g.close || !g.observe))
+                || (g.input && (!g.snapshot || !g.observe))
             {
                 return Err(io::Error::other("browser_principal_policy_invalid"));
             }

@@ -216,6 +216,10 @@ pub fn definitions() -> Vec<ToolDefinition> {
 }
 pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
     match tool {
+        "browser.act" => {
+            let a: super::browser::ActArgs = serde_json::from_value(args.clone())?;
+            a.validate().map_err(serde::de::Error::custom)
+        }
         "browser.snapshot" => {
             let a: super::browser::SnapshotArgs = serde_json::from_value(args.clone())?;
             a.validate().map_err(serde::de::Error::custom)
@@ -365,6 +369,7 @@ pub fn executable(tool: &str) -> bool {
                 | "computer.cancel"
                 | "browser.session"
                 | "browser.snapshot"
+                | "browser.act"
         )
         && !cached_read(tool)
 }

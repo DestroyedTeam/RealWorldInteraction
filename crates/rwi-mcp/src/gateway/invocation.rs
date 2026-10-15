@@ -77,6 +77,9 @@ impl Gateway {
         if tool == "browser.snapshot" {
             return self.invoke_browser_snapshot(&id, args, context).await;
         }
+        if tool == "browser.act" {
+            return self.invoke_browser_input(&id, args, context).await;
+        }
         let host_cancelled = async {
             if let Some(context) = context {
                 context.ct.cancelled().await;

@@ -1,4 +1,5 @@
 //! Standard MCP adapter over the task-independent device API. No OS FFI.
+mod browser_input;
 mod browser_snapshot;
 mod cancellation;
 #[cfg(all(test, unix))]

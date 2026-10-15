@@ -119,6 +119,7 @@ async fn f15_browser_content_snapshot_exact_owner_closed_expired_and_busy_do_not
             create: false,
             close: false,
             snapshot: true,
+            input: false,
         });
     let a = r.clone().call(&p, tests::create("new")).await;
     let reference = a.data["session_ref"].as_str().unwrap();

@@ -1,4 +1,7 @@
 //! Explicit browser-content lifecycle. Never invokes a native backend, focus or input API.
+mod input;
+#[cfg(test)]
+mod input_tests;
 #[cfg(target_os = "macos")]
 mod pipe;
 mod policy;
@@ -31,6 +34,17 @@ trait ChildHandle: Send {
             "This driver has no content snapshot.",
         )
     }
+    fn act(
+        &mut self,
+        _: &rwi_core::device::browser::ActArgs,
+        _: &input::Grounding,
+        _: u64,
+    ) -> DeviceResult {
+        error(
+            "browser_act_not_implemented",
+            "This driver has no page input.",
+        )
+    }
 }
 struct StartFailure {
     detail: String,
@@ -56,6 +70,7 @@ struct SessionState {
     valid: bool,
     driver: Option<Box<dyn ChildHandle>>,
     expiry_reserved: bool,
+    observation: Option<input::Grounding>,
 }
 pub(crate) struct BrowserRuntime {
     device: String,
@@ -255,6 +270,7 @@ impl BrowserRuntime {
                         valid: true,
                         driver: None,
                         expiry_reserved: false,
+                        observation: None,
                     }),
                 });
                 {
@@ -280,7 +296,7 @@ impl BrowserRuntime {
                         DeviceResult::value(
                             json!({"family":"browser-content","session_ref":reference,"device_id":self.device,"agent_instance":self.instance,"request_id":request_id,
                             "state":"open","expires_after_ms":session.expires.saturating_duration_since(Instant::now()).as_millis(),"owned_process":facts,"background_requested":true,"os_foreground_observed":false,
-                            "native_binding_required":false,"snapshot_implemented":cfg!(target_os="macos"),"snapshot_requires_separate_grant":true,"act_implemented":false,"automatic_replay":false,"goal_verified":false}),
+                            "native_binding_required":false,"snapshot_implemented":cfg!(target_os="macos"),"snapshot_requires_separate_grant":true,"act_implemented":cfg!(target_os="macos"),"act_requires_separate_grant":true,"automatic_replay":false,"goal_verified":false}),
                         )
                     }
                     Err(mut failure) => {

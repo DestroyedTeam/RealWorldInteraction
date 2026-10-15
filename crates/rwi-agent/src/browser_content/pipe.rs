@@ -5,6 +5,9 @@ mod protocol;
 use protocol::{Framer, Pipe};
 #[cfg(test)]
 mod close_tests;
+mod input;
+#[cfg(test)]
+mod input_tests;
 mod snapshot;
 #[cfg(test)]
 mod snapshot_tests;
@@ -133,6 +136,7 @@ pub(super) struct OwnedChrome {
     target: Option<String>,
     version: Value,
     close_started: bool,
+    content_input_uncertain: bool,
     signal: SignalState,
     user_uid: u32,
     exit: Option<Value>,
@@ -198,6 +202,7 @@ impl OwnedChrome {
             target: None,
             version: Value::Null,
             close_started: false,
+            content_input_uncertain: false,
             signal: SignalState::default(),
             user_uid: p.user_uid,
             exit: None,
@@ -284,6 +289,14 @@ impl OwnedChrome {
     }
 }
 impl ChildHandle for OwnedChrome {
+    fn act(
+        &mut self,
+        args: &rwi_core::device::browser::ActArgs,
+        grounding: &super::input::Grounding,
+        node: u64,
+    ) -> rwi_core::device::DeviceResult {
+        self.content_act(args, grounding, node)
+    }
     fn snapshot(
         &mut self,
         args: &rwi_core::device::browser::SnapshotArgs,

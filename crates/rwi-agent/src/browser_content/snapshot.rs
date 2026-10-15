@@ -92,6 +92,7 @@ impl BrowserRuntime {
                     "No content request was sent.",
                 );
             }
+            state.observation = None;
             let Some(driver) = state.driver.as_mut() else {
                 return error("browser_session_not_ready", "No content driver is ready.");
             };
@@ -112,6 +113,8 @@ impl BrowserRuntime {
                     "browser-observation:{}",
                     uuid::Uuid::new_v4().simple()
                 ));
+                state.observation = input::Grounding::retain(&mut r);
+                r.data["content_input_reference_ready"] = json!(state.observation.is_some());
             }
             r
         })
