@@ -23,7 +23,7 @@ fn state() -> State {
             pixels: [1200, 800],
             rotation: 0.,
         },
-        latest: Some(serde_json::from_value(json!({
+        latest: Some(Arc::new(serde_json::from_value(json!({
             "identity":{"host":"fixture","guest":null,"session":"s","seat":"s","desktop":"d"},
             "window":{"window":"w","pid":1,"process_created":1,"native_epoch":"e"},
             "source_rect":{"x":0,"y":0,"width":1,"height":1},"source_pixel_size":[1,1],"image_size":[1,1],
@@ -31,7 +31,8 @@ fn state() -> State {
             "assurance":"fixture","atomicity":"fixture","normalization":"fixture",
             "feedback":{"requested":"exclude","suspension_ticket":null,"exclusion":"fixture","before_copy":null,"after_copy":null,"after_release":null},
             "details":{}
-        })).unwrap()),
+        })).unwrap())),
+        export_latest: None,
         metadata: json!({"window":"old"}),
         captured: 0,
         presented: 0,
@@ -431,7 +432,7 @@ fn successful_same_source_frame_clears_recovery_after_validation() {
         "window resized during read",
     ));
     assert!(s.accepts(s.generation));
-    s.capture_succeeded(frame);
+    s.capture_succeeded(Arc::unwrap_or_clone(frame));
     assert_eq!(s.mode, Mode::Running);
     assert_eq!(s.source_retry_count, 0);
     assert!(s.last_error.is_none() && s.last_error_detail.is_none() && s.source_retry_at.is_none());

@@ -13,6 +13,7 @@ mod engine_observation;
 #[cfg(test)]
 mod journal_tail_regression;
 mod live;
+pub mod live_image;
 mod pixel_anchor;
 mod visual;
 pub use checked_action::CheckedAction;

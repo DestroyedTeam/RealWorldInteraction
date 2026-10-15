@@ -19,6 +19,16 @@ pub enum LiveAction {
 /// must revoke it when its owning session/binding is retired. Presence sequences
 /// and expiry remain native checks, not facts inferred from an input operation.
 pub trait LiveController: Send + Sync {
+    /// Read an already-owned cached PNG only; never capture or renew presence.
+    fn latest_image(
+        &self,
+        _: crate::live_image::LiveImageQuery,
+    ) -> Result<crate::live_image::LiveImageReply> {
+        Err(fault(
+            "capability_unavailable",
+            "Cached Live image export is not implemented on this backend.",
+        ))
+    }
     fn control(&self, action: LiveAction) -> Result<serde_json::Value>;
     fn view_update(&self, update: LiveViewUpdate) -> Result<serde_json::Value>;
 }

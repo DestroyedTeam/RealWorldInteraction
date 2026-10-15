@@ -1,4 +1,5 @@
 //! Context-owned preview workers. Only the AppKit presenter touches windows.
+mod image;
 mod presenter;
 mod stop_drain;
 mod view_gate;
@@ -52,7 +53,8 @@ struct State {
     options: LiveOptions,
     display: Display,
     deadline: Instant,
-    latest: Option<VisualCapture>,
+    latest: Option<Arc<VisualCapture>>,
+    export_latest: Option<image::CachedFrame>,
     metadata: Value,
     captured: u64,
     presented: u64,
@@ -113,6 +115,8 @@ impl State {
         self.reset_source_recovery();
         self.metadata = json!({"window":frame.window,"title":frame.details["title"],"display":frame.details["display"],"captured_unix_ms":frame.captured_unix_ms,"image_size":frame.image_size,"family":frame.details["family"]});
         self.captured += 1;
+        let frame = Arc::new(frame);
+        self.export_latest = image::CachedFrame::new(self.generation, self.captured, frame.clone());
         self.latest = Some(frame);
         self.last_error = None;
     }
@@ -122,6 +126,7 @@ impl State {
         }
         self.generation = self.generation.wrapping_add(1);
         self.latest = None;
+        self.export_latest = None;
     }
     fn native_pending(&self) -> bool {
         self.native_operation
@@ -283,6 +288,7 @@ impl Session {
                 options,
                 display,
                 latest: None,
+                export_latest: None,
                 metadata: Value::Null,
                 captured: 0,
                 presented: 0,

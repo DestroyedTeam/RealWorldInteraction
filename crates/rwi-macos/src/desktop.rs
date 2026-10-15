@@ -52,6 +52,21 @@ struct DesktopLiveControl {
     session: Option<Arc<crate::live::Controls>>,
 }
 impl LiveController for DesktopLiveControl {
+    fn latest_image(
+        &self,
+        query: rwi_core::live_image::LiveImageQuery,
+    ) -> Result<rwi_core::live_image::LiveImageReply> {
+        if session::identity_for_uid(self.uid)? != self.identity {
+            return Err(fault(
+                "session_mismatch",
+                "Native session changed; no cached image export.",
+            ));
+        }
+        self.session
+            .as_ref()
+            .ok_or_else(|| fault("live_not_started", "Start an owned Live preview first."))?
+            .latest_image(query)
+    }
     fn control(&self, action: LiveAction) -> Result<Value> {
         if action == LiveAction::Start {
             return Err(fault(
