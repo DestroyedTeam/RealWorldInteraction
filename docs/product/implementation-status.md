@@ -1,3 +1,28 @@
+<!-- RWI_F89_LIVE_FOCUS_CURRENT -->
+## 当前：Live 控制已自主实机复验；关闭焦点修复已部署，完整余项继续 · 2026-10-16
+
+- **F85安装版Native复验完成**：使用当时生产a72…的独立真实Rust MCP进程与新虚拟屏测试窗口60703/window2790，等待10500ms后过期绑定→同身份新目录准备成功；原图/独立targets/解绑、fixture自然退出0、拖拽事件0、原前台不变。不是当前Host已重载的证明，也没有重放F79。
+- **F86真实Host及Native控制**：本任务MCP Apps组件无需人工自行挂载；原生预览实际198×200pt/396×400像素，隐藏→暂停并清图、恢复→同观察继续有图、关闭→stopped/requested/worker_done并清图。源窗口保持到独立语义关闭才退出；绑定释放/请求终态/禁重放/测试进程0，游戏及已有文档未操作。另一次时限到期也已清图。发现真实关闭按钮禁用后DOM焦点落到BODY，未以成功回执掩盖。
+- **F87最小焦点修复**：`live_ui.html::disableControls()`在禁用实际持焦按钮之前同步转到既有状态标题`tabindex=-1`；只处理可见且拥有焦点的本组件，失焦/隐藏/用户已离开时不抢回，focus异常不阻止单次关闭。canonical资源v4，v1-v3别名仍返回完全相同HTML；更新真实Rust stdio版本检查。未新增UI/文案/状态，不替用户选择尚未批准的材质方案。
+- **同输入回归与可逆性**：冻结探针BODY/v3→H1#state/v4→copy ROLLBACK BODY/v3→reapply H1#state/v4，四次退出0；Node测试15/20/15/20均0。独立IAB对精确旧/新HTML按Enter复现BODY→H1，关闭超时仍保留卡外焦点、唯一关闭/不重试；隔离假响应不连接Agent，不冒充Codex Host或VoiceOver。Source481四门fmt/workspace/all-targets-all-features Clippy-Dwarnings/架构均0，1344pass/11ignored/48suites。383角色、全局81存在302不存在、全部481即时原始hash恢复、严格补丁重建、Root/M保护及历史完整性均通过；原始各失败命令及修正保留。
+- **F88已部署不是待安装**：release候选和安装后codesign严格校验0；F56摘要/完整按钮坐标PNG、F77直接/JS精确目录准备、全新Rust资源oracle的v4实际编译HTML与v1-v3一致性，在两套真实MCP子进程全部通过。生产MCP a72…→7f134ddb5ed22b43383bb572f475d5b98c04e190794ec190714210dc7fd62be9，旧文件备份保留；12个受保护文件仅MCP可执行文件改变，Agent/Host/签名密钥/权限/CA/配对/profile均不变。当前聊天仍未证明加载v4，不把文件安装或独立子进程冒充Host新组件渲染。
+- **任务绑定与正式UI验证仍诚实待验**：F86目的任务导航API返回接受，但离开期间原生预览仍显示；未取得独立的实际前端活动任务证明，因此严格任务隐藏绑定未通过也未确诊。Cua拒绝直接操作Codex后未改用RWI/截屏/私有接口绕过。旧UIOS合同当前是Windows且过时，release-check/report均1，未选择方向、无独立保真/正式release资格；本轮仅Mechanical焦点修复和可逆本地开发安装。原生键盘/VoiceOver、真实Host图片/PiP、材质方案仍独立列为未完成。
+- **全计划继续，不需要人工**：两方向拖拽中途Cmd+Tab的F71/F75实机结果保留，但发送时间戳间隔/丢记录不冒充性能通过；Unicode/IME完整KD后缺文字的真实负例、cold-hover、前台冲突/模态/隐藏/层叠、资源与单步耗时/MCP输出仍继续。优先下一项独立自有AppKit窗口Unicode对照，绝不重放原负例或切换用户游戏/文档。旧db641460 head 的CI38821774047现已macOS/Windows均success，只证明旧head，不当成本轮未推送修改的CI。full_goal_complete=false。
+- 报告：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f86-loaded-host-live-controls-2026-10-16/README.md；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f87-live-terminal-focus-2026-10-16/README.md。部署原始证据：/Volumes/ChatGPT/Real World Interaction/work/f88-live-focus-neutral-mcp-deploy-2026-10-16/RESULT.json。继续沿用公开仓库与PR1，合理批量提交，不每次操作触发Action。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+<!-- RWI_F84_DEPLOYED_SELECTION_CURRENT -->
+## 当前：目录过期修复已部署为生产MCP文件；真实Native候选闭环与一次批量推送完成 · 2026-10-16
+
+- **F81实际部署，不止构建**：Source481 release build0，候选和安装后codesign --verify --strict均0；F56原snapshot摘要/完整按钮坐标PNG协议与F77新exact-selection直接/JS协议，在候选及安装后的真实MCP子进程各自全部通过。用户级适配器SHA4ec…→a72a52847b8d3342603a08bfd9f35344e61d4a43dd191df63069121efffc5dca，旧文件备份保留。12个受保护文件仅MCP executable改变；Agent仍97795/dc4e…，不重启Agent/Codex、不改签名密钥/权限/CA/配对/profile/Host配置。当前聊天旧工具进程未证明刷新，不把磁盘部署冒充Host已加载。
+- **实机与回滚行为明确**：F79B真实Native专用虚拟屏窗口等待10500ms超过目录TTL后，仅一个客户端attach调用，内部原生过期拒绝→同PID/window/observed epoch新目录→绑定成功，独立targets/原图/解绑及进程自然0清理通过，键鼠工具调用0，前台11924/window421未变。该37ms只是本次Rust客户端完整attach往返，含原拒绝/重发现/绑定，不外推CPU、模型准确率或一般性能优势。Source481完整门1344pass/11ignored/48suites不变；同冻结输入BASELINE过期拒绝→MODIFIED直接/JS自动准备成功→copy ROLLBACK恢复拒绝→严格reapply成功，child全0、过滤0/14/0/14、退出全0。相同四角色383/全局81存在302不存在继续保留原始字节和全部历史。
+- **一次批量推送已实际完成**：已验测试器622ec13、状态77b7ae2、新MCP修复139824db、当前记录db641460四个逻辑提交，仅一次普通push；远程分支精确head db641460b502a6253fcb562148a03c037c14802e已独立回读。第一次紧接push的GraphQL PR读到旧c00355f而使收尾断言1，原响应保留；后续只读REST校验，不重放commit/push，不把旧CI当新head通过。公开仓库与既有PR1继续使用，无tag/release/force-push/merge或可见性变更。当前部署后状态文档留作后续合理批次，不为此再单独触发Action。
+- **继续自主验收完整计划**：下一项使用安装版新MCP进程和新的专用虚拟屏窗口复验Native过期绑定，既有F79输入/选择不重放；其后继续小Live按钮/材质/原生键盘与Host图片/PiP/任务绑定、Unicode/IME、cold hover、前后台冲突/模态/隐藏/层叠、资源/耗时/输出。用户休息，不发起人工切窗/选方案/重启请求，不偷偷操作游戏/已有文档，不伪造Host呈现。full_goal_complete=false。
+- 实机图文：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f79-native-expired-window-attachment-2026-10-16/README.md；部署：/Volumes/ChatGPT/Real World Interaction/work/f81-selection-refresh-neutral-mcp-deploy-2026-10-16/RESULT.json；公开PR：https://github.com/DestroyedTeam/RealWorldInteraction/pull/1。
+
+--- 以下旧历史按当时状态完整保留 ---
+
 <!-- RWI_F80_SELECTION_RELIABILITY_CURRENT -->
 ## 当前：过期目录自动准备已实现并真实macOS验收；双向切窗及完整余项继续 · 2026-10-16
 
