@@ -1,3 +1,48 @@
+<!-- RWI_F19_TYPED_ACTIVATION_CURRENT -->
+## 当前：F19 两字段前台切窗已部署、真实新 Host 验收闭合；后台未完事项保留 · 2026-10-15
+
+- **实现与输出**：新增 Rust `computer.bring_to_front(target, request_id)`（可选 `include_timings`）。同一个调用内部 fresh observe → exact window resolve → claim → existing native focus_window 一次 → release；未放宽原生身份／前台／HID 守卫，不新增键鼠、unhide／restore、fallback 或 retry。`system_accepted:null` 与 `goal_verified:false`、完整前台身份、原请求及按需详情保留。实测发现的错误标题“Drag in screenshot”已改为“Bring selected window to foreground”，并加入 schema／title 回归断言。
+- **回归／回滚**：唯一 Root Source457；实际 fmt、workspace test、Clippy、architecture ratchet 全 exit0，1202 passed／0 failed／11 ignored／44 suites。架构检查仍有既有债务，不称架构全部完成。原 Source455／最终457／独立恢复副本的功能匹配测试为0／10／0，均exit0，恢复455份原哈希与两项原缺失后重新应用又10项通过；零项是旧版本无新测试，不是旧功能通过证明。标题修正另有10／10／10匹配及恢复哈希证据；原编译101、catalog断言失败与Clippy101均保留。
+- **已部署而非只做探针**：MCP SHA `4f8d203f033db4920d03c721c47c53701be66d4de64ffefefd396dcb7ef1854c`；仅替换Host级MCP。Agent仍27265／064f8fef／c1315be…，签名、CA、配对、TCC及Host配置未变。首次只读烟测因Python默认64KiB reader拒绝66174字节catalog而exit1，MCP子进程实际exit0；改为有界1MiB读者后实际0，未把脚本问题当原生权限失败。最终schema严格必填target／request_id，工具数只作观察，不作验收。
+- **真实 loaded Host，两次指定目标切换**：原聊天未加载新工具，按既有授权新开同项目任务 `01a13f11-9c1a-7dc3-a156-2d7215ff08b7`。虚拟屏UUID重新发现；自有Peer86134／CG1379、Target86150／CG1380分别只调用一次typed新工具，独立 fresh Native foreground 四元组及fixture active／key／frontmost均相符。适配器pre-cache墙钟样本616／549ms，Host调用墙钟622／556ms；每次内部五个RPC各一次，无键鼠事件。相较旧流程减少模型编排步骤，不由两个样本声称CPU或Computer Use性能优势。
+- **效果边界与清理**：原durable请求在detach后仍可查询，terminal／resources_released为true，pending／uncertain为false，禁止重放。两个原生命周期自然exit0、timer close各一次；新完整exact-PID catalog均0，独立ps无两PID，两target已detach。稍后前台回到原窗口，原因unknown；短时独立正例不等于持续占有前台。pid0发现被dispatch前拒绝、日志helper的ReferenceError与误用跨域epoch比较均保留；未归咎Native，也未重放输入。主任务独立消费原件的28项检查实际exit0，两张1320×1104原PNG已重新打开目视核对。
+- **Skill与Live**：macOS Skill补充新工具的显式前台路由，禁止后台输入失败时静默激活；修正“Live max_edge决定面板尺寸”的旧说明，区分源图细节与紧凑面板。既有220×219pt浮层、隐藏／X关闭、原图质量结果保留。本轮未重做Live，更未把MCP Apps可见组件／1500ms presence lease称为严格Host聊天生命周期绑定；Computer Use精确窗口／按钮几何仍未获公开证据，不称1:1。
+- **未完与交付**：后台non-BMP缺字／IME composition、普通第三方冷Native hover／现代可见tooltip、严格Host聊天Live绑定继续在完整计划中，未被本次前台便捷工具替代。无需人工切窗、目视、密码、重启或重新授权。逻辑提交／推送沿用[现有PR1](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)，本批交付与CI只认后续新HEAD原件，不借旧21c15d7c的绿。`full_goal_complete=false`。
+- **原件**：`/Volumes/ChatGPT/Real World Interaction/work/f19-parent-native-audit-2026-10-15/RESULT.json`；时序原图与Host报告目录：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f19-bring-to-front-host-2026-10-15/`。同一永久四角色继续记录源码、文档、Skill与实际部署，旧历史原字节保留。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
+<!-- RWI_F18_CONTROLLED_UNICODE_CURRENT -->
+## 当前：F18 受控前后台 Native Unicode 与两种后台点击已验；问题边界明确保留 · 2026-10-15
+
+- **运行与对象不变**：Root Source455未改，Agent仍27265／064f8fef／c1315be…，MCP dea4204…、稳定签名、CA、配对与Host设置未动；四项权限true、无input fence，结束后仅桌面target。无需人工配合、密码或重启。Root HEAD仍21c15d7c；本轮是实机验收和文档，不冒称已有源码修复或新部署。
+- **四个受控case，同一原HTML与文字**：独立私有Chrome155／独立原生窗口均在虚拟屏；自己的Receiver Peer位于同屏右侧、不遮挡输入框。测试文字为 `RWI 中λ🙂𝄞 é👩‍💻`，14 Unicode scalars／18 UTF16 units／32 UTF8 bytes。没有脚本focus／tested-input value／selection写、AXValue、剪贴板、CDP输入或输入重放；测试HTML只被动记录接收结果。
+- **前台完整Unicode实机正例**：单次type_text，307ms为该次适配器墙钟样本；独立Native AX值与1920×1440原图均完整相同，页面D1 F1、K14 U14 B14 I14 C0 L18。前后完整OS前台tuple均为同一56193／CG1221。原focus setter即时partial仍保留，后续fresh snapshot后才独立请求输入；不是把partial改写为Ready。C0意味着未验IME预编辑composition，不泛化所有框架。
+- **后台仍丢失四个non-BMP**：自己的Peer56183／CG1227前台tuple前后完全相同、active/key均true；Chrome56856／CG1238只做AX局部focus后，单次相同type_text返回321ms，但实际值为 `RWI 中λ é‍`，D0 F1、K14 U14 B10 I10 C0 L10。四个非BMP字符都没入值，结合字符及ZWJ仍保留。前后台各自实际trace均有ImeCommitText **message4／reply4**，且各trace仅本例一个Browser PID。是提交链／焦点差异的更强边界证据，仍不把未记录的Blink focus布尔值臆断成已证明根因；完整后台键盘目标未通过。
+- **普通点击与显式NSEvent点击负例**：新窗口57764／CG1252默认pointer click一次、59169／CG1269的background_public_appkit_experimental一次，都未建立字段焦点，独立状态均D0 F0 K0 U0 B0 I0 C0 L0，OS前台仍Peer。普通case的测试编排误用substring F1，匹配到了前缀F18，错误尝试输入；Native守卫以keyboard_target_not_focused在dispatch前拒绝，native_dispatch_entered=false，无输入。错误原件保留；新独立public case改用完整单词正则，正确跳过键盘，无fallback或重试。不能把测试编排错误归为MCP传输失败，也不能把click回执当焦点成功。
+- **清理和验证**：四次原生AXPress close各一次；即时discover仍1、稍后新的完整discover全部0，未补点关闭。全部5个窗口target已detach。Peer自然计时退出0；精确自有Chrome父进程TERM后，117个trace／Peer PID全部ps absent；Chrome进程exit status仍unknown，不把open／kill的0代替它。固定验核26项全部成立、进程exit0，是已观测正／负结果的闭合，不是全功能通过。10张原始PNG保持1920×1440、未编辑或降质；两张关键原图已实际目视核对。全Native效果均来自真实loaded Host RWI工具，不是stdio smoke。
+- **后续实现而非遗忘问题**：本轮切窗每次需要snapshot／foreground查询／resolve／claim／focus／release／再读等8个Host调用，临时编排负担已被实际记录。下一项F19将在唯一Root用Rust补computer.bring_to_front的两字段内置封装，复用现有原生focus_window和严格前台／HID／lease／noReplay守卫；这只是减少调用与出错面，不当后台Unicode修复。后台接收准备假设必须另立显式、可回滚实验，不能偷偷激活全局窗口、拆surrogate或用AXValue替代键盘。
+- **全范围保留**：Live 220×219、小窗隐藏／X关闭及源质量的既有实证保持；严格Host聊天生命周期、普通第三方cold Native hover／现代tooltip、完整后台Unicode／composition仍未完成。原F16 pre_press／Receipt::uncertain及1192 passed门禁、同输入BASELINE/MODIFIED/ROLLBACK=0/2/0 tests且exit均0沿用原件，不重跑Cargo充作新结论。full_goal_complete=false。
+
+[本轮原件与固定验核](/Volumes/ChatGPT/Real World Interaction/work/f18-controlled-unicode-native-2026-10-15/RESULT.json)
+
+--- 以下完整旧历史为as-time原字节，旧Current/pending不覆盖本节 ---
+
+<!-- RWI_F17_NATIVE_UNICODE_TRACE_CURRENT -->
+## 当前：F17 自主接收诊断与真实 Native trace 已完成；Unicode 入值仍未通过 · 2026-10-15
+
+- **当前部署不变**：Root Source455未改，HEAD仍21c15d7c；Agent c1315be…／MCP dea4204…、稳定证书、配对及Host配置未变。四项权限仍true，无input fence，仅桌面target保留；无需人工配合或重启。本轮没有把测试脚本当生产后端，也没有操作游戏、飞书或用户文档。
+- **新 AppKit 实验 exit0**：同私有CG来源、key0与完整UTF16，在未激活、未显示、未makeKey的自有NSTextView上，λ和🙂各一次经正常interpretKeyEvents→insertText，最终值分别[955]和[55357,56898]；currentInputContext=null但own inputContext非null。0 OS post／0外部窗口输入；只证明自有内存解释链，不替代真实Chrome或composition。keyup桥接值仍是key0的a，原件保留，不将它臆断为根因。
+- **新实机负例保留**：专用Chrome155／PID49986／CG1162实际位于虚拟屏；真实loaded Host发focus setter一次（原回读partial保留），新snapshot后computer.type_text(🙂)仅一次、返回324ms但goal_verified=false；独立Native两次仍value空。前后采样OS前台49986→11924，页面documentFocused true→false；不是受控FG/BG A/B或连续前台保持证明，不能由请求标签“fg”冒充实测前台。没有AXValue、clipboard、CDP输入或补发。
+- **真正新增定位**：180秒原始Chrome trace共76046事件／14199163 bytes。用同155固定commit的Mojo生成器和template核对SHA256方法hash，在Renderer50010实测ImeCommitText **message=1／reply=1**（不是两次输入），DispatchEvent是down/up各一次。只读trace不含Unicode明文、targetDomID、Blink焦点布尔值；“系统没有传到Chrome／只在sender丢了emoji”已不足以解释本例，但根因未证明，**C3仍未完成**。同版[Mojo生成器](https://chromium.googlesource.com/chromium/src/+/cfaadc5a132d78e1828635aa8405a499f3e14864/mojo/public/tools/bindings/generators/mojom_cpp_generator.py)与[WidgetBase](https://chromium.googlesource.com/chromium/src/+/cfaadc5a132d78e1828635aa8405a499f3e14864/third_party/blink/renderer/platform/widget/widget_base.cc)只是运行证据的解释依据，不把源码分支当已观测focus值。
+- **清理与边界**：实际Native AXPress关闭一次，独立discover完整0窗口、detach完成；对精确自有进程请求TERM后，原trace中55个进程均ps absent，Chrome进程exit status仍unknown（不把open／kill的0当Chrome exit0）。终态三份原durable结果均finished／resources_released／noReplay，Agent健康。3张1920×1440原始PNG未缩质、未编辑；查看器缩放另列。
+- **继承而不重跑**：上一轮pre_press／Receipt::uncertain修复与1192 passed全门结果保持；同输入BASELINE/MODIFIED/ROLLBACK/REAPPLY=0/2/0/2 tests、exit均0及原hash恢复沿用原证据，非本轮C3成功。本轮只做新诊断与文档事务；原编译101、RTK路径1、ObjC类型101、HTTPS信任错误及上游404均保留，更正没有禁用TLS／类型检查。
+- **Live与下一步**：220×219小浮层、隐藏与X关闭、源截图质量的既有验证保留；严格Host聊天生命周期、普通第三方cold Native hover／现代tooltip、完整Unicode keyboard／composition仍非已完成。下一有限动作是对这一次原trace做请求／回复与原durable结果的固定输入审计，再构造有独立own Peer及紧凑接收计数的受控新case；不重放本次或Source13/14旧输入。full_goal_complete=false。
+
+[本轮原件索引](/Volumes/ChatGPT/Real World Interaction/work/f17-unicode-keyboard-unattended-2026-10-15/RESULT.json)
+
+--- 以下完整旧历史为as-time原字节，旧Current/pending不覆盖本节 ---
+
 <!-- RWI_F16_POINTER_RECHECK_CURRENT -->
 ## 当前：隔离页面悬停／点击已实机验收，移动后布局变化已修正（2026-10-15）
 
