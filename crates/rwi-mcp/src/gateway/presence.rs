@@ -184,7 +184,8 @@ impl Gateway {
         mut args: Value,
         context: Option<RequestContext<RoleServer>>,
     ) -> DeviceResult {
-        if args.get("view").is_some_and(|v| !v.is_null())
+        if args.pointer("/options/host_image_only").is_some()
+            || args.get("view").is_some_and(|v| !v.is_null())
             || args
                 .pointer("/options/host_view_id")
                 .is_some_and(|v| !v.is_null())
@@ -511,5 +512,25 @@ mod tests {
         );
         views.remove_target("device:target");
         assert!(views.new_page(&key).is_none());
+    }
+}
+
+#[cfg(test)]
+mod host_image_mode_tests {
+    use super::*;
+    #[tokio::test]
+    async fn f36_host_image_flag_is_reserved_before_any_device_request() {
+        let gateway = Gateway::new(Ok(AdapterProfile::default()));
+        for flag in [json!(true), json!(false), Value::Null] {
+            let r = gateway
+                .host_live(
+                    json!({"target":"fixture","action":"start","options":{"host_image_only":flag}}),
+                    None,
+                )
+                .await;
+            assert!(r.is_error);
+            assert_eq!(r.data["code"], "host_view_reserved");
+            assert!(r.images.is_empty());
+        }
     }
 }

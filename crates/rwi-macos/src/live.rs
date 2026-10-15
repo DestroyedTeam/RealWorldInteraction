@@ -1,5 +1,6 @@
 //! Context-owned preview workers. Only the AppKit presenter touches windows.
 mod image;
+mod presentation_mode;
 mod presenter;
 mod stop_drain;
 mod view_gate;
@@ -51,7 +52,7 @@ struct State {
     generation: u64,
     mode: Mode,
     options: LiveOptions,
-    display: Display,
+    display: Option<Display>,
     deadline: Instant,
     latest: Option<Arc<VisualCapture>>,
     export_latest: Option<image::CachedFrame>,
@@ -229,7 +230,7 @@ impl Session {
                 "Select an application window, not an RWI Agent presenter.",
             ));
         }
-        if !INSTALLED.load(Ordering::Acquire) {
+        if !options.host_image_only && !INSTALLED.load(Ordering::Acquire) {
             return Err(fault(
                 "live_presenter_unavailable",
                 "The Agent main-thread presenter is not installed.",
@@ -241,24 +242,8 @@ impl Session {
                 "Live needs existing ScreenCaptureKit permission.",
             ));
         }
-        let list = displays()?;
-        let matches = list
-            .into_iter()
-            .filter(|d| options.display.matches(d.built_in, d.id, d.uuid.as_deref()))
-            .collect::<Vec<_>>();
-        if matches.len() != 1 {
-            return Err(fault(
-                "live_display_ambiguous",
-                "Select one current preview display by UUID or native id.",
-            ));
-        }
-        let display = matches.into_iter().next().unwrap();
-        if display.rect.w < 300. || display.rect.h < 300. {
-            return Err(fault(
-                "live_display_too_small",
-                "The allocated preview display must fit a 300-point panel.",
-            ));
-        }
+        let display = presentation_mode::preview_display(&options, displays)?;
+
         let mut registry = sessions()
             .lock()
             .map_err(|_| fault("live_state_unavailable", "Preview registry unavailable."))?;
@@ -495,9 +480,9 @@ impl Controls {
             "session_id":format!("live:{}",self.id),
             "status":format!("{:?}",s.mode).to_lowercase(),
             "ownership":"this_MCP_device_context",
-            "presentation":"RWI_Agent_native_nonactivating_panel",
+            "presentation":presentation_mode::description(&s.options),
             "follow":"successful_explicit_bind_window_only; RWI Agent windows excluded",
-            "requested_preview_display":crate::catalog::DisplayRecord::from_native(&s.display),
+            "requested_preview_display":s.display.as_ref().map(crate::catalog::DisplayRecord::from_native),
             "source":s.metadata, "frames_captured":s.captured, "frames_presented":s.presented,
             "capture_pending":s.capture_pending || s.native_pending(), "worker_done":s.worker_done,
             "native_call_pending":s.native_pending(),
@@ -518,7 +503,7 @@ impl Controls {
             "presenter_failure":s.presenter_failure,
             "expires_in_ms":s.deadline.saturating_duration_since(Instant::now()).as_millis(),
             "frame_created":false,"input_authority":false,"input_sent":false,
-            "retention":"one volatile pending frame and one displayed image; no disk recording",
+            "retention":"shared volatile latest PNG cache; optional native displayed image; no disk recording",
             "capture_protection":"not promised; pause clears the preview",
         })
     }
@@ -551,6 +536,11 @@ fn presentation_matches(status: &Value, bounds: Option<crate::geometry::Rect>) -
     }
     if bounds.is_some_and(|bounds| !requested_display_contains(status, bounds)) {
         return false;
+    }
+    if status["presentation"] == presentation_mode::HOST_DESCRIPTION {
+        return !visible
+            && status["presenter_image_present"] == false
+            && status["presenter_window"].is_null();
     }
     if status["presentation_suspended"] == true {
         return !visible && status["presenter_image_present"] == false;

@@ -219,6 +219,11 @@ impl Presenter {
                     }
                 };
                 state.expire();
+                if state.options.host_image_only {
+                    self.panels.remove(&id);
+                    state.release_host_pending_without_overlay();
+                    continue;
+                }
                 if state.mode == Mode::Stopped {
                     self.panels.remove(&id);
                     state.visible = false;
@@ -288,7 +293,11 @@ impl Presenter {
                         let _: () = msg_send![&*panel.window, orderFrontRegardless];
                     }
                 }
-                match panel.check_placement(&state.display, !state.visible) {
+                let Some(display) = state.display.as_ref() else {
+                    state.stop("native_preview_display_missing");
+                    continue;
+                };
+                match panel.check_placement(display, !state.visible) {
                     Ok(true) => {}
                     Ok(false) => {
                         state.visible = unsafe { msg_send![&*panel.window, isVisible] };

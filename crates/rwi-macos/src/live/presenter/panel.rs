@@ -7,12 +7,19 @@ impl Panel {
         state: &State,
         target: &AnyObject,
     ) -> std::result::Result<Self, String> {
+        if state.options.host_image_only {
+            return Err("host_image_native_panel_forbidden".into());
+        }
+        let display = state
+            .display
+            .as_ref()
+            .ok_or("native_preview_display_missing")?;
         unsafe {
             let source_pixels = source_pixels(state);
             let (width, height) = panel_size(
                 state.options.max_edge,
-                state.display.rect.w,
-                state.display.rect.h,
+                display.rect.w,
+                display.rect.h,
                 source_pixels,
             );
             let layout = preview_layout(width, height).ok_or("live_preview_layout_unsupported")?;
@@ -122,8 +129,8 @@ impl Panel {
                 .size
                 .height;
             let frame = rect(
-                state.display.rect.x + state.display.rect.w - width - 24.,
-                primary_height - state.display.rect.y - state.display.rect.h + 48.,
+                display.rect.x + display.rect.w - width - 24.,
+                primary_height - display.rect.y - display.rect.h + 48.,
                 width,
                 height,
             );

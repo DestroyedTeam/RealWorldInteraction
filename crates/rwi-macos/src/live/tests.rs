@@ -10,7 +10,7 @@ fn state() -> State {
         mode: Mode::Running,
         deadline: Instant::now() + Duration::from_secs(1),
         options,
-        display: Display {
+        display: Some(Display {
             id: 1,
             uuid: None,
             built_in: true,
@@ -22,7 +22,7 @@ fn state() -> State {
             },
             pixels: [1200, 800],
             rotation: 0.,
-        },
+        }),
         latest: Some(Arc::new(serde_json::from_value(json!({
             "identity":{"host":"fixture","guest":null,"session":"s","seat":"s","desktop":"d"},
             "window":{"window":"w","pid":1,"process_created":1,"native_epoch":"e"},

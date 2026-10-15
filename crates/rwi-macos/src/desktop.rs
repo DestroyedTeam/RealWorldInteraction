@@ -315,6 +315,7 @@ pub(crate) fn native_capabilities(
         "lock_state":"unknown","live_acceptance":"per_session_status_required",
         "atomicity":"pre/post validation; neither CGEventPost nor property equality proves the business goal"
     });
+    capabilities["live"]["host_image_only"] = json!({"implemented":true,"viewer_display_required":false,"requires_host_view_binding":true,"native_overlay":false,"Host_render_attested":false});
     capabilities["set_text"] = json!({"implemented":true,"available":false,"platform":"macos",
         "api":"AXUIElementSetAttributeValue","attribute":"AXValue","max_setter_attempts":1,
         "semantics":"entire current ordinary plain CFString replacement; empty clears",

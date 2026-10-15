@@ -40,7 +40,9 @@ pub type LiveControllers =
 #[serde(deny_unknown_fields)]
 pub struct LiveOptions {
     /// Explicit display for the user's preview panel, independent of source display.
-    pub display: DisplayTarget,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(required)]
+    pub display: Option<DisplayTarget>,
     #[serde(default = "label")]
     pub label: String,
     /// Capture detail and the preferred size of the native preview panel.
@@ -59,6 +61,10 @@ pub struct LiveOptions {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(skip)]
     pub host_view_id: Option<String>,
+    /// Adapter-only Host pixel delivery, never an implicit native-overlay fallback.
+    #[serde(default, skip_serializing_if = "is_false")]
+    #[schemars(skip)]
+    pub host_image_only: bool,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -84,6 +90,9 @@ fn valid_view_id(value: &str) -> bool {
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
+fn is_false(value: &bool) -> bool {
+    !value
+}
 fn label() -> String {
     "RWI Live".into()
 }
@@ -98,7 +107,24 @@ fn duration() -> u64 {
 }
 impl LiveOptions {
     pub fn validate(&self) -> Result<()> {
-        self.display.validate()?;
+        if self.host_image_only {
+            if self.host_view_id.is_none() || self.display.is_some() {
+                return Err(fault(
+                    "invalid_live_presentation",
+                    "Host images require the adapter-owned view binding and no native viewer display.",
+                ));
+            }
+        } else {
+            self.display
+                .as_ref()
+                .ok_or_else(|| {
+                    fault(
+                        "invalid_live_presentation",
+                        "Native previews need one explicit viewer display.",
+                    )
+                })?
+                .validate()?;
+        }
         if self.additional_windows.len() > 3
             || self
                 .additional_windows
@@ -275,5 +301,60 @@ mod tests {
             serde_json::to_value(LiveAction::Hide).unwrap(),
             serde_json::json!("hide")
         );
+    }
+}
+
+#[cfg(test)]
+mod host_image_mode_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn f36_host_image_contract_needs_owned_binding_not_a_viewer_display() {
+        let v: LiveOptions =
+            serde_json::from_value(json!({"host_image_only":true,"host_view_id":"a".repeat(32)}))
+                .unwrap();
+        v.validate().unwrap();
+        assert!(v.display.is_none());
+        for bad in [
+            json!({"host_image_only":true}),
+            json!({"host_image_only":true,"host_view_id":"a".repeat(32),"display":{"id":1}}),
+            json!({"host_image_only":true,"host_view_id":"invalid"}),
+            json!({}),
+        ] {
+            assert!(
+                serde_json::from_value::<LiveOptions>(bad)
+                    .unwrap()
+                    .validate()
+                    .is_err()
+            );
+        }
+    }
+    #[test]
+    fn f36_host_image_legacy_native_defaults_and_serialization_remain_explicit() {
+        let v: LiveOptions = serde_json::from_value(json!({"display":{"id":1}})).unwrap();
+        v.validate().unwrap();
+        assert!(!v.host_image_only);
+        let v = serde_json::to_value(v).unwrap();
+        assert_eq!(v["display"]["id"], 1);
+        assert!(v.get("host_image_only").is_none());
+        let host: LiveOptions =
+            serde_json::from_value(json!({"host_image_only":true,"host_view_id":"a".repeat(32)}))
+                .unwrap();
+        let host = serde_json::to_value(host).unwrap();
+        assert_eq!(host["host_image_only"], true);
+        assert!(host.get("display").is_none());
+    }
+    #[test]
+    fn f36_host_image_internal_flag_is_not_a_public_model_option() {
+        let s = serde_json::to_value(schemars::schema_for!(LiveOptions)).unwrap();
+        assert!(s["properties"].get("host_image_only").is_none());
+        assert!(s["properties"].get("host_view_id").is_none());
+        assert!(
+            s["required"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("display"))
+        );
+        assert_eq!(s["additionalProperties"], false);
     }
 }

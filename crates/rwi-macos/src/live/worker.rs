@@ -69,13 +69,7 @@ fn run_loop(shared: &Arc<Shared>) {
         drop(state);
         let start = Instant::now();
         let capture = rwi_core::operation::run(&operation, || {
-            displays().and_then(|list| {
-                if !list.contains(&display) {
-                    return Err(fault(
-                        "live_display_changed",
-                        "Preview display topology changed; restart with a fresh display selection.",
-                    ));
-                }
+            presentation_mode::check_topology(display.as_ref(), displays).and_then(|()| {
                 source.live_visual_capture_with_additional(
                     VisualOptions {
                         max_edge: options.max_edge,
