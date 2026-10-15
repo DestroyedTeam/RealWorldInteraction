@@ -7,6 +7,7 @@ mod cancellation_tests;
 #[cfg(all(test, unix))]
 mod control_lane_tests;
 mod convenience;
+mod hotkey_result;
 mod invocation;
 mod numbers;
 use numbers::{numeric_inputs, portable_numbers, schema_numbers};

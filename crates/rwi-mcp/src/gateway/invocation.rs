@@ -23,7 +23,8 @@ impl Gateway {
             return self.host_live(args, context).await;
         }
         let detached = (tool == "computer.detach_window").then(|| args["target"].clone());
-        let result = self.invoke_device(tool, args, context).await;
+        let mut result = self.invoke_device(tool, args, context).await;
+        super::hotkey_result::promote_current_error(tool, &mut result);
         if let Some(target) = detached
             && !result.is_error
             && result.data["detached"] == true
