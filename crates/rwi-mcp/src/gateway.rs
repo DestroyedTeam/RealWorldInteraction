@@ -403,6 +403,7 @@ impl ServerHandler for Gateway {
         tools.push(Tool::new("computer.result", "Read retained original metadata from this adapter's result_ref. No device RPC, capture or input. Use a JSON pointer and array pages; byte_offset=0 exports any large value as bounded UTF-8 JSON chunks. References expire independently of native execution; never replay input to recreate them.", Arc::new(serde_json::to_value(schemars::schema_for!(presentation::ResultArgs)).unwrap().as_object().unwrap().clone())));
         tools.extend(repl::tools());
         tools.extend(convenience::tools());
+        presentation::snapshot_summary::advertise(&mut tools);
         if ui_supported {
             tools.extend(live_ui::tools());
         }
@@ -469,6 +470,11 @@ impl Gateway {
         mut p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        let snapshot_summary =
+            match presentation::snapshot_summary::request(&p.name, &mut p.arguments) {
+                Ok(requested) => requested,
+                Err(error) => return Ok(mcp_result(error)),
+            };
         let requested_text_projection =
             match presentation::targets_text_request(&p.name, &mut p.arguments) {
                 Ok(requested) => requested,
@@ -508,14 +514,16 @@ impl Gateway {
             }
         };
         if convenience::handles(&p.name) {
-            return Ok(mcp_result(
-                self.convenience(
+            let mut result = self
+                .convenience(
                     &p.name,
                     Value::Object(p.arguments.unwrap_or_default()),
                     context,
                 )
-                .await,
-            ));
+                .await;
+            portable_numbers(&mut result.data);
+            let text = presentation::snapshot_summary::project(snapshot_summary, &result);
+            return Ok(mcp_result_with_text_projection(result, text));
         }
         let mut result = self
             .invoke(

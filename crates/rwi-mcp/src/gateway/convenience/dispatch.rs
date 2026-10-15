@@ -173,7 +173,8 @@ impl Gateway {
             "computer.snapshot" => {
                 let a = match serde_json::from_value::<SnapshotArgs>(args) {
                     Ok(a) if (64..=2048).contains(&a.max_edge) && (1..=128).contains(&a.limit) => a,
-                    _ => return invalid("Use max_edge 64..2048 and limit 1..128."),
+                    Ok(_) => return invalid("Use max_edge 64..2048 and limit 1..128."),
+                    Err(error) => return invalid(&error.to_string()),
                 };
                 let observed = call(
                     "computer.observe",

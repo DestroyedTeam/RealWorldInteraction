@@ -7,6 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub(super) mod snapshot_summary;
 mod targets;
 mod targets_summary;
 
