@@ -5,6 +5,9 @@ mod protocol;
 use protocol::{Framer, Pipe};
 #[cfg(test)]
 mod close_tests;
+mod snapshot;
+#[cfg(test)]
+mod snapshot_tests;
 use super::{ChildHandle, StartFailure, policy::Policy};
 use cleanup::{ExitObservation, SignalState, graceful_exit_budget};
 use serde_json::{Value, json};
@@ -281,6 +284,12 @@ impl OwnedChrome {
     }
 }
 impl ChildHandle for OwnedChrome {
+    fn snapshot(
+        &mut self,
+        args: &rwi_core::device::browser::SnapshotArgs,
+    ) -> rwi_core::device::DeviceResult {
+        self.content_snapshot(args)
+    }
     fn facts(&self) -> Value {
         json!({"pid":self.pid,"process_start":self.birth,"process_user_uid":self.user_uid,"executable_sha256":self.image_hash,"profile_kind":"new_exclusive_private","transport":"debugging_pipe","product":self.version["product"],"protocol_version":self.version["protocolVersion"],"stderr":"not_captured","profile_retained_after_close":true,"initial_window_size_requested":[960,720]})
     }

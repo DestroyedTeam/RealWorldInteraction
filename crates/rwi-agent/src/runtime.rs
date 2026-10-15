@@ -186,6 +186,9 @@ impl Runtime {
             Call::BrowserSession { arguments } => {
                 self.browser.clone().call(policy, arguments).await
             }
+            Call::BrowserSnapshot { arguments } => {
+                self.browser.clone().snapshot(policy, arguments).await
+            }
             Call::Describe => {
                 let mut r = self.describe(policy);
                 let context = self.context(peer, token);

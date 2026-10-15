@@ -19,7 +19,7 @@ impl ChildHandle for Fake {
         json!({"process_exit_observed":true,"source":"offline_fake"})
     }
 }
-fn principal(native: bool) -> Principal {
+pub(super) fn principal(native: bool) -> Principal {
     Principal {
         certificate: PeerPin::parse(&"a".repeat(64)).unwrap(),
         journal_identity: None,
@@ -27,7 +27,7 @@ fn principal(native: bool) -> Principal {
         input: native,
     }
 }
-fn policy() -> Policy {
+pub(super) fn policy() -> Policy {
     Policy {
         version: 1,
         user_uid: 501,
@@ -39,10 +39,11 @@ fn policy() -> Policy {
             observe: true,
             create: true,
             close: true,
+            snapshot: false,
         }],
     }
 }
-fn runtime(
+pub(super) fn runtime(
     path: &Path,
     p: Option<Policy>,
     starts: Arc<AtomicUsize>,
@@ -66,7 +67,7 @@ fn runtime(
         }),
     })
 }
-fn create(request: &str) -> SessionArgs {
+pub(super) fn create(request: &str) -> SessionArgs {
     SessionArgs::Create {
         device_id: "mac-test".into(),
         request_id: request.into(),
@@ -274,6 +275,7 @@ async fn f14_browser_two_granted_principals_cannot_close_each_others_session() {
         observe: true,
         create: true,
         close: true,
+        snapshot: false,
     });
     let r = runtime(t.path(), Some(grants), starts, closes.clone());
     let a = r.clone().call(&p, create("open-a")).await;

@@ -35,6 +35,9 @@ impl Runtime {
                 if tool.name == "browser.session" {
                     return self.browser.capability(policy);
                 }
+                if tool.name == "browser.snapshot" {
+                    return self.browser.snapshot_capability(policy);
+                }
                 let control = matches!(
                     tool.name,
                     "computer.targets" | "computer.operation" | "computer.cancel"

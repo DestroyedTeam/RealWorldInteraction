@@ -22,6 +22,9 @@ pub(super) struct Grant {
     pub observe: bool,
     pub create: bool,
     pub close: bool,
+    /// Lifecycle observation never silently becomes permission to read page content.
+    #[serde(default)]
+    pub snapshot: bool,
 }
 impl Policy {
     pub fn read(config: &Config) -> io::Result<Self> {

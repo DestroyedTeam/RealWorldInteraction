@@ -74,6 +74,9 @@ pub enum Call {
     BrowserSession {
         arguments: browser::SessionArgs,
     },
+    BrowserSnapshot {
+        arguments: browser::SnapshotArgs,
+    },
     OpenContext,
     CloseContext,
     /// Metadata-only acceptance. No native calls or input-resource acquisition.

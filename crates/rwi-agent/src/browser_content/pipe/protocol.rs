@@ -1,4 +1,4 @@
-//! JSON/NUL framed pipe protocol; bounded frames and exact reply correlation.
+//! JSON/NUL framed pipe protocol; bounded frames and exact reply/session correlation.
 use super::{CAP, invalid};
 use serde_json::{Value, json};
 use std::{
@@ -8,15 +8,17 @@ use std::{
 };
 pub(super) struct Framer {
     buffered: Vec<u8>,
+    limit: usize,
 }
 impl Framer {
     pub(super) fn new() -> Self {
         Self {
             buffered: Vec::new(),
+            limit: CAP,
         }
     }
     pub(super) fn push(&mut self, bytes: &[u8]) -> io::Result<()> {
-        if self.buffered.len() + bytes.len() > CAP + 8192 {
+        if self.buffered.len() + bytes.len() > self.limit + 8192 {
             return Err(invalid("browser_pipe_buffer_limit"));
         }
         self.buffered.extend_from_slice(bytes);
@@ -25,7 +27,7 @@ impl Framer {
             .iter()
             .position(|b| *b == 0)
             .unwrap_or(self.buffered.len())
-            > CAP
+            > self.limit
         {
             return Err(invalid("browser_pipe_frame_limit"));
         }
@@ -35,7 +37,7 @@ impl Framer {
         let Some(end) = self.buffered.iter().position(|b| *b == 0) else {
             return Ok(None);
         };
-        if end == 0 || end > CAP {
+        if end == 0 || end > self.limit {
             return Err(invalid("browser_pipe_frame_invalid"));
         }
         let value = serde_json::from_slice(&self.buffered[..end])?;
@@ -52,6 +54,15 @@ pub(super) struct Pipe {
 }
 impl Pipe {
     pub(super) fn rpc(&mut self, method: &str, params: Value, until: Instant) -> io::Result<Value> {
+        self.rpc_on(None, method, params, until)
+    }
+    pub(super) fn rpc_on(
+        &mut self,
+        session: Option<&str>,
+        method: &str,
+        params: Value,
+        until: Instant,
+    ) -> io::Result<Value> {
         if self.poisoned {
             return Err(invalid("browser_pipe_poisoned_no_replay"));
         }
@@ -60,7 +71,16 @@ impl Pipe {
             .checked_add(1)
             .ok_or_else(|| invalid("browser_pipe_id_exhausted"))?;
         self.id = id;
-        let mut raw = serde_json::to_vec(&json!({"id":id,"method":method,"params":params}))?;
+        let mut request = json!({"id":id,"method":method,"params":params});
+        if let Some(s) = session {
+            request["sessionId"] = json!(s);
+        }
+        self.framer.limit = if method == "Page.captureScreenshot" {
+            8 * CAP
+        } else {
+            CAP
+        };
+        let mut raw = serde_json::to_vec(&request)?;
         raw.push(0);
         if raw.len() > CAP {
             return Err(invalid("browser_pipe_request_limit"));
@@ -91,7 +111,11 @@ impl Pipe {
             }
             if let Some(v) = self.framer.next()? {
                 if v.get("id").is_some() {
-                    if v["id"].as_u64() != Some(id) {
+                    let same_session = match session {
+                        Some(s) => v.get("sessionId") == Some(&json!(s)),
+                        None => v.get("sessionId").is_none(),
+                    };
+                    if v["id"].as_u64() != Some(id) || !same_session {
                         return Err(invalid("browser_pipe_reply_identity_mismatch"));
                     }
                     if let Some(e) = v.get("error") {

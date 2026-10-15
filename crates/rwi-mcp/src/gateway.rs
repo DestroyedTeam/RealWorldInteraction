@@ -1,4 +1,5 @@
 //! Standard MCP adapter over the task-independent device API. No OS FFI.
+mod browser_snapshot;
 mod cancellation;
 #[cfg(all(test, unix))]
 mod cancellation_tests;
@@ -389,6 +390,7 @@ impl ServerHandler for Gateway {
                     "computer.attach_window" => tool.with_title("Attach independent window"),
                     "computer.detach_window" => tool.with_title("Detach window binding"),
                     "browser.session" => tool.with_title("Owned browser session"),
+                    "browser.snapshot" => tool.with_title("Observe owned browser content"),
                     "computer.targets" => tool.with_title("Inspect paired devices"),
                     "computer.discover" => tool.with_title("Find native windows"),
                     "computer.bind_window" => tool.with_title("Select exact native window"),

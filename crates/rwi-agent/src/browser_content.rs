@@ -2,6 +2,9 @@
 #[cfg(target_os = "macos")]
 mod pipe;
 mod policy;
+mod snapshot;
+#[cfg(test)]
+mod snapshot_tests;
 use crate::{
     config::{Config, Principal},
     ledger::{Ledger, Reservation},
@@ -22,6 +25,12 @@ trait ChildHandle: Send {
     fn facts(&self) -> Value;
     /// At most one CDP close and one own-child kill; later calls only reap.
     fn close(&mut self) -> Value;
+    fn snapshot(&mut self, _: &rwi_core::device::browser::SnapshotArgs) -> DeviceResult {
+        error(
+            "browser_snapshot_not_implemented",
+            "This driver has no content snapshot.",
+        )
+    }
 }
 struct StartFailure {
     detail: String,
@@ -271,7 +280,7 @@ impl BrowserRuntime {
                         DeviceResult::value(
                             json!({"family":"browser-content","session_ref":reference,"device_id":self.device,"agent_instance":self.instance,"request_id":request_id,
                             "state":"open","expires_after_ms":session.expires.saturating_duration_since(Instant::now()).as_millis(),"owned_process":facts,"background_requested":true,"os_foreground_observed":false,
-                            "native_binding_required":false,"snapshot_implemented":false,"act_implemented":false,"automatic_replay":false,"goal_verified":false}),
+                            "native_binding_required":false,"snapshot_implemented":cfg!(target_os="macos"),"snapshot_requires_separate_grant":true,"act_implemented":false,"automatic_replay":false,"goal_verified":false}),
                         )
                     }
                     Err(mut failure) => {
