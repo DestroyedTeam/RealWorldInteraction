@@ -1,3 +1,29 @@
+<!-- RWI_F28_NATIVE_CURRENT -->
+## 当前：成对按键源修正已部署；前台Unicode通过，Chrome后台nonBMP仍未修复 · 2026-10-15
+
+- **新增实机，不用源码测试代替效果**：Agent PID34776／85b7cc3b（signed SHA68f27345…）已沿原24B346证书部署；全局共享input lease排他与current-instance跨context durable终态检查两次均通过。只替换Agent，四项TCC仍true，MCP62b／CA／配对／Host配置不变，无Codex重启或人工配合。排他不等于物理HID／全部Live idle，记录保留此范围。
+- **前台新Native case**：新自有Chrome35489／CG1887、Peer35860／CG1899，均在fresh UUID虚拟屏。显式Peer→Chrome前台，普通pointer一次后typed完整RWI 中λ🙂𝄞 é👩‍💻一次；AX全文18单位、原details和原durable均18/18 match；D1 F1 P1 K14 U14 B14 I14 C0 L18，完整OSFG tuple不变。fixture的AXPress标题只是继承标签，不是本次聚焦方法。
+- **后台新Native case仍失败**：独立新意图显式Peer前台，Chrome保留旧全文／D0 F1；后🙂𝄞只发一次，实际仅追加后。原effect和durable均23/19 value_differs_observed，D0 F1 P1 K17 U17 B15 I15 C0 L19，完整OSFG tuple仍Peer。Shared source修正不能称后台IME修复；没有补发、AXValue／剪贴板／CDP／脚本／切前台兜底。保留F24–26原结果不改写。
+- **清理与真实图像**：8个新请求全部terminal／released／noReplay；两个窗口各Close一次，complete exact-PID目录0后detach。Peer原生命周期exit0、非到期关闭，字段仍空／safe计数0；Chrome核对UID／birth／exe／私有profile后TERM1确认清空，浏览器退出码unknown。6张1920×1440／1320×1104原PNG未重编码，前台和后台全文图已实际查看；工具的显示缩放不改源文件。
+- **源修正原四相保持**：native::keyboard::key_events同pair共享Private source、跨pair独立；实际source相同判据BASELINE／MODIFIED／ROLLBACK／REAPPLIED为0／8／0／8，新测试0／2／0／2、exit0000，独立462源hash恢复再严格patch重应用。全量四门0000／1238 passed／11 ignored／44 suites及12架构债务保持；本次仅文档当前状态追加，Rust462映像未改。永久四角色364与global pristine81／283不重基。
+- **耗时与MCP边界**：本样本前台Host295／adapter290ms，后台510／506ms，不推断CPU或CU性能。当前旧Host compact仍省略text_effect，准确原details和durable已保留；不是重新加载MCP或输出兼容完成。此前测试TIS/TSM并发SIGABRT101与operator参数／fixture目录preflight错误原件均保留，不能一概叫GUI投递错误。
+- **完整后续计划**：先对生产默认CG序列化及factory独立copy＋显式UTF16做真实内存矩阵，再按证据推进后台IME；cold hover／modern tooltip、模态／隐藏遮挡、Command+Tab冲突、严格Host图像Live和分层耗时仍继续。Live220pt双轴／纵向160、44pt hit与28pt绘制、隐藏／恢复／X及capture2048已有证据保留；本轮未假造presence、未称新Host图像Live／严格chat绑定已完成。官方参照不提供CU浮层精确像素规范；无人协作，full_goal_complete=false。
+- [本轮按时序原图与完整实机报告](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f28-key-pair-native-2026-10-15/REPORT.md)；[实际Native事实审计](/Volumes/ChatGPT/Real World Interaction/work/f28-key-pair-source-2026-10-15/native-acceptance/NATIVE_RESULT.json)。合理批次提交遵循PR流程，不为每次对话机械提交。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F28_PAIR_SOURCE_CURRENT -->
+## 当前：按键成对私有源修正，全量源码门通过；部署与真实后台效果仍分开验收 · 2026-10-15
+
+- **生产变更**：唯一输入符号native::keyboard::key_events为一对down/up分配同一个Private source并retain给两个事件，不共用其他pair或全局HID/session表；两事件仍在dispatch前分配，flags／UTF16／原guard与no-replay不变。实际既有F27矩阵8对source_state_id原0/8相同→改后8/8，16事件Unicode原单位均保留。不是资源泄漏、耗时改善或应用接收效果的证明。
+- **真实失败及修正**：首次全量workspace exit101／SIGABRT，原系统崩溃说明TIS/TSM并发调用；栈在新增F28测试的AppKit characters诊断。F28 flags／phase／完整Unicode改为直接有界Quartz字段检查，不再重复进入AppKit输入源；原F27诊断和生产调度未绕过限制。保留原失败源、stdout／stderr／crash及修正命令，不把测试问题写成GUI输入失败。
+- **验收边界**：修正后fmt／workspace／all-targets/all-features Clippy(-D warnings)／architecture实际0000，1238 passed／0 failed／11 ignored／44 suites；仍12项架构债务。新测试BASELINE不存在0→MODIFIED2；独立Source462副本恢复原hash、同输入ROLLBACK0与既有矩阵sameSource0/8，再严格patch重应用2与8/8；永久四角色维持364，global pristine81 PRESENT／283 ABSENT。原Root与安装程序不会被rollback脚本还原。
+- **下一实机动作**：四角色闭合后，沿用本地24B346签名及现有CA／配对，在全局quiescence条件下只替换Agent，fresh loaded RWI新分配Chrome／receiver做前后台完整Unicode与普通按键验收。不重放F24–26的13个请求，不要求睡眠中的用户切窗、展开、重启或授权；部署前仍Agent61077／07ef84f4和MCP62b，真实新版本Native结果待追加原始报告。
+- **完整目标未缩减**：F25前台18/18与F26后台23/19 mismatch均保留，Chrome inactive nonBMP／完整IME仍未修复；默认CG自己的序列化和factory独立copy显式UTF16仍待校准，普通third-party cold hover／modern tooltip／foreign modal／隐藏遮挡／分层性能继续。Live220pt双轴小层、eye.slash／play.fill／xmark、44pt命中和28pt绘制、capture2048不受此改动影响；历史原生Hide／Resume／Close证据保留，不冒称本轮Host图像渲染／严格chat ID绑定通过。full_goal_complete=false。
+- **官方Live参照复核**：OpenAI公开Plugin UI建议采用最小足够界面、PiP少控件、session结束关闭，并提供inline/fullscreen/pip及requestClose；这是Host能力接口，不是Codex Computer Use浮层尺寸或全部按钮规范。没有把空控制卡称图像PiP，也不虚构逐像素复刻。[UI指南](https://developers.openai.com/plugins/concepts/ui-guidelines)；[UI接口](https://developers.openai.com/plugins/reference)。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
 <!-- RWI_F27_KEY_MEMORY_CURRENT -->
 ## 当前：Rust NSEvent／Quartz字符诊断已实现并实测，不能直接用NSEvent桥接替换默认输入 · 2026-10-15
 
