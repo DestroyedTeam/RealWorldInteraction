@@ -1,5 +1,6 @@
 //! Context-owned preview workers. Only the AppKit presenter touches windows.
 mod presenter;
+mod stop_drain;
 mod view_gate;
 mod worker;
 use crate::{
@@ -370,27 +371,23 @@ impl Session {
 }
 impl Controls {
     pub(crate) fn control(&self, action: LiveAction) -> Value {
+        let started = Instant::now();
         if let Ok(mut s) = self.shared.state.lock() {
             s.control(action);
             self.shared.wake.notify_all();
             // Return observed presenter state when it settles promptly. This
             // never fabricates callback completion or waits without a bound.
-            let until = Instant::now() + Duration::from_millis(250);
+            let until = stop_drain::deadline(action, started);
             loop {
-                let settled = match action {
-                    LiveAction::Pause => !s.image_present,
-                    LiveAction::Hide | LiveAction::Stop => !s.visible && !s.image_present,
-                    LiveAction::Start | LiveAction::Resume => {
-                        s.mode != Mode::Running
-                            || !s.presentation_allowed()
-                            || (s.visible && s.image_present)
-                    }
-                    LiveAction::Status => true,
-                };
+                let settled = stop_drain::settled(&s, action);
                 if settled || Instant::now() >= until {
                     break;
                 }
-                match self.shared.wake.wait_timeout(s, Duration::from_millis(10)) {
+                match self
+                    .shared
+                    .wake
+                    .wait_timeout(s, stop_drain::wait_slice(until))
+                {
                     Ok((state, _)) => s = state,
                     Err(error) => {
                         drop(error);
@@ -399,7 +396,7 @@ impl Controls {
                 }
             }
         }
-        self.status()
+        stop_drain::annotate(action, started, self.status())
     }
     pub(crate) fn view_update(&self, update: rwi_core::LiveViewUpdate) -> Result<Value> {
         let mut s = self
@@ -430,6 +427,17 @@ impl Controls {
     /// Keep that acknowledgement separate from bounded, read-only native
     /// visibility/geometry confirmation. No capture, UI replay or activation.
     pub(crate) fn control_native(&self, action: LiveAction) -> Value {
+        self.control_native_with_readback(action, |window| {
+            window_inventory()
+                .and_then(|inventory| presenter_readback(&inventory, window, std::process::id()))
+        })
+    }
+    fn control_native_with_readback(
+        &self,
+        action: LiveAction,
+        mut readback: impl FnMut(Option<u32>) -> Result<Option<crate::geometry::Rect>>,
+    ) -> Value {
+        let call_started = Instant::now();
         let mut status = self.control(action);
         let started = Instant::now();
         let mut previous = None;
@@ -438,8 +446,7 @@ impl Controls {
             let window = status["presenter_window"]
                 .as_u64()
                 .and_then(|id| u32::try_from(id).ok());
-            let readback = window_inventory()
-                .and_then(|inventory| presenter_readback(&inventory, window, std::process::id()));
+            let readback = readback(window);
             checks += 1;
             let (bounds, error) = match readback {
                 Ok(bounds) => (Some(bounds), None),
@@ -464,7 +471,9 @@ impl Controls {
                     "settled":consistent,"checks":checks,
                     "elapsed_ms":started.elapsed().as_millis(),"error":error,
                 });
-                return status;
+                // Refreshes below deliberately read actual state, not an earlier
+                // annotation. Recompute final completion for this same call.
+                return stop_drain::annotate(action, call_started, status);
             }
             previous = bounds;
             std::thread::sleep(Duration::from_millis(10));

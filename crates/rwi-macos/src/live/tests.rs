@@ -51,7 +51,7 @@ fn state() -> State {
         host_view: None,
     }
 }
-fn session() -> Session {
+pub(super) fn session() -> Session {
     Session {
         controls: Arc::new(Controls {
             id: 999,
