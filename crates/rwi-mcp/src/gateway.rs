@@ -336,18 +336,7 @@ fn mcp_result_with_text_projection(result: DeviceResult, text: Option<Value>) ->
 const SERVER_INSTRUCTIONS: &str = "RWI: use computer.targets({device_id}) for a known device; omit only for all peers (offline peers may delay). Add include_timings only if exposed by the tool input schema: adapter wall time, not native CPU; elapsed_ms is pre-cache. Never replay uncertain input. Keep GUI and terminal evidence separate.";
 
 #[cfg(test)]
-mod instruction_contract {
-    #[test]
-    fn timing_guidance_is_schema_scoped_and_keeps_no_replay() {
-        let instructions = super::SERVER_INSTRUCTIONS;
-        assert!(
-            instructions.contains("Add include_timings only if exposed by the tool input schema")
-        );
-        assert!(!instructions.contains("include_timings=true adds"));
-        assert!(instructions.contains("Never replay uncertain input"));
-        assert!(instructions.contains("elapsed_ms is pre-cache"));
-    }
-}
+mod instruction_contract;
 
 impl ServerHandler for Gateway {
     fn get_info(&self) -> ServerInfo {
@@ -602,28 +591,4 @@ pub fn run(path: Option<&Path>) -> io::Result<()> {
 }
 
 #[cfg(test)]
-mod result_tests {
-    use super::*;
-    #[test]
-    fn legacy_nested_dispatch_failure_is_explicit_without_rewriting_evidence() {
-        let raw = json!({"dispatch":"uncertain","system_accepted":null,"native_dispatch_entered":false,"dispatch_error":{"code":"unsupported_chord","next_step":"Inspect supported keys"},"operation_ref":{"execution_nonce":"original"}});
-        let result = mcp_result(DeviceResult::value(raw.clone()));
-        assert_eq!(result.is_error, Some(true));
-        let data = result.structured_content.unwrap();
-        assert_eq!(data["code"], "unsupported_chord");
-        assert_eq!(data["message"], "Inspect supported keys");
-        for key in [
-            "dispatch",
-            "dispatch_error",
-            "system_accepted",
-            "native_dispatch_entered",
-            "operation_ref",
-        ] {
-            assert_eq!(data[key], raw[key]);
-        }
-        assert_eq!(
-            mcp_result(DeviceResult::value(json!({"system_accepted":true}))).is_error,
-            Some(false)
-        );
-    }
-}
+mod result_tests;
