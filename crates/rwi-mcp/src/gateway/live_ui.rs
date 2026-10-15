@@ -6,9 +6,12 @@ pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v3.html";
-const LEGACY_URI: &str = "ui://real-world-interaction/live/v1.html";
-const PREVIOUS_URI: &str = "ui://real-world-interaction/live/v2.html";
+pub(super) const URI: &str = "ui://real-world-interaction/live/v4.html";
+const LEGACY_URIS: [&str; 3] = [
+    "ui://real-world-interaction/live/v1.html",
+    "ui://real-world-interaction/live/v2.html",
+    "ui://real-world-interaction/live/v3.html",
+];
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
 
@@ -49,7 +52,7 @@ pub(super) fn resource() -> Resource {
         .with_mime_type(MIME).no_annotation()
 }
 pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
-    if uri != URI && uri != LEGACY_URI && uri != PREVIOUS_URI {
+    if uri != URI && !LEGACY_URIS.contains(&uri) {
         return Err(ErrorData::invalid_params("Unknown RWI UI resource", None));
     }
     // Declare the mode before loading. Inline cards can be collapsed without
@@ -330,18 +333,19 @@ mod tests {
             resource["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
             json!(["fullscreen"])
         );
-        let legacy = serde_json::to_value(read(LEGACY_URI).unwrap()).unwrap();
-        assert_eq!(legacy["contents"][0]["uri"], LEGACY_URI);
-        assert_eq!(
-            legacy["contents"][0]["_meta"],
-            resource["contents"][0]["_meta"]
-        );
-        let previous = serde_json::to_value(read(PREVIOUS_URI).unwrap()).unwrap();
-        assert_eq!(previous["contents"][0]["uri"], PREVIOUS_URI);
-        assert_eq!(
-            previous["contents"][0]["text"],
-            resource["contents"][0]["text"]
-        );
+        assert_eq!(URI, "ui://real-world-interaction/live/v4.html");
+        for uri in LEGACY_URIS {
+            let legacy = serde_json::to_value(read(uri).unwrap()).unwrap();
+            assert_eq!(legacy["contents"][0]["uri"], uri);
+            assert_eq!(
+                legacy["contents"][0]["_meta"],
+                resource["contents"][0]["_meta"]
+            );
+            assert_eq!(
+                legacy["contents"][0]["text"],
+                resource["contents"][0]["text"]
+            );
+        }
         let tool = serde_json::to_value(presence_tool()).unwrap();
         assert_eq!(tool["_meta"]["ui"]["visibility"], json!(["app"]));
         assert!(tool["inputSchema"]["properties"].get("target").is_none());

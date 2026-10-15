@@ -21,7 +21,7 @@
 <body>
   <main id="panel">
     <header>Real World Interaction / Live</header>
-    <h1 id="state" role="status" aria-live="polite">等待会话内视图连接</h1>
+    <h1 id="state" role="status" aria-live="polite" tabindex="-1">等待会话内视图连接</h1>
     <p id="location">这是控制卡，不是画面播放器；画面显示在指定屏幕的 RWI 原生浮层。隐藏可恢复；关闭会结束本轮，重新打开需新建观察。这里不读取对话、不发送键鼠；实际任务切换行为仍取决于 Host。</p>
     <nav aria-label="Live 预览控制">
       <button id="toggle" type="button" disabled>隐藏预览</button>
@@ -49,11 +49,22 @@
         });
       }
       const visible = () => enabled && !closing && intersecting && document.visibilityState === 'visible';
+      function disableControls() {
+        // Capture ownership before disabling the focused button blurs it.
+        // Late responses and hidden/unfocused components must not steal focus.
+        const ownsFocus = document.visibilityState === 'visible' &&
+          typeof document.hasFocus === 'function' && document.hasFocus() &&
+          (document.activeElement === toggle || document.activeElement === close);
+        toggle.disabled = close.disabled = true;
+        if (ownsFocus && typeof status.focus === 'function') {
+          try { status.focus({ preventScroll: true }); } catch { /* Closing must still be sent. */ }
+        }
+      }
       function finish(message) {
         ended = true;
         clearInterval(heartbeat);
-        toggle.disabled = close.disabled = true;
         status.textContent = message;
+        disableControls();
       }
       function report(shown, stop = false) {
         if (!ready || !capability || ended) return Promise.resolve();
@@ -171,7 +182,7 @@
         if (closing || ended) return;
         closing = true;
         clearInterval(heartbeat);
-        toggle.disabled = close.disabled = true;
+        disableControls();
         report(false, true);
       });
       let heartbeat = setInterval(() => { if (visible()) report(true); }, 500);

@@ -9,16 +9,29 @@ const code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const drain = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function harness({ observer = true } = {}) {
   const sent = [], timers = new Map(), intervals = new Map(), listeners = new Map();
-  let timerId = 0, intersection;
+  let timerId = 0, intersection, focused = true;
+  const body = { id: '', tagName: 'BODY' };
+  const document = { visibilityState: 'visible', activeElement: body, hasFocus: () => focused };
   const nodes = new Map(['state', 'toggle', 'close', 'panel', 'location'].map(id => [id, {
-    disabled: id !== 'panel', textContent: '', events: {}, attrs: {},
+    id, tagName: id === 'state' ? 'H1' : ['toggle', 'close'].includes(id) ? 'BUTTON' : 'DIV',
+    _disabled: ['toggle', 'close'].includes(id), textContent: '', events: {}, attrs: {},
+    get disabled() { return this._disabled; },
+    set disabled(value) {
+      this._disabled = value;
+      if (value && document.activeElement === this) document.activeElement = body;
+    },
+    focus(options) {
+      if (this.disabled || (id === 'state' && !/<h1\b[^>]*\btabindex="-1"/.test(html))) return;
+      this.focusOptions = options;
+      document.activeElement = this;
+    },
     addEventListener(name, fn) { this.events[name] = fn; },
     setAttribute(name, value) { this.attrs[name] = value; }
   }]));
   const listen = prefix => (name, fn) => listeners.set(`${prefix}:${name}`, fn);
   const parent = { postMessage(message, origin) { assert.equal(origin, '*'); sent.push(message); } };
   const window = { parent, addEventListener: listen('window') };
-  const document = { visibilityState: 'visible', getElementById: id => nodes.get(id), addEventListener: listen('document') };
+  Object.assign(document, { getElementById: id => nodes.get(id), addEventListener: listen('document') });
   const context = { window, document, console,
     setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id),
     setInterval: fn => { intervals.set(++timerId, fn); return timerId; }, clearInterval: id => intervals.delete(id)
@@ -29,6 +42,7 @@ function harness({ observer = true } = {}) {
   vm.runInNewContext(code, context, { timeout: 1000 });
   const deliver = (message, source = parent) => listeners.get('window:message')({ source, data: { jsonrpc: '2.0', ...message } });
   return { sent, nodes, timers, intervals, document, deliver,
+    setDocumentFocus(value) { focused = value; },
     async init() {
       const init = sent.find(m => m.method === 'ui/initialize');
       await deliver({ id: init.id, result: { protocolVersion: '2026-01-26' } });
@@ -219,4 +233,66 @@ test('different adapter response is diagnostic only and never replays presence o
   const count = h.calls().length; await h.tick(); await h.click('toggle');
   assert.equal(h.calls().length, count); assert.equal(h.intervals.size, 0);
   assert.equal(h.nodes.get('toggle').disabled, true);
+});
+
+test('f87 close transfers owned focus before disabling, without waiting for the Host reply', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  h.nodes.get('close').focus();
+  await h.click('close');
+  assert.equal(h.document.activeElement, h.nodes.get('state'));
+  assert.equal(h.nodes.get('state').focusOptions.preventScroll, true);
+  const close = h.calls().at(-1);
+  assert.equal(close.params.arguments.close, true);
+  await h.ack(close);
+  assert.equal(h.document.activeElement, h.nodes.get('state'));
+  assert.equal(h.calls().filter(m => m.params.arguments.close).length, 1);
+  assert.equal(h.intervals.size, 0);
+});
+
+test('f87 terminal expiry preserves a focus destination for the focused toggle', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+  h.nodes.get('toggle').focus();
+  await h.ack(undefined, { accepted: false, reason: 'preview_stopped' });
+  assert.equal(h.document.activeElement, h.nodes.get('state'));
+  assert.match(h.nodes.get('state').textContent, /本轮预览已结束/);
+  assert.equal(h.nodes.get('toggle').disabled, true);
+  assert.equal(h.nodes.get('close').disabled, true);
+});
+
+test('f87 terminal state never steals focus from an unfocused or hidden component', async () => {
+  for (const mode of ['unfocused', 'hidden']) {
+    const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+    h.nodes.get('toggle').focus();
+    if (mode === 'unfocused') h.setDocumentFocus(false);
+    else h.document.visibilityState = 'hidden';
+    await h.ack(undefined, { accepted: false, reason: 'preview_stopped' });
+    assert.equal(h.document.activeElement.tagName, 'BODY', mode);
+    assert.equal(h.nodes.get('state').focusOptions, undefined, mode);
+  }
+});
+
+test('f87 delayed close response does not steal focus after the user moves elsewhere', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  h.nodes.get('close').focus(); await h.click('close');
+  assert.equal(h.document.activeElement, h.nodes.get('state'));
+  const outside = { id: 'outside', tagName: 'INPUT' };
+  h.document.activeElement = outside;
+  await h.ack();
+  assert.equal(h.document.activeElement, outside);
+});
+
+test('f87 existing outside focus and missing focus APIs never block one close request', async () => {
+  for (const mode of ['outside', 'missing-has-focus', 'missing-focus', 'throwing-focus']) {
+    const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+    if (mode === 'outside') h.document.activeElement = { id: 'outside', tagName: 'INPUT' };
+    else h.nodes.get('close').focus();
+    const before = h.document.activeElement;
+    if (mode === 'missing-has-focus') delete h.document.hasFocus;
+    if (mode === 'missing-focus') h.nodes.get('state').focus = undefined;
+    if (mode === 'throwing-focus') h.nodes.get('state').focus = () => { throw new Error('not focusable'); };
+    await h.click('close'); await h.ack(); await h.tick(); await h.click('close');
+    assert.equal(h.calls().filter(m => m.params.arguments.close).length, 1, mode);
+    assert.equal(h.intervals.size, 0, mode);
+    if (mode === 'outside') assert.equal(h.document.activeElement, before);
+  }
 });

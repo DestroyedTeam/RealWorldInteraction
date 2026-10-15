@@ -201,8 +201,12 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
 #[test]
 fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
     let mime = "text/html;profile=mcp-app";
-    let uri = "ui://real-world-interaction/live/v3.html";
-    let legacy_uri = "ui://real-world-interaction/live/v1.html";
+    let uri = "ui://real-world-interaction/live/v4.html";
+    let legacy_uris = [
+        "ui://real-world-interaction/live/v1.html",
+        "ui://real-world-interaction/live/v2.html",
+        "ui://real-world-interaction/live/v3.html",
+    ];
     for (capabilities, supported) in [
         (json!({}), false),
         (
@@ -268,10 +272,16 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
             json!({"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"computer.live_panel","arguments":{"view_key":"a".repeat(32),"page":"b".repeat(32),"sequence":2,"visible":false,"target":"other-device:window"}}}),
             true,
         );
-        let legacy_resource = rpc(
-            json!({"jsonrpc":"2.0","id":8,"method":"resources/read","params":{"uri":legacy_uri}}),
-            true,
-        );
+        let legacy_resources: Vec<_> = legacy_uris
+            .iter()
+            .enumerate()
+            .map(|(i, uri)| {
+                rpc(
+                    json!({"jsonrpc":"2.0","id":8+i,"method":"resources/read","params":{"uri":uri}}),
+                    true,
+                )
+            })
+            .collect();
         drop(input);
         assert!(child.wait().unwrap().success());
         assert!(init["result"]["capabilities"]["resources"].is_object());
@@ -306,11 +316,13 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
             content["_meta"]["openai/ui"]["availableDisplayModes"],
             json!(["fullscreen"])
         );
-        let legacy_content = &legacy_resource["result"]["contents"][0];
-        assert_eq!(legacy_content["uri"], legacy_uri);
-        assert_eq!(legacy_content["mimeType"], content["mimeType"]);
-        assert_eq!(legacy_content["_meta"], content["_meta"]);
-        assert_eq!(legacy_content["text"], content["text"]);
+        for (legacy_uri, legacy_resource) in legacy_uris.iter().zip(&legacy_resources) {
+            let legacy_content = &legacy_resource["result"]["contents"][0];
+            assert_eq!(legacy_content["uri"], *legacy_uri);
+            assert_eq!(legacy_content["mimeType"], content["mimeType"]);
+            assert_eq!(legacy_content["_meta"], content["_meta"]);
+            assert_eq!(legacy_content["text"], content["text"]);
+        }
         assert!(
             content["text"]
                 .as_str()
