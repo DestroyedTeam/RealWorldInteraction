@@ -9,8 +9,21 @@ pub struct Config {
     pub peer_pid: i32,
     pub peer_window: u32,
     pub peer_bundle: String,
+    /// Opt-in inverse transition; false keeps the original background start.
+    pub start_foreground: bool,
 }
 impl Config {
+    fn required_foreground_pid(&self, own_pid: u32) -> Result<i32, String> {
+        let own = i32::try_from(own_pid)
+            .ok()
+            .filter(|pid| *pid > 0)
+            .ok_or("own fixture PID unavailable")?;
+        Ok(if self.start_foreground {
+            own
+        } else {
+            self.peer_pid
+        })
+    }
     pub fn validate(
         &self,
         regular: bool,
@@ -74,6 +87,7 @@ pub fn arm(state: &mut State, event: &MouseEvent, unix_ms: Option<u64>) -> Optio
             state.environment_sample_ms,
         )
         .ok()?;
+    let required_foreground = config.required_foreground_pid(state.pid).ok()?;
     if actor.first_down_sequence.is_some()
         || actor.fired
         || state.status != "running"
@@ -83,7 +97,8 @@ pub fn arm(state: &mut State, event: &MouseEvent, unix_ms: Option<u64>) -> Optio
         || event.kind != MouseKind::Down
         || event.native_type != 1
         || !event.finite()
-        || event.receiving_app_frontmost != Some(false)
+        || event.receiving_app_frontmost != Some(config.start_foreground)
+        || event.frontmost_pid != Some(required_foreground)
         || state.drag.downs != 0
         || config.peer_pid as u32 == state.pid
     {
@@ -407,6 +422,7 @@ pub mod native {
             let ages = RefCell::new(Vec::with_capacity(2));
             let resources = RefCell::new(Vec::with_capacity(2));
             let result = (|| -> Result<(), String> {
+                let required_foreground = self.config.required_foreground_pid(std::process::id())?;
                 self.validate_peer()?;
                 oracle.peer_surface_bound_before_post = true;
                 let pairs = events()?; // Allocate all four before any effect.
@@ -461,7 +477,7 @@ pub mod native {
                                 "human/unknown held resource: HIDkeys={hid_keys}, staleCombinedKeys={unknown_combined_keys}, HIDbuttons={buttons:#x}, HIDflags={hid_flags:#x}, sessionFlags={session_flags:#x}; no further down"
                             ));
                         }
-                        if foreground() != Some(self.config.peer_pid) {
+                        if foreground() != Some(required_foreground) {
                             return Err("foreground peer changed; no further down".into());
                         }
                         self.validate_peer()
@@ -788,3 +804,7 @@ mod tests {
         assert_eq!(log, ["cmd_down", "cmd_up"]);
     }
 }
+
+#[cfg(test)]
+#[path = "command_tab/foreground_mode_tests.rs"]
+mod foreground_mode_tests;

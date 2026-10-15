@@ -124,6 +124,7 @@ impl Options {
         let mut legacy_self_foreground = false;
         let mut ax_windows_delay_ms = None;
         let mut command_tab_delay = None;
+        let mut command_tab_start_foreground = false;
         let mut command_tab_peer_pid = None;
         let mut command_tab_peer_window = None;
         let mut command_tab_peer_bundle = None;
@@ -155,6 +156,9 @@ impl Options {
                 "--semantic-alternate-ui" if !semantic_alternate_ui => semantic_alternate_ui = true,
                 "--legacy-tracking-calibration" if !legacy_tracking_calibration => {
                     legacy_tracking_calibration = true
+                }
+                "--command-tab-start-foreground" if !command_tab_start_foreground => {
+                    command_tab_start_foreground = true;
                 }
                 "--command-tab-on-first-down-after-ms" if command_tab_delay.is_none() => {
                     command_tab_delay = Some(
@@ -291,6 +295,7 @@ impl Options {
             && !legacy_self_foreground
             && ax_windows_delay_ms.is_none()
             && command_tab_delay.is_none()
+            && !command_tab_start_foreground
             && command_tab_peer_pid.is_none()
             && command_tab_peer_window.is_none()
             && command_tab_peer_bundle.is_none()
@@ -436,11 +441,13 @@ impl Options {
             return Err("own AX windows provider test requires --regular-app".into());
         }
         let command_tab = if command_tab_delay.is_some()
+            || command_tab_start_foreground
             || command_tab_peer_pid.is_some()
             || command_tab_peer_window.is_some()
             || command_tab_peer_bundle.is_some()
         {
             let config = command_tab::Config {
+                start_foreground: command_tab_start_foreground,
                 delay_ms: command_tab_delay.ok_or("Command+Tab delay required")?,
                 peer_pid: command_tab_peer_pid.ok_or("Command+Tab peer PID required")?,
                 peer_window: command_tab_peer_window.ok_or("Command+Tab peer window required")?,
