@@ -1,6 +1,7 @@
 //! Loopback-only Host-panel visibility publisher. No screen, input or credentials
 //! are served over HTTP. The authenticated device context remains in Gateway.
 use super::*;
+mod image;
 use std::{
     net::SocketAddr,
     time::{Duration, Instant},
@@ -16,6 +17,7 @@ const MAX_HTTP: usize = 4096;
 pub(super) struct Views {
     address: tokio::sync::Mutex<Option<SocketAddr>>,
     entries: Mutex<BTreeMap<String, View>>,
+    image_readers: image::Readers,
 }
 struct View {
     target: String,
@@ -24,6 +26,7 @@ struct View {
     ui_sequence: u64,
     device_sequence: u64,
     expires: Instant,
+    image: image::State,
 }
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -79,6 +82,7 @@ impl Views {
                 ui_sequence: 0,
                 device_sequence: 0,
                 expires: Instant::now() + Duration::from_millis(duration_ms),
+                image: image::State::default(),
             },
         );
         Ok((key, binding))
@@ -104,6 +108,7 @@ impl Views {
         let page = token();
         v.page = Some(page.clone());
         v.ui_sequence = 0;
+        v.image = image::State::default();
         v.device_sequence = v.device_sequence.checked_add(1)?;
         Some((
             page,
@@ -160,6 +165,8 @@ impl Views {
             return Err("stale_event");
         }
         v.ui_sequence = event.sequence;
+        v.image
+            .presence(event.sequence, event.visible, Instant::now());
         v.device_sequence = v.device_sequence.checked_add(1).ok_or("view_ended")?;
         Ok((
             v.target.clone(),

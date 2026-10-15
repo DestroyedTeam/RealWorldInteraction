@@ -409,8 +409,7 @@ impl ServerHandler for Gateway {
         tools.extend(repl::tools());
         tools.extend(convenience::tools());
         if ui_supported {
-            tools.push(live_ui::start_tool());
-            tools.push(live_ui::presence_tool());
+            tools.extend(live_ui::tools());
         }
         Ok(ListToolsResult {
             tools,
@@ -439,11 +438,11 @@ impl ServerHandler for Gateway {
         p: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        if p.name == live_ui::PRESENCE_TOOL {
-            return Ok(mcp_result(
-                self.app_live_presence(p.arguments.unwrap_or_default(), &context)
-                    .await,
-            ));
+        if matches!(
+            p.name.as_ref(),
+            live_ui::PRESENCE_TOOL | live_ui::IMAGE_TOOL
+        ) {
+            return Ok(self.call_live_app(p, &context).await);
         }
         if p.name == live_ui::START_TOOL {
             return Ok(self

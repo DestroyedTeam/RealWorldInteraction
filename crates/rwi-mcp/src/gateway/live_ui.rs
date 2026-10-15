@@ -1,6 +1,8 @@
 //! Optional MCP Apps presenter. Native capture/input authority stays on Agent.
 //! UI presence is evidence about the rendered component, not an active-task API.
 use super::*;
+mod image;
+pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
@@ -90,7 +92,25 @@ pub(super) fn presence_tool() -> Tool {
         .with_annotations(ToolAnnotations::new().read_only(false).destructive(false))
         .with_meta(meta(json!({"ui":{"visibility":["app"]}})))
 }
+pub(super) fn tools() -> Vec<Tool> {
+    vec![start_tool(), presence_tool(), image::tool()]
+}
 impl Gateway {
+    pub(super) async fn call_live_app(
+        &self,
+        p: CallToolRequestParams,
+        context: &RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        if p.name == IMAGE_TOOL {
+            return self
+                .app_live_image(p.arguments.unwrap_or_default(), context)
+                .await;
+        }
+        mcp_result(
+            self.app_live_presence(p.arguments.unwrap_or_default(), context)
+                .await,
+        )
+    }
     pub(super) async fn start_live_app(
         &self,
         args: serde_json::Map<String, Value>,
