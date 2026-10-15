@@ -1,3 +1,18 @@
+<!-- RWI_F15_CONTENT_SNAPSHOT_CSS_CURRENT -->
+## 当前：独立内容快照已实机验收；物理／CSS坐标误标已修正（2026-10-15）
+
+- **源码与回归**：唯一Root 449份源码／同349受管路径。当前fmt、workspace test、Clippy及架构检查均实际exit0：1179 passed／11 ignored／44 suites。CSS修正同输入BASELINE／MODIFIED／ROLLBACK／REAPPLY=0/3/0/3项、进程均exit0；初始内容快照0/8/0/8仍保留。原604行架构超限、拆分后的Write导入编译错误、两个Clippy101及其修复均留原件，不放宽阈值或断言。
+- **新增工具**：`browser.snapshot`只读取本Agent创建的独立Chrome／私有profile，需新的显式`snapshot`授权；旧`observe`权限不自动升级。输入仅device_id、原session_ref与有界max_nodes；不附着用户现有浏览器、调试端口或profile，不接收JS、Native frame／lease，不发送鼠标键盘或激活窗口。
+- **实际使用发现并修复**：新会话A1真实typed调用读到了原始PNG与AX，但把DOMSnapshot原始物理矩形误标为CSS，整体记unknown，原响应与图片不改写。复核[Chromium DOMSnapshot](https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/inspector/inspector_dom_snapshot_agent.cc)及[Page布局实现](https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/inspector/inspector_page_agent.cc)后，改用同次legacy／CSS visualViewport未取整尺寸比值换算，保留原始物理矩形；包括设备与浏览器zoom，不从PNG大小、固定2倍或OS显示器DPI猜测。缺失／不一致指标或前后视口变化会丢弃观察，仍不声明原子快照。
+- **不同新实例A2实机结果**：fresh Host真正加载typed工具并只读调用一次，实测比例2，14/14条矩形换算误差0；RootWebArea CSS为[0,0,960,633]、原始物理为[0,0,1920,1266]。只读值精确“RWI 中文 🙂𝄞”，按钮disabled=true；文档与视口前后相等、debugger_detached=true。`atomic=false`、`coverage.complete=false`、`input_authority=false`；Unicode读取不是键盘／composition，也不授权Native坐标点击。
+- **图片质量与边界**：原始PNG 1920×1266、SHA `d43c96a114d2a949f780308bdce99d26ebca8b36de093db405060369e158c68d`，与A1页面PNG逐字节相同：修正元数据而非缩图／重编码。另保留1920×1440原生窗口PNG，含Chrome工具栏；页面快照不包含单独翻译气泡或OS弹窗，不能把它当Native弹窗覆盖通过。主窗和翻译气泡在A1独立Native发现中均随移至授权虚拟屏。
+- **清理与部署**：A2自有子进程实测548ms、exit0、无强杀；独立ps无原PID、完整CG清单0，专用Rust HTTP fixture实际exit0，私有测试profile保留。临时策略已恢复原ABSENT并重载同一签名Agent；当前Agent `3c13d8f4…`、MCP `57cd5853…`，稳定24B签名／CA／配对与四项TCC保持，无人工授权、无游戏／用户文档输入。
+- **Host兼容与无人值守**：原会话旧MCP对新方法在派发前报unknown capability，0输入；遵照用户既有“无法加载新工具时新开同项目会话接力”授权，两次独立新任务实际加载typed工具完成验收，不以stdio探针充当GUI，也未要求用户重启或配合。生产安装仍是Host级路径，不依赖业务页面、项目checkout或oracle启动；页面／期望文字仅属于本次fixture与调用层。
+- **Live与完整目标**：已有220×219pt小浮层、隐藏／关闭、最小化采集与Stop有限实证继续保留；当前仍是MCP Apps可见组件／presence lease，不称严格Host聊天生命周期等价。普通第三方／Chrome冷Native hover、现代可见tooltip、完整Unicode键盘／composition及browser-content hover／click仍未完成；既有前后台、切窗、冲突、模态等有限结果不重放、不泛化。`full_goal_complete=false`。
+- **交付时间点**：本节写入时，本批尚待逻辑拆分提交／推送[现有PR1](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)与新HEAD CI；旧7efdac0的绿不覆盖本批。纯协议职责移动已在独立冻结copy中fmt通过、17项旧匹配测试通过，行为与架构将分开提交。按时序未编辑图片与原始记录：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f15-owned-browser-snapshot-2026-10-15/REPORT.md`。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
 <!-- RWI_F14_LIFECYCLE_AND_TARGETS_CURRENT -->
 ## 当前：自有浏览器生命周期与按需说明已部署并有限实机验收（2026-10-15）
 
