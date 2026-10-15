@@ -24,6 +24,7 @@ rwi-windows = { path = "../rwi-windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 rwi-macos = { path = "../rwi-macos" }
+libc = "=0.2.189"
 
 [dev-dependencies]
 tempfile.workspace = true

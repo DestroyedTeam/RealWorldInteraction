@@ -16,6 +16,13 @@ pub struct ToolDefinition {
 pub fn definitions() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
+            name: "browser.session",
+            description: "Explicit owned browser-content lifecycle on an authorized macOS Agent: create a NEW isolated Chrome/profile, close one exact session, or query a durable request. Separate browser policy; no existing profile/port attach, native window/TCC binding, automatic activation, fallback or replay. request_id is stable; query uses the ORIGINAL request_id. This first slice exposes lifecycle only, NOT snapshot/hover/click, browser toolbar or OS dialogs. Background target creation is requested, not OS focus proof. Sessions expire after 600s; close invalidates browser references even when cleanup is uncertain.",
+            input_schema: serde_json::to_value(schemars::schema_for!(super::browser::SessionArgs))
+                .unwrap(),
+            writes: true,
+        },
+        ToolDefinition {
             name: "computer.hotkey",
             description: "Explicit foreground/system keyboard input on an authorized macOS desktop, e.g. cmd+tab. Supply original desktop target, shared input lease, stable request_id and fresh expected_foreground from targets. Posts one bounded balanced key/modifier sequence into the system stream, not to a PID. Yields to recent HID activity or changed foreground/session; always releases its own posted keys. No text, auto-focus, background fallback or replay. Receipt is not a verified switch; independently observe foreground. Unsupported/scoped-window backends refuse. After dispatch processing, same-desktop old frames/refs in this executor are invalidated; snapshot then resolve before element input.",
             input_schema: serde_json::to_value(schemars::schema_for!(HotkeyArgs)).unwrap(),
@@ -213,6 +220,11 @@ pub fn definitions() -> Vec<ToolDefinition> {
 }
 pub fn validate(tool: &str, args: &Value) -> Result<(), serde_json::Error> {
     match tool {
+        "browser.session" => {
+            let a: super::browser::SessionArgs = serde_json::from_value(args.clone())?;
+            a.validate()
+                .map_err(<serde_json::Error as serde::de::Error>::custom)
+        }
         "computer.recover_input" => {
             let _: RecoverInputArgs = serde_json::from_value(args.clone())?;
             Ok(())
@@ -348,7 +360,7 @@ pub fn executable(tool: &str) -> bool {
     definitions().iter().any(|d| d.name == tool)
         && !matches!(
             tool,
-            "computer.targets" | "computer.operation" | "computer.cancel"
+            "computer.targets" | "computer.operation" | "computer.cancel" | "browser.session"
         )
         && !cached_read(tool)
 }

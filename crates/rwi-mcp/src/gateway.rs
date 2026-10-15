@@ -388,6 +388,7 @@ impl ServerHandler for Gateway {
                     "computer.hotkey" => tool.with_title("Send foreground/system shortcut"),
                     "computer.attach_window" => tool.with_title("Attach independent window"),
                     "computer.detach_window" => tool.with_title("Detach window binding"),
+                    "browser.session" => tool.with_title("Owned browser session"),
                     "computer.targets" => tool.with_title("Inspect paired devices"),
                     "computer.discover" => tool.with_title("Find native windows"),
                     "computer.bind_window" => tool.with_title("Select exact native window"),
@@ -497,10 +498,11 @@ impl Gateway {
             };
             return Ok(mcp_result(result));
         }
-        let _permit = if matches!(
-            p.name.as_ref(),
-            "computer.operation" | "computer.cancel" | "computer.targets"
-        ) {
+        let _permit = if invocation::browser_control_request(p.name.as_ref(), p.arguments.as_ref())
+            || matches!(
+                p.name.as_ref(),
+                "computer.operation" | "computer.cancel" | "computer.targets"
+            ) {
             None
         } else {
             match self.inflight.clone().try_acquire_owned() {

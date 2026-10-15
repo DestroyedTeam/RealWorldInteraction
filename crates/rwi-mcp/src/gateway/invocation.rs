@@ -1,5 +1,17 @@
 //! Prepare/Execute is private transport mechanics, not a model-facing workflow.
 use super::*;
+pub(super) fn browser_control_request(
+    name: &str,
+    arguments: Option<&serde_json::Map<String, Value>>,
+) -> bool {
+    name == "browser.session"
+        && matches!(
+            arguments
+                .and_then(|a| a.get("action"))
+                .and_then(Value::as_str),
+            Some("query" | "close")
+        )
+}
 impl Gateway {
     pub(super) async fn invoke(
         &self,
@@ -59,6 +71,9 @@ impl Gateway {
         let Some(route) = self.routes.get(&id) else {
             return DeviceResult::error("device_unknown", "Device is not paired.");
         };
+        if tool == "browser.session" {
+            return self.invoke_browser_session(&id, args, context).await;
+        }
         let host_cancelled = async {
             if let Some(context) = context {
                 context.ct.cancelled().await;
@@ -150,6 +165,69 @@ impl Gateway {
         };
         self.dispatch_accepted(reference, shutdown, host_cancelled)
             .await
+    }
+    async fn invoke_browser_session(
+        &self,
+        id: &str,
+        args: Value,
+        context: Option<RequestContext<RoleServer>>,
+    ) -> DeviceResult {
+        let arguments: device::browser::SessionArgs =
+            serde_json::from_value(args).expect("validated");
+        let request_id = arguments.request_id().to_owned();
+        let mut shutdown = self.shutdown.subscribe();
+        if *shutdown.borrow() {
+            return DeviceResult::error(
+                "host_disconnected",
+                "No browser request forwarded after Host EOF.",
+            );
+        }
+        let cancelled = async {
+            if let Some(c) = context {
+                c.ct.cancelled().await;
+            } else {
+                std::future::pending::<()>().await;
+            }
+        };
+        tokio::pin!(cancelled);
+        let described = tokio::select! {
+            biased;
+            _=shutdown.changed()=>return DeviceResult::error("host_disconnected", "No browser request forwarded."),
+            _=&mut cancelled=>return DeviceResult::error("operation_cancelled_before_dispatch", "No browser request forwarded."),
+            r=self.request(id, None, Call::Describe)=>r,
+        };
+        let described = match described {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        let cap = described.result.data["capabilities"]
+            .as_array()
+            .and_then(|a| a.iter().find(|c| c["id"] == "browser.session"));
+        if !cap.is_some_and(|c| {
+            c["implemented"] == true && c["available"] == true && c["authorized"] == true
+        }) {
+            return DeviceResult::error(
+                "browser_capability_unavailable",
+                "This paired Agent does not advertise an authorized browser-content lifecycle. No native fallback or old protocol call was sent.",
+            );
+        }
+        if *shutdown.borrow() {
+            return DeviceResult::error(
+                "host_disconnected",
+                "No browser mutation forwarded after Host EOF.",
+            );
+        }
+        let result = tokio::select! {
+            biased;
+            _=shutdown.changed()=>Err(DeviceResult::error("browser_result_unknown", "Host disconnected; query the original browser.session request_id. Do not replay.")),
+            _=&mut cancelled=>Err(DeviceResult::error("browser_result_unknown", "Caller cancelled; device lifecycle may finish. Query the original browser.session request_id. Do not replay.")),
+            r=self.request(id, None, Call::BrowserSession { arguments })=>r.map(|r| r.result),
+        };
+        let mut result = result.unwrap_or_else(|e| e);
+        result.data["device_id"] = json!(id);
+        result.data["request_id"] = json!(request_id);
+        result.data["automatic_replay"] = json!(false);
+        result
     }
     async fn dispatch_accepted(
         &self,
@@ -411,5 +489,91 @@ mod tests {
         assert_eq!(disconnected.data["operation_ref"], json!(reference));
         assert_eq!(disconnected.data["cancellation_delivery_confirmed"], false);
         assert_eq!(disconnected.data["original_action_replayed"], false);
+    }
+}
+
+#[cfg(all(test, unix))]
+mod browser_session_tests {
+    use super::*;
+    use rwi_link_trust::IdentityPaths;
+    use rwi_native_link::device::PairedDevice;
+    use std::os::unix::fs::DirBuilderExt;
+    #[tokio::test]
+    async fn f14_browser_mcp_forwards_without_native_context_or_native_availability() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap().join("private");
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&root)
+            .unwrap();
+        let pairing = rwi_link_trust::provision(&root.join("trust")).unwrap();
+        let identity = IdentityPaths::in_profile(&root.join("trust/agent"));
+        let tls = identity
+            .load()
+            .unwrap()
+            .server_config(std::slice::from_ref(&pairing.model.certificate_sha256))
+            .unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let seen = calls.clone();
+        let (stop, rx) = tokio::sync::watch::channel(false);
+        let server = tokio::spawn(rwi_native_link::device::serve(
+            listener,
+            tls,
+            move |_, request: Request| {
+                let calls = seen.clone();
+                async move {
+                    calls.lock().unwrap().push(request.clone());
+                    let result = match request.call {
+                        Call::Describe => DeviceResult::value(
+                            json!({"availability":"unavailable","native_context":null,"capabilities":[{"id":"browser.session","implemented":true,"available":true,"authorized":true}]}),
+                        ),
+                        Call::BrowserSession { arguments } => DeviceResult::value(
+                            json!({"session_ref":"browser:instance:owned","request_id":arguments.request_id(),"source":"offline_transport_fake"}),
+                        ),
+                        _ => DeviceResult::error(
+                            "unexpected_native_call",
+                            "No Native context should be opened.",
+                        ),
+                    };
+                    device::Reply {
+                        version: device::PROTOCOL_VERSION,
+                        id: request.id,
+                        device: request.device,
+                        instance: "test-instance".into(),
+                        result,
+                    }
+                }
+            },
+            rx,
+        ));
+        let gateway = Gateway::new(Ok(AdapterProfile {
+            devices: vec![PairedDevice {
+                device_id: "device".into(),
+                endpoint,
+                identity: IdentityPaths::in_profile(&root.join("trust/model")),
+                agent_pin: pairing.agent.certificate_sha256,
+            }],
+        }));
+        let result=gateway.invoke("browser.session",json!({"action":"create","device_id":"device","request_id":"f14-lifecycle-one","url":"about:blank"}),None).await;
+        assert!(!result.is_error, "{result:?}");
+        assert_eq!(result.data["request_id"], "f14-lifecycle-one");
+        {
+            let c = calls.lock().unwrap();
+            assert_eq!(c.len(), 2);
+            assert!(c.iter().all(|r| r.context.is_none()));
+            assert!(matches!(c[0].call, Call::Describe));
+            assert!(matches!(c[1].call, Call::BrowserSession { .. }));
+            assert!(
+                gateway.routes["device"]
+                    .context
+                    .try_lock()
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        stop.send_replace(true);
+        server.await.unwrap().unwrap();
     }
 }

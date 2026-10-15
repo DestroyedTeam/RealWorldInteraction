@@ -32,6 +32,9 @@ impl Runtime {
         let capabilities = catalog::definitions()
             .into_iter()
             .map(|tool| {
+                if tool.name == "browser.session" {
+                    return self.browser.capability(policy);
+                }
                 let control = matches!(
                     tool.name,
                     "computer.targets" | "computer.operation" | "computer.cancel"

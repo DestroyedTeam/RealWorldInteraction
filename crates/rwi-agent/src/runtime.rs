@@ -82,6 +82,7 @@ impl Drop for StateOwner {
 pub struct Runtime {
     pub config: Config,
     pub instance: String,
+    browser: Arc<crate::browser_content::BrowserRuntime>,
     contexts: Mutex<BTreeMap<String, Arc<Context>>>,
     ledger: Mutex<io::Result<Ledger>>,
     domains: Mutex<BTreeMap<String, Arc<InputDomain>>>,
@@ -120,9 +121,12 @@ impl Runtime {
         let owner = StateOwner(owner);
         namespace::bind(&config.state_root, &config.device_id)?;
         let ledger = Ledger::open(config.state_root.join("operations"));
+        let instance = uuid::Uuid::new_v4().to_string();
+        let browser = crate::browser_content::BrowserRuntime::new(&config, &instance);
         Ok(Arc::new(Self {
             config,
-            instance: uuid::Uuid::new_v4().to_string(),
+            instance,
+            browser,
             contexts: Mutex::new(BTreeMap::new()),
             ledger: Mutex::new(ledger),
             domains: Mutex::new(BTreeMap::new()),
@@ -179,6 +183,9 @@ impl Runtime {
         call: Call,
     ) -> DeviceResult {
         match call {
+            Call::BrowserSession { arguments } => {
+                self.browser.clone().call(policy, arguments).await
+            }
             Call::Describe => {
                 let mut r = self.describe(policy);
                 let context = self.context(peer, token);

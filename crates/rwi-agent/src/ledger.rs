@@ -86,6 +86,17 @@ impl Ledger {
     ) -> io::Result<Reservation> {
         self.reserve_record(principal, operation, payload, monitor_id, domain, None)
     }
+    /// A separate resource family may reuse durable reservations without forging native references.
+    pub fn reserve_resource(
+        &mut self,
+        principal: &str,
+        request_id: &str,
+        payload: &Value,
+        nonce: &str,
+        domain: &str,
+    ) -> io::Result<Reservation> {
+        self.reserve_record(principal, request_id, payload, nonce, domain, None)
+    }
     pub fn reserve_execution(
         &mut self,
         principal: &str,

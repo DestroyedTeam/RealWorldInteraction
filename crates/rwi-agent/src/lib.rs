@@ -1,4 +1,5 @@
 //! Headless device-side composition, independent of MCP and business workflows.
+mod browser_content;
 pub mod config;
 mod executor;
 pub mod install;

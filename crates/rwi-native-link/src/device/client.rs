@@ -15,6 +15,45 @@ use tokio::{sync::Semaphore, time::Instant};
 
 type Stream = BufReader<tokio_rustls::client::TlsStream<TcpStream>>;
 
+fn uses_control_lane(call: &Call) -> bool {
+    matches!(
+        call,
+        Call::Cancel { .. }
+            | Call::Operation { .. }
+            | Call::Describe
+            | Call::CloseContext
+            | Call::BrowserSession {
+                arguments: rwi_core::device::browser::SessionArgs::Query { .. }
+                    | rwi_core::device::browser::SessionArgs::Close { .. }
+            }
+    )
+}
+#[cfg(test)]
+#[test]
+fn f14_browser_status_close_have_control_capacity_not_native_work_lane() {
+    use rwi_core::device::browser::SessionArgs;
+    assert!(uses_control_lane(&Call::BrowserSession {
+        arguments: SessionArgs::Query {
+            device_id: "mac".into(),
+            request_id: "one".into()
+        }
+    }));
+    assert!(uses_control_lane(&Call::BrowserSession {
+        arguments: SessionArgs::Close {
+            device_id: "mac".into(),
+            request_id: "two".into(),
+            session_ref: "browser:one".into()
+        }
+    }));
+    assert!(!uses_control_lane(&Call::BrowserSession {
+        arguments: SessionArgs::Create {
+            device_id: "mac".into(),
+            request_id: "three".into(),
+            url: "about:blank".into()
+        }
+    }));
+}
+
 #[cfg(all(test, unix))]
 mod tests;
 
@@ -194,10 +233,7 @@ impl Client {
         }
         // Independent capacity: a long Execute never holds the control lane's
         // permit or stream. No mutex is held while doing network I/O.
-        let lane = if matches!(
-            request.call,
-            Call::Cancel { .. } | Call::Operation { .. } | Call::Describe | Call::CloseContext
-        ) {
+        let lane = if uses_control_lane(&request.call) {
             &self.shared.control
         } else {
             &self.shared.work

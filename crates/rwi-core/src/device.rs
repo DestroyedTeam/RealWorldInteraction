@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub mod api;
+pub mod browser;
 pub mod catalog;
 
 pub const PROTOCOL_VERSION: u16 = 2;
@@ -69,6 +70,10 @@ pub struct Request {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Call {
     Describe,
+    /// Explicit browser-content family, independent of native contexts/references.
+    BrowserSession {
+        arguments: browser::SessionArgs,
+    },
     OpenContext,
     CloseContext,
     /// Metadata-only acceptance. No native calls or input-resource acquisition.
