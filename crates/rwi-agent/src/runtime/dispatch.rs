@@ -509,6 +509,9 @@ impl Runtime {
         tool: String,
         arguments: Value,
     ) -> DeviceResult {
+        if tool == live_image::METHOD {
+            return self.cached_live_image(peer, policy, token, arguments).await;
+        }
         if !catalog::cached_read(&tool) {
             return DeviceResult::error(
                 "cached_read_not_supported",

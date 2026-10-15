@@ -49,6 +49,13 @@ pub struct LiveArgs {
     #[schemars(skip)]
     pub view: Option<crate::LiveViewUpdate>,
 }
+/// Agent cached-only API; deliberately absent from the model tool catalog.
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LiveImageArgs {
+    pub target: String,
+    pub query: crate::live_image::LiveImageQuery,
+}
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ResolveArgs {

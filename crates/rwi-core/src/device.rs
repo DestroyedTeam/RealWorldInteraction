@@ -90,7 +90,8 @@ pub enum Call {
     Execute {
         operation_ref: OperationRef,
     },
-    /// Strictly bounded cached queries, never native execution or input leases.
+    /// Bounded cached queries: no new snapshot/capture or input lease.
+    /// An owned controller may still require local native identity checks.
     Cached {
         tool: String,
         arguments: Value,

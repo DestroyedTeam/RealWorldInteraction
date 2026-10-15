@@ -163,6 +163,13 @@ impl Runtime {
         // Executor parameter support is not native/window/anchor readiness.
         // Missing metadata on an older peer means unknown, never a downgrade.
         result.data["executor_features"] = json!({
+            "cached_live_image_v1": {
+                "implemented": true, "rpc_kind": "cached",
+                "requires_native_live_controller": true,
+                "max_png_bytes": rwi_core::live_image::MAX_LIVE_IMAGE_BYTES,
+                "capture_on_read": false, "presence_renewal": false,
+                "execution_result_retention": false
+            },
             "resolve_view_red_marker_cluster": {
                 "implemented": true, "opt_in_required": true, "fallback": false,
                 "unavailable_error": "red_marker_anchor_unavailable",

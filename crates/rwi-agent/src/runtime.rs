@@ -4,6 +4,7 @@ mod dispatch;
 mod dispatch_tests;
 mod execution;
 mod live_control;
+mod live_image;
 mod namespace;
 mod read_admission;
 #[cfg(all(test, feature = "fixture"))]
@@ -51,6 +52,8 @@ struct Context {
     read_waiters: Arc<tokio::sync::Semaphore>,
     registry: Arc<Registry>,
     live_gate: Arc<tokio::sync::Semaphore>,
+    image_gate: Arc<tokio::sync::Semaphore>,
+    image_rate: Mutex<BTreeMap<String, Instant>>,
     live_controls: Arc<Mutex<rwi_core::LiveControllers>>,
     touched: Mutex<Instant>,
     target: String,
@@ -266,6 +269,13 @@ impl Runtime {
                     let Ok(_live_idle) = c.live_gate.clone().try_acquire_owned() else {
                         return true;
                     };
+                    let Ok(_image_idle) = c
+                        .image_gate
+                        .clone()
+                        .try_acquire_many_owned(live_image::READERS)
+                    else {
+                        return true;
+                    };
                     if !c.native_quiescent() {
                         return true;
                     }
@@ -296,6 +306,10 @@ impl Runtime {
                         read_waiters: Arc::new(tokio::sync::Semaphore::new(read_admission::LIMIT)),
                         registry: Arc::new(Registry::default()),
                         live_gate: Arc::new(tokio::sync::Semaphore::new(1)),
+                        image_gate: Arc::new(tokio::sync::Semaphore::new(
+                            live_image::READERS as usize,
+                        )),
+                        image_rate: Mutex::new(BTreeMap::new()),
                         live_controls,
                         touched: Mutex::new(Instant::now()),
                         target,
@@ -323,6 +337,16 @@ impl Runtime {
                     return DeviceResult::error(
                         "context_busy",
                         "Owned Live control is pending; query its operation before closing.",
+                    );
+                };
+                let Ok(_image_idle) = context
+                    .image_gate
+                    .clone()
+                    .try_acquire_many_owned(live_image::READERS)
+                else {
+                    return DeviceResult::error(
+                        "context_busy",
+                        "Cached Live image read is pending; close after it is idle.",
                     );
                 };
                 if !context.native_quiescent() {
