@@ -1,3 +1,37 @@
+<!-- RWI_FINITE19_FINAL_CURRENT_SINGLE_CLOSE -->
+## 当前：有限架构批次已本地验证／部署，Native按实际有限结果分层（2026-10-15）
+
+- **当前源码／回归**：同436源码／330受管路径；manifest `74fa0e46877459a53b4d28288280dddc54e1f985ad18fc639129eb8873f08152`。19项职责拆分加既有测试socket初始化顺序修正；Root原B与最终M及独立copy ROL／reapply实际结果见同330角色，不把局部／原失败改写成功。最新fmt/test/clippy=000，1141 passed／11 ignored／44 suites，M的TEST事件被full3复用而非重跑。
+- **原失败保留**：最初M101是编译成功后既有F05测试的peer-close／timeout EINVAL22竞态，不是生产FD故障。相同固定调度独立B/M/R/Re为101/0/101/0，生产cfg(test)前缀未变。实际本地architecture checker19→0且未调ceiling／allow；这不是远端GitHub CI已绿。
+- **实际部署**：七build/sign命令全部0；Agent-only部署新PID47675／instance `42539ec4-4142-4af9-8859-d134c2264e8a`／signed `09930ce0f7309e41a3a2fbc2530d108e05ed9ea6801b0785f7cf4967855f68e4`。部署未改稳定24B证书／DR、CA／配对／TCC／MCP与Host配置；P12仅Agent项变化。上述PID与部署后context_valid=false属于当时证据，之后系统Native启动／会话已变化，当前重绑事实另列，不补输入授权。
+- 原自有50306／cg52479：safe AXPress counter0→1；750ms drag实际1down／12move／1up，completed1，采样inactive／key=false／front=false，仅此有限Native接收通过。
+- typed hover被旧Root MCP convenience parser在dispatch前拒绝；低层pixel enter因动态tick使anchor／blank旧帧失效，Native=false／provider dispatch0。原负例不重放，不推通用hover成功。
+- 原生命周期handle85426后来UnknownProcess；独立ps50306 exit1／stdout空、ownerDir缺失／lifecycle文件缺失，而最后ownState仍running／tick424。退出状态与provider closed均unknown，不能补timer exit0。
+- **新启动会话恢复**：实际Native session从boot1791360464变为boot1792037315，Agent1407／8f802e9b重新运行；已装09930ce0与12项公开文件hash保持，四TCC有效。虚拟屏同UUID13E4但ID5→4／源像素比例2→1，旧frame／lease／输入不重放。重启发起者不推断。
+- **新静态Native**：同新源码构建fixture36406b9a，8333／cg388上typed合作owner Enter8／Exit9各一次；独立callback与registered tag/window/NULL userData匹配，provider dispatch2／duplicate0／rejected0；inactive／key=false／front=false。仅legacy合作校准，不推普通Chrome／现代tooltip，tooltip请求0。
+- **局部焦点／整值文本**：一次focus_element后三轴ready；一次set_text整值“RWI 静态验收 🙂𝄞”25 UTF8 bytes，双CFString、独立fresh AX与receiver委托均相等，非键盘／composition；完整OS前台窗口身份unknown不改写。
+- **新靶场生命周期**：原120s进程handle85928真实exit0，state closed／timer close1／provider_closed=true；owner目录不在、exactPID catalog完整0、ps1且stdout空，detach=true。它不追溯证明旧50306退出码；新启动前实例guard拒绝已保留。
+- **Live外观**：既有真实原图为220×219pt紧凑非激活叠层，眼睛划线隐藏与X关闭分开；本次又查官方Computer Use公开文档，未建立其准确尺寸／完整按钮几何，不称1:1复刻；源截图不因面板缩小而重压缩。
+- 原始按时序截图与完整Native分层报告：/Volumes/ChatGPT/Real World Interaction/outputs/validation/finite19-unattended-native-2026-10-15/REPORT.md。全部验收无人配合；不操作游戏／已有文档或请求系统授权。
+- **完整目标仍未完成**：C1普通第三方／Chrome冷Native hover、C2泛现代可见tooltip、C3完整Unicode键盘与显式browser-content路线仍required；合作owner、AX整值替换、Native ACK与DOM效果不能互相升级。Live当前仍依赖可见MCPApps组件与1500ms presence lease，不是严格聊天生命周期／CU等价；既有Source22最小化Live与同会话Stop180ms有限正例保留，旧Source22提前detach的worker终态仍unknown。
+- **提交／CI**：保留既有逻辑commits与PR1的as-time记录；本事务不执行Git，不声明远端HEAD或GitHub CI当前成功。本批次六条源码逻辑提交已由独立Git原件验证，HEAD09e72756；此文档后续提交与推送／exact-head CI结果另附真实事件，不预报成功。`full_goal_complete=false`。
+- 本轮原始JSON／未编辑截图、部署与有限Native分层报告：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/finite19-architecture-and-deployed-native-2026-10-15/REPORT.md`。只消费既有证据；不运行Cargo、部署、GUI或Git。
+
+--- 以下全部旧历史为as-time，原字节完整保留；旧Current／pending不覆盖本节 ---
+
+<!-- RWI_SOURCE22_STOP_FINAL_CURRENT_SINGLE_CLOSE -->
+## 当前：Source22 最小化Live与同会话Stop已有限实机验证（2026-10-15）
+
+- **当前源码／回归**：同403源码、297受管路径；Rust manifest `dcd8178d207900515a41191c38ee89c0860a77c4c7039041d247e7a4caa9e4d2`。Source23仅同名r94测试模块原字节移动，匹配12/12、checker实际20→19（仍exit1）；Stop匹配0/5/0/5均exit0，同固定150ms调度输入返回worker_done false/true/false/true。最新fmt/test/clippy=000，1141 passed／11 ignored／44 suites；不重跑或升级为Native证明。
+- **Source22有限Live正例**：自有窗口一次最小化后独立mini=true、appactive=false／key=false，source与HUD持续推进且running／image有效；一对非原子样本差1tick如实保留。Source22旧live:1提前detach后的worker最终状态仍unknown，新Stop结果不是旧worker的追溯证明。
+- **新Stop真实闭合**：新Agent8015／instance `cbdb45ac-8080-4954-8ace-9c587ee0b12b`、signed `6abdbe45fb2d1a7637442678baa1700f82e673f32259d7fb367f037a3d44c420`。新自有Receiver10166／cg52369上的同会话live:1，Stop实际返回stopped、worker_done=true、stop_completion=drained（soft500ms／实测wait180ms）；detach之前独立同会话status仍worker=true且图清／不可见，然后两binding detach=true。Stop后Source仍running／tick219，未被Stop关闭；exactAgent on-screen inventory为0只证明隐藏边界，不证明全局销毁。新120s fixture实际exit0，exactPID catalog完成0窗口、ps exit1／stdout空。首次fixture准备FileExists／exit1保留，只改准备目录与新identity后成功，无输入重放。
+- **部署／权限边界**：Agent-only五build/sign命令和既有atomic部署实际成功；稳定24B证书／DR、CA／配对／四项TCC、Host与MCP21保持。P12仅Agent项变化，另外11项逐字相同；实际loaded context_valid=false／未知保留，不补桌面解锁、全局前台或输入授权。
+- **尚未完成**：C1普通第三方／Chrome cold Native hover仍H1/H2阴性；C2泛现代／Native可见tooltip未完成；C3完整Unicode键盘与显式browser-content路线未完成，AX整值替换不是键盘／composition。上述完整目标不删、不用合作owner或ACK代替。C5公开proxy／foreign renderer、C6自有Wine、C7可靠性与输出精简既有有限结果保留，不重放。
+- **交付／CI**：Source21已5逻辑提交并推现有公开PR1，remote as-time `8cb84f55…`；随后CI run38669309139架构检查失败，阈值不放宽。Source22行为 `0b420292…`、Source23纯架构 `4fd87f19…`、Stop行为 `8db8ffbf…` 三条新本地逻辑提交已完成，当前local HEAD `8db8ffbf…`；本轮未推送，不假称remote HEAD当前值。架构仍19项超限需继续职责拆分与实际CI复验；不把本地Rust全3当CI全绿。`full_goal_complete=false`。
+- 原始截图、部署／同会话Stop／生命周期证据：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/source22-stop-soft-drain-unattended-native-2026-10-15/REPORT.md`；本次只消费既有实证并收口状态／同四角色，不运行Cargo、部署、GUI或Git。
+
+--- 以下全部旧历史为as-time，原字节完整保留；其中旧Current／pending不覆盖本节 ---
+
 <!-- RWI_SOURCE21_FINAL_CURRENT_SINGLE_CLOSE -->
 ## 当前：Source21 已验证的输出精简与有限验收／交付状态（2026-10-15）
 
