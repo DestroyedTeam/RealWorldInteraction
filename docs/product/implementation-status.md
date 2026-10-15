@@ -1,3 +1,54 @@
+<!-- RWI_F27_KEY_MEMORY_CURRENT -->
+## 当前：Rust NSEvent／Quartz字符诊断已实现并实测，不能直接用NSEvent桥接替换默认输入 · 2026-10-15
+
+- **具体实现**：新增test-only nsevent_probe::key_memory::probe_key_constructor，实际调用原生产key_events生成down/up，与公开NSEvent key factory和独立CGEventCreateData/CreateFromData重建对照；精确读取最多64个UTF16单位，nullable原样保留，只对合法key种类读取专用getter。8 scalar×2相共16内存case，0窗口／0post／0激活／0截图；没有新MCP工具、默认生产投递路线或已安装程序变更。
+- **真实新发现，而非兼容通过率**：本次默认CG的Unicode单位16/16精确保留；默认AppKit characters仅8/16相同（keydown/up轴另存）；公开factory直持完整字符，但其CG Unicode字段16例均空，序列化重建后AppKit字符只有8/16保留，全部nonBMP样例丢失并回到物理键字符。直接NSEvent内存对象不等于可跨进程传输的完整字符，不能据此声称后台修复，也不应盲替换当前默认构造器。生产CG自己的序列化、factory独立copy显式Unicode覆盖仍需下一步对照。
+- **本轮修正与合理拆分**：首次编译101因固定objc2-foundation未启用NSRange，改用有界公开characterAtIndex逐UTF16读取，不加依赖、不放松类型检查。随后架构门实际exit1指出parent724行超600，已把新key职责放入独立key_memory.rs；原parent旧函数体未改、行数回落，未提高债务上限。原101与架构1、两版原源及全部事件保留，均不是GUI投递失败。
+- **完整源码门**：最终Source462（3个Rust路径，child原先ABSENT）fmt／workspace／all-targets/all-features Clippy(-D warnings)／architecture实际0000，1236 passed／0 failed／11 ignored／44 suites，仍12项既有架构债务、architecture_complete=false。匹配命令原BASELINE0 tests（新测试不存在）→MODIFIED2 tests，exit均0；同四角色范围追加child，全球pristine仍原81 PRESENT＋新283 ABSENT，不重基；独立copy的scope/default恢复、严格补丁重建和再应用由本事务实际执行。内存probe的pass不等于16项应用兼容pass。
+- **真实GUI结果不改写**：F25 Chrome155普通前台指针＋typed全Unicode18/18成功；F26同窗口转后台后新后🙂𝄞仅写后、原effect与durable为23/19 mismatch，13请求均终态释放／无重放，旧原图保持。后台nonBMP未修复、完整IME／普通cold hover／foreign层叠／隐藏遮挡／严格Host图像Live与分层性能继续，不被测试替代。Live220pt及隐藏／X旧实机证据保留，本轮不冒称新可见渲染。Agent61077／07ef84f4、MCP62b、四项权限与CA／签名／配对不变，无部署／重启／人工配合。full_goal_complete=false。
+- [真实GUI时序原图](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f24-f26-chrome-unicode-2026-10-15/REPORT.md)；[版本匹配上游定位](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f24-f26-chrome-unicode-2026-10-15/C3_SOURCE_NOTES.md)。下一项用独立CGcopy和显式UTF16覆盖核对序列化边界，再决定明确opt-in的Native试验；不重放旧输入。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F26_UNICODE_DIFFERENTIAL_CURRENT -->
+## 当前：Chrome前台完整Unicode已通过，转后台的nonBMP缺字已精确验出；未修复 · 2026-10-15
+
+- **F24真实partial，不冒称没有焦点**：新Chrome3028／Peer3300，显式Peer→Chrome前台后AXFocused setter一次，ACK/status0，但即时elementFocused与focusedUI CF匹配均false、appWindow匹配true，state=partial／goal=false；后续被动页面D1 F1，分歧原因未证实。按预先门控未发键盘，原回执保留，不把DOM F1回填成Native ready。
+- **F25正常前台流程实机通过**：新私有Chrome4334／CG1805、Peer4500／CG1818，均在fresh分配虚拟屏。显式Peer→Chrome前台，fresh精确字段原生指针click一次，页面P1/F1后typed完整RWI 中λ🙂𝄞 é👩‍💻一次；原details_ref与原durable均text_effect match、18/18 UTF16，AX全文精确相等，K/U/B/I各14，系统前台四元组始终Chrome。不是用前台兜底修补旧失败请求；fixture标题的AXPress仅继承标签，本例pointer无AXPress聚焦或focus_element。
+- **F26独立新意图精确失败**：在已完成F25的同一窗口上，显式把前台交给自有Peer，fresh页面D0 F1、旧完整值18单位仍在。新payload后🙂𝄞只发一次；键down/up各新增3，但beforeinput/input仅新增1，实际只追加后。原text_effect／原durable均value_differs_observed、23/19 UTF16；前后完整系统前台tuple仍Peer。未补发、不静默AXValue／剪贴板／CDP／脚本／切前台修复，不覆盖F25先前的完整成功原件。
+- **清理、回执与图像**：13个原durable均terminal／resources_released／noReplay，两组精确窗口各Close一次，新complete exact-PID目录均0、detach；Peer原生命周期均exit0且非到期关闭。Chrome经UID／birth／exe／私有profile核验后各TERM一次并确认精确进程清空，浏览器退出码仍unknown（open只是launcher）。7张原PNG1920×1440／1320×1104未缩小／重编码。旧Root连接compact仍省略扩展字段，本次用原details与durable核验，不宣称它已reload；F22新Host typed通过的独立事实保持。Agent61077／07ef84f4、四项权限及安装文件不变，无重启／部署／人工配合。
+- **研究与下一项实现**：已实际获取与本机155.0.8059.40同版本Chromium上游源码，和Apple公开CG Unicode／NSEvent key factory原Markdown，均系统curl保留TLS验证HTTP200、源hash固定。源码的BMP与多UTF16文本提交分路支持后续定位，但不是本次内部调用栈证明。Source27已生成两文件Rust test-only构造／序列化逐UTF16对照patch，strict dry-run0；尚未应用Root／执行新测试／修改默认输入路线。先查真实生产CG→AppKit字符与公开NSEvent→CG重建字符是否有差异，再推进显式opt-in Native，不把构造当接收效果。
+- **完整目标继续**：Chrome后台nonBMP仍未修复、完整IME、普通第三方cold hover／modern tooltip、隐藏遮挡／foreign模态、严格Host图像Live与分层耗时仍在。Live220pt双轴小层／独立隐藏和X／高质源图既有证据保留，本轮无新的可见渲染声明。F25 Host338ms／adapter328ms，F26 Host288ms／adapter283ms仅本样本wall；准确Host值以原JSON为准，不作CPU／CU性能比较。Rust Source461仍ae57c54c，1234 passed／11 ignored及原全门事件复用，本轮文档匹配／副本回滚另实跑。full_goal_complete=false。
+- [按时序原图与原始对照](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f24-f26-chrome-unicode-2026-10-15/REPORT.md)；[版本匹配源码及推断边界](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f24-f26-chrome-unicode-2026-10-15/C3_SOURCE_NOTES.md)。无需休息中的用户手工切窗、展开、重启或授权。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F23_LOCAL_KEY_CURRENT -->
+## 当前：Chrome 本地 Key 轴已完成实机判别；未发键盘，继续完整后台／Live计划 · 2026-10-15
+
+- **真实新结果，不重试旧输入**：新私有Chrome PID98366／CG1729和Peer98638／CG1737均fresh位于已分配虚拟屏。open -g启动后仍观测Chrome前台，此事实保留；随后仅对专用Peer显式切前台一次。对后台Chrome只发一次computer.select_window_local(kind=key)，原回执、details_ref与原durable均为rejected_before_dispatch／window_local_kind_unsupported，native_dispatch_entered=false、未执行setter。不是AXMain／AXPress聚焦，不将fixture继承的AXPress标题当执行记录。
+- **门控及独立读回**：前后完整OS foreground 四元组不变，始终Peer；Chrome精确输入框仍空、被动页面计数D0 F0 P0 K0 U0 B0 I0 C0 L0。按预先绑定的门控未发键盘，也未发focus_element／Main／激活／点击／全局键／剪贴板／CDP兜底。此负例只能否定本provider本地Key可写假设，不是完整Unicode／IME验收，更不是所有后台事件不可能的结论。
+- **清理闭合**：两个自有窗口各AXPress Close一次；新完整exact-PID目录均0、detach完成，Peer原生命周期exit0且无到期关闭。仍存活的Chrome经UID／birth／精确exe／私有profile验证后TERM一次，父进程和精确profile子进程消失；open是launcher而非浏览器父进程，浏览器退出码 unknown。四个原durable均terminal／resources_released／noReplay。Agent61077／07ef84f4、MCP62b20999和四项权限不变，无部署／重启／人工配合。
+- **证据及错误保留**：5张原PNG逐字节保存，Chrome1920×1440与Peer1320×1104，不缩小／重编码；444份原文件hash复核。初次只读audit对compact省略correlation_id:null的全对象比较exit1保留，修正为验证唯一已知省略后相同原件audit exit0，不重跑任何Native动作。
+- **Live大小／按钮与公开资料**：既有220pt双轴上限、portrait160pt、44pt真实hit／28pt绘制和eye.slash／play.fill／xmark仍保留，高质2048源图与小浮层分别验收；本轮未声称新可见渲染。已再次实际打开OpenAI官方[插件参考](https://developers.openai.com/plugins/reference)与[UI指南](https://developers.openai.com/plugins/concepts/ui-guidelines)：公开Host PiP适合持续活动、少控件、会话结束应关闭，但没有证实Codex Computer Use浮层精确尺寸和全按钮规范，不臆称1:1。现控制卡不是图像播放器；严格聊天Live仍需真正Host管理图像与有界app-only帧通道，不能仅把空卡命名PiP或伪造presence。
+- **完整剩余计划不缩窄**：默认Chrome后台nonBMP／IME、普通第三方cold Native hover／modern tooltip、隐藏遮挡与foreign模态泛化、严格Host Live及分层耗时仍在。新Host typed text_effect已通过的F22事实不回填本轮未投递case。Rust Source461／受管363不变，1234 passed／11 ignored及fmt／Clippy／architecture门仍引用同ae57c54c源的原事件；本轮仅文档匹配与独立copy回滚另实跑。full_goal_complete=false。
+- [本轮按时序原图与事实](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f23-chrome-window-local-key-2026-10-15/REPORT.md)；[新Host文字回执已通过](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f22-typed-projection-2026-10-15/FRESH_HOST.md)。不要求睡眠中的用户切窗、展开卡片、重启或重新授权。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
+<!-- RWI_F22_TYPED_COMPACT_CURRENT -->
+## 当前：安装配置已同步，新连接 typed 回执实机通过；完整 Live／Chrome 计划继续 · 2026-10-15
+
+- **本轮真实负例保留**：旧连接新Case1 Target72919／Peer72940，computer.type_text一次，完整Unicode由AX和receiver验回，但compact丢text_effect；details_ref和原durable均保留unknown/readback_budget_expired（本次只读软预算到期）。不把后续新正例回填旧结果，不重放输入。Host1062ms／adapter1052ms仅单例wall；不是CPU／CU优劣。
+- **已部署的具体修正**：唯一Root Source461／受管363未变；发现已安装二进制62b20999…，插件manifest配置指纹仍9fe5ae6d…，macOS Skill仍d4f57de5…。使用既有打包器生成候选并逐文件比较，实际只同步.mcp.json的RWI_MCP_BINARY_SHA256与macOS Skill（现11386945…）。二进制、Agent61077／07ef84f4、四项TCC、CA／配对／profile与Host配置未变，无Codex／Agent重启、无人工配合；指纹是配置身份，不是授权或自动reload保证。保留完整安装备份，同一ROLLBACK.sh增加--f22-installed-plugin-only，只恢复显式标记的独立copy，拒绝Root／角色／实际安装／源bundle。
+- **新连接的实机闭环**：按用户此前“旧会话无法用新版MCP时同项目接力”授权创建新连接任务01a13fc5-a61f-7411-a2e2-482cfb4a5fc6，不以stdio探针替代GUI。新Target81008／CG1687、Peer81009／CG1688均位于fresh虚拟屏；局部focus与typed text各一次。compact／details_ref原件／原durable三方text_effect完全一致，value_matches_expected、18/18 UTF16，goal_verified=false／system_accepted=null；新鲜AX与独立receiver完整值相同、14 changes，Peer空且完整OS前台tuple不变。Target key=false、内部app_active=true，不泛化Chrome／IME／隐藏窗口。适配器978ms，claim5／act971／release1ms，Host983ms，不作不同case间性能推断。
+- **清理与独立审计**：新连接两个源窗口各Close一次、原生命周期exit0、complete exact-PID catalog均0、ps absent、detach完成；主任务另外只读查询5个原请求，均terminal／resources_released／noReplay。94份已封存证据逐hash复核，7张1320×1104原PNG未编辑／降质，关键原图已重开观察。原准备错误及parent audit对ps聚合文件类型误判的TypeError均保留，修正只消费原文件，不重放GUI。
+- **回滚／回归与Git**：配置一致性／Skill探针同命令BASELINE／MODIFIED／ROLLBACK／REAPPLY退出1／0／1／0（旧pin和旧Skill→两者一致→copy还原旧值→再应用一致），全bundle原hash在copy恢复。Root四角色沿用；1234 passed／11 ignored和fmt／Clippy／architecture门来自同ae57c54c… Rust源码的已完成事件，本轮未用重复Cargo跑分冒充进展；既有12项架构债务保留。HEAD9ded893／PR1的精确双平台非桌面CI已绿，只证明其覆盖范围，本轮仅状态文档事务另记匹配和回滚，不声称新Native功能全部完成。
+- **完整目标仍保留**：默认Chrome后台nonBMP／IME、普通第三方cold Native hover／现代tooltip、隐藏遮挡泛化、严格Host聊天Live未完成。Live维持既有220pt小层／独立隐藏与X／高质源图，本轮未冒称新实际渲染。已复核官方Host PiP能力：后续应探索Host管理的真实图像PiP和app-only有界帧读取，而不是把控制卡改名为PiP或把presence TTL等同聊天生命周期；实际Host模式／切换仍须验收。下一有限Native检查将独立检验普通Chrome窗口local key轴，不复试旧AXPress阴性输入、不静默前台／Main／剪贴板／CDP fallback。full_goal_complete=false。
+- [Case1真实负例](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f22-typed-projection-2026-10-15/REPORT.md)；[新连接原图与结果](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f22-typed-projection-2026-10-15/FRESH_HOST.md)；[Host Live公开契约与未实现方向](/Volumes/ChatGPT/Real World Interaction/outputs/validation/f22-typed-projection-2026-10-15/HOST_LIVE_CONTRACT.md)。
+
+--- 以下完整旧历史按as-time原字节保留，不覆盖本节 ---
+
 <!-- RWI_F21_NATIVE_COMPARE_ACCEPTED_CURRENT -->
 ## 当前：F21文字回读已部署并通过新实机比较；无人值守推进，不要求人工配合 · 2026-10-15
 
