@@ -1,3 +1,19 @@
+<!-- RWI_F14_LIFECYCLE_AND_TARGETS_CURRENT -->
+## 当前：自有浏览器生命周期与按需说明已部署并有限实机验收（2026-10-15）
+
+- **回归**：唯一Root的443份源码／同343受管路径；fmt、workspace test、Clippy及架构检查实际均exit0，1166 passed／11 ignored／44 suites。原Clippy101与修复前结果保留；本节复用原件，不重跑已完成操作。
+- **新增能力**：`browser.session` 只开放隔离浏览器的create／原请求query／精确close。默认关闭，单独本机授权；不接管已有浏览器、profile或调试端口。保留durable请求身份、uncertain不重放、旧引用失效、进程birth／UID核验与一次自有子进程信号限制。不是网页snapshot／hover／click，更不替代原生工具栏和系统弹窗操作。
+- **真实Host b1负例**：自有窗口1200×1087高于1080点虚拟屏，移动在执行前拒绝；原窗口位置未改。close实际使用一次自有signal9，不称正常退出，也不因后续b2成功改写原负例。
+- **修正与真实Host b2**：新自有窗口请求960×720，Native独立读到同尺寸；一次移动后独立坐标[1824,24,960,720]，在已分配虚拟屏内。精确close实测173ms、exit0、无强杀；原请求query、旧Agent引用拒绝、关闭后新请求旧引用拒绝均验回。独立ps无原PID、完整CG清单为0；私有测试profile保留。2000ms是首次close的最大等待预算，不是固定休眠；不由此宣称相对b1或Computer Use提速。
+- **默认权限回滚**：临时about:blank授权已经删除并重载同一签名Agent。相同query实际BASELINE／MODIFIED／ROLLBACK为 unavailable → request_unknown → unavailable；原始ABSENT恢复。四项TCC仍有效，稳定签名／配对未换，不需人工授权；不改用户已有Chrome或主目录权限。
+- **输出精简**：`computer.targets` 仅延后精确路径且原文完全相同的21项说明，通过原有`computer.result`按需读取。真实已装Rust MCP原始39055B、compact16263B；544个原始事实叶子逐项一致，21项说明逐条验回原文。控件、坐标、动作、unknown、授权及失败原因不删。字节不是token数、CPU或实机提速证明。
+- **部署**：Agent signed SHA `9bd0d605…`，MCP `df4f6343…`；真实Host已加载新工具并完成上述GUI操作，不只是stdio发现。Agent重载后的新原生身份使旧frame失效，未重放旧输入。非凭工具数量声明全部功能完成。
+- **Live与无人值守**：既有真实预览已缩为220×219pt，独立隐藏／X关闭，源截图不因面板缩小重压缩。已检索Computer Use公开资料，但未证实其精确窗口尺寸／完整按钮几何，不称1:1。Live仍使用可见MCP Apps组件与1500ms presence lease，不等同严格聊天生命周期。无需用户切窗或目视配合，不操作游戏／已有文档；遇系统必须由本人确认的步骤不代填密码或越权授权。
+- **仍待推进**：普通第三方／Chrome冷Native hover、泛现代可见tooltip、完整Unicode键盘／composition，以及显式browser-content snapshot／hover／click。合作owner事件、AX整值替换、DOM效果与native输入不能互相升级；旧负例与unknown保留。`full_goal_complete=false`。
+- **交付时间点**：本节写入时，本批源码尚待合理逻辑提交／推送现有PR1及新HEAD CI；旧CI绿不覆盖此批。后续实际提交与CI以[现有PR](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)为准。逐步原图／本机证据：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f14-owned-browser-host-2026-10-15/REPORT.md`。同四角色保留源码B/M/R=0/3/0与本次文档1/0/1的原始命令、输出、哈希和回滚证据。
+
+--- 以下完整旧历史均为as-time；原字节保留，不覆盖本节 ---
+
 <!-- RWI_FINITE19_FINAL_CURRENT_SINGLE_CLOSE -->
 ## 当前：有限架构批次已本地验证／部署，Native按实际有限结果分层（2026-10-15）
 
