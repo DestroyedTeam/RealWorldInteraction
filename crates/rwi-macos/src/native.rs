@@ -64,6 +64,7 @@ pub struct NativeMac {
     dispatches: std::sync::Arc<std::sync::atomic::AtomicU64>,
     objects: std::sync::Mutex<objects::Objects<objects::Ax>>,
     pub(crate) last_observation: std::sync::Mutex<serde_json::Value>,
+    text_effect: Option<rwi_core::text_effect::TextEffect>,
 }
 #[derive(Clone)]
 struct AxElement {

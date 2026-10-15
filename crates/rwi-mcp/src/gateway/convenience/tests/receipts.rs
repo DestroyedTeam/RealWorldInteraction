@@ -1,6 +1,27 @@
 use super::*;
 
 #[test]
+fn f21_text_effect_compact_receipt_preserves_sample_without_goal_promotion() {
+    for sample in [
+        json!({"state":"value_matches_expected","expected_utf16_units":18,"observed_utf16_units":18}),
+        json!({"state":"value_differs_observed","expected_utf16_units":18,"observed_utf16_units":10}),
+        json!({"state":"unknown","reason":"selection_unknown"}),
+        Value::Null,
+    ] {
+        let raw = json!({"dispatch":"returned","system_accepted":null,"text_effect":sample,"goal_verified":true,"replay":"forbidden"});
+        let mut compact = compact_action_reply(&raw, Some("original-details".into()));
+        trim_timing_fields(&mut compact);
+        assert_eq!(compact.get("text_effect"), raw.get("text_effect"));
+        assert_eq!(compact["system_accepted"], Value::Null);
+        assert_eq!(compact["goal_verified"], false);
+        assert_eq!(compact["replay"], "forbidden");
+        assert_eq!(compact["details_ref"], "original-details");
+    }
+    let absent = compact_action_reply(&json!({"dispatch":"returned"}), None);
+    assert!(absent.get("text_effect").is_none());
+}
+
+#[test]
 fn click_count_maps_one_native_intent_and_never_repeats_ax_actions() {
     let base =
         json!({"target":"t","request_id":"r","at":{"kind":"element","frame":"f","element":"e"}});

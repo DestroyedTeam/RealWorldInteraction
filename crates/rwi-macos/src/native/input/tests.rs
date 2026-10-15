@@ -189,6 +189,7 @@ fn unsupported_source_region_is_rejected_before_any_native_read_or_capture() {
         dispatches: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
         objects: std::sync::Mutex::new(super::super::objects::Objects::default()),
         last_observation: std::sync::Mutex::new(serde_json::Value::Null),
+        text_effect: None,
     };
     reference.source_region = Some([1, 2, 3, 4]);
     assert_eq!(

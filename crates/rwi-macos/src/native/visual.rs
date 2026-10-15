@@ -176,6 +176,7 @@ impl NativeMac {
             dispatches: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
             objects: std::sync::Mutex::new(super::objects::Objects::default()),
             last_observation: std::sync::Mutex::new(serde_json::Value::Null),
+            text_effect: None,
         }
     }
     /// Independent capture slot for a bounded local viewer; no input capability.

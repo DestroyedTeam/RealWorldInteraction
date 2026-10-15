@@ -341,6 +341,9 @@ impl<B: Backend> Backend for GuardedBackend<B> {
         self.guard.check(GuardOperation::Read)?;
         self.inner.revalidate(reference)
     }
+    fn take_text_effect(&mut self) -> Option<rwi_core::text_effect::TextEffect> {
+        self.inner.take_text_effect()
+    }
     fn act(
         &mut self,
         expected: &Binding,

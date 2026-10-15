@@ -12,6 +12,9 @@ pub struct Observed {
     pub entered: Arc<AtomicBool>,
 }
 impl Backend for Observed {
+    fn take_text_effect(&mut self) -> Option<rwi_core::text_effect::TextEffect> {
+        self.inner.take_text_effect()
+    }
     fn drag_surface(
         &mut self,
         endpoint: &drag_between::Endpoint,

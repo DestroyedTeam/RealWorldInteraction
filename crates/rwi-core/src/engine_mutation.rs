@@ -64,6 +64,7 @@ impl Engine {
             dispatch: "uncertain".into(),
             dispatch_error: None,
             system_accepted: None,
+            text_effect: None,
             goal_verified: false,
             replay: "forbidden".into(),
             deduplicated: false,
@@ -345,6 +346,7 @@ impl Engine {
             dispatch: "uncertain".into(),
             dispatch_error: None,
             system_accepted: None,
+            text_effect: None,
             goal_verified: false,
             replay: "forbidden".into(),
             deduplicated: false,
@@ -373,6 +375,7 @@ impl Engine {
             .as_ref()
             .ok_or_else(|| fault("target_binding_unknown", "Native binding required."))?;
         let dispatch_before = self.backend(target)?.input_dispatch_count();
+        let _ = self.backend(target)?.take_text_effect();
         match operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
             if let (Intent::DragBetween(destination), Some(endpoint)) =
                 (&intent, &paired_destination)
@@ -403,6 +406,9 @@ impl Engine {
                 let dispatch_after = self.backend(target)?.input_dispatch_count();
                 record_dispatch_failure(&mut receipt, error, dispatch_before, dispatch_after);
             }
+        }
+        if matches!(intent, Intent::Text) {
+            receipt.text_effect = self.backend(target)?.take_text_effect();
         }
         write(&mut file, &receipt)?;
         drop(held);

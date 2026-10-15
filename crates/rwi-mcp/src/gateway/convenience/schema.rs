@@ -359,6 +359,7 @@ pub(super) fn compact_action_reply(data: &Value, details_ref: Option<String>) ->
         "deduplicated",
         "operation_ref",
         "system_accepted",
+        "text_effect",
         "replay",
         "replay_allowed",
         "cleanup",

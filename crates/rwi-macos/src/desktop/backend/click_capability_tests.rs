@@ -1,5 +1,56 @@
 use super::*;
 
+fn text_effect_desktop() -> NativeMacDesktop {
+    NativeMacDesktop::from_identity(
+        Identity {
+            host: "fixture".into(),
+            guest: None,
+            session: "fixture".into(),
+            seat: "fixture".into(),
+            desktop: "fixture".into(),
+        },
+        0,
+        false,
+        None,
+    )
+}
+
+#[test]
+fn f21_text_effect_desktop_unselected_has_no_sample_and_no_input() {
+    let mut desktop = text_effect_desktop();
+    assert_eq!(desktop.take_text_effect(), None);
+    assert_eq!(desktop.input_dispatch_count(), Some(0));
+    assert!(desktop.selected.is_none());
+}
+
+#[test]
+fn f21_text_effect_desktop_drains_exact_selected_native_sample_once() {
+    use rwi_core::text_effect::{TextEffect, UnknownReason};
+    let sample = TextEffect::unknown(UnknownReason::SelectionUnknown);
+    let mut desktop = text_effect_desktop();
+    desktop.selected = Some(NativeMac::fixture_with_text_effect(sample.clone()));
+    assert_eq!(desktop.take_text_effect(), Some(sample));
+    assert_eq!(desktop.take_text_effect(), None);
+    assert_eq!(desktop.input_dispatch_count(), Some(0));
+}
+
+#[test]
+fn f21_text_effect_desktop_attachments_never_borrow_another_selection_sample() {
+    use rwi_core::text_effect::{TextEffect, UnknownReason};
+    let first = TextEffect::unknown(UnknownReason::ReadbackBudgetExpired);
+    let second = TextEffect::unknown(UnknownReason::NativeIdentityChanged);
+    let mut a = text_effect_desktop();
+    let mut b = text_effect_desktop();
+    a.fixed_attachment = true;
+    b.fixed_attachment = true;
+    a.selected = Some(NativeMac::fixture_with_text_effect(first.clone()));
+    b.selected = Some(NativeMac::fixture_with_text_effect(second.clone()));
+    assert_eq!(a.take_text_effect(), Some(first));
+    assert_eq!(a.take_text_effect(), None);
+    assert_eq!(b.take_text_effect(), Some(second));
+    assert_eq!(b.take_text_effect(), None);
+}
+
 #[test]
 fn r92_exact_desktop_selection_advertises_the_pinned_native_click_shape() {
     for input_enabled in [false, true] {

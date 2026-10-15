@@ -16,6 +16,7 @@ use anchor_native::AxObject;
 use continuation::{Facts, Kind, Sequence};
 use mouse_gesture::MouseGesture;
 mod foreground_move;
+mod text_effect;
 
 impl NativeMac {
     pub(super) fn dispatch_input(
@@ -25,6 +26,7 @@ impl NativeMac {
         intent: &Intent,
         value: Option<&str>,
     ) -> Result<Option<bool>> {
+        self.text_effect = None;
         if !self.allow_input {
             return Err(fault(
                 "input_not_enabled",
@@ -134,11 +136,7 @@ impl NativeMac {
         // event. Otherwise a rejected field has already incremented the effect
         // counter and is correctly (but unnecessarily) reported as uncertain.
         // The sequence still revalidates immediately before every down/up pair.
-        if matches!(intent, Intent::Text | Intent::KeyChord) {
-            validate_keyboard_payload(intent, value)?;
-            self.read_input_batch(true, expected, target, intent)?
-                .validate(expected, target, Kind::of(intent))?;
-        }
+        let text_witness = self.prepare_text_witness(expected, target, intent, value)?;
         // The local animated-pixel exception is valid only on a native bitmap
         // canvas. Confirm the exact AX hit before even a background AppKit
         // activation, then repeat the check at dispatch.
@@ -368,6 +366,7 @@ impl NativeMac {
             // CGEventPost returns void: native dispatch is not an OS effect acknowledgement.
             Ok(None)
         })();
+        self.record_text_effect(text_witness, result.is_ok());
         result.map_err(|error| {
             dispatch::preparation_only_failure(
                 error,

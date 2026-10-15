@@ -117,6 +117,7 @@ impl Engine {
             dispatch: "uncertain".into(),
             dispatch_error: None,
             system_accepted: None,
+            text_effect: None,
             goal_verified: false,
             replay: "forbidden".into(),
             deduplicated: false,

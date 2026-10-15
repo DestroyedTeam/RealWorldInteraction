@@ -47,10 +47,10 @@ pub mod set_text;
 mod set_text_route;
 #[cfg(test)]
 mod tests;
+pub mod text_effect;
 pub mod trajectory;
 pub mod window_local;
 mod window_local_route;
-
 pub const INLINE_BYTES: usize = 8 * 1024 * 1024;
 pub const ARTIFACT_BUDGET: usize = 64 * 1024 * 1024;
 pub const MAX_FRAME_BYTES: usize = 32 * 1024 * 1024;
@@ -434,6 +434,9 @@ pub struct Receipt {
     pub dispatch: String,
     pub dispatch_error: Option<Fault>,
     pub system_accepted: Option<bool>,
+    /// Bounded, read-only plain-field sample; never a dispatch or goal oracle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_effect: Option<text_effect::TextEffect>,
     pub goal_verified: bool,
     pub replay: String,
     pub deduplicated: bool,

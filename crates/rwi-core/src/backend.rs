@@ -21,6 +21,11 @@ pub trait Backend: Send {
     fn input_dispatch_count(&self) -> Option<u64> {
         None
     }
+    /// Drain only the last synchronous act's bounded text sample; no Native I/O.
+    /// Unsupported backends return None. Core clears stale samples before dispatch.
+    fn take_text_effect(&mut self) -> Option<crate::text_effect::TextEffect> {
+        None
+    }
     fn identity(&self) -> Identity;
     fn capabilities(&self) -> serde_json::Value;
     /// Fresh device-scoped status, without taking an input slot or capturing UI.

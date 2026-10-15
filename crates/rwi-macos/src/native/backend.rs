@@ -19,6 +19,9 @@ impl NativeMac {
 }
 
 impl Backend for NativeMac {
+    fn take_text_effect(&mut self) -> Option<rwi_core::text_effect::TextEffect> {
+        self.text_effect.take()
+    }
     fn drag_between(
         &mut self,
         pair: &rwi_core::drag_between::Pair,

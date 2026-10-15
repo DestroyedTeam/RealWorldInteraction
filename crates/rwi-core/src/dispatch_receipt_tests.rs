@@ -1,4 +1,5 @@
 use super::*;
+mod text_effect;
 use std::sync::{
     Arc,
     atomic::{AtomicU64, Ordering},
