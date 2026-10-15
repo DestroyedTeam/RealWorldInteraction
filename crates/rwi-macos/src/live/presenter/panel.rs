@@ -15,6 +15,7 @@ impl Panel {
                 state.display.rect.h,
                 source_pixels,
             );
+            let layout = preview_layout(width, height).ok_or("live_preview_layout_unsupported")?;
             let allocated: Allocated<AnyObject> = msg_send![class(c"NSPanel")?, alloc];
             let window: Retained<AnyObject> = msg_send![allocated,
                 initWithContentRect: rect(0.,0.,width,height), styleMask:128usize, backing:2usize, defer:false];
@@ -23,12 +24,9 @@ impl Panel {
             // server surface after orderOut has acknowledged it as hidden.
             // NSWindowAnimationBehaviorNone, from the AppKit SDK.
             let _: () = msg_send![&*window, setAnimationBehavior:2isize];
-            let appearance: *mut AnyObject =
-                msg_send![class(c"NSAppearance")?, appearanceNamed:NSAppearanceNameAqua];
-            if appearance.is_null() {
-                return Err("Light appearance unavailable".into());
-            }
-            let _: () = msg_send![&*window, setAppearance:appearance];
+            // Nil clears only this owned panel's override. AppKit inherits the
+            // app/system effective appearance; semantic colors/materials remain native.
+            let _: () = msg_send![&*window, setAppearance:std::ptr::null_mut::<AnyObject>()];
             let _: () = msg_send![&*window, setFloatingPanel:true];
             let _: () = msg_send![&*window, setHidesOnDeactivate:false];
             let _: () = msg_send![&*window, setBecomesKeyOnlyIfNeeded:true];
@@ -41,22 +39,27 @@ impl Panel {
             let _: () = msg_send![&*window, setOpaque:false];
             let _: () = msg_send![&*window, setHasShadow:false];
             let _: () = msg_send![&*window, setMovableByWindowBackground:true];
-            let title = NSString::from_str(&format!("RWI Live · {}", state.options.label));
+            let title = NSString::from_str(&preview_window_title(&state.options.label));
             let _: () = msg_send![&*window, setTitle:&*title];
             let clear: *mut AnyObject = msg_send![class(c"NSColor")?, clearColor];
             let _: () = msg_send![&*window, setBackgroundColor:clear];
-            // A semantic floating material follows macOS accessibility/contrast
-            // settings; a near-opaque black CALayer produced a heavy matte frame.
-            let content = view(c"NSVisualEffectView", rect(0., 0., width, height))?;
-            let _: () = msg_send![&*content, setMaterial:6isize]; // Popover
-            let _: () = msg_send![&*content, setBlendingMode:0isize]; // BehindWindow
-            let _: () = msg_send![&*content, setState:1isize]; // Active
+            // Keep proportional-fit body gutters transparent. Only the compact
+            // header uses the native material and accessibility/contrast settings.
+            let content = view(c"NSView", rect(0., 0., width, height))?;
             let _: () = msg_send![&*content, setWantsLayer:true];
             let layer: *mut AnyObject = msg_send![&*content, layer];
+            let clear_cg: *mut AnyObject = msg_send![clear, CGColor];
+            let _: () = msg_send![layer, setBackgroundColor:clear_cg];
             let _: () = msg_send![layer, setCornerRadius:12.0f64];
             let _: () = msg_send![layer, setMasksToBounds:true];
-            let label = view(c"NSTextField", rect(12., height - 28., width - 96., 18.))?;
-            let _: () = msg_send![&*label,setStringValue:&*title];
+            let header = view(c"NSVisualEffectView", layout.chrome_background)?;
+            let _: () = msg_send![&*header, setMaterial:6isize]; // Popover
+            let _: () = msg_send![&*header, setBlendingMode:0isize]; // BehindWindow
+            let _: () = msg_send![&*header, setState:1isize]; // Active
+            let _: () = msg_send![&*content,addSubview:&*header];
+            let label = view(c"NSTextField", layout.title)?;
+            let heading = NSString::from_str(PREVIEW_SHORT_HEADING);
+            let _: () = msg_send![&*label,setStringValue:&*heading];
             let _: () = msg_send![&*label,setEditable:false];
             let _: () = msg_send![&*label,setSelectable:false];
             let _: () = msg_send![&*label,setBezeled:false];
@@ -66,33 +69,31 @@ impl Panel {
             let title_font: *mut AnyObject = msg_send![class(c"NSFont")?,systemFontOfSize:12.0f64];
             let _: () = msg_send![&*label,setFont:title_font];
             let _: () = msg_send![&*label,setToolTip:&*title];
+            // Keep the complete normalized task title accessible, not the compact glyph-width heading.
+            let _: () = msg_send![&*label,setAccessibilityLabel:&*title];
             let _: () = msg_send![&*content,addSubview:&*label];
-            let source_label = view(c"NSTextField", rect(12., height - 42., width - 24., 13.))?;
+            let source_label = view(c"NSTextField", layout.source)?;
             let _: () = msg_send![&*source_label,setEditable:false];
             let _: () = msg_send![&*source_label,setSelectable:false];
             let _: () = msg_send![&*source_label,setBezeled:false];
             let _: () = msg_send![&*source_label,setDrawsBackground:false];
+            // Display-only ellipsis: preserve the full provided StringValue, tooltip
+            // and native AX value. A missing cosmetic cell never stops the Live session.
+            let source_cell: *mut AnyObject = msg_send![&*source_label, cell];
+            if !source_cell.is_null() {
+                let _: () = msg_send![source_cell,setUsesSingleLineMode:true];
+                let _: () = msg_send![source_cell,setLineBreakMode:SOURCE_CAPTION_LINE_BREAK_MODE];
+            }
             let secondary: *mut AnyObject = msg_send![class(c"NSColor")?, secondaryLabelColor];
             let font: *mut AnyObject = msg_send![class(c"NSFont")?,systemFontOfSize:10.0f64];
             let _: () = msg_send![&*source_label,setTextColor:secondary];
             let _: () = msg_send![&*source_label,setFont:font];
             let _: () = msg_send![&*content,addSubview:&*source_label];
-            let image = view(
-                c"NSImageView",
-                rect(8., 6., width - 16., height - CHROME_HEIGHT),
-            )?;
+            let image = view(c"NSImageView", layout.image)?;
             let _: () = msg_send![&*image,setImageScaling:3usize];
             let _: () = msg_send![&*image,setEditable:false];
             let _: () = msg_send![&*content,addSubview:&*image];
-            let placeholder = view(
-                c"NSTextField",
-                rect(
-                    20.,
-                    6. + (height - CHROME_HEIGHT) / 2. - 13.,
-                    width - 40.,
-                    26.,
-                ),
-            )?;
+            let placeholder = view(c"NSTextField", layout.placeholder)?;
             let _: () = msg_send![&*placeholder,setEditable:false];
             let _: () = msg_send![&*placeholder,setSelectable:false];
             let _: () = msg_send![&*placeholder,setBezeled:false];
@@ -112,16 +113,9 @@ impl Panel {
                 id,
                 "隐藏预览",
                 sel!(toggle:),
-                rect(width - 76., height - 34., 28., 28.),
+                layout.toggle,
             )?;
-            let _close = button(
-                &content,
-                target,
-                id,
-                "关闭预览",
-                sel!(stop:),
-                rect(width - 40., height - 34., 28., 28.),
-            )?;
+            let _close = button(&content, target, id, "关闭预览", sel!(stop:), layout.close)?;
             let _: () = msg_send![&*window,setContentView:&*content];
             let primary_height = core_graphics::display::CGDisplay::main()
                 .bounds()
@@ -281,5 +275,189 @@ pub(super) unsafe fn button_symbol(
         });
         let _: () = msg_send![button,setToolTip:&*tooltip];
         Ok(())
+    }
+}
+
+/// Short visible product heading; the complete normalized label stays in window title/tooltip.
+const PREVIEW_HEADING: &str = "RWI Live";
+// The 160pt portrait preview leaves a 40pt text column; intentionally show just
+// the product initials instead of letting "RWI Live" look accidentally clipped.
+const PREVIEW_SHORT_HEADING: &str = "RWI";
+// Public NSParagraphStyle.h: NSLineBreakByTruncatingTail, NSUInteger enum.
+const SOURCE_CAPTION_LINE_BREAK_MODE: usize = 4;
+fn preview_window_title(label: &str) -> String {
+    let mut scope = label.trim();
+    // Strip only anchored product prefixes, never a meaningful occurrence inside a label.
+    while let Some(rest) = scope
+        .strip_prefix("RWI Live ·")
+        .or_else(|| scope.strip_prefix("RWI ·"))
+    {
+        scope = rest.trim_start();
+    }
+    if scope.is_empty() || scope == "RWI Live" || scope == "RWI" {
+        PREVIEW_HEADING.into()
+    } else {
+        format!("{PREVIEW_HEADING} · {scope}")
+    }
+}
+#[cfg(test)]
+mod appearance_title_tests {
+    use super::*;
+    #[test]
+    fn live_title_has_one_product_prefix_and_keeps_the_full_scope_label() {
+        for (label, expected) in [
+            ("RWI Live", "RWI Live"),
+            ("RWI", "RWI Live"),
+            ("RWI · 240pt控件验收", "RWI Live · 240pt控件验收"),
+            ("RWI Live · RWI · 任务", "RWI Live · 任务"),
+            ("RWI Live · RWI · RWI Live · 任务", "RWI Live · 任务"),
+            ("我的RWI · 项目", "RWI Live · 我的RWI · 项目"),
+            ("RWI · ", "RWI Live"),
+        ] {
+            assert_eq!(preview_window_title(label), expected);
+        }
+    }
+    #[test]
+    fn compact_heading_is_constant_and_window_title_keeps_non_prefix_information() {
+        assert_eq!(PREVIEW_HEADING, "RWI Live");
+        let label = "RWI · 非常长的完整任务标签 · 不应被截断丢弃";
+        assert_eq!(
+            preview_window_title(label),
+            "RWI Live · 非常长的完整任务标签 · 不应被截断丢弃"
+        );
+    }
+    #[test]
+    fn live_header_caption_short_text_keeps_complete_task_title() {
+        assert_eq!(PREVIEW_SHORT_HEADING, "RWI");
+        assert_eq!(PREVIEW_HEADING, "RWI Live");
+        assert_eq!(SOURCE_CAPTION_LINE_BREAK_MODE, 4);
+        let scope = "非常长的完整任务标签 · 来源与emoji🙂都不能从完整标题丢失";
+        assert_eq!(
+            preview_window_title(&format!("RWI · {scope}")),
+            format!("RWI Live · {scope}")
+        );
+    }
+    #[test]
+    fn live_header_caption_keeps_portrait_geometry_and_44pt_controls() {
+        let layout = preview_layout(160., 220.).unwrap();
+        assert_eq!(layout.title.size.width, 40.);
+        assert_eq!(layout.source.size.width, 40.);
+        assert_eq!(
+            (layout.toggle.size.width, layout.toggle.size.height),
+            (44., 44.)
+        );
+        assert_eq!(
+            (layout.close.size.width, layout.close.size.height),
+            (44., 44.)
+        );
+        assert_eq!(layout.image, rect(8., 2., 144., 172.));
+        assert_eq!(preview_control_icon("隐藏预览"), "eye.slash");
+        assert_eq!(preview_control_icon("继续预览"), "play.fill");
+        assert_eq!(preview_control_icon("关闭预览"), "xmark");
+    }
+}
+
+/// Actual view/hit frames, not a nearest-button/fuzzy hit-test workaround.
+struct PreviewLayout {
+    chrome_background: NSRect,
+    title: NSRect,
+    source: NSRect,
+    image: NSRect,
+    placeholder: NSRect,
+    toggle: NSRect,
+    close: NSRect,
+}
+fn preview_layout(width: f64, height: f64) -> Option<PreviewLayout> {
+    if !width.is_finite() || !height.is_finite() || width < 160. || height <= CHROME_HEIGHT {
+        return None;
+    }
+    let image_height = height - CHROME_HEIGHT;
+    let placeholder_height = image_height.min(26.);
+    Some(PreviewLayout {
+        chrome_background: rect(0., height - CHROME_HEIGHT, width, CHROME_HEIGHT),
+        title: rect(12., height - 28., width - 120., 18.),
+        source: rect(12., height - 42., width - 120., 13.),
+        image: rect(8., 2., width - 16., image_height),
+        placeholder: rect(
+            20.,
+            2. + (image_height - placeholder_height) / 2.,
+            width - 40.,
+            placeholder_height,
+        ),
+        toggle: rect(width - 100., height - 46., 44., 44.),
+        close: rect(width - 52., height - 46., 44., 44.),
+    })
+}
+#[cfg(test)]
+mod hit_region_tests {
+    use super::*;
+    fn right(r: NSRect) -> f64 {
+        r.origin.x + r.size.width
+    }
+    fn top(r: NSRect) -> f64 {
+        r.origin.y + r.size.height
+    }
+    fn overlaps(a: NSRect, b: NSRect) -> bool {
+        a.origin.x < right(b) && b.origin.x < right(a) && a.origin.y < top(b) && b.origin.y < top(a)
+    }
+    #[test]
+    fn live44_actual_frames_keep_gap_text_image_and_placeholder_disjoint() {
+        for width in [160., 200., 240., 280.] {
+            for height in [49., 100., 180., 300.] {
+                let l = preview_layout(width, height).unwrap();
+                assert_eq!(
+                    l.chrome_background,
+                    rect(0., height - CHROME_HEIGHT, width, CHROME_HEIGHT)
+                );
+                assert_eq!(l.toggle.size, NSSize::new(44., 44.));
+                assert_eq!(l.close.size, NSSize::new(44., 44.));
+                assert_eq!(l.close.origin.x - right(l.toggle), 4.);
+                assert_eq!(height - top(l.close), 2.);
+                for hit in [l.toggle, l.close] {
+                    assert!(hit.origin.x >= 0. && hit.origin.y >= 0.);
+                    assert!(right(hit) <= width && top(hit) <= height);
+                    assert!(hit.origin.y >= l.chrome_background.origin.y);
+                    for other in [l.title, l.source, l.image, l.placeholder] {
+                        assert!(!overlaps(hit, other));
+                    }
+                }
+                assert!(!overlaps(l.toggle, l.close));
+                assert!(right(l.title) < l.toggle.origin.x);
+                assert!(right(l.source) < l.toggle.origin.x);
+                assert!(l.placeholder.origin.y >= l.image.origin.y);
+                assert!(top(l.placeholder) <= top(l.image));
+            }
+        }
+    }
+    #[test]
+    fn live44_rejects_nonfinite_and_unusable_frames_without_native_objects() {
+        for (w, h) in [
+            (f64::NAN, 180.),
+            (280., f64::INFINITY),
+            (159., 180.),
+            (280., 48.),
+            (0., 0.),
+        ] {
+            assert!(preview_layout(w, h).is_none());
+        }
+    }
+    #[test]
+    fn unusable_display_geometry_is_rejected_before_panel_allocation() {
+        for [width, height] in [
+            [207., 316.],
+            [500., 144.],
+            [f64::NAN, 1080.],
+            [1920., f64::INFINITY],
+        ] {
+            let (width, height) = panel_size(2048, width, height, Some([1600, 1920]));
+            assert!(preview_layout(width, height).is_none());
+        }
+    }
+    #[test]
+    fn live44_naive_expansion_of_old_centers_would_overlap() {
+        assert!(overlaps(
+            rect(196., 138., 44., 44.),
+            rect(232., 138., 44., 44.)
+        ));
     }
 }

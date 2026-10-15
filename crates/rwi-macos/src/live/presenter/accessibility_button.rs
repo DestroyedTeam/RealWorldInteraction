@@ -25,15 +25,20 @@ extern "C" fn press(this: &AnyObject, _cmd: Sel) -> Bool {
     Bool::new(triggered)
 }
 
-/// Called only from the main-thread native presenter; superclass retains native
-/// drawing, hit testing, labels and mouse-click behavior.
+/// Main-thread own presenter only. NSButton keeps its real 44pt bounds/tracking;
+/// only this private subclass supplies a compact native-painted cell.
 pub(super) unsafe fn new(frame: NSRect) -> std::result::Result<Retained<AnyObject>, String> {
+    let cell_class = super::compact_cell::register()?;
     let button_class = if let Some(class) = AnyClass::get(c"RWILiveAccessibilityButton") {
         class
     } else {
         let mut builder = ClassBuilder::new(c"RWILiveAccessibilityButton", class(c"NSButton")?)
             .ok_or("Cannot register Live accessibility button")?;
         unsafe {
+            builder.add_class_method(
+                sel!(cellClass),
+                super::compact_cell::cell_class as extern "C" fn(_, _) -> _,
+            );
             builder.add_method(
                 sel!(accessibilityPerformPress),
                 press as extern "C" fn(_, _) -> _,
@@ -42,7 +47,17 @@ pub(super) unsafe fn new(frame: NSRect) -> std::result::Result<Retained<AnyObjec
         builder.register()
     };
     let allocated: Allocated<AnyObject> = unsafe { msg_send![button_class, alloc] };
-    Ok(unsafe { msg_send![allocated, initWithFrame:frame] })
+    let button: Option<Retained<AnyObject>> = unsafe { msg_send![allocated, initWithFrame:frame] };
+    let button = button.ok_or("Cannot initialize Live button")?;
+    let cell: *mut AnyObject = unsafe { msg_send![&*button, cell] };
+    if cell.is_null() {
+        return Err("live_preview_compact_cell_unavailable".into());
+    }
+    let compact: Bool = unsafe { msg_send![cell, isKindOfClass:cell_class] };
+    if !compact.as_bool() {
+        return Err("live_preview_compact_cell_unavailable".into());
+    }
+    Ok(button)
 }
 
 #[cfg(test)]

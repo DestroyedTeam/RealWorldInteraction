@@ -1,6 +1,7 @@
 //! Main-thread AppKit UI. No native input events or application activation.
 use super::*;
 mod accessibility_button;
+mod compact_cell;
 mod panel;
 use objc2::{
     msg_send,
@@ -12,12 +13,15 @@ use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
 use panel::{button_symbol, preview_control_icon};
 use std::collections::BTreeMap;
 
+// Retain explicit AppKit framework linkage without a forced light appearance.
 #[link(name = "AppKit", kind = "framework")]
-unsafe extern "C" {
-    static NSAppearanceNameAqua: *mut AnyObject;
-}
+unsafe extern "C" {}
 
 const CHROME_HEIGHT: f64 = 48.;
+/// Display-only overview bound; never changes captured pixel detail.
+const MAX_PREVIEW_WIDTH_PT: f64 = 220.;
+/// Display-only vertical bound; capture resolution and source identity are unchanged.
+const MAX_PREVIEW_HEIGHT_PT: f64 = 220.;
 
 #[derive(Default)]
 pub(crate) struct Presenter {
@@ -121,27 +125,32 @@ fn rect(x: f64, y: f64, width: f64, height: f64) -> NSRect {
 }
 
 /// On Retina, roughly two captured pixels fill each panel point, up to a compact
-/// 280-point overview. Capture detail must not enlarge the panel indefinitely.
-/// Display margins and compact chrome remain bounded. Match the source aspect
-/// ratio instead of surrounding wide windows with a dark 16:9 letterbox.
+/// 220-point overview. Capture detail must not enlarge the panel indefinitely.
+/// Both display axes and compact chrome remain bounded. The image view fits the
+/// source proportionally; any gutter under the header remains transparent.
 fn panel_size(
     max_edge: u32,
     display_width: f64,
     display_height: f64,
     source_pixels: Option<[u64; 2]>,
 ) -> (f64, f64) {
+    if !display_width.is_finite() || !display_height.is_finite() {
+        // preview_layout rejects this before allocating a native panel.
+        return (f64::NAN, f64::NAN);
+    }
     let aspect = source_pixels
         .filter(|[w, h]| *w > 0 && *h > 0)
         .map(|[w, h]| w as f64 / h as f64)
         .unwrap_or(2.);
-    let max_height = (display_height - 96.).min(300.);
+    let max_height = (display_height - 96.).min(MAX_PREVIEW_HEIGHT_PT);
     let mut width = (f64::from(max_edge) / 2. + 16.)
-        .clamp(200., 280.)
+        .clamp(200., MAX_PREVIEW_WIDTH_PT)
         .min(display_width - 48.);
     if (width - 16.) / aspect + CHROME_HEIGHT > max_height {
         width = ((max_height - CHROME_HEIGHT) * aspect + 16.)
             // A height-limited portrait may be narrower than the wide overview;
-            // keep both 28-point controls without introducing a letterbox.
+            // keep both 44-point hit frames with 28-point painting. The image
+            // fits within the remaining viewport without cropping or stretching.
             .max(160.)
             .min(display_width - 48.);
     }
@@ -504,13 +513,13 @@ mod panel_size_tests {
     #[test]
     fn preview_follows_capture_aspect_without_leaving_allocated_display() {
         let wide = panel_size(2048, 1920., 1080., Some([2048, 942]));
-        assert_eq!(wide.0, 280.);
-        assert!((wide.1 - 169.4296875).abs() < 0.000001);
-        assert_eq!(panel_size(2048, 1920., 1080., None), (280., 180.));
-        assert_eq!(panel_size(1024, 1920., 1080., None), (280., 180.));
-        assert_eq!(panel_size(640, 1920., 1080., None), (280., 180.));
-        assert_eq!(panel_size(2048, 300., 300., None), (252., 166.));
-        assert_eq!(panel_size(2048, 500., 350., None), (280., 180.));
+        assert_eq!(wide.0, 220.);
+        assert!((wide.1 - 141.83203125).abs() < 0.000001);
+        assert_eq!(panel_size(2048, 1920., 1080., None), (220., 150.));
+        assert_eq!(panel_size(1024, 1920., 1080., None), (220., 150.));
+        assert_eq!(panel_size(640, 1920., 1080., None), (220., 150.));
+        assert_eq!(panel_size(2048, 300., 300., None), (220., 150.));
+        assert_eq!(panel_size(2048, 500., 350., None), (220., 150.));
     }
 }
 
@@ -521,21 +530,71 @@ mod compact_preview_acceptance {
     fn detailed_capture_keeps_native_preview_compact() {
         let (width, height) = panel_size(2048, 1800., 1169., Some([1320, 1104]));
         assert!(
-            width <= 280.,
+            width <= 220.,
             "high-detail capture must not occupy most of the screen: {width}"
         );
         assert!(
-            height <= 300.,
+            height <= super::MAX_PREVIEW_HEIGHT_PT,
             "source-aspect overview must remain compact: {height}"
         );
         let wide = panel_size(2048, 1920., 1080., Some([2048, 942]));
-        assert!(wide.0 <= 280. && wide.1 <= 180.);
+        assert!(wide.0 <= 220. && wide.1 <= 150.);
     }
     #[test]
-    fn portrait_preview_shrinks_without_extra_letterbox() {
+    fn display_only_bound_does_not_depend_on_high_detail_capture_edge() {
+        assert_eq!(super::MAX_PREVIEW_WIDTH_PT, 220.);
+        assert_eq!(super::MAX_PREVIEW_HEIGHT_PT, 220.);
+        for max_edge in [640, 1024, 2048, 4096] {
+            let (width, height) = panel_size(max_edge, 1800., 1169., Some([1320, 1104]));
+            assert_eq!(width, 220.);
+            assert!((height - 218.61818181818182).abs() < 0.000001);
+        }
+    }
+    #[test]
+    fn portrait_preview_shrinks_with_proportional_fit_and_clear_gutters() {
         let (width, height) = panel_size(2048, 1800., 1169., Some([252, 420]));
-        assert!(width <= 280. && height <= 300.);
-        assert!(((width - 16.) / (height - super::CHROME_HEIGHT) - 0.6).abs() < 0.000001);
+        assert_eq!((width, height), (160., 220.));
+        let (fit_width, fit_height) = proportional_fit(width, height, [252, 420]);
+        assert!((fit_width - 103.2).abs() < 0.000001);
+        assert!((fit_height - 172.).abs() < 0.000001);
+        assert!((fit_width / fit_height - 0.6).abs() < 0.000001);
+    }
+    fn proportional_fit(width: f64, height: f64, source: [u64; 2]) -> (f64, f64) {
+        let [source_width, source_height] = source.map(|n| n as f64);
+        let scale =
+            ((width - 16.) / source_width).min((height - super::CHROME_HEIGHT) / source_height);
+        (source_width * scale, source_height * scale)
+    }
+    #[test]
+    fn dual_axis_cap_fixed_geometry_matrix_keeps_complete_source_in_viewport() {
+        for (display, source, expected) in [
+            ([1920., 1080.], [1600, 1920], [160., 220.]),
+            ([1800., 1169.], [1320, 1104], [220., 218.61818181818182]),
+            ([1920., 1080.], [2048, 942], [220., 141.83203125]),
+            ([1920., 1080.], [2, 1], [220., 150.]),
+            ([1800., 1169.], [252, 420], [160., 220.]),
+            ([1920., 1080.], [320, 3200], [160., 220.]),
+            ([1920., 1080.], [3840, 320], [220., 65.]),
+            ([300., 300.], [1600, 1920], [160., 204.]),
+            ([500., 200.], [1600, 1920], [160., 104.]),
+            ([208., 316.], [1600, 1920], [160., 220.]),
+        ] {
+            let (width, height) = panel_size(2048, display[0], display[1], Some(source));
+            assert!((width - expected[0]).abs() < 0.000001);
+            assert!((height - expected[1]).abs() < 0.000001);
+            assert!(width.is_finite() && height.is_finite());
+            assert!(width <= super::MAX_PREVIEW_WIDTH_PT);
+            assert!(height <= super::MAX_PREVIEW_HEIGHT_PT);
+            let (fit_width, fit_height) = proportional_fit(width, height, source);
+            assert!(fit_width <= width - 16. + 0.000001);
+            assert!(fit_height <= height - super::CHROME_HEIGHT + 0.000001);
+            assert!(
+                (fit_width / fit_height - source[0] as f64 / source[1] as f64).abs() < 0.000001
+            );
+        }
+        for source in [None, Some([0, 1920]), Some([1600, 0])] {
+            assert_eq!(panel_size(2048, 1920., 1080., source), (220., 150.));
+        }
     }
     #[test]
     fn preview_buttons_distinguish_hide_resume_and_close_without_minimize() {
