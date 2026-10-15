@@ -19,9 +19,9 @@ unsafe extern "C" {}
 
 const CHROME_HEIGHT: f64 = 48.;
 /// Display-only overview bound; never changes captured pixel detail.
-const MAX_PREVIEW_WIDTH_PT: f64 = 220.;
+const MAX_PREVIEW_WIDTH_PT: f64 = 200.;
 /// Display-only vertical bound; capture resolution and source identity are unchanged.
-const MAX_PREVIEW_HEIGHT_PT: f64 = 220.;
+const MAX_PREVIEW_HEIGHT_PT: f64 = 200.;
 
 #[derive(Default)]
 pub(crate) struct Presenter {
@@ -125,7 +125,7 @@ fn rect(x: f64, y: f64, width: f64, height: f64) -> NSRect {
 }
 
 /// On Retina, roughly two captured pixels fill each panel point, up to a compact
-/// 220-point overview. Capture detail must not enlarge the panel indefinitely.
+/// 200-point overview. Capture detail must not enlarge the panel indefinitely.
 /// Both display axes and compact chrome remain bounded. The image view fits the
 /// source proportionally; any gutter under the header remains transparent.
 fn panel_size(
@@ -522,13 +522,13 @@ mod panel_size_tests {
     #[test]
     fn preview_follows_capture_aspect_without_leaving_allocated_display() {
         let wide = panel_size(2048, 1920., 1080., Some([2048, 942]));
-        assert_eq!(wide.0, 220.);
-        assert!((wide.1 - 141.83203125).abs() < 0.000001);
-        assert_eq!(panel_size(2048, 1920., 1080., None), (220., 150.));
-        assert_eq!(panel_size(1024, 1920., 1080., None), (220., 150.));
-        assert_eq!(panel_size(640, 1920., 1080., None), (220., 150.));
-        assert_eq!(panel_size(2048, 300., 300., None), (220., 150.));
-        assert_eq!(panel_size(2048, 500., 350., None), (220., 150.));
+        assert_eq!(wide.0, 200.);
+        assert!((wide.1 - 132.6328125).abs() < 0.000001);
+        assert_eq!(panel_size(2048, 1920., 1080., None), (200., 140.));
+        assert_eq!(panel_size(1024, 1920., 1080., None), (200., 140.));
+        assert_eq!(panel_size(640, 1920., 1080., None), (200., 140.));
+        assert_eq!(panel_size(2048, 300., 300., None), (200., 140.));
+        assert_eq!(panel_size(2048, 500., 350., None), (200., 140.));
     }
 }
 

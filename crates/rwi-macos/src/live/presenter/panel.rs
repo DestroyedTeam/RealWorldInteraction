@@ -468,3 +468,22 @@ mod hit_region_tests {
         ));
     }
 }
+
+#[cfg(test)]
+#[test]
+fn f39_smaller_preview_preserves_accessible_hit_frames_and_actions() {
+    for (width, height) in [(160., 200.), (197.7391304347826, 200.), (200., 132.6328125)] {
+        let layout = preview_layout(width, height).unwrap();
+        assert_eq!(layout.toggle.size, NSSize::new(44., 44.));
+        assert_eq!(layout.close.size, NSSize::new(44., 44.));
+        assert_eq!(layout.close.origin.x - layout.toggle.origin.x - 44., 4.);
+        assert!(layout.title.origin.x + layout.title.size.width < layout.toggle.origin.x);
+        assert!(layout.image.origin.y + layout.image.size.height <= layout.toggle.origin.y);
+    }
+    assert_eq!(preview_control_icon("隐藏预览"), "eye.slash");
+    assert_eq!(preview_control_icon("继续预览"), "play.fill");
+    assert_eq!(preview_control_icon("关闭预览"), "xmark");
+    println!(
+        "F39_CONTROLS hide=eye.slash resume=play.fill close=xmark hit=44x44 gap=4 input_authority_unchanged"
+    );
+}
