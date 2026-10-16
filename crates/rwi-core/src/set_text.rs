@@ -81,8 +81,10 @@ pub struct SetTextReadback {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settlement: Option<SetTextSettlement>,
 }
-pub const SET_TEXT_SETTLEMENT_MAX_READS: usize = 2;
-pub const SET_TEXT_SETTLEMENT_BUDGET_MS: u64 = 100;
+pub const SET_TEXT_SETTLEMENT_MAX_READS: usize = 3;
+pub const SET_TEXT_SETTLEMENT_BUDGET_MS: u64 = 150;
+/// Requested spacing only; actual elapsed/offsets remain separately recorded.
+pub const SET_TEXT_SETTLEMENT_POLL_INTERVAL_MS: u64 = 20;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TextSettlementRead {
@@ -194,7 +196,7 @@ pub fn summarize_set_text_readback(raw: SetTextReadback) -> serde_json::Value {
         .into();
         value["verification_scope"] =
             "bounded retained exact-object AXValue observations; not DOM or keyboard".into();
-        value["intentional_sleep_ms"] = 0.into();
+        value["configured_poll_interval_ms"] = SET_TEXT_SETTLEMENT_POLL_INTERVAL_MS.into();
         value["strong_native_preemption"] = false.into();
         value
     });
@@ -315,7 +317,7 @@ mod tests {
                     read_elapsed_ms: 1.0,
                 }],
                 elapsed_ms: 5.0,
-                budget_ms: 100,
+                budget_ms: SET_TEXT_SETTLEMENT_BUDGET_MS,
                 context_verified: true,
                 stop_reason: "matched_pair".into(),
             }),
@@ -359,7 +361,10 @@ mod tests {
                 2 => raw.setter_status = -25204,
                 3 => raw.setter_attempts = 2,
                 4 => raw.settlement.as_mut().unwrap().context_verified = false,
-                5 => raw.settlement.as_mut().unwrap().elapsed_ms = 100.1,
+                5 => {
+                    raw.settlement.as_mut().unwrap().elapsed_ms =
+                        SET_TEXT_SETTLEMENT_BUDGET_MS as f64 + 0.1
+                }
                 6 => {
                     raw.settlement.as_mut().unwrap().reads[0]
                         .value
@@ -381,5 +386,31 @@ mod tests {
         }
         let raw = settlement_case(false);
         assert_eq!(summarize_set_text_readback(raw)["state"], "partial");
+    }
+    #[test]
+    fn f106_readonly_value_pacing_three_delayed_reads_preserve_scope_and_initial_pair() {
+        let mut raw = settlement_case(false);
+        raw.settlement = Some(SetTextSettlement {
+            reads: [false, true, true]
+                .into_iter()
+                .enumerate()
+                .map(|(n, matches)| TextSettlementRead {
+                    value: read(Some(matches)),
+                    offset_since_setter_return_ms: 50.0 + n as f64 * 35.0,
+                    read_elapsed_ms: 1.0,
+                })
+                .collect(),
+            elapsed_ms: 120.0,
+            budget_ms: SET_TEXT_SETTLEMENT_BUDGET_MS,
+            context_verified: true,
+            stop_reason: "matched_pair".into(),
+        });
+        let summary = summarize_set_text_readback(raw);
+        assert_eq!(summary["state"], "observed_after_readonly_settlement");
+        assert_eq!(summary["initial_two_reads"]["state"], "partial");
+        assert_eq!(summary["settlement"]["configured_poll_interval_ms"], 20);
+        assert!(summary["settlement"].get("intentional_sleep_ms").is_none());
+        assert_eq!(summary["goal_verified"], false);
+        assert_eq!(summary["keyboard_authorized"], false);
     }
 }

@@ -69,12 +69,13 @@ fn settlement_initial(first: bool, second: bool) -> SetTextReadback {
     }
 }
 #[test]
-fn bounded_set_text_settlement_fast_path_and_two_read_progression_no_sleep() {
+fn bounded_set_text_settlement_fast_path_and_guarded_progression() {
     let good = settlement_initial(true, true);
     assert!(
         collect_settlement(
             &good,
             || panic!("no extra timer"),
+            |_| panic!("no extra wait"),
             |_| panic!("no extra read")
         )
         .unwrap()
@@ -87,8 +88,12 @@ fn bounded_set_text_settlement_fast_path_and_two_read_progression_no_sleep() {
         let result = collect_settlement(
             &initial,
             || clock.get(),
+            |delay| {
+                clock.set(clock.get() + delay);
+                Ok(())
+            },
             |remaining| {
-                assert!(remaining <= Duration::from_millis(100));
+                assert!(remaining <= Duration::from_millis(SET_TEXT_SETTLEMENT_BUDGET_MS));
                 clock.set(clock.get() + Duration::from_millis(1));
                 count.set(count.get() + 1);
                 Ok(TextSettlementRead {
@@ -119,6 +124,7 @@ fn bounded_set_text_settlement_errors_and_fake_deadline_stop_without_replay() {
         let error = collect_settlement(
             &initial,
             || Duration::ZERO,
+            |_| Ok(()),
             |_| {
                 count.set(count.get() + 1);
                 Err(fault(code, "read refused"))
@@ -138,7 +144,8 @@ fn bounded_set_text_settlement_errors_and_fake_deadline_stop_without_replay() {
     let count = std::cell::Cell::new(0);
     let error = collect_settlement(
         &initial,
-        || Duration::from_millis(100),
+        || Duration::from_millis(SET_TEXT_SETTLEMENT_BUDGET_MS),
+        |_| panic!("expired budget must not wait"),
         |_| {
             count.set(count.get() + 1);
             panic!("expired budget must not read")
@@ -151,6 +158,7 @@ fn bounded_set_text_settlement_errors_and_fake_deadline_stop_without_replay() {
     let error = collect_settlement(
         &initial,
         || Duration::ZERO,
+        |_| Ok(()),
         |_| {
             count.set(count.get() + 1);
             let mut value = settlement_initial(true, true).second;
@@ -169,12 +177,16 @@ fn bounded_set_text_settlement_errors_and_fake_deadline_stop_without_replay() {
     let error = collect_settlement(
         &initial,
         || clock.get(),
+        |delay| {
+            clock.set(clock.get() + delay);
+            Ok(())
+        },
         |_| {
-            clock.set(Duration::from_millis(101));
+            clock.set(Duration::from_millis(SET_TEXT_SETTLEMENT_BUDGET_MS + 1));
             Ok(TextSettlementRead {
                 value: settlement_initial(true, true).second,
                 offset_since_setter_return_ms: 321.0,
-                read_elapsed_ms: 101.0,
+                read_elapsed_ms: (SET_TEXT_SETTLEMENT_BUDGET_MS + 1) as f64,
             })
         },
     )
@@ -186,5 +198,94 @@ fn bounded_set_text_settlement_errors_and_fake_deadline_stop_without_replay() {
             .unwrap()
             .len(),
         1
+    );
+}
+
+#[test]
+fn f106_readonly_value_pacing_late_value_needs_three_reads_and_a_matching_pair() {
+    let initial = settlement_initial(false, false);
+    let clock = std::cell::Cell::new(Duration::ZERO);
+    let count = std::cell::Cell::new(0);
+    let result = collect_settlement(
+        &initial,
+        || clock.get(),
+        |delay| {
+            clock.set(clock.get() + delay);
+            Ok(())
+        },
+        |_| {
+            count.set(count.get() + 1);
+            clock.set(clock.get() + Duration::from_millis(10));
+            Ok(TextSettlementRead {
+                value: settlement_initial(false, clock.get() >= Duration::from_millis(50)).second,
+                offset_since_setter_return_ms: clock.get().as_secs_f64() * 1000.0,
+                read_elapsed_ms: 10.0,
+            })
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(count.get(), 3);
+    assert_eq!(clock.get(), Duration::from_millis(90));
+    assert_eq!(result.stop_reason, "matched_pair");
+    assert_eq!(initial.setter_attempts, 1);
+    assert_eq!(initial.second.matches_requested, Some(false));
+}
+#[test]
+fn f106_readonly_value_pacing_cancelled_wait_never_enters_reader() {
+    let error = collect_settlement(
+        &settlement_initial(false, false),
+        || Duration::ZERO,
+        |_| Err(fault("operation_cancelled", "literal cancelled pause")),
+        |_| panic!("cancelled read"),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "operation_cancelled");
+    assert_eq!(error.diagnostic.unwrap()["setter_attempts"], 1);
+}
+#[test]
+fn f106_readonly_value_pacing_overslept_budget_never_enters_reader() {
+    let clock = std::cell::Cell::new(Duration::ZERO);
+    let error = collect_settlement(
+        &settlement_initial(false, false),
+        || clock.get(),
+        |_| {
+            clock.set(Duration::from_millis(SET_TEXT_SETTLEMENT_BUDGET_MS));
+            Ok(())
+        },
+        |_| panic!("expired read"),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "set_text_settlement_budget_expired");
+}
+#[test]
+fn f106_readonly_value_pacing_mismatch_is_bounded_not_success_or_replay() {
+    let clock = std::cell::Cell::new(Duration::ZERO);
+    let count = std::cell::Cell::new(0);
+    let result = collect_settlement(
+        &settlement_initial(false, false),
+        || clock.get(),
+        |delay| {
+            clock.set(clock.get() + delay);
+            Ok(())
+        },
+        |_| {
+            count.set(count.get() + 1);
+            Ok(TextSettlementRead {
+                value: settlement_initial(false, false).second,
+                offset_since_setter_return_ms: clock.get().as_secs_f64() * 1000.0,
+                read_elapsed_ms: 0.0,
+            })
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(count.get(), SET_TEXT_SETTLEMENT_MAX_READS);
+    assert_eq!(result.stop_reason, "read_limit");
+    assert!(
+        result
+            .reads
+            .iter()
+            .all(|r| r.value.matches_requested == Some(false))
     );
 }

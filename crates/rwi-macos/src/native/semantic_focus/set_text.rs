@@ -1,10 +1,10 @@
 //! Explicit public AXValue replacement. Parent exact-object custody is readonly.
 use super::*;
 use rwi_core::set_text::{
-    SET_TEXT_SETTLEMENT_BUDGET_MS, SET_TEXT_SETTLEMENT_MAX_READS, SetTextNativeFacts,
-    SetTextReadback, SetTextSettlement, TextSettlementRead, TextValueRead, set_text_pair_matches,
-    set_text_settlement_needed, set_text_value_read_known, summarize_set_text_readback,
-    validate_text,
+    SET_TEXT_SETTLEMENT_BUDGET_MS, SET_TEXT_SETTLEMENT_MAX_READS,
+    SET_TEXT_SETTLEMENT_POLL_INTERVAL_MS, SetTextNativeFacts, SetTextReadback, SetTextSettlement,
+    TextSettlementRead, TextValueRead, set_text_pair_matches, set_text_settlement_needed,
+    set_text_value_read_known, summarize_set_text_readback, validate_text,
 };
 
 fn ordinary_role(role: &str, subrole: Option<&str>) -> bool {
@@ -66,6 +66,7 @@ fn require_eligibility(sample: &Sample) -> Result<()> {
 fn collect_settlement(
     initial: &SetTextReadback,
     mut elapsed: impl FnMut() -> Duration,
+    mut wait: impl FnMut(Duration) -> Result<()>,
     mut read: impl FnMut(Duration) -> Result<TextSettlementRead>,
 ) -> Result<Option<SetTextSettlement>> {
     // The usual successful pair must not call clock/probe or add a default wait.
@@ -92,6 +93,32 @@ fn collect_settlement(
         let remaining = budget.checked_sub(spent).filter(|d| !d.is_zero()).ok_or_else(|| {
             fail(fault("set_text_settlement_budget_expired", "Readonly settlement budget exhausted; preserve initial evidence, no replay."), &reads, spent)
         })?;
+        let delay = Duration::from_millis(SET_TEXT_SETTLEMENT_POLL_INTERVAL_MS);
+        if remaining <= delay {
+            return Err(fail(
+                fault(
+                    "set_text_settlement_budget_expired",
+                    "No budget for another paced read; no replay.",
+                ),
+                &reads,
+                spent,
+            ));
+        }
+        wait(delay).map_err(|e| fail(e, &reads, elapsed()))?;
+        let spent = elapsed();
+        let remaining = budget
+            .checked_sub(spent)
+            .filter(|d| !d.is_zero())
+            .ok_or_else(|| {
+                fail(
+                    fault(
+                        "set_text_settlement_budget_expired",
+                        "Paced wait exhausted readonly budget; no read or replay.",
+                    ),
+                    &reads,
+                    spent,
+                )
+            })?;
         let sample = read(remaining).map_err(|e| fail(e, &reads, elapsed()))?;
         let matched = set_text_pair_matches(&previous, &sample.value);
         previous = sample.value.clone();
@@ -188,7 +215,7 @@ impl NativeMac {
             return Ok(None);
         }
         // Capture clock before remaining budget: delayed sampling cannot extend
-        // the original operation or lease. Only the extra phase gets 100ms.
+        // the original operation or lease. The bounded extra phase is read-only.
         let started = Instant::now();
         let remaining = operation::dispatch_budget()?;
         let deadline =
@@ -196,6 +223,21 @@ impl NativeMac {
         collect_settlement(
             initial,
             || started.elapsed(),
+            |delay| {
+                operation::checkpoint("before_set_text_settlement_pause")?;
+                let remaining = deadline
+                    .checked_duration_since(Instant::now())
+                    .unwrap_or_default()
+                    .min(operation::dispatch_budget()?);
+                if remaining <= delay {
+                    return Err(fault(
+                        "set_text_settlement_budget_expired",
+                        "No operation budget for a paced readonly pause; no read or replay.",
+                    ));
+                }
+                std::thread::sleep(delay);
+                operation::checkpoint("after_set_text_settlement_pause")
+            },
             |extra_remaining| {
                 operation::checkpoint("before_set_text_settlement_read")?;
                 let remaining = deadline
