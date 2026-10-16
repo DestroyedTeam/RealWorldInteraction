@@ -462,6 +462,9 @@ pub struct FocusReadbackSummary {
     pub os_foreground_before: Option<ForegroundState>,
     pub os_foreground_after: Option<ForegroundState>,
     pub os_foreground_unchanged: Option<bool>,
+    /// AX axes only: never DOM/widget focus or application keyboard readiness.
+    pub goal_scope: &'static str,
+    pub application_input_effect: &'static str,
     pub goal_verified: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub readback_diagnostics: Option<FocusReadbackDiagnostics>,
@@ -534,6 +537,8 @@ pub fn summarize_focus_readback(r: FocusReadback) -> FocusReadbackSummary {
         os_foreground_before: r.os_foreground_before,
         os_foreground_after: r.os_foreground_after,
         os_foreground_unchanged: unchanged,
+        goal_scope: "native_ax_focus_only",
+        application_input_effect: "not_observed",
         goal_verified: state == FocusReadbackState::Ready,
         readback_diagnostics: if keep_diagnostics {
             r.readback_diagnostics

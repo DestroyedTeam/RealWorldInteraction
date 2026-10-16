@@ -444,3 +444,21 @@ fn focus_validation_fault_code_is_actual_bounded_utf8_evidence_not_native_status
     assert_eq!(p.raw.native_status, 0);
     assert_eq!(p.raw.value, None);
 }
+
+#[test]
+fn f102_focus_goal_scope_never_claims_application_input_effect() {
+    for (value, state) in [
+        (Some(true), FocusReadbackState::Ready),
+        (Some(false), FocusReadbackState::Partial),
+        (None, FocusReadbackState::Unknown),
+    ] {
+        let mut input = readback();
+        input.element_focused.value = value;
+        let summary = summarize_focus_readback(input);
+        assert_eq!(summary.state, state);
+        assert_eq!(summary.goal_verified, state == FocusReadbackState::Ready);
+        let output = serde_json::to_value(summary).unwrap();
+        assert_eq!(output["goal_scope"], "native_ax_focus_only");
+        assert_eq!(output["application_input_effect"], "not_observed");
+    }
+}
