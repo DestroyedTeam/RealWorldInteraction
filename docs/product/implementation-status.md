@@ -1,3 +1,15 @@
+<!-- RWI_F117_FOREGROUND_READ_CURRENT -->
+## 当前进度：前台读取的隔离、单次补读策略与实机快路径（2026-10-16）
+
+- **对象与部署**：仍以仓库根目录为唯一产品源码。F112 仅把 `activation::foreground_state` 原函数逐字隔离到 `activation/readback.rs`，同一函数哈希及五项原生身份单测保持；已独立提交，未把架构移动混在行为提交内。
+- **F113 行为**：只在显式前台请求发出后的观察阶段，对同一保留 AX 对象的 `AXFocusedWindow`/`AXPosition`/`AXSize` 读取发生精确 -25204 时，整次激活最多补读一个属性一次，先申请20ms间隔、额外软预算100ms。保留原始错误、原操作期限、会话/进程/窗口/几何双读和用户活动检查；前置读取不变，不重发任何 AXRaise、AXFrontmost、鼠标或键盘。失败仍失败，晚到成功不提升结论。新增 `native_request_counts`；仅进入该分支才附 `readback_settlement`，`goal_verified` 和 `input_authority_granted` 仍为 false。
+- **离线与回滚**：12项新边界测试；全量1375通过/11忽略，fmt、Clippy全目标全特性-D warnings、架构检查均退出0。冻结策略使用真实 F105 原始错误加明确标注的假设后续值：BASELINE错误/1读 → MODIFIED补读后有值/2读 → ROLLBACK错误/1读 → 重应用有值/2读，均退出0；这不是原生错误恢复证据。原483项源码哈希及新增文件缺失状态在独立副本恢复，同一四角色已扩展至386项，工作源码与修改件保持修正状态。
+- **实际部署 F115**：复用同一本地签名证书；Agent SHA256 `e9b46df8d1cb6bb62cae21da22cbff7bd7d95fc9b77a3d8dd27ad0ad8f1c706d`，PID47164、实例 `8c2d9f8f-a499-4aae-8b7c-850d276500ce`。四项权限仍有效；只替换 Agent，Host、MCP、CA、配对和私钥不变。
+- **实机 F116 的准确范围**：虚拟屏上专用 AppKit 和独立 Chrome 155.0.8059.84，首次切到原生窗口、首次切到 Chrome 均由当前加载的 RWI 发出；两次各 AXRaise1/AXFrontmost1，独立完整前台身份一致，四项持久请求终止且资源释放，无重放。两窗口关闭、绑定分离、两进程确认消失，原前台恢复。**这两次未出现 -25204，未进入补读分支，因此只能证明快路径兼容，不能声称真实错误恢复已通过，也不覆盖 F95/F99/F105 原始失败。**
+- **下一步仍覆盖全计划**：独立原生延迟/失败用例；Live 真正会话内图像与严格任务绑定/隐藏恢复/关闭及小型控件外观；后台非BMP/IME仍有13→5负例；普通第三方冷悬停、模态/系统/隐藏/层叠窗口矩阵；MCP耗时与输出裁剪。此前Cmd+Tab/长拖拽、焦点范围及整值AXValue13/13证据保留，不用单个修复代替完整计划。用户休息期间不要求人工配合，未知项明确保留。
+
+验收报告：[F116 实机与按时序原图](../../outputs/validation/f116-foreground-read-native-acceptance-2026-10-16/README.md)。
+
 <!-- RWI_F110_SCOPE_AND_PACED_VALUE_CURRENT -->
 ## 当前：焦点作用域与有界AXValue回读节奏已部署并自主实机验收 · 2026-10-16
 
