@@ -1,4 +1,47 @@
+<!-- RWI_F154_NATIVE_TEXT_CLIENT_CHAIN_CURRENT -->
+## 当前进展：后台原生文字回调链已实测；Chrome 与 Live 余项未冒称通过（2026-10-16）
+
+- **新增实现**：Rust 专用夹具的 `--text-client-trace` 默认关闭，只为自己同一窗口／非安全字段提供 public NSTextView field editor；记录 keyDown、interpretKeyEvents、insertText、keyUp、marked／command 的进入退出，保留 superclass 一次调用。256条／64 UTF16 有界、溢出／未知保留，无 swizzle、跨进程注入、输入上下文激活或文字补写；NSRange 特性仅 dev-dependency。
+- **离线及回滚**：显式接收器 example 137→142→137→142；同 check-only 输入新开关拒绝1→接受0→拒绝1→接受0，不创建GUI。Source485原hash及新路径缺席在独立副本恢复，再重建Source487；同四角色390项（82原存在／308原缺席）回滚、严格patch重建及Root/M防误回滚均通过。workspace 1,384通过／11忽略与 example142是不同范围，不能把5新增例加进workspace计数；Node48，fmt／workspace／全特性全目标Clippy-Dwarnings／架构均0。
+- **真实后台结果**：虚拟屏4自有PID58980/window3906，一次本地AX焦点＋一次新键盘载荷 `后🙂𝄞 é👩‍💻`。新AX快照、自有字段值均13/13 UTF16、9次变更；72条原生回调构成9组完整按下→解释→插入→松开，缓冲丢弃／越界忽略／observer panic均0。9次keyup字符实际为a，未改写或据此盲换默认构造器；不是Chrome根因证明。
+- **前后台边界**：所有录下的回调window_key/main=false、firstResponder匹配，开始／结束OS前台完整元组仍PID767/window3873；环境变化记录未见目标成为OS前台。但AppKit isActive由false变true，故不声称全部应用内部激活状态不变；采样也不是原子、连续无遗漏的证明。field_editor_requests包含框架及诊断查询，不是325次焦点／输入尝试。
+- **安全结束**：仅一次自有Close/AXPress；命令退出0、状态closed无error、PID不存在、精确发现空、解绑；3原请求均终态／释放／禁重放。RTK命令PID58979与Native PID58980分别记录，未独立取得Native waitpid。核验器首轮PID混淆及环境对象形状错误均保留，修正后新核验命令0，未重放输入。Agent47164／8c2d9f8f、安装MCP、四权限、证书／CA／配对／Host设置不变。
+- **完整目标未缩减**：Chrome155后台原13→5仍未修；当前新原生夹具正例不等于任意输入客户端可用。Live紧凑组件浏览器320×344、PNG1320×1104及v5可逆性保留，但F146实际Host像素／模式未知、任务导航后仍采集，未通过。本轮没有Live start；双向Command+Tab拖拽旧窄范围通过，冲突／模态／系统／隐藏／层叠、普通冷悬停与完整工具／耗时矩阵继续。
+- **交付批次**：本批沿用公开仓库和PR1，按Host-only安全入口／紧凑Live／原生诊断／证据文档合理分开提交；实际Git提交与正常push以本轮命令记录为准，不用旧HEAD的CI替代新HEAD检查，不额外发布tag／release或自动合并。全目标仍active，无需人工配合。
+
+证据：[F153按时间实测与本地原图](../../outputs/validation/f153-native-text-client-trace-acceptance-2026-10-16/REPORT.md)；`work/f153-native-text-client-trace-acceptance-2026-10-16/NATIVE_RESULT.json`、`FINAL_TEXT_CLIENT_TRACE.json`；`work/f152-native-text-client-trace-2026-10-16/same-four-roles390/ROLE_RESULT.json`。原四绝对角色路径与旧正／负例继续沿用。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F149_COMPACT_LIVE_V5_AND_FULL_GOAL_CURRENT -->
+## 当前进展：Live 紧凑版已部署；新版 Host 显示与任务隐藏未通过（2026-10-16）
+
+- **用户反馈落实**：沿用既有风格缩至 320px 容器，合并控制条；隐藏／恢复改为眼睛图标、关闭为 X，保留按钮名称、提示、键盘焦点和 36×36 命中区。不新增大块磨砂背景，原 PNG 细节不降级。
+- **真实浏览器结果**：同一自有 1320×1104 PNG、同一隔离页面，旧框约 816×453，新框 320×344；图片显示约 286.95×240。隐藏后清图、恢复后解码、关闭后清图并禁用按钮均实际验证。这不是 Codex 容器尺寸或 Computer Use 外观等价证明。
+- **部署及可逆性**：F145 仅替换 Host 中性 MCP，安装 hash `9ebfc1d52c72c0dfed80ef05a9a0ecea946d9053d90b19e09d5c4ab56a51e36b`；候选／安装协议检查全部退出 0。资源 v4→v5→v4→v5、Node 39→48→39→48；Source485 副本恢复原 hash、全387角色回滚／严格补丁重建及 Root/M 防误回滚检查通过。Rust 1,384 通过、11 忽略，fmt／workspace／全特性 Clippy／架构均 0。
+- **本轮 Host 实机不报通过**：F146 新任务真实加载 v5，省略显示器只启动一次。当前 MCP Apps 列表两次为空，未观察到新版实际像素、容器尺寸、眼睛／X 或实际显示模式；不能由偏好 inline 推断实际 inline。公开导航离开后帧数 24→59→63，`presentation_suspended=false`，严格活跃任务身份也未证实；保留此负例。
+- **安全清理**：Live 原生停止／worker_done、无原生预览窗，专用源窗口一次 AXPress 后真实退出 0、PID 消失、解绑；停采 API 清理不冒充用户点击 X 验收。Agent47164／8c2d9f8f、四权限、原前台11924/window421及证书／CA／配对／Host设置未变，不需要人工切窗、重启或重新授权。
+- **完整计划未缩减**：F147 复开双向5秒拖拽及 Unicode 原始证据：受控合成 Command+Tab 两方向窄范围通过，非物理人工或全采样保真。Chrome155.0.8059.84 后台键盘同载荷仍 13→5 UTF16，独立 AXValue13/13不是键盘修复；继续接收链诊断，不静默改用剪贴板／AXValue／前台激活。冷悬停、冲突、模态／系统／隐藏／层叠与全工具／分范围性能矩阵仍未全部完成。
+- **Git**：公开仓库及 PR1 仍 OPEN，上一批 HEAD `5441d3d518666b842e73a45ca0762b1c54f62efa` 的 CI 成功不覆盖本轮未提交改动；按功能验收里程碑合理拆分后正常推送，不逐次触发 Action。全目标仍 active。
+
+证据：[紧凑布局实测](../../outputs/validation/f144-compact-live-ui-2026-10-16/BROWSER_BEFORE_AFTER.json)、[新版 Host 实测](../../outputs/validation/f146-fresh-host-compact-live-v5-2026-10-16/REPORT.md)、[完整目标审计](../../outputs/validation/f147-full-mac-goal-audit-2026-10-16/REPORT.md)。原四角色与所有旧正／负例继续沿用。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
 <!-- RWI_F135_ACTUAL_HOST_DEFAULT_LIVE_ACCEPTED -->
+
+<!-- RWI_F141_HOST_ONLY_LIVE_AUTO_ACCEPTED -->
+## 当前进展：会话内 Live 已自动验收；任务切换隐藏与容器大小仍待修
+
+- **实现与部署**：`computer.show_live` 可省略 `options.display`，由适配器创建不可伪造的 Host-only 绑定；显式显示器仍保留原生预览路径。真实 MCP schema 基线／修改／回滚／重建为必填／可省略／必填／可省略，网关测试 244／253／244／253。完整 Rust 回归 1,384 通过、11 忽略，Live 前端 39 通过；fmt、workspace tests、全特性 clippy 与架构检查均退出 0。
+- **无需人工的实机结果**：F140 新会话只启动一次 Live（`live:8`），虚拟屏专用窗口 PID13974／3723 的缓存 PNG 真实解码为 1320×1104，显示矩形约 286.95×240。隐藏、同 session 恢复、关闭均有 DOM 与独立 Native 状态对照；全程未创建 Native 预览窗口。源窗口另经一次已确认 AXPress 退出 0，原前台完整身份保持不变；未操作游戏、现有文档或权限。
+- **不能报通过的项目**：公开导航离开约 3 秒时 `presentation_suspended=false`，离开时 DOM 观察超时；严格 Host 活跃任务 ID 与自动切换隐藏仍未验。精确 Host 图片序号、Native PNG 缓存字节清零也未直接读回。报告保留失败参数与原始错误，不以输入回执代替结果。
+- **仍需缩小的部分**：真实会话内图片虽已限宽高，Host 容器仍有大面积留白；不能据此声称整个 Live 窗口已缩小或样式已对齐 Computer Use。下一步继续紧凑控制条、隐藏／关闭图标与 Host 可用显示模式的实现和验收。[MCP Apps 的显示模式由 Host 最终决定](https://apps.extensions.modelcontextprotocol.io/api/classes/app.App.html)；[AppKit 提供独立非激活面板与窗口样式选项](https://developer.apple.com/documentation/appkit/nswindow/stylemask-swift.struct/utilitywindow)，不能把 API 声明当成本机支持或视觉等价的证明。
+- **接续可读性**：修正 macOS Skill 的旧“控制卡没有图像”和“所有 show_live 都要求显示器”指引，明确两种呈现、真实 schema、私有字段禁止伪造及未验隐私边界。此修正不替代全量前后台／Unicode／悬停／模态与系统窗矩阵。
+- **Git**：上一批三条逻辑提交已在现有公开 PR1 推送；HEAD `5441d3d518666b842e73a45ca0762b1c54f62efa` 的 [CI 已完成成功](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38844485352)。本轮新功能先保留本地，待下一批功能验收后合理拆分提交；不额外逐轮触发 Action。完整项目目标仍 active，不需要用户手工配合。
+
+证据：`outputs/validation/f140-host-only-live-auto-acceptance-2026-10-16/REPORT.md`；`work/f140-host-only-live-auto-acceptance-2026-10-16/PARENT_VERIFICATION_RESULT.json`；原四角色与原有基线／回滚证据继续沿用。
+
 ## 当前进度：默认会话内 Live 真正出图及隐藏/恢复/关闭已实机通过（2026-10-16）
 
 - **F132 已部署、F133 非只看安装**：PNG-data中性MCP安装hash `871c559d75f9f7cb97d550907c22f540ee5262f4cb10b01ebe7c9c5c411bfcea`，候选/安装协议全0。新项目会话真实DOM图片natural1320×1104、data:image/png;base64、可见，实际显示框286.953125×240pt；原始JPEG逐份核验。默认模式原生小浮层及会话内图同时正常，不再是空图片节点或只控制卡。Agent47164/8c2d9f8f…和四项权限、证书/CA/私钥/Host设置未改。
