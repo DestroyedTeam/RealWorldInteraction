@@ -1,3 +1,69 @@
+<!-- RWI_F135_ACTUAL_HOST_DEFAULT_LIVE_ACCEPTED -->
+## 当前进度：默认会话内 Live 真正出图及隐藏/恢复/关闭已实机通过（2026-10-16）
+
+- **F132 已部署、F133 非只看安装**：PNG-data中性MCP安装hash `871c559d75f9f7cb97d550907c22f540ee5262f4cb10b01ebe7c9c5c411bfcea`，候选/安装协议全0。新项目会话真实DOM图片natural1320×1104、data:image/png;base64、可见，实际显示框286.953125×240pt；原始JPEG逐份核验。默认模式原生小浮层及会话内图同时正常，不再是空图片节点或只控制卡。Agent47164/8c2d9f8f…和四项权限、证书/CA/私钥/Host设置未改。
+- **F133/F134 原证据交叉核对**：同一`live:7`、虚拟屏4自有PID94543/window3642，卡片隐藏后DOM src移除/0×0/hidden，原生presentation_suspended且清图；恢复后新图1320×1104、同源身份且原生出图；关闭后stopped/worker_done、两端清图。不是把从未显示图的空状态当清除成功。F134实际验证器退出0，进一步读取RWI原始状态、DOM文件、4份未改JPEG和原operation的terminal/resources_released/replay_allowed=false。
+- **自主清理**：自有夹具Close/AXPress只发一次，业务点击/文本/滚动/拖拽计数全0；真实退出0、PID不存在、目标解绑，原前台11924/window421完整身份未变。所有本轮观察已停止，不依赖人工展开、切窗、重启或授权。
+- **修复和可逆性边界**：F129 decode_png/rpc_0原负例保留，F130同原PNG的真实限制性CSP对照保留，未伪称读取了Codex实际CSP头。F131只改PNG本地来源为标准允许的data，不放宽CSP、无网络域/权限或输入/截屏回退；DOMException0不再冒称RPC错误。同一冻结组件策略BASELINE无图→MODIFIED有图→副本ROLLBACK无图→重新应用有图，组件36/39/36/39；Source484即时旧hash全部恢复、永久386项回滚/严格补丁重建通过。最新完整Rust1375通过/11忽略，fmt/workspace/全目标全特性Clippy-Dwarnings/架构均0。
+- **不跳过剩余范围**：host_image_only原生能力虽已广告，但当前模型typed schema没有公开选择项，本轮未试、不是Native拒绝；不能暴露或伪造内部host_view_id来绕过。下一轮补安全的Host组件展示选择并验无原生浮层，再做真实公开任务导航路径的自动隐藏/恢复；Host PiP/控件样式仍待证据。后台非BMP/IME、普通冷悬停、前台冲突、模态/系统/隐藏/层叠矩阵、完整MCP输出/耗时不被本项替代，全Mac目标仍未完成。
+- **Git里程碑**：默认Live功能已达到源码/可逆/部署/实机正例闭环，准备将独立夹具、Live功能、文档证据合理拆成一批commit，经既有公开PR1正常推送一次；不逐对话提交，不推原始截图/二进制/本机配置/密钥，不把推送作为全目标结束。
+
+[F133真实会话内图与四步原截图](../../outputs/validation/f133-fresh-host-png-data-live-acceptance-2026-10-16/REPORT.md)；原始数据：`work/f133-fresh-host-png-data-live-acceptance-2026-10-16/RESULT.json`、`MCP_EVIDENCE.json`；F134核验：`work/f134-png-data-native-evidence-verification-2026-10-16/NATIVE_LEDGER_CROSSCHECK.json`。
+
+--- 以下历史按当时状态保留 ---
+
+<!-- RWI_F131_DATA_PNG_CSP_CURRENT -->
+## 当前进度：真实图片解码负例已定位，移除 Blob 依赖的修正已进入回归（2026-10-16）
+
+- **F128/F129 已真实部署与验收**：仅替换中性MCP，候选/安装后真实进程协议全通过；Agent47164、四项权限及证书/CA/私钥/Host设置未改。新项目验收会话实际读到`data-error-stage=decode_png`、`data-error-code=rpc_0`，初始及恢复均未出图；这证明不是只缺一个图片DOM节点，也不把数字0冒称真实RPC失败。自有PID85304/window对应夹具已一次AXPress关闭、退出0、解绑、Live停止清图，原前台未变。
+- **F130 同图真实浏览器对照**：使用F125已关闭的专用窗口原PNG，SHA256 `4d5ab96d30ea9ec48d9e312ca1c5ec1dddf605620072529e62581495badbdd2b`，按MCP Apps稳定规范默认`img-src self data:`，Blob实际触发img-src阻止、EncodingError/code0；同PNG以data来源正常解码1320×1104。测试为一次性Rust HTTP服务和后台本地页面，没有新截屏、键鼠或MCP输入；服务退出0、测试标签关闭。**这是隔离浏览器因果对照，并非已读取Codex真实CSP头；F129根因不据此伪称直接证实。**
+- **F131 最小修正**：`readImage/clearImages`以固定`data:image/png;base64,`承载已经验证且有界的同一PNG，移除Blob/object-URL依赖，不增加CSP网络域/权限、不重编码/裁剪/截屏，也不是失败后运行时切换输入通路。保留只读app-only能力、真实可见性、独立序号/游标、单RPC/解码、2048px/4MiB边界和隐藏/关闭/过期/换cap清图；释放当前和待解码来源引用。DOMException数字code只在真正RPC阶段才标RPC，解码code0正确报decode_failed。
+- **F131 实际组件回归**：原36项语义门控/清图/迟到响应/诊断测试保留，运输相关断言改为无Blob注册、精确PNG数据及来源释放，另加3项限制性CSP和错误分类测试，39项已通过。同一冻结组件策略输入：BASELINE不出图、decode_png/rpc_0→MODIFIED出图/data且无错误；这是带F130真实浏览器策略证据的离线组件检查，不代替新版本真正Host复验。继续完整Rust回归、同四角色真实回滚/重建、MCP-only部署和独立实机复验。
+- **完整目标不缩减**：实际Host内联像素及隐藏/恢复/关闭仍需新版本正例；任务切换/Host PiP/控件样式、后台非BMP/IME、普通冷悬停、前台冲突及模态/系统/隐藏/层叠矩阵、MCP输出/实际耗时继续。已有F119/F120原生错误恢复、Cmd+Tab/拖拽历史结果保留；不重放旧输入，不要求休息中的用户参与，不因一次修复或commit停工。
+
+[F129真实错误与清理报告](../../outputs/validation/f129-fresh-host-image-diagnostic-acceptance-2026-10-16/REPORT.md)；[F130同图策略对照和原截图](../../outputs/validation/f130-restrictive-csp-image-repro-2026-10-16/REPORT.md)。仓库仍使用既有公开PR1；本批新夹具/Live修正/证据待功能里程碑合理拆分提交，不逐对话push。
+
+--- 以下历史按当时状态保留 ---
+
+<!-- RWI_F127_INLINE_IMAGE_DIAGNOSTIC_CURRENT -->
+## 当前进度：新会话加载成功，但会话内图片失败；安全错误阶段修正中（2026-10-16）
+
+- **F125 实机已完成，不算图片通过**：独立项目会话实际加载v4及“会话内预览”，DOM确有1个图片节点，但初始及恢复后均0×0、hidden、无src。原生源图1320×1104、浮层198×200pt正常；隐藏清图、关闭停止worker均有回读，但不能把“原本就没图”当已显示图移除的证明。恢复只确认原生浮层恢复，会话内新图失败。Host PiP和严格任务切换绑定未验。
+- **F125 自主清理闭环**：自有PID74653/window3482只接受一次语义Close/AXPress；实际退出0、PID消失、绑定分离，Live全停止清图。原前台11924/window421完整身份不变；Agent47164/实例及四项权限、Source484/受保护12哈希均一致。没有游戏或用户文档输入，没有人工参与；独立验收会话已结束，不会继续改源码或四角色。
+- **不猜错误原因**：真实组件只给“画面暂不可用 · 已清除旧画面”，底层异常没有暴露；目前不能断言是CSP、Blob、桥接或原生缓存故障。F127先补`readImage`的有界`data-error-stage/data-error-code`：区分cache_rpc、缺少元数据、PNG校验、Blob创建和解码；只保留安全短协议码，绝不回显后台消息、目标能力、图片或异常原文。隐藏/成功出图会清除旧诊断；没有输入/截屏回退。
+- **F127 当前验证边界**：保留原33项组件测试，新增3项诊断、消息不泄露和成功清旧诊断测试，36项已通过；按同四角色继续做完整回归、原字节回滚、补丁重建，再仅部署中性MCP并重新实机定位。现有F122渲染器false/true/false/true及20/33/20/33、F119夹具1/0/1/0和8项example、F120真实AX错误恢复都保留，不重放已完成输入。未把新诊断写好当出图问题已修复。
+- **全计划继续**：会话内真实图片、Host生命周期/PiP/样式；后台非BMP/IME、第三方冷悬停、前台冲突与模态/系统/隐藏/层叠矩阵、MCP输出和实机耗时。用户休息，不再要求人工切窗/重启；本轮没有新Agent部署、TCC或证书/配对/私钥变更。仍在同一公开仓库和PR1，待功能里程碑合理分批提交。
+
+实机结果：`work/f125-fresh-host-live-renderer-acceptance-2026-10-16/RESULT.json`；[时间序列报告与真实截图](../../outputs/validation/f125-fresh-host-live-renderer-acceptance-2026-10-16/README.md)。上述失败保留为下一次修正的验收输入，而不是另一个人工配合门槛。
+
+--- 以下历史按当时状态保留 ---
+
+<!-- RWI_F126_INLINE_CACHE_DEPLOYMENT_CURRENT -->
+## 当前进度：会话内缓存画面实现、MCP 安装与新会话验收（2026-10-16）
+
+- **F122 实现**：`live_ui.html` 的 `readImage/clearImages` 接上既有 Rust app-only 缓存 PNG 通路，图片只在组件 `_meta`，不进入模型输出；确认可见后读取，图像序号/游标与可见性独立，单请求/解码、4MiB/2048px 上限，500ms轮询。保留现有皮肤，图片在360×240范围内等比显示；原生浮层仍198×200pt。隐藏/关闭/过期/换能力立即清图、撤销URL；读图不刷新presence、不截新图、不创建输入引用、不发送键鼠，也无网络/输入回退。这是可逆本地功能试用，不是正式UIOS设计或Computer Use视觉等价发布。
+- **F122 可逆与回归**：同一命令 BASELINE渲染器false→MODIFIED true→副本ROLLBACK false→重新应用true，退出均0；实际组件套件20/33/20/33。保留原20项，新增13项覆盖单飞、旧回复/解码、隐藏/终止、游标、坏PNG、超时及端点缺失。初次33项中1项暴露blocked状态阻止错误清理，修正并保留失败来源。Rust UI缓存10项通过，完整workspace1375通过/11忽略，fmt、全目标全特性Clippy-Dwarnings、架构检查均0。Source484即时旧哈希在独立副本完整恢复，全局386角色补丁严格重建，Root/M拒绝回滚；旧证据前缀不改。
+- **F123 已实际部署**：候选/安装后各运行真实MCP进程的快照、精确选择与v4资源协议，全部退出0；资源HTML字节与Root完全一致。只原子替换用户级MCP可执行文件并保留旧文件；Agent PID47164、四项权限、CA/证书/私钥、Host/插件设置均不动。安装成功不代表已有会话加载刷新。
+- **F124 真实负例而非假成功**：本任务旧MCP仍返回v3资源，实际组件标题“会话内控制”、图片节点0，所以会话内新画面尚不能算已验收。自有虚拟屏窗口的原生预览为198×200pt、源图1320×1104px；实际卡片关闭后停止、worker_done且清图，专用窗口已退出0、PID消失并解绑，原前台11924/window421完整身份不变。
+- **F125 不再依赖人工**：按用户既有“当前会话加载不了可开新会话接力”的授权，已创建项目内“RWI · 新版 Live 会话内画面验收”（01a1428d-09d7-7542-849e-a6d45aae54ff），使用同一产品根、已安装MCP和新自有虚拟屏夹具验证真实加载、像素及隐藏/恢复/关闭。只授权证据和自有窗口验收，不写产品源码或四角色；不要求睡眠中的用户参与，不绕过Codex app访问拒绝。结果尚待该新会话实测，不把公开导航RPC当任务绑定证明。
+- **完整计划仍在**：严格Host任务切换绑定/实际PiP/控件视觉细节；后台非BMP/IME13→5负例；普通第三方冷悬停；模态、系统、隐藏、层叠与前台冲突矩阵；MCP输出和真实单步耗时。原F120公开原生provider一次补读恢复证明保留，不推广为所有应用修复。仍未完成全目标；不因单次修复或一次commit停工。
+
+报告：[F120 原生恢复](../../outputs/validation/f120-focused-window-delay-native-acceptance-2026-10-16/README.md)、[F124 当前会话加载与真实截图](../../outputs/validation/f124-live-renderer-current-host-acceptance-2026-10-16/README.md)。已公开仓库与既有PR1保留；当前新增夹具/功能/证据待实机里程碑后合理拆分批量提交，不逐操作推送。
+
+--- 以下历史按当时状态保留 ---
+
+<!-- RWI_F121_NATIVE_RECOVERY_LIVE_CURRENT -->
+## 当前进度：真实 AX 错误恢复与 Live 控件实测（2026-10-16）
+
+- **F119 接收端夹具**：新增默认关闭的 `--ax-focused-window-once-delay-ms 55..100`，只在独立测试进程中延迟公开 `NSApplication.accessibilityFocusedWindow`，先经真实后台读取武装、首次前台读取只消耗一次；返回父类的真实窗口，不伪造 AXError、不发输入、不改生产后端。独立8项example测试通过；同一CLI BASELINE缺开关退出1→MODIFIED有效配置退出0→独立副本ROLLBACK退出1→重应用退出0；全部484项原源码哈希恢复，永久四角色仍386项。workspace1375通过/11忽略，fmt/Clippy全目标全特性-D warnings/架构检查均退出0。
+- **F120 真正进入生产补读分支**：当前加载Agent仍为F115的PID47164/实例 `8c2d9f8f-a499-4aae-8b7c-850d276500ce`，未部署新Agent/MCP、未改Host/权限/证书/配对/密钥。在虚拟屏两个新专用AppKit窗口中，延迟窗口只接受一次首次显式切窗，AXRaise1/AXFrontmost1；实际记录 `AXFocusedWindow -25204`，原错误保留，同一保留对象仅补读一次，额外阶段23.102959ms（申请间隔20ms、软预算100ms），独立完整前台身份一致。夹具实测单次getter最大61087µs。**这是公开原生延迟用例的恢复证明，不是所有Chrome错误或所有应用的修复证明；原F95/F99/F105负例仍保留。** 协议不提升 `goal_verified/input_authority_granted`，无任何键盘/点击替代或重发。
+- **Live 实际UI**：Computer Use读取本任务新MCP Apps卡并实际点击隐藏→恢复→关闭；RWI原生回读依次清图暂停（会话仍运行）→同会话出图→worker_done且清图。原生浮层在虚拟屏4实测198×200pt，源图1320×1104px；两个图标有“隐藏预览/关闭预览”可访问名及不关闭源窗口的帮助文字，无经典三个窗口按钮。原始截图JPEG字节保留。首个过期观察的禁用按钮错误、包ID歧义（用准确安装路径解决）、MCP Apps不支持clip截图、PIL缺失（改用标准库SOF读尺寸）均保留，不重演输入。
+- **不能混淆的缺口**：当前会话内组件 `img/canvas/video=0`，仍是控制卡而非画面播放器；严格Host任务切换绑定未验过。下一阶段优先在现有只读缓存图像通路上补齐会话内画面及Host支持时的PiP；未广告能力不伪装支持，不把MCP连接、卡片可见或虚拟屏图像当用户看见/任务绑定证明。
+- **清理**：两窗口各语义关闭一次，独立发现消失并分离绑定；两进程退出0且PID不存在。四项持久输入操作均终止/资源释放/不可重放，三轮Live全停止；原前台完整身份恢复。
+- **完整计划保持**：会话内画面/Host任务生命周期与控件外观；后台非BMP/IME13→5；普通第三方冷悬停；模态/系统/隐藏/层叠窗口矩阵；MCP输出与耗时。用户休息期间不要求人工配合；仍未完成整体验收，不把单例成功当全目标完成。
+
+报告及按时序原图：[F120 原生恢复与 Live 控件](../../outputs/validation/f120-focused-window-delay-native-acceptance-2026-10-16/README.md)。已推送PR仍为#1，Git最新485ec44；F119夹具及本条证据待下一轮功能批量提交，不逐对话推送。
+
 <!-- RWI_F117_FOREGROUND_READ_CURRENT -->
 ## 当前进度：前台读取的隔离、单次补读策略与实机快路径（2026-10-16）
 
