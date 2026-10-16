@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>RWI Live · 会话内控制</title>
+  <title>RWI Live · 会话内预览</title>
   <style>
     :root { color-scheme: light dark; font-family: var(--font-sans, system-ui, sans-serif); }
     body { margin: 0; color: var(--color-text-primary, light-dark(#182b24, #e7eeea)); }
@@ -12,6 +12,10 @@
     h1 { font-size: 18px; line-height: 1.4; margin: 7px 0; font-weight: 600; }
     p { max-width: 62ch; font-size: 12px; line-height: 1.7; margin: 0 0 14px; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
     nav { display: flex; flex-wrap: wrap; gap: 8px; }
+    figure { margin: 12px 0; max-width: 360px; }
+    #preview { display: block; max-width: 100%; max-height: 240px; width: auto; height: auto; object-fit: contain; border-radius: 7px; }
+    #preview[hidden] { display: none; }
+    figcaption { margin-top: 5px; font-size: 11px; line-height: 1.5; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
     button { font: inherit; font-size: 13px; padding: 8px 12px; min-height: 36px; border: 1px solid light-dark(#a9c0b2, #496354); border-radius: 7px; background: light-dark(#edf4ef, #23392d); color: inherit; cursor: pointer; }
     button:focus-visible { outline: 2px solid #739c86; outline-offset: 3px; }
     button:disabled { opacity: .5; cursor: default; }
@@ -22,7 +26,11 @@
   <main id="panel">
     <header>Real World Interaction / Live</header>
     <h1 id="state" role="status" aria-live="polite" tabindex="-1">等待会话内视图连接</h1>
-    <p id="location">这是控制卡，不是画面播放器；画面显示在指定屏幕的 RWI 原生浮层。隐藏可恢复；关闭会结束本轮，重新打开需新建观察。这里不读取对话、不发送键鼠；实际任务切换行为仍取决于 Host。</p>
+    <p id="location">会话内只读预览 · 隐藏可恢复；关闭会结束本轮。这里不读取对话、不发送键鼠；实际任务切换行为仍取决于 Host。</p>
+    <figure aria-label="已选窗口的只读 Live 画面">
+      <img id="preview" alt="已选窗口的 Live 预览，不接收键鼠输入" hidden>
+      <figcaption id="image-state" aria-live="off">等待已确认的可见连接</figcaption>
+    </figure>
     <nav aria-label="Live 预览控制">
       <button id="toggle" type="button" disabled>隐藏预览</button>
       <button id="close" type="button" disabled>关闭预览</button>
@@ -35,20 +43,152 @@
       const toggle = document.getElementById('toggle');
       const close = document.getElementById('close');
       const location = document.getElementById('location');
+      const preview = document.getElementById('preview');
+      const imageStatus = document.getElementById('image-state');
       const pending = new Map();
       let id = 0, ready = false, capability = null, sequence = 0;
       let enabled = true, intersecting = false, ended = false, closing = false;
       let queued = null, flight = null;
+      // Pixels have a separate cursor/sequence. Reads never publish presence or input.
+      let images = null, imageFlight = null, imageTimer = null, staleTimer = null, imageSource = null;
       const send = message => window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*');
       function request(method, params) {
         const requestId = `rwi-live-${++id}`;
         return new Promise((resolve, reject) => {
-          const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('Host response timeout')); }, 3000);
+          const timer = setTimeout(() => { pending.delete(requestId); reject(Object.assign(new Error('Host response timeout'), { imageCode: 'host_timeout' })); }, 3000);
           pending.set(requestId, { resolve, reject, timer });
           send({ id: requestId, method, params });
         });
       }
       const visible = () => enabled && !closing && intersecting && document.visibilityState === 'visible';
+      function clearImages(message) {
+        imageStatus.removeAttribute('data-error-stage');
+        imageStatus.removeAttribute('data-error-code');
+        clearTimeout(imageTimer); imageTimer = null;
+        clearTimeout(staleTimer); staleTimer = null;
+        if (images) { images.epoch++; images.allowed = false; images.after = null; }
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        imageSource = null;
+        if (imageFlight) {
+          imageFlight.decoder?.removeAttribute('src');
+          imageFlight.source = null;
+        }
+        imageStatus.textContent = message;
+      }
+      const canRead = state => state === images && state?.allowed && !state.blocked && !ended && visible();
+      function queueImage() {
+        if (!canRead(images) || imageFlight || imageTimer !== null) return;
+        imageTimer = setTimeout(() => { imageTimer = null; readImage(); }, 500);
+      }
+      function allowImages() {
+        if (!images || images.blocked || !visible() || ended) return;
+        images.allowed = true;
+        queueImage();
+      }
+      const sameCursor = (a, b) => a && b && a.generation === b.generation && a.sequence === b.sequence;
+      const validCursor = c => c && Number.isSafeInteger(c.generation) && c.generation > 0 &&
+        Number.isSafeInteger(c.sequence) && c.sequence > 0;
+      function decodeEnvelope(value, sequence, after) {
+        if (!value || value.request_sequence !== sequence || !validCursor(value.cursor)) throw new Error('invalid envelope');
+        if (value.state === 'unchanged') {
+          if (!sameCursor(value.cursor, after) || value.base64 !== undefined) throw new Error('invalid unchanged cursor');
+          return null;
+        }
+        const size = value.image_size;
+        if (value.state !== 'ready' || value.mime !== 'image/png' || !Array.isArray(size) || size.length !== 2 ||
+            !size.every(n => Number.isSafeInteger(n) && n > 0 && n <= 2048) ||
+            !Number.isSafeInteger(value.png_bytes) || value.png_bytes < 24 || value.png_bytes > 4194304 ||
+            typeof value.png_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.png_sha256) ||
+            typeof value.base64 !== 'string' || value.base64.length > 5592408 ||
+            value.base64.length !== Math.ceil(value.png_bytes / 3) * 4 ||
+            !/^[A-Za-z0-9+/]*={0,2}$/.test(value.base64) ||
+            (after && (value.cursor.generation < after.generation ||
+              (value.cursor.generation === after.generation && value.cursor.sequence <= after.sequence)))) throw new Error('invalid PNG metadata');
+        const bytes = Uint8Array.from(atob(value.base64), c => c.charCodeAt(0));
+        const view = new DataView(bytes.buffer);
+        if (bytes.length !== value.png_bytes || view.getUint32(0) !== 0x89504e47 || view.getUint32(4) !== 0x0d0a1a0a ||
+            view.getUint32(8) !== 13 || view.getUint32(12) !== 0x49484452 ||
+            view.getUint32(16) !== size[0] || view.getUint32(20) !== size[1]) throw new Error('invalid PNG header');
+        return bytes;
+      }
+      async function readImage() {
+        const state = images;
+        if (!canRead(state) || imageFlight) return;
+        const task = { state, epoch: state.epoch, source: null, decoder: null };
+        // A newly discovered unsupported endpoint must still clear its frame;
+        // blocked prevents future reads, not cleanup of this owned response.
+        const current = () => state === images && state.allowed && !ended && visible() && task.epoch === state.epoch;
+        imageFlight = task;
+        const sequence = ++state.sequence, after = state.after;
+        let stage = 'cache_rpc';
+        try {
+          const reply = await request('tools/call', {
+            name: 'computer.live_panel_image',
+            arguments: { view_key: state.owner.view_key, page: state.owner.page, sequence, after }
+          });
+          if (!current()) return;
+          if (reply.isError) {
+            const code = reply.structuredContent?.code;
+            if (['capability_unavailable', 'unknown_tool', 'method_not_found', 'live_ui_not_negotiated'].includes(code)) state.blocked = true;
+            // Reflect a bounded protocol code only, never backend messages,
+            // capabilities, pixels, target IDs or arbitrary exception text.
+            throw Object.assign(new Error('image unavailable'), {
+              imageCode: typeof code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : 'image_tool_error'
+            });
+          }
+          stage = 'validate_envelope';
+          const value = reply._meta?.['rwi/live_image'];
+          if (!value) throw Object.assign(new Error('missing image envelope'), { imageCode: 'image_meta_missing' });
+          const bytes = decodeEnvelope(value, sequence, after);
+          if (!bytes) return;
+          // Rust checked the SHA before this component-only envelope. Decode is
+          // still bounded and must agree with the PNG header before publication.
+          // MCP Apps' restrictive default permits data: images, not blob:.
+          // Keep exactly the verified bounded PNG; no extra CSP origins,
+          // object-URL registry, conversion, capture or runtime fallback.
+          stage = 'set_png_source';
+          task.source = `data:image/png;base64,${value.base64}`;
+          task.decoder = new Image(); task.decoder.src = task.source;
+          stage = 'decode_png';
+          let deadline;
+          try {
+            await Promise.race([task.decoder.decode(), new Promise((_, reject) => {
+              deadline = setTimeout(() => reject(Object.assign(new Error('image decode timeout'), { imageCode: 'decode_timeout' })), 1500);
+            })]);
+          } finally { clearTimeout(deadline); }
+          if (!current()) return;
+          if (task.decoder.naturalWidth !== value.image_size[0] || task.decoder.naturalHeight !== value.image_size[1]) throw new Error('decoded bounds differ');
+          imageSource = task.source; task.source = null;
+          preview.src = imageSource; preview.hidden = false;
+          state.after = { generation: value.cursor.generation, sequence: value.cursor.sequence };
+          imageStatus.removeAttribute('data-error-stage'); imageStatus.removeAttribute('data-error-code');
+          imageStatus.textContent = `只读 Live · ${value.image_size[0]} × ${value.image_size[1]} px`;
+          clearTimeout(staleTimer);
+          staleTimer = setTimeout(() => {
+            if (!current()) return;
+            clearImages('画面已过期 · 等待新的缓存画面');
+            allowImages();
+          }, 2000);
+        } catch (error) {
+          if (!current()) return;
+          if (error?.code === -32601) state.blocked = true;
+          // DOMException.code (e.g. EncodingError/0) is not a JSON-RPC code.
+          const code = error?.imageCode ?? (stage === 'cache_rpc' && Number.isSafeInteger(error?.code) ? `rpc_${error.code}` : {
+            cache_rpc: 'bridge_error', validate_envelope: 'invalid_image_envelope',
+            set_png_source: 'png_source_unavailable', decode_png: 'decode_failed'
+          }[stage]);
+          clearImages((state.blocked ? '当前 Host 不支持会话内画面 · 原生浮层仍可使用' : '画面暂不可用 · 已清除旧画面') + `（${stage}/${code}）`);
+          imageStatus.setAttribute('data-error-stage', stage);
+          imageStatus.setAttribute('data-error-code', code);
+          allowImages();
+        } finally {
+          task.decoder?.removeAttribute('src');
+          task.source = null;
+          if (imageFlight === task) imageFlight = null;
+          queueImage();
+        }
+      }
       function disableControls() {
         // Capture ownership before disabling the focused button blurs it.
         // Late responses and hidden/unfocused components must not steal focus.
@@ -62,11 +202,13 @@
       }
       function finish(message) {
         ended = true;
+        clearImages('本轮画面已清除');
         clearInterval(heartbeat);
         status.textContent = message;
         disableControls();
       }
       function report(shown, stop = false) {
+        if (!shown || stop) clearImages(stop ? '本轮画面已关闭' : '画面已隐藏');
         if (!ready || !capability || ended) return Promise.resolve();
         // One request in flight; later state supersedes a queued heartbeat.
         // Never retry close or a timed-out event. Native presence has its own TTL.
@@ -97,12 +239,15 @@
                 }[data.message] ?? '视图事件被拒绝（unknown_reason）';
                 finish(reason);
               } else {
+                if (!reply.isError && data.accepted === true && event.shown && visible()) allowImages();
+                else clearImages('等待已确认的可见连接');
                 status.textContent = !reply.isError && data.accepted === true
                   ? (event.shown ? '组件可见 · 预览连接已确认' : '隐藏已确认')
                   : '连接未确认 · 预览将自动隐藏';
               }
             } catch {
               if (owner !== capability) continue;
+              clearImages('连接未确认 · 已清除旧画面');
               if (event.stop) finish('关闭未确认 · 不重试，请核对原始状态');
               else status.textContent = '连接未确认 · 预览将自动隐藏';
             }
@@ -117,7 +262,7 @@
           const waiter = pending.get(message.id);
           pending.delete(message.id);
           clearTimeout(waiter.timer);
-          if (message.error) waiter.reject(new Error('Host bridge error'));
+          if (message.error) waiter.reject(Object.assign(new Error('Host bridge error'), { code: message.error.code }));
           else waiter.resolve(message.result);
           return;
         }
@@ -127,12 +272,14 @@
           if (!next || !/^[0-9a-f]{32}$/.test(next.view_key) || !/^[0-9a-f]{32}$/.test(next.page)) return;
           const display = message.params?.structuredContent?.requested_preview_display;
           if (display?.built_in === true) {
-            location.textContent = '画面位置：内建屏上的 RWI 原生浮层；这张卡只控制隐藏、恢复和结束观察。关闭后重新打开需新建观察。';
+            location.textContent = '会话内只读预览；另有内建屏上的 RWI 原生浮层。隐藏可恢复；关闭后重新打开需新建观察。';
           } else if (Number.isSafeInteger(display?.id)) {
-            location.textContent = `画面位置：显示器 ${display.id} 的 RWI 原生浮层；若是虚拟屏，请打开它的屏幕串流，或指定可观看的物理屏作为预览屏。关闭后重新打开需新建观察。`;
+            location.textContent = `会话内只读预览；原生浮层位于显示器 ${display.id}。隐藏可恢复；关闭后重新打开需新建观察。`;
           }
           if (next.view_key === capability?.view_key && next.page === capability?.page) return;
+          clearImages('等待已确认的可见连接');
           capability = { view_key: next.view_key, page: next.page, adapter_instance: /^[0-9a-f]{32}$/.test(next.adapter_instance) ? next.adapter_instance : null };
+          images = { owner: capability, epoch: 0, allowed: false, blocked: false, sequence: 0, after: null };
           sequence = 0;
           // Only a genuinely new Host-issued capability reopens this component.
           // Old ended views and late responses must not revive stopped capture.

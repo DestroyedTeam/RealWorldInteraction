@@ -47,8 +47,8 @@ pub(super) fn start_tool() -> Tool {
         .with_meta(meta(json!({"ui":{"resourceUri":URI}})))
 }
 pub(super) fn resource() -> Resource {
-    RawResource::new(URI, "rwi_live_panel").with_title("RWI Live · 会话内控制")
-        .with_description("Optional Host-rendered Live visibility and hide/close controls; no screen pixels, input, credentials or conversation text in this resource.")
+    RawResource::new(URI, "rwi_live_panel").with_title("RWI Live · 会话内预览")
+        .with_description("Optional Host-rendered read-only cached Live PNG and hide/close controls. Pixels use the app-only bridge, never model content. No input, credentials or conversation text.")
         .with_mime_type(MIME).no_annotation()
 }
 pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
