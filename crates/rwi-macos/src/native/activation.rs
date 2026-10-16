@@ -416,6 +416,7 @@ impl NativeMac {
                 "Exact window must advertise AXRaise and application AXFrontmost must be writable; no shortcut or activation fallback.",
             ));
         }
+        let request_counts = std::cell::Cell::new([0_u8; 2]);
         let dispatch = |object: &Cf, action: bool| -> Result<()> {
             check()?;
             // Recheck both receivers at each side-effect boundary. These are
@@ -437,6 +438,9 @@ impl NativeMac {
                 ));
             }
             self.dispatches.fetch_add(1, Ordering::AcqRel);
+            let mut counts = request_counts.get();
+            counts[usize::from(!action)] += 1;
+            request_counts.set(counts);
             let code = unsafe {
                 if action {
                     let name = CFString::new("AXRaise");
@@ -459,52 +463,61 @@ impl NativeMac {
             }
             Ok(())
         };
-        dispatch(&window, true)?;
-        let after_raise = foreground_state()?;
-        if !is_target(&after_raise) && after_raise != before {
-            return Err(fault(
-                "foreground_changed",
-                "Another foreground appeared after raise; no further request sent.",
-            ));
-        }
-        if !is_target(&after_raise) {
-            dispatch(&app, false)?;
-        }
-        let deadline = Instant::now() + Duration::from_millis(500);
-        loop {
-            check()?;
-            let now = foreground_state()?;
-            let current_row = self.window_record()?;
-            let current_window = self.resolve_window_element(&app, current_row.rect)?;
-            if !current_row.rect.same(row.rect)
-                || unsafe { ffi::CFEqual(window.0, current_window.0) } == 0
-            {
-                return Err(fault(
-                    "window_epoch_changed",
-                    "Target changed after a foreground request; never replay.",
-                ));
-            }
-            if is_target(&now) {
-                return Ok(
-                    serde_json::json!({"state":"foreground_observed","foreground":now,"before_foreground":before,"after_foreground":now,
-                    "goal_verified":false,"input_authority_granted":false,"coverage":"sampled_native_identity; not continuous human-input attestation",
-                    "route":"public_AXRaise_then_AXFrontmost_once; no keyboard/warp/unhide/restore"}),
-                );
-            }
-            if now != before {
+        let mut settlement = readback::settlement::Settlement::default();
+        let result = (|| {
+            dispatch(&window, true)?;
+            let after_raise =
+                readback::post_dispatch_foreground_state("after_raise", &mut settlement, &check)?;
+            if !is_target(&after_raise) && after_raise != before {
                 return Err(fault(
                     "foreground_changed",
-                    "Another foreground appeared; yield without restoration or replay.",
+                    "Another foreground appeared after raise; no further request sent.",
                 ));
             }
-            if Instant::now() >= deadline {
-                return Err(fault(
-                    "foreground_observation_timeout",
-                    "Foreground not observed within 500ms; effect may arrive later, no retry.",
-                ));
+            if !is_target(&after_raise) {
+                dispatch(&app, false)?;
             }
-            std::thread::sleep(Duration::from_millis(10));
-        }
+            let deadline = Instant::now() + Duration::from_millis(500);
+            loop {
+                check()?;
+                let now = readback::post_dispatch_foreground_state(
+                    "post_request_observation",
+                    &mut settlement,
+                    &check,
+                )?;
+                let current_row = self.window_record()?;
+                let current_window = self.resolve_window_element(&app, current_row.rect)?;
+                if !current_row.rect.same(row.rect)
+                    || unsafe { ffi::CFEqual(window.0, current_window.0) } == 0
+                {
+                    return Err(fault(
+                        "window_epoch_changed",
+                        "Target changed after a foreground request; never replay.",
+                    ));
+                }
+                if is_target(&now) {
+                    return Ok(
+                        serde_json::json!({"state":"foreground_observed","foreground":now,"before_foreground":before,"after_foreground":now,
+                    "goal_verified":false,"input_authority_granted":false,"coverage":"sampled_native_identity; not continuous human-input attestation",
+                    "route":"public_AXRaise_then_AXFrontmost_once; no keyboard/warp/unhide/restore"}),
+                    );
+                }
+                if now != before {
+                    return Err(fault(
+                        "foreground_changed",
+                        "Another foreground appeared; yield without restoration or replay.",
+                    ));
+                }
+                if Instant::now() >= deadline {
+                    return Err(fault(
+                        "foreground_observation_timeout",
+                        "Foreground not observed within 500ms; effect may arrive later, no retry.",
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        })();
+        settlement.annotate(result, request_counts.get())
     }
 }
 
