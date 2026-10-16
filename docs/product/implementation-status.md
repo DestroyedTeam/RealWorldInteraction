@@ -1,3 +1,32 @@
+<!-- RWI_F100_FOCUS_SETTLEMENT_CURRENT -->
+## 当前：焦点延迟回读修正已部署并自主实机验收；AX与应用焦点边界已确认 · 2026-10-16
+
+- **F95同输入对照完成**：同一文字 `后🙂𝄞 é👩‍💻`，原生AppKit后台、Chrome155.0.8059.40前台、已准备后台分别UTF16 expected13/observed13、13/13、13/5。Chrome后台原负例完整保留，不把其他payload的成功当Unicode/IME修复。
+- **F96源码不是重发**：`semantic_focus::settle_focus_readback`在一次成功AXFocused之后，仅对已知配对/确切同窗口与进程/原前台custody合格的回读增加一次只读配对；等待25ms、100ms软预算。保留原始false→true、错误、取消、过期及完整/仅公共应用身份边界；已ready不等待，不重新setter/激活/键鼠、不刷新身份。冻结Core同输入BASELINE unknown→MODIFIED ready→copy ROLLBACK unknown→reapply ready，四次退出0；过滤0/13/0/13。Source482 fmt/workspace/all-targets-all-features Clippy-Dwarnings/架构四门全0，1357pass/11ignored/48suites。
+- **F98部署已实际完成**：沿用现有本地证书24B346…与designated requirement；Agent97795/dc4e…→8618/c7bb7feb…，安装hash e66a6932cb2e648177730baab68e0054ec65ae2610e1e401523408e451cf3e58。共享lease排他与当前实例全部durable终态检查后更新，四项权限仍有效；12受保护文件仅Agent executable改变。MCP/Host/配对/CA/私钥/权限配置均不改、不要求重启Codex或人工授权。当前loaded RWI已独立看到新Agent，不把磁盘安装当Host适配器已刷新。
+- **F99真实Native收敛通过，范围明确**：新的虚拟屏自有Native9329/window3008与隔离Chrome10199/window3016。原生字段直接ready，无额外配对；Chrome四个不同字段各一次setter，原两轴false→true/unknown，随后一对只读样本ready，额外配对耗时约40–56ms，不冒充整体CPU/性能优势。前台B/C的独立网页焦点分别Fforeground/Fnextfield，B仅一次 `B99-中`，AX/原图/工具text_effect均5/5。
+- **新边界不粉饰**：后台A的Native AX三轴ready但网页仍D0/F空；后台D也ready但网页仍D0/Fnextfield，未切到D，所以完全没有对A/D盲目输入。三轴只证明Native AX焦点，不证明DOM/控件实际输入就绪。显式Chrome激活仍有AXPosition -25204/uncertain，独立观测已实际到前台，原请求未重放。这两项保留为输出契约与激活稳定性后续工作。
+- **版本/旧Host问题保留**：自有Chrome.app已由155.0.8059.40变为155.0.8059.84；启动前哈希拒绝1后，独立验证当前版本、vendor签名和新hash，用修订输入记录启动，没有修改用户浏览器/更新策略。更新来源不作断言，跨版本不是因果对照。当前旧Host MCP的catalog_expired原拒绝及模型store(undefined)错误也保留；仅新发现同PID/window/epoch再attach，无Native输入重放。
+- **闭环不打扰**：F99全部11个请求durable终态/释放/无pending不确定/禁重放，两个自有窗口关闭、绑定detach，Native进程0；Chrome窗口独立缺席后核对PID/UID/完整命令/Native及ps出生秒，对自有主PID仅SIGTERM一次，supervisor0而browser exit未知。最终仅root，原前台11924/window421完整元组恢复。Source482与部署后的12受保护文件未变；没有游戏/已有文档操作或人工配合。
+- **完整计划继续**：Live已有实机198×200pt、小图不降低2048源截图细节，隐藏清图/恢复/关闭及F87关闭焦点历史保留；严格Host任务绑定、Host图片/PiP/原生VO与未批准材质方案仍不冒充通过，不再要求睡眠中的用户切窗。下一项明确工具输出的Native AX目标范围，再修前台激活瞬态回读；后台Unicode、cold hover、冲突/模态/系统/隐藏/层叠、资源/单步耗时/输出余项不被替代。沿用既有公开PR1，合理批次提交，不逐操作push。full_goal_complete=false。
+- 实际报告：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f96-bounded-focus-readback-settlement-2026-10-16/README.md；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f99-native-focus-settlement-acceptance-2026-10-16/README.md。原始结果：/Volumes/ChatGPT/Real World Interaction/work/f99-native-focus-settlement-acceptance-2026-10-16/NATIVE_RESULT.json。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+
+<!-- RWI_F92_NATIVE_APPKIT_UNICODE_CURRENT -->
+## 当前：原生 AppKit Unicode 消费已自主实机验到；Chrome 负例与内部激活语义仍分开 · 2026-10-16
+
+- **F91不是HTML冒充原生字段**：新的自有 receiver PID83226/window2885，bundle com.destroyedteam.rwi.receiver.f91，virtual display UUID13E4E9B0…，真实非安全AXTextField/NSTextView编辑器。当前会话loaded RWI新鲜exact discovery/attach/snapshot，单次AXFocused后独立确认，再各发一次ASCII/BMP控制 `N91-中-Z` 与新Unicode意图 `🙂𝄞👩‍💻é`。为不通过AXValue复位，控制读回成功后选择同字段新追加矩阵；原计划与修订都保留，无旧输入重放或失败fallback。
+- **消费有三路证据**：字段从空→`N91-中-Z`→`N91-中-Z🙂𝄞👩‍💻é`；expected/observed UTF16为7/7、18/18，独立receiver text.value完全相同，changes7→14且无截断；三张原始1320×1104 PNG完整保存。工具text_effect均value_matches_expected，原回执goal_verified=false完整保留，不能把发送返回当目标完成。
+- **后台边界不虚报**：OS frontmost采样保持11924、最终同window421；自有window_key始终false。但目标AppKit isActive实际由false变true，所以“完全失活应用内部状态不变”未通过。此次仅接受非OS前台的原生字段消费，不证明IME组合、所有应用、生产端时序保真或性能更优。此前Chrome155/F69 expected13/observed5及完整KD后缺文本的负例不删除；两次payload/场景不同，不能由本例宣称Chromium根因已证或已修。
+- **闭环清理**：focus、两次typing、语义close四个原请求均durable terminal/resources_released/无pending不确定/禁重放；仅自有源窗口关闭、进程退出0、精确PID缺席、绑定detach且最终仅root；游戏/已有文档未操作。Source481与受保护12文件未变，Native Agent、权限、配对/签名/Host均未重启或修改，不把当前旧Host工具当v4已重载。
+- **已验代码与Git仍有效**：F87关闭焦点BODY→H1→copy rollback BODY→reapply H1，Node15/20/15/20，1344pass/11ignored/48suites四门全0；F88新版neutral MCP已实际安装为7f134ddb…，候选和安装后的snapshot、exact-selection与v4/旧别名资源协议均0。代码4d17fb78及状态43f8f1dc已合理拆成两commit、一次普通push，公开PR1；本次只有额外验收记录，留待后续合理批次，不为每步再次提交/触发Action。严格Host任务隐藏绑定、真实Host v4渲染/图片PiP、原生VO及正式UIOS release均未冒充完成。
+- **下一项不需人工**：先用冻结F69/F91证据运行只读差分评估，明确相同/不同payload、UTF16及AppKit/OS状态边界，再确定新的受控Chrome对照；不重跑旧Native输入。cold hover、前台冲突/模态/系统/隐藏/层叠、资源/单步耗时/输出余项继续。full_goal_complete=false。
+- 实际图文：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f91-native-appkit-unicode-discriminator-2026-10-16/README.md；原始结果：/Volumes/ChatGPT/Real World Interaction/work/f91-native-appkit-unicode-discriminator-2026-10-16/NATIVE_RESULT.json。小Live/隐藏恢复关闭与本轮焦点修复、既有双向Cmd+Tab和目录过期验收历史全部保留。
+
+--- 以下旧历史按当时状态完整保留 ---
+
 <!-- RWI_F89_LIVE_FOCUS_CURRENT -->
 ## 当前：Live 控制已自主实机复验；关闭焦点修复已部署，完整余项继续 · 2026-10-16
 
