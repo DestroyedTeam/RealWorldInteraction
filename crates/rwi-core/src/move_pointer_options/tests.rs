@@ -1,4 +1,74 @@
 use super::*;
+
+#[test]
+fn visible_desktop_is_explicit_without_changing_default_or_foreground_scope() {
+    let mut value = foreground();
+    value["delivery"] = serde_json::json!("visible_desktop_system");
+    let option = MovePointerOptions::parse(Some(&value.to_string())).unwrap();
+    assert!(matches!(
+        option,
+        MovePointerOptions::VisibleDesktopSystem { .. }
+    ));
+    assert!(!option.requires_foreground());
+    assert_eq!(
+        MovePointerOptions::parse(None).unwrap(),
+        MovePointerOptions::BackgroundWindow {}
+    );
+    assert!(
+        MovePointerOptions::parse(Some(&foreground().to_string()))
+            .unwrap()
+            .requires_foreground()
+    );
+    assert_eq!(serde_json::to_value(option).unwrap(), value);
+}
+
+#[test]
+fn visible_desktop_rejects_missing_identity_and_unrequested_extra_effects() {
+    let mut good = foreground();
+    good["delivery"] = serde_json::json!("visible_desktop_system");
+    for key in ["pid", "process_start", "window", "native_epoch"] {
+        let mut value = good.clone();
+        value["expected_foreground"]
+            .as_object_mut()
+            .unwrap()
+            .remove(key);
+        assert!(MovePointerOptions::parse(Some(&value.to_string())).is_err());
+    }
+    for (key, value) in [
+        ("button", serde_json::json!(0)),
+        ("activate", serde_json::json!(true)),
+        ("delta", serde_json::json!([1, 0])),
+        ("fallback", serde_json::json!(true)),
+    ] {
+        let mut input = good.clone();
+        input[key] = value;
+        assert!(MovePointerOptions::parse(Some(&input.to_string())).is_err());
+    }
+    let mut malformed = good.clone();
+    malformed["expected_foreground"]["pid"] = serde_json::json!(0);
+    assert!(MovePointerOptions::parse(Some(&malformed.to_string())).is_err());
+}
+
+#[test]
+fn visible_desktop_requires_its_own_capability_and_does_not_inherit_foreground() {
+    let mut value = foreground();
+    value["delivery"] = serde_json::json!("visible_desktop_system");
+    let option = MovePointerOptions::parse(Some(&value.to_string())).unwrap();
+    for route in [
+        serde_json::json!(null),
+        serde_json::json!({}),
+        serde_json::json!({"implemented":true}),
+        serde_json::json!({"implemented":true,"available":false}),
+        serde_json::json!({"implemented":false,"available":true}),
+    ] {
+        let caps = serde_json::json!({"pointer_move":{"foreground_system":{"implemented":true},"visible_desktop_system":route}});
+        assert_eq!(
+            option.require_capability(&caps).unwrap_err().code,
+            "capability_unavailable"
+        );
+    }
+    assert!(option.require_capability(&serde_json::json!({"pointer_move":{"visible_desktop_system":{"implemented":true,"available":true}}})).is_ok());
+}
 fn foreground() -> serde_json::Value {
     serde_json::json!({"delivery":"foreground_system","expected_foreground":{
             "pid":42,"window":"cgwindow:7","process_start":"42:1:2","native_epoch":"a".repeat(64)}})

@@ -8,6 +8,7 @@ use crate::{
 };
 use rwi_core::*;
 mod backend;
+mod visible_desktop_capability;
 use serde_json::{Value, json};
 use std::sync::{
     Arc,
@@ -377,6 +378,8 @@ pub(crate) fn native_capabilities(
         "requires":"fresh grounded reference + shared input lease + exact current foreground + idle HID + existing post/listen permissions",
         "goal_verification":"independent; not guaranteed tracking or tooltip"
     });
+    capabilities["pointer_move"]["visible_desktop_system"] =
+        visible_desktop_capability::describe(allow_input);
     capabilities
 }
 

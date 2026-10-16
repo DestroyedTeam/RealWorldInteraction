@@ -89,7 +89,8 @@ pub(super) fn event_for(
         }
         rwi_core::MovePointerOptions::BackgroundWindow {}
         | rwi_core::MovePointerOptions::BackgroundSkylightExperimental {}
-        | rwi_core::MovePointerOptions::ForegroundSystem { .. } => event(point),
+        | rwi_core::MovePointerOptions::ForegroundSystem { .. }
+        | rwi_core::MovePointerOptions::VisibleDesktopSystem { .. } => event(point),
     }
 }
 

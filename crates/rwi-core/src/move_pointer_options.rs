@@ -51,6 +51,11 @@ pub enum MovePointerOptions {
     ForegroundSystem {
         expected_foreground: ForegroundState,
     },
+    /// Explicit physical cursor movement over an exposed window, without activation.
+    /// The observed foreground may be another window; it must remain unchanged.
+    VisibleDesktopSystem {
+        expected_foreground: ForegroundState,
+    },
 }
 fn deserialize_explicit_delta<'de, D>(
     deserializer: D,
@@ -125,6 +130,9 @@ impl MovePointerOptions {
         })?;
         if let Self::ForegroundSystem {
             expected_foreground,
+        }
+        | Self::VisibleDesktopSystem {
+            expected_foreground,
         } = &options
         {
             expected_foreground.validate()?;
@@ -152,6 +160,15 @@ impl MovePointerOptions {
         matches!(self, Self::ForegroundSystem { .. })
     }
     pub fn require_capability(&self, capabilities: &serde_json::Value) -> Result<()> {
+        if matches!(self, Self::VisibleDesktopSystem { .. }) {
+            let cap = &capabilities["pointer_move"]["visible_desktop_system"];
+            if cap["implemented"] != true || cap["available"] != true {
+                return Err(fault(
+                    "capability_unavailable",
+                    "Visible-desktop system cursor movement is unavailable; no foreground or addressed fallback.",
+                ));
+            }
+        }
         if let Self::BackgroundCooperativeTrackingExperimental {
             owner_endpoint,
             registration_id,

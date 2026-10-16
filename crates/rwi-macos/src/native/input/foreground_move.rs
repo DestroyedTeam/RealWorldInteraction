@@ -41,7 +41,7 @@ pub(super) fn guard(
     Ok(())
 }
 
-fn require_display_point(displays: &[Display], point: [f64; 2]) -> Result<()> {
+pub(super) fn require_display_point(displays: &[Display], point: [f64; 2]) -> Result<()> {
     let mut matching = displays.iter().filter(|d| d.rect.contains(point));
     let first = matching.next();
     if point.iter().any(|v| !v.is_finite())

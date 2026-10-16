@@ -17,6 +17,7 @@ use continuation::{Facts, Kind, Sequence};
 use mouse_gesture::MouseGesture;
 mod foreground_move;
 mod text_effect;
+mod visible_desktop;
 
 impl NativeMac {
     pub(super) fn dispatch_input(
@@ -46,6 +47,10 @@ impl NativeMac {
             rwi_core::MovePointerOptions::BackgroundWindow {}
         };
         let foreground_pointer = move_options.requires_foreground();
+        let desktop_pointer = matches!(
+            move_options,
+            rwi_core::MovePointerOptions::VisibleDesktopSystem { .. }
+        );
         let cooperative_pointer = matches!(
             move_options,
             rwi_core::MovePointerOptions::BackgroundCooperativeTrackingExperimental { .. }
@@ -125,7 +130,8 @@ impl NativeMac {
         if pointer && !native_press {
             validate_capture_fringe(delivery.frame, target.point, intent)?;
         }
-        let background_pointer = pointer && !foreground_pointer && !cooperative_pointer;
+        let background_pointer =
+            pointer && !foreground_pointer && !desktop_pointer && !cooperative_pointer;
         if background_pointer && !crate::background::pointer_delivery_available() {
             return Err(fault(
                 "background_delivery_unavailable",
@@ -229,10 +235,13 @@ impl NativeMac {
                             {
                                 foreground_move::guard(self, foreground, target.point)?;
                             }
+                            if let rwi_core::MovePointerOptions::VisibleDesktopSystem { expected_foreground } = &move_options {
+                                visible_desktop::guard(self, expected_foreground, target.point)?;
+                            }
                             Ok(())
                         },
                         || {
-                            if foreground_pointer {
+                            if foreground_pointer || desktop_pointer {
                                 foreground_move::post(&event)
                             } else if let Some(prepared) = skylight_move {
                                 prepared.post()

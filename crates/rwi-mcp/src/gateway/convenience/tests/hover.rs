@@ -1,6 +1,60 @@
 use super::*;
 
 #[test]
+fn visible_desktop_hover_schema_discloses_physical_cursor_and_explicit_identity() {
+    let entry = tools()
+        .into_iter()
+        .find(|t| t.name == "computer.hover")
+        .unwrap();
+    let schema = serde_json::to_value(entry.input_schema)
+        .unwrap()
+        .to_string();
+    assert!(schema.contains("visible_desktop_system") && schema.contains("expected_foreground"));
+    assert!(
+        entry
+            .description
+            .unwrap()
+            .contains("physical system cursor")
+    );
+}
+
+#[tokio::test]
+async fn visible_desktop_hover_forwards_once_and_preserves_refusal_without_fallback() {
+    let option = json!({"delivery":"visible_desktop_system","expected_foreground":{"pid":42,"window":"cgwindow:7","process_start":"42:1:2","native_epoch":"a".repeat(64)}});
+    let args:HoverArgs=serde_json::from_value(json!({"target":"t","request_id":"visible-desktop-once","at":{"kind":"element","frame":"f","element":"e"},"options":option})).unwrap();
+    let calls = RefCell::new(vec![]);
+    let result = hover(args, |tool, args, cleanup| {
+        calls.borrow_mut().push((tool, args, cleanup));
+        std::future::ready(match tool {
+            "computer.claim" => DeviceResult::value(json!({"lease":"short"})),
+            "computer.release" => DeviceResult::value(json!({"released":true})),
+            _ => DeviceResult::error("visible_desktop_hit_unproven", "no physical hit; no input"),
+        })
+    })
+    .await;
+    assert!(result.is_error);
+    let calls = calls.borrow();
+    let actions: Vec<_> = calls
+        .iter()
+        .filter(|c| c.0 == "computer.act_checked")
+        .collect();
+    assert_eq!(actions.len(), 1);
+    assert_eq!(actions[0].1["intent"], "move_pointer");
+    assert_eq!(
+        serde_json::from_str::<Value>(actions[0].1["value"].as_str().unwrap()).unwrap(),
+        option
+    );
+    assert_eq!(
+        calls.iter().filter(|c| c.0 == "computer.release").count(),
+        1
+    );
+    assert!(calls.iter().all(|c| !matches!(
+        c.0,
+        "computer.focus_window" | "computer.hotkey" | "computer.act"
+    )));
+}
+
+#[test]
 fn hover_contract_typed_tool_is_explicit_nonsemantic_and_bounded() {
     let catalog = tools();
     let hover = catalog

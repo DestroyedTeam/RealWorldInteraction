@@ -235,6 +235,11 @@ enum HoverOptionsSchema {
     ForegroundSystem {
         expected_foreground: rwi_core::ForegroundState,
     },
+    /// Moves the physical cursor to an exposed target without activating it.
+    /// Pin the current foreground even when it differs from the selected target.
+    VisibleDesktopSystem {
+        expected_foreground: rwi_core::ForegroundState,
+    },
 }
 #[derive(JsonSchema)]
 #[schemars(transparent)]
