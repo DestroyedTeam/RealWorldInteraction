@@ -1,3 +1,18 @@
+<!-- RWI_F110_SCOPE_AND_PACED_VALUE_CURRENT -->
+## 当前：焦点作用域与有界AXValue回读节奏已部署并自主实机验收 · 2026-10-16
+
+- **F102作用域已实现并真正加载**：`FocusReadbackSummary.goal_scope=native_ax_focus_only`、`application_input_effect=not_observed`覆盖ready/partial/unknown，原状态与goal布尔不改，不授予键入权限。冻结Core同输入四相为字段缺失→明确字段→copy回滚缺失→reapply明确，退出0000；过滤0/1/0/1、full1358/11ignored。F104稳定签名部署后，F105四个真实focus回执、set_text内部partial无写焦点观察及初始partial/unknown样本均出现新字段；没有把磁盘部署冒充loaded验收。
+- **F105文本路径新对照**：同一Chrome155.0.8059.84、同文字 `后🙂𝄞 é👩‍💻`、两个原始空字段。C一次显式后台整值AXValue最终13/13；D先独立确认前台/后台页面均Fkeyboard，再一次新键盘意图，仍13/5（`后 é‍`）。C保持完整、A/B空，D前后完整OS前台元组保持自有Native peer。两路前置条件不同，不称严格单变量因果证明；语义整值替换不是键入/追加/IME的自动fallback，键盘丢非BMP仍未修。
+- **反馈时序问题确实修正**：F105 C的setter0，旧额外两读约24/33ms均为空便结束partial，随后独立AX/原图已完整13/13。F106仅对已知不匹配的原始AXValue对，将额外阶段改成最多3次、20ms请求间隔、150ms软预算，仍须相邻两次完整CFString/hash匹配。保留原始读数、writer仅一次及所有身份/上下文/取消/期限/类型检查，无激活/键鼠/剪贴板/输入重放；移除错误硬编码sleep0，报告configured_poll_interval_ms。已成功的初始对不计时、不等待。
+- **F106可逆性与全量**：实际Core用真实F105初始对+明确合成的后续序列，partial→observed_after_readonly_settlement→copy回滚partial→reapply observed，退出0000，goal与keyboard_authorized始终false。过滤0/5/0/5；全482即时旧hash恢复、384角色/全局81存在303不存在的真实回滚与严格补丁重建通过。fmt/workspace/all-targets-all-features Clippy-Dwarnings/架构四门0000，1363pass/11ignored/48suites。operator sealer生成断言1和已关闭session误poll错误各按原scope保留，不改名为Native失败。
+- **F108/F109不止源码通过**：沿用现有稳定本地证书，Agent19833/c8f4be27…→30733/8ab39ff1…，安装hash08a27d437f0708f316ea2b40d251250c57eeaf99255647d3f348d27ae3ddb518；共享lease/durable检查后更新，四项权限仍有效，12受保护文件只Agent executable改变，MCP/Host/CA/配对/私钥/权限配置不改、不要求人工授权或重启Codex。loaded RWI新发现自有Native32600/window3143、Chrome32626/window3147：Native `N109-中` 原两读直接完整、无settlement；Chrome C原两读空/partial保留，唯一setter后58.87/98.13ms读到两个相同完整26UTF8字节/hash，额外阶段86.28ms、state=observed_after_readonly_settlement，独立AX/被动页面状态/原图13/13。配置20ms不是实际样本间距或CPU耗时；本例工具364ms，不称普遍性能优势。
+- **自主清理与未完成边界**：F105 11请求、F109 5请求均durable终态/释放/无pending或释放不确定/禁重放；只关闭自有窗口并detach，Native进程0；Chrome窗口缺席后核对PID/UID/完整命令/Native及ps出生秒，仅SIGTERM一次，supervisor0而browser exit未知。最后仅root、原前台11924/window421恢复，Source482与部署后受保护12文件未变；没有游戏/已有文档操作或人工配合。
+- **后续完整计划不缩减**：显式Chrome激活仍有AXFocusedWindow/AXPosition -25204后实际已到前台的uncertain负例；下一项隔离保持原样的foreground读取函数，随后给已发生的显式切窗增加精确保留对象的有界只读收敛/阶段诊断，绝不重发激活。Live已有198×200pt/隐藏清图/恢复/关闭及原图2048细节历史保留，严格Host任务绑定/图片PiP/VO及材质仍待验，不要求休息中的用户参与。当前旧Host适配器未冒充最新版；cold hover、模态/系统/隐藏/层叠、资源/耗时/MCP可读性继续。此前已推送017b0682的CI38830686751实测success，仅证明旧head，不冒充本轮未提交源码CI。full_goal_complete=false。
+- 图文与原始结果：/Volumes/ChatGPT/Real World Interaction/outputs/validation/f105-native-focus-scope-and-axvalue-2026-10-16/README.md；/Volumes/ChatGPT/Real World Interaction/outputs/validation/f109-paced-axvalue-native-acceptance-2026-10-16/README.md；/Volumes/ChatGPT/Real World Interaction/work/f109-paced-axvalue-native-acceptance-2026-10-16/NATIVE_RESULT.json。
+
+--- 以下旧历史按当时状态完整保留 ---
+
+
 <!-- RWI_F100_FOCUS_SETTLEMENT_CURRENT -->
 ## 当前：焦点延迟回读修正已部署并自主实机验收；AX与应用焦点边界已确认 · 2026-10-16
 
