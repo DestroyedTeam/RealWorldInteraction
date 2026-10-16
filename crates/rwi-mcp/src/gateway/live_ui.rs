@@ -6,11 +6,12 @@ pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v4.html";
-const LEGACY_URIS: [&str; 3] = [
+pub(super) const URI: &str = "ui://real-world-interaction/live/v5.html";
+const LEGACY_URIS: [&str; 4] = [
     "ui://real-world-interaction/live/v1.html",
     "ui://real-world-interaction/live/v2.html",
     "ui://real-world-interaction/live/v3.html",
+    "ui://real-world-interaction/live/v4.html",
 ];
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
@@ -62,11 +63,10 @@ pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
     if uri != URI && !LEGACY_URIS.contains(&uri) {
         return Err(ErrorData::invalid_params("Unknown RWI UI resource", None));
     }
-    // Declare the mode before loading. Inline cards can be collapsed without
-    // mounting, leaving native presence correctly hidden. This is only a Host
-    // presentation request: it never supplies visibility or capture authority.
+    // Prefer a compact inline container without forcing a fullscreen-only view.
+    // A collapsed/unmounted card still stays hidden: metadata is not presence.
     Ok(ReadResourceResult::new(vec![ResourceContents::text(include_str!("live_ui.html"), uri)
-        .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["fullscreen"]}}))) ]))
+        .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["inline","fullscreen"],"preferredDisplayMode":"inline"}}))) ]))
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]
@@ -377,9 +377,13 @@ mod tests {
         assert!(read("file:///etc/passwd").is_err());
         assert_eq!(
             resource["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
-            json!(["fullscreen"])
+            json!(["inline", "fullscreen"])
         );
-        assert_eq!(URI, "ui://real-world-interaction/live/v4.html");
+        assert_eq!(
+            resource["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
+            "inline"
+        );
+        assert_eq!(URI, "ui://real-world-interaction/live/v5.html");
         for uri in LEGACY_URIS {
             let legacy = serde_json::to_value(read(uri).unwrap()).unwrap();
             assert_eq!(legacy["contents"][0]["uri"], uri);

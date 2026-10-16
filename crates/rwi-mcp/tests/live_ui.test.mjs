@@ -8,13 +8,14 @@ import { createHash } from 'node:crypto';
 const html = readFileSync(new URL('../src/gateway/live_ui.html', import.meta.url), 'utf8');
 const code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const drain = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-function harness({ observer = true, deferDecode = false, decodedSize = [1, 1], decodeError = null, denyBlob = false } = {}) {
+function harness({ observer = true, resizer = false, deferDecode = false, decodedSize = [1, 1], decodeError = null, denyBlob = false } = {}) {
   const sent = [], timers = new Map(), delays = new Map(), intervals = new Map(), listeners = new Map();
   const blobs = new Map(), revoked = [], decoders = [];
-  let timerId = 0, intersection, focused = true;
+  let timerId = 0, intersection, resize, focused = true, panelSize = [320, 310];
+  const resizeState = { observed: 0, disconnected: 0 };
   const body = { id: '', tagName: 'BODY' };
   const document = { visibilityState: 'visible', activeElement: body, hasFocus: () => focused };
-  const nodes = new Map(['state', 'toggle', 'close', 'panel', 'location', 'preview', 'image-state'].map(id => [id, {
+  const nodes = new Map(['state', 'toggle', 'toggle-label', 'close', 'panel', 'location', 'preview', 'image-state'].map(id => [id, {
     id, tagName: id === 'state' ? 'H1' : ['toggle', 'close'].includes(id) ? 'BUTTON' : 'DIV',
     _disabled: ['toggle', 'close'].includes(id), textContent: '', events: {}, attrs: {}, hidden: id === 'preview', sources: [],
     get src() { return this._src; },
@@ -30,6 +31,7 @@ function harness({ observer = true, deferDecode = false, decodedSize = [1, 1], d
       document.activeElement = this;
     },
     addEventListener(name, fn) { this.events[name] = fn; },
+    getBoundingClientRect() { return { width: panelSize[0], height: panelSize[1] }; },
     setAttribute(name, value) { this.attrs[name] = value; },
     removeAttribute(name) { if (name === 'src') this._src = undefined; else delete this[name]; delete this.attrs[name]; }
   }]));
@@ -59,13 +61,18 @@ function harness({ observer = true, deferDecode = false, decodedSize = [1, 1], d
   if (observer) context.IntersectionObserver = class {
     constructor(fn) { intersection = fn; } observe() {}
   };
+  if (resizer) context.ResizeObserver = class {
+    constructor(fn) { resize = fn; }
+    observe(node) { assert.equal(node.id, 'panel'); resizeState.observed++; }
+    disconnect() { resizeState.disconnected++; }
+  };
   vm.runInNewContext(code, context, { timeout: 1000 });
   const deliver = (message, source = parent) => listeners.get('window:message')({ source, data: { jsonrpc: '2.0', ...message } });
-  return { sent, nodes, timers, delays, intervals, document, deliver, blobs, revoked, decoders,
+  return { sent, nodes, timers, delays, intervals, document, deliver, blobs, revoked, decoders, resizeState,
     setDocumentFocus(value) { focused = value; },
-    async init() {
+    async init(hostContext) {
       const init = sent.find(m => m.method === 'ui/initialize');
-      await deliver({ id: init.id, result: { protocolVersion: '2026-01-26' } });
+      await deliver({ id: init.id, result: { protocolVersion: '2026-01-26', hostContext } });
       await drain();
     },
     result(cap = { view_key: 'a'.repeat(32), page: 'b'.repeat(32) }) {
@@ -74,6 +81,9 @@ function harness({ observer = true, deferDecode = false, decodedSize = [1, 1], d
     async intersect(shown) { intersection?.([{ isIntersecting: shown, intersectionRatio: shown ? 1 : 0 }]); await drain(); },
     calls() { return sent.filter(m => m.method === 'tools/call' && m.params.name === 'computer.live_panel'); },
     imageCalls() { return sent.filter(m => m.method === 'tools/call' && m.params.name === 'computer.live_panel_image'); },
+    modeCalls() { return sent.filter(m => m.method === 'ui/request-display-mode'); },
+    sizeHints() { return sent.filter(m => m.method === 'ui/notifications/size-changed'); },
+    async resize(width, height) { panelSize = [width, height]; resize?.(); await drain(); },
     async imageAck(value, call = this.imageCalls().at(-1)) {
       await deliver({ id: call.id, result: { _meta: { 'rwi/live_image': { request_sequence: call.params.arguments.sequence, ...value } } } }); await drain();
     },
@@ -106,6 +116,89 @@ test('no presence without handshake, owned capability and observed intersection'
   await h.intersect(true);
   assert.equal(h.calls()[1].params.arguments.visible, true);
   assert.equal(h.calls()[1].params.name, 'computer.live_panel');
+});
+
+test('f144 compact toggle keeps its icon separate from the changing accessible label', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  assert.equal(h.nodes.get('toggle-label').textContent, '隐藏预览');
+  assert.equal(h.nodes.get('toggle').attrs['aria-label'], '隐藏预览');
+  await h.click('toggle'); await h.ack();
+  assert.equal(h.nodes.get('toggle-label').textContent, '恢复预览');
+  assert.equal(h.nodes.get('toggle').attrs['aria-label'], '恢复预览');
+  assert.equal(h.nodes.get('toggle').attrs['aria-pressed'], 'true');
+  await h.click('toggle'); await h.ack();
+  assert.equal(h.nodes.get('toggle').attrs['aria-label'], '隐藏预览');
+  assert.equal(h.nodes.get('toggle').attrs['aria-pressed'], 'false');
+});
+
+test('f144 missing or unsupported Host display modes never cause a guessed request or Native call', async () => {
+  for (const ctx of [undefined, {}, { availableDisplayModes: 'pip' }, { displayMode: 'fullscreen', availableDisplayModes: ['fullscreen', 'overlay'] }]) {
+    const h = harness(); await h.init(ctx);
+    assert.equal(h.modeCalls().length, 0); assert.equal(h.calls().length, 0); assert.equal(h.imageCalls().length, 0);
+  }
+});
+
+test('f144 offered PiP is one preference and an actual fullscreen reply is not mislabeled PiP', async () => {
+  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['inline', 'fullscreen', 'pip'] });
+  assert.equal(h.modeCalls().length, 1); const request = h.modeCalls()[0];
+  assert.equal(request.params.mode, 'pip'); assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'fullscreen');
+  await h.deliver({ id: request.id, result: { mode: 'fullscreen' } }); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'fullscreen');
+  await h.deliver({ method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen', availableDisplayModes: ['pip'] } });
+  assert.equal(h.modeCalls().length, 1); assert.equal(h.calls().length, 0); assert.equal(h.imageCalls().length, 0);
+});
+
+test('f144 inline is requested only when offered and actual Host mode remains authoritative', async () => {
+  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['inline', 'fullscreen'] });
+  assert.equal(h.modeCalls()[0].params.mode, 'inline');
+  await h.deliver({ id: h.modeCalls()[0].id, result: { mode: 'inline' } }); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'inline');
+  const already = harness(); await already.init({ displayMode: 'inline', availableDisplayModes: ['inline'] });
+  assert.equal(already.modeCalls().length, 0);
+});
+
+test('f144 late Host context is parent-only and cannot mint presence or repeat a rejected mode request', async () => {
+  const h = harness(); await h.init();
+  const message = { method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen', availableDisplayModes: ['pip'] } };
+  await h.deliver(message, {}); assert.equal(h.modeCalls().length, 0);
+  await h.deliver(message); assert.equal(h.modeCalls().length, 1);
+  await h.deliver({ id: h.modeCalls()[0].id, error: { code: -32601, message: 'not available' } }); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-request-status'], 'unconfirmed');
+  await h.deliver(message); await h.tick(); assert.equal(h.modeCalls().length, 1); assert.equal(h.calls().length, 0);
+});
+
+test('f144 a late mode reply cannot revive or relabel a closed then replaced observation', async () => {
+  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['pip'] });
+  const mode = h.modeCalls()[0]; await h.intersect(true); await h.result(); await drain(); await h.ack();
+  await h.click('close'); await h.ack();
+  const count = h.calls().length;
+  await h.result({ view_key: 'c'.repeat(32), page: 'd'.repeat(32) }); await drain(); await h.ack();
+  await h.deliver({ id: mode.id, result: { mode: 'pip' } }); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'fullscreen');
+  assert.equal(h.calls().length, count + 1); assert.equal(h.modeCalls().length, 1);
+});
+
+test('f144 size hints use bounded observed geometry, deduplicate and never publish presence', async () => {
+  const h = harness({ resizer: true }); await h.resize(300.1, 200.2);
+  assert.equal(h.sizeHints().length, 0); await h.init();
+  assert.equal(h.sizeHints().length, 1); assert.equal(h.sizeHints()[0].params.width, 301); assert.equal(h.sizeHints()[0].params.height, 201);
+  await h.resize(300.1, 200.2); assert.equal(h.sizeHints().length, 1);
+  for (const [width, height] of [[0, 10], [320, 0], [Infinity, 300], [320, NaN], [4097, 100]]) await h.resize(width, height);
+  assert.equal(h.sizeHints().length, 1);
+  await h.resize(320, 180); assert.equal(h.sizeHints().length, 2); assert.equal(h.calls().length, 0); assert.equal(h.imageCalls().length, 0);
+});
+
+test('f144 closing disconnects the size observer and late geometry cannot revive the view', async () => {
+  const h = harness({ resizer: true }); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  await h.click('close'); await h.ack(); const count = h.sizeHints().length;
+  assert.equal(h.resizeState.disconnected, 1); await h.resize(320, 100);
+  assert.equal(h.sizeHints().length, count); assert.equal(h.nodes.get('close').disabled, true);
+});
+
+test('f144 unsupported observers do not prevent existing controls and no initialization grants visibility', async () => {
+  const h = harness({ observer: false, resizer: false }); await h.init({ displayMode: 'inline', availableDisplayModes: ['inline'] });
+  await h.result(); await drain(); assert.equal(h.calls()[0].params.arguments.visible, false); assert.equal(h.sizeHints().length, 1);
+  assert.equal(h.modeCalls().length, 0); assert.equal(h.imageCalls().length, 0);
 });
 
 test('hidden event supersedes queued heartbeat; one request in flight and monotonic sequence', async () => {
@@ -172,10 +265,10 @@ test('stopped preview ends heartbeat and cannot misleadingly resume a terminal o
   assert.match(h.nodes.get('state').textContent, /新建观察/);
 });
 
-test('component declares fullscreen before mount and explains the actual native viewer location', async () => {
+test('component declares responsive modes before mount and explains the actual native viewer location', async () => {
   const h = harness();
   const init = h.sent.find(m => m.method === 'ui/initialize');
-  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['fullscreen']);
+  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['inline', 'fullscreen', 'pip']);
   await h.init();
   await h.deliver({ method: 'ui/notifications/tool-result', params: {
     _meta: { 'rwi/live_panel': { view_key: 'a'.repeat(32), page: 'b'.repeat(32) } },

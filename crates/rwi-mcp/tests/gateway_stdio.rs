@@ -201,11 +201,12 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
 #[test]
 fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
     let mime = "text/html;profile=mcp-app";
-    let uri = "ui://real-world-interaction/live/v4.html";
+    let uri = "ui://real-world-interaction/live/v5.html";
     let legacy_uris = [
         "ui://real-world-interaction/live/v1.html",
         "ui://real-world-interaction/live/v2.html",
         "ui://real-world-interaction/live/v3.html",
+        "ui://real-world-interaction/live/v4.html",
     ];
     for (capabilities, supported) in [
         (json!({}), false),
@@ -314,7 +315,11 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
         assert_eq!(content["_meta"]["ui"]["csp"]["connectDomains"], json!([]));
         assert_eq!(
             content["_meta"]["openai/ui"]["availableDisplayModes"],
-            json!(["fullscreen"])
+            json!(["inline", "fullscreen"])
+        );
+        assert_eq!(
+            content["_meta"]["openai/ui"]["preferredDisplayMode"],
+            "inline"
         );
         for (legacy_uri, legacy_resource) in legacy_uris.iter().zip(&legacy_resources) {
             let legacy_content = &legacy_resource["result"]["contents"][0];

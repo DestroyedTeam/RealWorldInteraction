@@ -7,41 +7,62 @@
   <style>
     :root { color-scheme: light dark; font-family: var(--font-sans, system-ui, sans-serif); }
     body { margin: 0; color: var(--color-text-primary, light-dark(#182b24, #e7eeea)); }
-    main { padding: 18px 20px; border-inline-start: 3px solid #739c86; }
-    header { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
-    h1 { font-size: 18px; line-height: 1.4; margin: 7px 0; font-weight: 600; }
-    p { max-width: 62ch; font-size: 12px; line-height: 1.7; margin: 0 0 14px; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
-    nav { display: flex; flex-wrap: wrap; gap: 8px; }
-    figure { margin: 12px 0; max-width: 360px; }
+    main { box-sizing: border-box; width: min(100%, 320px); padding: 8px; border: 1px solid light-dark(#d6e1da, #3b5145); border-radius: 10px; background: var(--color-background-primary, light-dark(#fff, #1b2821)); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .identity { min-width: 0; }
+    header strong { display: block; font-size: 11px; letter-spacing: .07em; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    h1 { font-size: 12px; line-height: 1.5; margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+    p { font-size: 11px; line-height: 1.5; margin: 6px 0 0; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    nav { display: flex; flex: none; gap: 2px; }
+    figure { margin: 6px 0 0; }
     #preview { display: block; max-width: 100%; max-height: 240px; width: auto; height: auto; object-fit: contain; border-radius: 7px; }
     #preview[hidden] { display: none; }
     figcaption { margin-top: 5px; font-size: 11px; line-height: 1.5; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
-    button { font: inherit; font-size: 13px; padding: 8px 12px; min-height: 36px; border: 1px solid light-dark(#a9c0b2, #496354); border-radius: 7px; background: light-dark(#edf4ef, #23392d); color: inherit; cursor: pointer; }
-    button:focus-visible { outline: 2px solid #739c86; outline-offset: 3px; }
+    button { position: relative; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
+    button::before { position: absolute; inset: 4px; border-radius: 7px; background: light-dark(#edf4ef, #23392d); content: ''; }
+    button:hover:not(:disabled)::before { background: light-dark(#dce9e0, #344d3d); }
+    button svg { position: relative; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    #toggle .eye-on, #toggle[aria-pressed="true"] .eye-off { display: none; }
+    #toggle[aria-pressed="true"] .eye-on { display: block; }
+    button:focus-visible { outline: 2px solid #739c86; outline-offset: 2px; }
     button:disabled { opacity: .5; cursor: default; }
-    @media (max-width: 320px) { main { padding: 12px; } }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    @media (forced-colors: active) { main, button { border: 1px solid CanvasText; } button::before { background: Canvas; } }
   </style>
 </head>
 <body>
-  <main id="panel">
-    <header>Real World Interaction / Live</header>
-    <h1 id="state" role="status" aria-live="polite" tabindex="-1">等待会话内视图连接</h1>
-    <p id="location">会话内只读预览 · 隐藏可恢复；关闭会结束本轮。这里不读取对话、不发送键鼠；实际任务切换行为仍取决于 Host。</p>
+  <main id="panel" aria-describedby="location">
+    <header>
+      <div class="identity">
+        <strong>RWI · LIVE</strong>
+        <h1 id="state" role="status" aria-live="polite" tabindex="-1">等待会话内视图连接</h1>
+      </div>
+      <nav aria-label="Live 预览控制">
+        <button id="toggle" type="button" aria-label="隐藏预览" title="隐藏预览（可在本轮恢复）" aria-pressed="false" disabled>
+          <svg class="eye-off" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3l14 14M8 4.5a9 9 0 0 1 9.5 5.5 12 12 0 0 1-2.3 3.2M5.3 5.5A12 12 0 0 0 2.5 10s2.5 5.5 7.5 5.5a9 9 0 0 0 3.4-.7M8 8a2.8 2.8 0 0 0 4 4"/></svg>
+          <svg class="eye-on" viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10s2.5-5.5 7.5-5.5 7.5 5.5 7.5 5.5-2.5 5.5-7.5 5.5S2.5 10 2.5 10Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+          <span id="toggle-label" class="sr-only">隐藏预览</span>
+        </button>
+        <button id="close" type="button" aria-label="关闭预览" title="关闭预览（结束本轮，不关闭源窗口）" disabled>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg>
+          <span class="sr-only">关闭预览</span>
+        </button>
+      </nav>
+    </header>
     <figure aria-label="已选窗口的只读 Live 画面">
       <img id="preview" alt="已选窗口的 Live 预览，不接收键鼠输入" hidden>
       <figcaption id="image-state" aria-live="off">等待已确认的可见连接</figcaption>
     </figure>
-    <nav aria-label="Live 预览控制">
-      <button id="toggle" type="button" disabled>隐藏预览</button>
-      <button id="close" type="button" disabled>关闭预览</button>
-    </nav>
+    <p id="location" title="会话内只读预览；不读取对话，不发送键鼠。隐藏可恢复；关闭会结束本轮。实际任务切换行为仍取决于 Host。">只读 · 不发送键鼠 · 任务切换隐藏未验</p>
   </main>
   <script>
     (() => {
       'use strict';
       const status = document.getElementById('state');
       const toggle = document.getElementById('toggle');
+      const toggleLabel = document.getElementById('toggle-label');
       const close = document.getElementById('close');
+      const panel = document.getElementById('panel');
       const location = document.getElementById('location');
       const preview = document.getElementById('preview');
       const imageStatus = document.getElementById('image-state');
@@ -49,6 +70,46 @@
       let id = 0, ready = false, capability = null, sequence = 0;
       let enabled = true, intersecting = false, ended = false, closing = false;
       let queued = null, flight = null;
+      let displayRequested = false, displayEpoch = 0, lastSize = null;
+      const validDisplayMode = mode => ['inline', 'fullscreen', 'pip'].includes(mode);
+      function updateToggle() {
+        const label = enabled ? '隐藏预览' : '恢复预览';
+        toggleLabel.textContent = label;
+        toggle.setAttribute('aria-label', label);
+        toggle.setAttribute('title', enabled ? '隐藏预览（可在本轮恢复）' : '恢复本轮预览');
+        toggle.setAttribute('aria-pressed', String(!enabled));
+      }
+      function notifySize() {
+        if (!ready || ended || closing || typeof panel.getBoundingClientRect !== 'function') return;
+        const bounds = panel.getBoundingClientRect();
+        if (![bounds.width, bounds.height].every(value => Number.isFinite(value) && value > 0 && value <= 4096)) return;
+        const size = { width: Math.ceil(bounds.width), height: Math.ceil(bounds.height) };
+        if (size.width === lastSize?.width && size.height === lastSize?.height) return;
+        lastSize = size;
+        // A size hint, not proof that the Host resized or displayed this view.
+        send({ method: 'ui/notifications/size-changed', params: size });
+      }
+      const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(notifySize) : null;
+      function hostContext(context) {
+        if (!ready || ended || closing || !context || typeof context !== 'object') return;
+        if (validDisplayMode(context.displayMode)) panel.setAttribute('data-display-mode', context.displayMode);
+        if (displayRequested || !Array.isArray(context.availableDisplayModes)) return;
+        const modes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
+        const preferred = modes.includes('pip') ? 'pip' : modes.includes('inline') ? 'inline' : null;
+        if (!preferred) return;
+        displayRequested = true;
+        if (context.displayMode === preferred) return;
+        const epoch = displayEpoch;
+        panel.setAttribute('data-display-request', preferred);
+        // One bounded default-size preference; no retries, native fallback or
+        // visibility grant. The actual returned mode may differ from our request.
+        request('ui/request-display-mode', { mode: preferred }).then(reply => {
+          if (ended || closing || epoch !== displayEpoch) return;
+          if (validDisplayMode(reply?.mode)) panel.setAttribute('data-display-mode', reply.mode);
+        }).catch(() => {
+          if (!ended && !closing && epoch === displayEpoch) panel.setAttribute('data-display-request-status', 'unconfirmed');
+        });
+      }
       // Pixels have a separate cursor/sequence. Reads never publish presence or input.
       let images = null, imageFlight = null, imageTimer = null, staleTimer = null, imageSource = null;
       const send = message => window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*');
@@ -202,6 +263,8 @@
       }
       function finish(message) {
         ended = true;
+        displayEpoch++;
+        sizeObserver?.disconnect();
         clearImages('本轮画面已清除');
         clearInterval(heartbeat);
         status.textContent = message;
@@ -272,9 +335,9 @@
           if (!next || !/^[0-9a-f]{32}$/.test(next.view_key) || !/^[0-9a-f]{32}$/.test(next.page)) return;
           const display = message.params?.structuredContent?.requested_preview_display;
           if (display?.built_in === true) {
-            location.textContent = '会话内只读预览；另有内建屏上的 RWI 原生浮层。隐藏可恢复；关闭后重新打开需新建观察。';
+            location.textContent = '只读 · 内建屏原生浮层 · 任务切换隐藏未验';
           } else if (Number.isSafeInteger(display?.id)) {
-            location.textContent = `会话内只读预览；原生浮层位于显示器 ${display.id}。隐藏可恢复；关闭后重新打开需新建观察。`;
+            location.textContent = `只读 · 显示器 ${display.id} 原生浮层 · 任务切换隐藏未验`;
           }
           if (next.view_key === capability?.view_key && next.page === capability?.page) return;
           clearImages('等待已确认的可见连接');
@@ -287,12 +350,15 @@
           closing = false;
           enabled = true;
           queued = null;
-          toggle.textContent = '隐藏预览';
-          toggle.setAttribute('aria-pressed', 'false');
+          updateToggle();
+          sizeObserver?.observe(panel);
+          notifySize();
           clearInterval(heartbeat);
           heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
           toggle.disabled = close.disabled = false;
           report(visible());
+        } else if (message.method === 'ui/notifications/host-context-changed') {
+          hostContext(message.params);
         } else if (message.method === 'ui/resource-teardown') {
           const owner = capability;
           closing = true;
@@ -316,13 +382,12 @@
         new IntersectionObserver(entries => {
           intersecting = entries.some(entry => entry.isIntersecting && entry.intersectionRatio > 0);
           report(visible());
-        }).observe(document.getElementById('panel'));
+        }).observe(panel);
       }
       toggle.addEventListener('click', () => {
         if (closing || ended) return;
         enabled = !enabled;
-        toggle.textContent = enabled ? '隐藏预览' : '恢复预览';
-        toggle.setAttribute('aria-pressed', String(!enabled));
+        updateToggle();
         report(visible());
       });
       close.addEventListener('click', () => {
@@ -335,11 +400,14 @@
       let heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
       request('ui/initialize', {
         protocolVersion: '2026-01-26', appInfo: { name: 'RWI Live', version: '1' },
-        appCapabilities: { availableDisplayModes: ['fullscreen'] }
+        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] }
       }).then(result => {
         if (result?.protocolVersion !== '2026-01-26') { finish('Host UI 协议未确认 · 不发布可见性'); return; }
         ready = true;
         send({ method: 'ui/notifications/initialized' });
+        sizeObserver?.observe(panel);
+        notifySize();
+        hostContext(result.hostContext);
       }).catch(() => finish('Host 不支持此组件 · 预览保持隐藏'));
     })();
   </script>
