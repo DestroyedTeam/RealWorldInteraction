@@ -528,7 +528,14 @@ impl NativeMac {
             },
         )?;
         let status = attempted.map(|(native_status, _, _)| native_status);
-        let readback = self.semantic_focus_readback(&sample, plan, status);
+        let readback = self
+            .semantic_focus_readback(&sample, plan, status)
+            .map(|initial| {
+                rwi_core::semantic_focus::settle_focus_readback(initial, || {
+                    let _call = operation::native_call("macos_semantic_focus_settle_readonly")?;
+                    self.semantic_focus_readback(&sample, plan, status)
+                })
+            });
         if let Some(native_status) = status
             && (native_status != 0 || readback.is_err())
         {

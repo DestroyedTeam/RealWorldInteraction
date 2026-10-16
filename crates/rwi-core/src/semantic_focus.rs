@@ -403,6 +403,8 @@ pub struct FocusReadbackDiagnostics {
     pub application_focused_window_cf_match: FocusReadbackAxisPair,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub public_application_custody: Option<FocusPublicApplicationReadback>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub settlement: Option<Box<FocusReadbackSettlement>>,
 }
 impl FocusReadbackDiagnostics {
     pub fn new(
@@ -418,6 +420,7 @@ impl FocusReadbackDiagnostics {
             focused_ui_element_cf_match,
             application_focused_window_cf_match,
             public_application_custody: None,
+            settlement: None,
         }
     }
 }
@@ -491,7 +494,17 @@ pub fn summarize_focus_readback(r: FocusReadback) -> FocusReadbackSummary {
         )
     );
     let setter_uncertain = !phase_known;
-    let state = if setter_uncertain || e.is_none() || u.is_none() || w.is_none() {
+    let settlement_unconfirmed = r
+        .readback_diagnostics
+        .as_ref()
+        .and_then(|d| d.settlement.as_ref())
+        .is_some_and(|s| !s.final_pair_usable);
+    let state = if setter_uncertain
+        || settlement_unconfirmed
+        || e.is_none()
+        || u.is_none()
+        || w.is_none()
+    {
         FocusReadbackState::Unknown
     } else if e == Some(true) && u == Some(true) && w == Some(true) {
         FocusReadbackState::Ready
@@ -506,9 +519,9 @@ pub fn summarize_focus_readback(r: FocusReadback) -> FocusReadbackSummary {
             (before.validate().is_ok() && after.validate().is_ok()).then_some(before == after)
         });
     let keep_diagnostics = state == FocusReadbackState::Unknown
-        || r.readback_diagnostics
-            .as_ref()
-            .is_some_and(|diagnostics| diagnostics.public_application_custody.is_some());
+        || r.readback_diagnostics.as_ref().is_some_and(|diagnostics| {
+            diagnostics.public_application_custody.is_some() || diagnostics.settlement.is_some()
+        });
     FocusReadbackSummary {
         write_plan: r.write_plan,
         setter_attempt: r.setter_attempt,
@@ -529,6 +542,9 @@ pub fn summarize_focus_readback(r: FocusReadback) -> FocusReadbackSummary {
         },
     }
 }
+
+mod settlement;
+pub use settlement::{FocusReadbackSettlement, settle_focus_readback};
 
 #[cfg(test)]
 mod tests;
