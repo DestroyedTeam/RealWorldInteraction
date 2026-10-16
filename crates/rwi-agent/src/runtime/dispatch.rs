@@ -3,6 +3,24 @@ use super::execution::Execution;
 use super::*;
 use serde_json::Value;
 
+// Passive device-call wall time, not CPU or pure native API time. Record only
+// calls actually entered, after acquiring the executor and before transport or
+// durable serialization. Integer microseconds round down (saturating at u64::MAX)
+// and round-trip exactly; durable results retain the original sample.
+pub(super) fn append_device_call_timing(
+    result: &mut DeviceResult,
+    scope: &'static str,
+    elapsed: Option<std::time::Duration>,
+) {
+    let (Some(elapsed), Some(data)) = (elapsed, result.data.as_object_mut()) else {
+        return;
+    };
+    data.entry("device_call_wall").or_insert_with(|| {
+        json!({"scope":scope,"elapsed_us":u64::try_from(elapsed.as_micros()).unwrap_or(u64::MAX),
+            "cpu_measured":false})
+    });
+}
+
 pub(super) struct Finish(pub(super) Operation);
 pub(super) fn fault_result(error: rwi_core::Fault) -> DeviceResult {
     let mut result = DeviceResult::error(&error.code, &error.next_step);
@@ -460,17 +478,23 @@ impl Runtime {
             let entered=&worker_context.entered;
             entered.store(false,Ordering::Release);
             let operation=finish.0.clone();
+            let mut call_elapsed = None;
             let result=rwi_core::operation::run(&operation, || -> rwi_core::Result<DeviceResult> {
                 rwi_core::operation::checkpoint("accepted_execute")?;
                 if worker_entry.tool=="computer.recover_input" {
                     return Ok(service.recover(&policy,worker_entry.arguments["resource_domain"].as_str().unwrap_or_default(),Some(&worker_entry.reference.execution_nonce)));
                 }
-                worker_context.executor.lock().map_err(|_|rwi_core::fault("executor_unavailable","Native context failed; other contexts remain available."))?
-                    .invoke(&worker_entry.tool,worker_entry.arguments.clone())
+                let mut executor = worker_context.executor.lock().map_err(|_|rwi_core::fault("executor_unavailable","Native context failed; other contexts remain available."))?;
+                let arguments = worker_entry.arguments.clone();
+                let start = Instant::now();
+                let result = executor.invoke(&worker_entry.tool, arguments);
+                call_elapsed = Some(start.elapsed());
+                result
             });
             let mut result=match result {Ok(r)=>r,Err(e)=>fault_result(e)};
             drop(finish);
             result=worker_entry.envelope(result);
+            append_device_call_timing(&mut result, "executor_call", call_elapsed);
             result.data["operation"]=worker_entry.status().data;
             result.data["native_dispatch_entered"]=json!(entered.load(Ordering::Acquire));
             let native_status = operation.status();
@@ -563,3 +587,6 @@ mod window_local_fence_tests;
 
 #[cfg(test)]
 mod explicit_set_text_fence_tests;
+
+#[cfg(test)]
+mod device_call_timing_tests;

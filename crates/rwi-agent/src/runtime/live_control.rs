@@ -3,7 +3,7 @@
 //! unchanged. This lane never owns input, creates a preview or resets its writer's
 //! dispatch evidence. A missing controller is an error, not a fallback/replay.
 use super::{
-    dispatch::{Finish, fault_result},
+    dispatch::{Finish, append_device_call_timing, fault_result},
     execution::Execution,
     *,
 };
@@ -68,6 +68,7 @@ impl Runtime {
         match tokio::task::spawn_blocking(move || {
             let _permit = permit;
             let operation = finish.0.clone();
+            let mut call_elapsed = None;
             let result = rwi_core::operation::run(&operation, || {
                 rwi_core::operation::checkpoint("live_control_dispatch")?;
                 if context.closed.load(Ordering::Acquire) {
@@ -78,9 +79,15 @@ impl Runtime {
                 }
                 if let Some(update) = args.view {
                     update.validate()?;
-                    controller.view_update(update)
+                    let start = Instant::now();
+                    let result = controller.view_update(update);
+                    call_elapsed = Some(start.elapsed());
+                    result
                 } else {
-                    controller.control(args.action)
+                    let start = Instant::now();
+                    let result = controller.control(args.action);
+                    call_elapsed = Some(start.elapsed());
+                    result
                 }
             });
             let mut result = match result {
@@ -88,6 +95,7 @@ impl Runtime {
                 Err(error) => fault_result(error),
             };
             drop(finish);
+            append_device_call_timing(&mut result, "live_controller_call", call_elapsed);
             result.data["result_kind"] = json!("live_control");
             result.data["native_dispatch_entered"] = json!(false);
             result.data["input_domain_fenced"] =
@@ -498,4 +506,6 @@ mod tests {
         );
         assert_eq!(preview.0.lock().unwrap().calls, 0);
     }
+
+    mod device_call_timing_tests;
 }
