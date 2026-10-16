@@ -1,13 +1,16 @@
 //! Own-window field-editor instrumentation using public AppKit superclass calls.
 //! No swizzling, input-context activation, observer injection or text substitution.
-use super::{Context, Event, MAX_UNITS, Trace, Units};
+use super::{
+    Context, Event, InputContextSource, MAX_INPUT_SOURCE_UNITS, MAX_UNITS, MarkedTextState, Trace,
+    Units,
+};
 use objc2::{
     msg_send,
     rc::{Allocated, Retained},
     runtime::{AnyClass, AnyObject, ClassBuilder, Sel},
     sel,
 };
-use objc2_foundation::{NSRange, NSRect};
+use objc2_foundation::{NSRange, NSRect, NSString};
 use std::{
     cell::RefCell,
     io::Write,
@@ -177,11 +180,26 @@ fn observe(this: &AnyObject, phase: &'static str, decorate: impl FnOnce(&mut Eve
                 return;
             }
             let first: *mut AnyObject = msg_send![&*window, firstResponder];
+            // This exact owned field editor inherits NSTextView. Sample getters
+            // only, with no RefCell borrow held and no input-context activation.
+            let marked_before: bool = msg_send![this, hasMarkedText];
+            let marked_range: NSRange = msg_send![this, markedRange];
+            let marked_after: bool = msg_send![this, hasMarkedText];
             Context {
                 application_active: msg_send![&*app, isActive],
                 window_key: msg_send![&*window, isKeyWindow],
                 window_main: msg_send![&*window, isMainWindow],
                 first_responder_is_editor: std::ptr::eq(first.cast_const(), this),
+                marked_text: MarkedTextState::sample(
+                    marked_before,
+                    [marked_range.location as u64, marked_range.length as u64],
+                    marked_after,
+                ),
+                // Do not ask for a possibly lazy inputContext before keyDown
+                // has completed. This metadata cannot explain an earlier key's
+                // internal mode, nor prove that a later key is unperturbed.
+                input_context_source_after_key: (phase == "key_down_exit")
+                    .then(|| input_context_source(this)),
             }
         };
         let elapsed = began.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
@@ -204,6 +222,36 @@ fn observe(this: &AnyObject, phase: &'static str, decorate: impl FnOnce(&mut Eve
             }
         });
     }
+}
+unsafe fn input_context_source(editor: &AnyObject) -> InputContextSource {
+    // Retain each public getter result across other potentially reentrant calls.
+    // Never use the global currentInputContext, activate, a setter or handleEvent.
+    let context: Option<Retained<AnyObject>> = unsafe { msg_send![editor, inputContext] };
+    let Some(context) = context else {
+        return InputContextSource::sample(false, None, None, &[]);
+    };
+    let before: *mut AnyObject = unsafe { msg_send![&*context, client] };
+    if !std::ptr::eq(before.cast_const(), editor) {
+        return InputContextSource::sample(true, Some(false), None, &[]);
+    }
+    let source: Option<Retained<NSString>> =
+        unsafe { msg_send![&*context, selectedKeyboardInputSource] };
+    let after: *mut AnyObject = unsafe { msg_send![&*context, client] };
+    if !std::ptr::eq(after.cast_const(), editor) {
+        return InputContextSource::sample(true, Some(false), None, &[]);
+    }
+    let Some(source) = source else {
+        return InputContextSource::sample(true, Some(true), None, &[]);
+    };
+    let length = source.length();
+    let mut units = vec![0u16; length.min(MAX_INPUT_SOURCE_UNITS)];
+    if !units.is_empty() {
+        unsafe {
+            let _: () = msg_send![&*source,
+                getCharacters:units.as_mut_ptr(), range:NSRange::new(0, units.len())];
+        }
+    }
+    InputContextSource::sample(true, Some(true), Some(length), &units)
 }
 unsafe fn units(value: *mut AnyObject) -> Option<Units> {
     if value.is_null() {

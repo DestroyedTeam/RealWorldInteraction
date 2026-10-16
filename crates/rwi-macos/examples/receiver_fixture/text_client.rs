@@ -3,6 +3,7 @@ use serde::Serialize;
 
 pub const MAX_EVENTS: usize = 256;
 pub const MAX_UNITS: usize = 64;
+pub const MAX_INPUT_SOURCE_UNITS: usize = 128;
 
 #[derive(Debug, Serialize)]
 pub struct Units {
@@ -21,6 +22,91 @@ impl Units {
     }
 }
 
+/// Read-only bracket of the receiving NSTextView's real marked-text state.
+/// Ranges are UTF-16 offsets; unavailable/unstable samples are never a zero range.
+#[derive(Debug, Serialize)]
+pub struct MarkedTextState {
+    pub before: bool,
+    pub after: bool,
+    pub has_marked_text: Option<bool>,
+    pub range_utf16: Option<[u64; 2]>,
+    pub range_unavailable_reason: Option<&'static str>,
+}
+impl MarkedTextState {
+    pub fn sample(before: bool, range: [u64; 2], after: bool) -> Self {
+        // Preserve exact values in JSON consumers without rounding NSNotFound,
+        // overflowing ranges, or pretending an unmarked sample starts at zero.
+        const JSON_SAFE_INTEGER: u64 = (1u64 << 53) - 1;
+        let (has_marked_text, range_utf16, reason) = if before != after {
+            (None, None, Some("changed_during_sample"))
+        } else if !before {
+            (Some(false), None, Some("not_marked"))
+        } else if range[0]
+            .checked_add(range[1])
+            .is_some_and(|end| end <= JSON_SAFE_INTEGER)
+        {
+            (Some(true), Some(range), None)
+        } else {
+            (Some(true), None, Some("invalid_or_unrepresentable_range"))
+        };
+        Self {
+            before,
+            after,
+            has_marked_text,
+            range_utf16,
+            range_unavailable_reason: reason,
+        }
+    }
+}
+
+/// Own field-editor context metadata, not the system TIS or an IME mode proof.
+/// Missing, mismatched or over-budget sources never become an empty identifier.
+#[derive(Debug, Serialize)]
+pub struct InputContextSource {
+    pub context_present: bool,
+    pub client_is_editor: Option<bool>,
+    pub selected_source: Option<String>,
+    pub unavailable_reason: Option<&'static str>,
+}
+impl InputContextSource {
+    pub fn sample(
+        context_present: bool,
+        client_is_editor: Option<bool>,
+        total_utf16: Option<usize>,
+        units: &[u16],
+    ) -> Self {
+        let reason = if !context_present {
+            Some("context_unavailable")
+        } else if client_is_editor == Some(false) {
+            Some("client_mismatch")
+        } else if client_is_editor.is_none() {
+            Some("client_unavailable")
+        } else {
+            match total_utf16 {
+                None => Some("selected_source_unavailable"),
+                Some(0) => Some("empty_identifier"),
+                Some(n) if n > MAX_INPUT_SOURCE_UNITS => Some("identifier_over_budget"),
+                Some(n) if n != units.len() => Some("incomplete_identifier"),
+                Some(_) => None,
+            }
+        };
+        let (selected_source, unavailable_reason) = if let Some(reason) = reason {
+            (None, Some(reason))
+        } else {
+            match String::from_utf16(units) {
+                Ok(identifier) => (Some(identifier), None),
+                Err(_) => (None, Some("invalid_utf16_identifier")),
+            }
+        };
+        Self {
+            context_present,
+            client_is_editor: context_present.then_some(client_is_editor).flatten(),
+            selected_source,
+            unavailable_reason,
+        }
+    }
+}
+
 /// Separately sampled public AppKit properties, never an atomic focus proof.
 #[derive(Debug, Serialize)]
 pub struct Context {
@@ -28,6 +114,9 @@ pub struct Context {
     pub window_key: bool,
     pub window_main: bool,
     pub first_responder_is_editor: bool,
+    pub marked_text: MarkedTextState,
+    /// Only sampled after keyDown's superclass returns. None means not sampled.
+    pub input_context_source_after_key: Option<InputContextSource>,
 }
 
 #[derive(Debug, Serialize)]
@@ -225,6 +314,8 @@ mod tests {
                     window_key: false,
                     window_main: false,
                     first_responder_is_editor: true,
+                    marked_text: MarkedTextState::sample(false, [u64::MAX, 0], false),
+                    input_context_source_after_key: None,
                 },
             ));
         }
@@ -238,5 +329,134 @@ mod tests {
                 .unwrap()
                 .contains("verified_goal")
         );
+    }
+
+    #[test]
+    fn marked_state_unmarked_has_no_fabricated_zero_range() {
+        let sample = MarkedTextState::sample(false, [isize::MAX as u64, 0], false);
+        assert_eq!(sample.has_marked_text, Some(false));
+        assert_eq!(sample.range_utf16, None);
+        assert_eq!(sample.range_unavailable_reason, Some("not_marked"));
+    }
+    #[test]
+    fn marked_state_keeps_exact_utf16_range() {
+        let sample = MarkedTextState::sample(true, [1, 2], true);
+        assert_eq!(sample.has_marked_text, Some(true));
+        assert_eq!(sample.range_utf16, Some([1, 2]));
+        assert_eq!(sample.range_unavailable_reason, None);
+    }
+    #[test]
+    fn marked_state_drift_is_unknown_and_keeps_both_native_samples() {
+        for (before, after) in [(false, true), (true, false)] {
+            let sample = MarkedTextState::sample(before, [0, 1], after);
+            assert_eq!((sample.before, sample.after), (before, after));
+            assert_eq!(sample.has_marked_text, None);
+            assert_eq!(sample.range_utf16, None);
+            assert_eq!(
+                sample.range_unavailable_reason,
+                Some("changed_during_sample")
+            );
+        }
+    }
+    #[test]
+    fn marked_state_rejects_not_found_overflow_and_json_rounding() {
+        for range in [
+            [isize::MAX as u64, 0],
+            [u64::MAX, 1],
+            [1u64 << 53, 0],
+            [(1u64 << 53) - 1, 1],
+        ] {
+            let sample = MarkedTextState::sample(true, range, true);
+            assert_eq!(sample.has_marked_text, Some(true));
+            assert_eq!(sample.range_utf16, None);
+            assert_eq!(
+                sample.range_unavailable_reason,
+                Some("invalid_or_unrepresentable_range")
+            );
+        }
+    }
+    #[test]
+    fn marked_state_serialization_distinguishes_unknown_without_claiming_effect() {
+        let sample = MarkedTextState::sample(false, [0, 1], true);
+        let value = serde_json::to_value(sample).unwrap();
+        assert!(value["has_marked_text"].is_null());
+        assert!(value["range_utf16"].is_null());
+        assert_eq!(value["before"], false);
+        assert_eq!(value["after"], true);
+        assert!(value.get("goal_verified").is_none());
+        let edge = MarkedTextState::sample(true, [(1u64 << 53) - 1, 0], true);
+        assert_eq!(edge.range_utf16, Some([(1u64 << 53) - 1, 0]));
+    }
+
+    #[test]
+    fn input_context_source_requires_present_context_and_exact_own_client() {
+        let units: Vec<_> = "com.apple.keylayout.ABC".encode_utf16().collect();
+        for (present, own, reason) in [
+            (false, Some(true), "context_unavailable"),
+            (true, Some(false), "client_mismatch"),
+            (true, None, "client_unavailable"),
+        ] {
+            let value = InputContextSource::sample(present, own, Some(units.len()), &units);
+            assert!(value.selected_source.is_none());
+            assert_eq!(value.unavailable_reason, Some(reason));
+            if !present {
+                assert_eq!(value.client_is_editor, None);
+            }
+        }
+    }
+
+    #[test]
+    fn input_context_source_nil_and_empty_are_distinct_unknowns() {
+        for (length, reason) in [
+            (None, "selected_source_unavailable"),
+            (Some(0), "empty_identifier"),
+        ] {
+            let value = InputContextSource::sample(true, Some(true), length, &[]);
+            assert_eq!(value.unavailable_reason, Some(reason));
+            assert_eq!(value.selected_source, None);
+        }
+    }
+
+    #[test]
+    fn input_context_source_keeps_exact_identifier_without_interpreting_mode() {
+        for source in ["com.bytedance.inputmethod.doubaoime.pinyin", "exact-🙂-é"] {
+            let units: Vec<_> = source.encode_utf16().collect();
+            let value = InputContextSource::sample(true, Some(true), Some(units.len()), &units);
+            assert_eq!(value.selected_source.as_deref(), Some(source));
+            assert_eq!(value.unavailable_reason, None);
+        }
+    }
+
+    #[test]
+    fn input_context_source_does_not_publish_an_over_budget_prefix() {
+        let units = vec![65; MAX_INPUT_SOURCE_UNITS];
+        let value = InputContextSource::sample(true, Some(true), Some(units.len() + 1), &units);
+        assert_eq!(value.selected_source, None);
+        assert_eq!(value.unavailable_reason, Some("identifier_over_budget"));
+        let exact = InputContextSource::sample(true, Some(true), Some(units.len()), &units);
+        assert_eq!(exact.selected_source.unwrap().len(), MAX_INPUT_SOURCE_UNITS);
+    }
+
+    #[test]
+    fn input_context_source_invalid_and_incomplete_utf16_are_unknown() {
+        for (length, units, reason) in [
+            (1, vec![0xd800], "invalid_utf16_identifier"),
+            (2, vec![65], "incomplete_identifier"),
+            (1, vec![65, 66], "incomplete_identifier"),
+        ] {
+            let value = InputContextSource::sample(true, Some(true), Some(length), &units);
+            assert_eq!(value.selected_source, None);
+            assert_eq!(value.unavailable_reason, Some(reason));
+        }
+    }
+
+    #[test]
+    fn input_context_source_json_never_claims_ime_or_insertion_effect() {
+        let value = InputContextSource::sample(true, Some(true), None, &[]);
+        let json = serde_json::to_value(value).unwrap();
+        assert!(json["selected_source"].is_null());
+        assert!(json.get("ime_mode").is_none());
+        assert!(json.get("goal_verified").is_none());
+        assert!(json.get("input_sent").is_none());
     }
 }
