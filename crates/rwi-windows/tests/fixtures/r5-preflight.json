@@ -1,0 +1,491 @@
+{
+  "activation_dispatched": false,
+  "authorization_id": "main-open-once",
+  "cancellation": "cooperative; native preemption unavailable",
+  "error": {
+    "code": "observed_package_unknown_properties",
+    "diagnostic": {
+      "acl_or_privileges_modified": false,
+      "allocated_window": {
+        "native_epoch": "712f9973e5d16f706185f072b7ddf26031c7966f0788aaec690e24508ac9970b",
+        "pid": 7524,
+        "process_created": 134335198145995687,
+        "window": "hwnd:80436"
+      },
+      "api": "native_package_snapshot_policy",
+      "cause": {
+        "decision_kind": "policy_rejection_after_native_snapshot; not a fabricated Win32 API failure",
+        "failed_predicates": [
+          "unknown_properties"
+        ],
+        "head_flags": {
+          "development_mask": 65536,
+          "hex": "0x00000010",
+          "known_properties_mask": 3997711,
+          "raw": 16,
+          "source_api": "GetPackageInfo(PACKAGE_FILTER_HEAD)",
+          "unknown_bits": 16,
+          "unknown_bits_hex": "0x00000010"
+        },
+        "native_error": null,
+        "origin": {
+          "raw": 3,
+          "source_api": "GetStagedPackageOrigin",
+          "symbol": "PackageOrigin_Store"
+        },
+        "predicates": {
+          "development_absent": true,
+          "origin_allowed": true,
+          "properties_known": false
+        },
+        "primary_category": "unknown_properties",
+        "schema": "rcu.windows.package_policy_rejection.v1",
+        "snapshot": {
+          "effective_path": {
+            "sha256_utf8": "7a8b4ac89bfd87eb97427c5f6924d50a5f8153c57dc8f300bcd55c4e4ef7cd60",
+            "truncated": false,
+            "utf16_units": 87,
+            "utf8_bytes": 87,
+            "value_prefix": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe"
+          },
+          "family": {
+            "sha256_utf8": "04e1ff7d316b1c1a4947ba4dac76c040c10579f56828d7beec7c721e0b7cd262",
+            "truncated": false,
+            "utf16_units": 38,
+            "utf8_bytes": 38,
+            "value_prefix": "Microsoft.WindowsNotepad_8wekyb3d8bbwe"
+          },
+          "family_from_full_name": {
+            "sha256_utf8": "04e1ff7d316b1c1a4947ba4dac76c040c10579f56828d7beec7c721e0b7cd262",
+            "truncated": false,
+            "utf16_units": 38,
+            "utf8_bytes": 38,
+            "value_prefix": "Microsoft.WindowsNotepad_8wekyb3d8bbwe"
+          },
+          "full_name": {
+            "sha256_utf8": "63b7391cb0ff58d47afbd088d009c0f1a5b72c00723dc55f5e0f396649f077f8",
+            "truncated": false,
+            "utf16_units": 58,
+            "utf8_bytes": 58,
+            "value_prefix": "Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe"
+          },
+          "graph_path": {
+            "sha256_utf8": "7a8b4ac89bfd87eb97427c5f6924d50a5f8153c57dc8f300bcd55c4e4ef7cd60",
+            "truncated": false,
+            "utf16_units": 87,
+            "utf8_bytes": 87,
+            "value_prefix": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe"
+          },
+          "head_count": 1,
+          "install_path": {
+            "sha256_utf8": "7a8b4ac89bfd87eb97427c5f6924d50a5f8153c57dc8f300bcd55c4e4ef7cd60",
+            "truncated": false,
+            "utf16_units": 87,
+            "utf8_bytes": 87,
+            "value_prefix": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe"
+          },
+          "process": {
+            "birth": 134335198145995687,
+            "family": {
+              "sha256_utf8": "04e1ff7d316b1c1a4947ba4dac76c040c10579f56828d7beec7c721e0b7cd262",
+              "truncated": false,
+              "utf16_units": 38,
+              "utf8_bytes": 38,
+              "value_prefix": "Microsoft.WindowsNotepad_8wekyb3d8bbwe"
+            },
+            "full_name": {
+              "sha256_utf8": "63b7391cb0ff58d47afbd088d009c0f1a5b72c00723dc55f5e0f396649f077f8",
+              "truncated": false,
+              "utf16_units": 58,
+              "utf8_bytes": 58,
+              "value_prefix": "Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe"
+            },
+            "image": {
+              "sha256_utf8": "de4d7d5326b8a171ae288643ab69096341fd34a4cbbd4ecc2057c8160145995a",
+              "truncated": false,
+              "utf16_units": 107,
+              "utf8_bytes": 107,
+              "value_prefix": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
+            },
+            "live": true,
+            "pid": 7524,
+            "token": {
+              "authentication_id": 394627,
+              "session": 1,
+              "sid": {
+                "sha256_utf8": "916565cec87d711756b00891053aab329571e84f3dcfbafe4f401d8a65bba45d",
+                "truncated": false,
+                "utf16_units": 44,
+                "utf8_bytes": 44,
+                "value_prefix": "S-1-5-21-1166975611-2284556160-99043088-1000"
+              },
+              "source": {
+                "sha256_utf8": "f3456facd4d10660caf77cb3839ad4b26e25468eb4f181bb6db032d3cc68b6bd",
+                "truncated": false,
+                "utf16_units": 14,
+                "utf8_bytes": 14,
+                "value_prefix": "target_process"
+              }
+            }
+          },
+          "query_sources": {
+            "effective_path": "GetPackagePathByFullName2(Effective)",
+            "family_from_full_name": "PackageFamilyNameFromFullName",
+            "head_count/full_name/family/graph_path/flags": "OpenPackageInfoByFullName + GetPackageInfo(PACKAGE_FILTER_HEAD)",
+            "install_path": "GetPackagePathByFullName2(Install)",
+            "origin": "GetStagedPackageOrigin",
+            "process.birth": "GetProcessTimes",
+            "process.family": "GetPackageFamilyName",
+            "process.full_name": "GetPackageFullName",
+            "process.image": "QueryFullProcessImageNameW",
+            "process.live": "GetExitCodeProcess plus IsWindow/GetWindowThreadProcessId",
+            "process.pid": "GetProcessId",
+            "process.token": "OpenProcessToken(target, TOKEN_QUERY) + GetTokenInformation",
+            "worker": "OpenThreadToken expected ERROR_NO_TOKEN; OpenProcessToken(worker, TOKEN_QUERY) + GetTokenInformation"
+          },
+          "query_status_location": "enclosing Context.query_provenance records actual returns; this projection does not manufacture query results",
+          "worker": {
+            "authentication_id": 394627,
+            "session": 1,
+            "sid": {
+              "sha256_utf8": "916565cec87d711756b00891053aab329571e84f3dcfbafe4f401d8a65bba45d",
+              "truncated": false,
+              "utf16_units": 44,
+              "utf8_bytes": 44,
+              "value_prefix": "S-1-5-21-1166975611-2284556160-99043088-1000"
+            },
+            "source": {
+              "sha256_utf8": "c00fb3affc253f44f12dd95ed7b75eaa7c77a686233254f06b8809a03c5aa435",
+              "truncated": false,
+              "utf16_units": 30,
+              "utf8_bytes": 30,
+              "value_prefix": "worker_process_no_thread_token"
+            }
+          }
+        }
+      },
+      "install_root": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe",
+      "native_error": null,
+      "package_full_name": "Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe",
+      "path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe\\Notepad\\Notepad.exe",
+      "permission_fallback_attempted": false,
+      "query_provenance": {
+        "complete": true,
+        "completeness_semantics": "no trace entries omitted; not a native coverage authorization",
+        "entries": [
+          {
+            "api": "OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetProcessId",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetProcessTimes",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetExitCodeProcess",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "QueryFullProcessImageNameW",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackageFullName",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackageFullName",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackageFamilyName",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackageFamilyName",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "OpenProcessToken(target, TOKEN_QUERY)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, target_process)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, target_process)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenSessionId, target_process)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenStatistics, target_process)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "IsWindow",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetWindowThreadProcessId",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetClassNameW",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "OpenThreadToken(worker, TOKEN_QUERY)",
+            "api_truncated": false,
+            "status": "expected_no_thread_token"
+          },
+          {
+            "api": "OpenProcessToken(worker, TOKEN_QUERY)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenSessionId, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenStatistics, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "OpenPackageInfoByFullName",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackageInfo(PACKAGE_FILTER_HEAD)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackageInfo(PACKAGE_FILTER_HEAD)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "PackageFamilyNameFromFullName",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "PackageFamilyNameFromFullName",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetStagedPackageOrigin",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackagePathByFullName2(Install)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackagePathByFullName2(Install)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackagePathByFullName2(Effective)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackagePathByFullName2(Effective)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "OpenThreadToken(worker, TOKEN_QUERY)",
+            "api_truncated": false,
+            "status": "expected_no_thread_token"
+          },
+          {
+            "api": "OpenProcessToken(worker, TOKEN_QUERY)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenSessionId, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenStatistics, worker_process_no_thread_token)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetProcessId",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetProcessTimes",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetExitCodeProcess",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "QueryFullProcessImageNameW",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackageFullName",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackageFullName",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetPackageFamilyName",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetPackageFamilyName",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "OpenProcessToken(target, TOKEN_QUERY)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, target_process)",
+            "api_truncated": false,
+            "status": "expected_insufficient_buffer"
+          },
+          {
+            "api": "GetTokenInformation(TokenUser, target_process)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenSessionId, target_process)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetTokenInformation(TokenStatistics, target_process)",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "IsWindow",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetWindowThreadProcessId",
+            "api_truncated": false,
+            "status": "succeeded"
+          },
+          {
+            "api": "GetClassNameW",
+            "api_truncated": false,
+            "status": "succeeded"
+          }
+        ],
+        "omitted": 0
+      },
+      "role": "observed_package",
+      "schema": "rcu.windows.observed_package.v1",
+      "stage": "before_package_image_hash",
+      "verification_context": {
+        "authorized_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe\\Notepad\\Notepad.exe",
+        "phase": "readonly_preflight",
+        "role": "observed_package"
+      }
+    },
+    "next_step": "Package policy rejected the observed values; inspect every failed predicate. Store/Inbox allowlist, known flags and no-development requirements are unchanged."
+  },
+  "goal_verified": false,
+  "input_dispatched": false,
+  "inventory": null,
+  "launch_dispatched": false,
+  "native_events": {
+    "complete": false,
+    "events": [],
+    "hooks_released": true
+  },
+  "operation": {
+    "cancel_requested": false,
+    "finish_requested": true,
+    "native_call_depth": 0,
+    "native_call_pending": false,
+    "operation_id": "7759a713-ab0d-4b36-87c7-81a9c2c18f99",
+    "resource_release_uncertain": false,
+    "resources_released": true,
+    "stage": "finished",
+    "strong_native_preemption": false,
+    "terminal": true
+  },
+  "operation_id": "7759a713-ab0d-4b36-87c7-81a9c2c18f99",
+  "ready_for_launch": false,
+  "reservation_created": false,
+  "resource_release_uncertain": false,
+  "resources_released": true
+}

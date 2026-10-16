@@ -1,0 +1,24 @@
+[package]
+name = "rwi-link-trust"
+version = "0.1.0-native-link.1"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rustls = { version = "=0.23.41", default-features = false, features = ["std", "ring"] }
+rcgen = { version = "=0.14.8", default-features = false, features = ["crypto", "ring", "zeroize", "x509-parser"] }
+x509-parser = { version = "=0.18.1", default-features = false }
+time = { version = "=0.3.44", default-features = false, features = ["std"] }
+zeroize = "=1.9.0"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "=0.2.189"
+
+[dev-dependencies]
+rustls = { version = "=0.23.41", default-features = false, features = ["std", "ring", "tls12"] }
+tokio = { version = "=1.50.0", features = ["io-util", "macros", "rt-multi-thread", "time"] }
+tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring"] }
+tempfile.workspace = true

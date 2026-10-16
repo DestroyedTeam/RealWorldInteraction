@@ -1,0 +1,43 @@
+{
+  "plugin": "real-world-interaction@personal",
+  "version": "0.2.0+codex.20260919091511",
+  "codex_ephemeral_context": [
+    {
+      "name": "real_world_interaction",
+      "pluginId": "real-world-interaction@personal",
+      "tools": 26,
+      "toolsError": null,
+      "serverInfo": {
+        "name": "real-world-interaction",
+        "title": null,
+        "version": "0.4.0-m3a.7",
+        "description": null,
+        "icons": null,
+        "websiteUrl": null
+      }
+    }
+  ],
+  "persistent_thread_created": false,
+  "model_turn_started": false,
+  "skills": [
+    "real-world-interaction",
+    "rwi-macos",
+    "rwi-windows"
+  ],
+  "standalone_codex_mcp_table_removed": true,
+  "other_hosts": "OMP/OpenCode keep standalone MCP and use canonical plugin skills",
+  "validation": {
+    "rust_passed": 435,
+    "rust_ignored": 10,
+    "package_tests_passed": 4,
+    "fmt": "passed",
+    "clippy_all_features": "passed",
+    "plugin_manifest": "passed",
+    "skill_manifests": 3
+  },
+  "current_task": {
+    "skills_visible": true,
+    "mcp_tools_visible": false
+  },
+  "paint_v14": "not_executed; current Host MCP tool directory must refresh first"
+}

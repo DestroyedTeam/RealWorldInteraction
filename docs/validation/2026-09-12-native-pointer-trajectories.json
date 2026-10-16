@@ -1,0 +1,2653 @@
+{
+  "date": "2026-09-12",
+  "deployed_source_commit": "52ee7b45972b77b215c5bc4c645a2abd26dde552",
+  "legacy_contract_fix_commit": "4f2d5c3",
+  "scope": "Native pointer prerequisite only, NOT Paint/Notes icon acceptance or overall performance parity with Computer Use",
+  "agent": {
+    "pid": 4184,
+    "session": 1,
+    "sha256": "449f3bc1d12093c02bbe4cb78feb3bed508a76bd4b13b2b03c5f7567cbc1d0e5",
+    "config_unchanged": true,
+    "launch_task_unchanged": true
+  },
+  "mac": {
+    "product_source_commit": "52ee7b45972b77b215c5bc4c645a2abd26dde552",
+    "adapter_sha256": "e62bb97bff0d3d948123fe94fe3e21f20826a71dec282d3e6fbf15ff8db1f024",
+    "updated_at": "2026-09-12T08:27:56.539836+00:00",
+    "protected_config_identity_ssh_files_unchanged": true,
+    "protected_file_count": 9
+  },
+  "tests": {
+    "default": {
+      "passed": 252,
+      "failed": 0,
+      "ignored": 2
+    },
+    "all_features": {
+      "passed": 339,
+      "failed": 0,
+      "ignored": 3,
+      "log_sha256": "77a6be060f0ddfef98cb9ac2685bc539784cc07fd7d0a7ddaa61827e054ff777"
+    },
+    "sdk": {
+      "passed": 15
+    },
+    "fmt": "passed",
+    "clippy": "passed",
+    "architecture_ratchet": "passed; not full architecture acceptance"
+  },
+  "strokes": {
+    "square": {
+      "received_stroke_ms": 1197.8149999999441,
+      "event_counts": {
+        "down": 1,
+        "move": 78,
+        "up": 1,
+        "settled": 1
+      },
+      "events": [
+        {
+          "elapsed_ms": 701961.505,
+          "kind": "down",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 701978,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            493,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 701994.47,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            500,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702011.628,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            506,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702028.216,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            513,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702041.606,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            519,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702060.29,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            525,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702074.995,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            532,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702088.683,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            538,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702115.481,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            545,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702127.954,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            551,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702134.527,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            551,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702139.852,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            557,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702154.963,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            564,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702168.488,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            570,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702183.42,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            577,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702200.564,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            583,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702218.404,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            589,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702231.569,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            596,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702247.126,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            602,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702260.025,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 702274.405,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            297
+          ]
+        },
+        {
+          "elapsed_ms": 702291.627,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            303
+          ]
+        },
+        {
+          "elapsed_ms": 702310.57,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            308
+          ]
+        },
+        {
+          "elapsed_ms": 702322.263,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            313
+          ]
+        },
+        {
+          "elapsed_ms": 702338.393,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            319
+          ]
+        },
+        {
+          "elapsed_ms": 702354.67,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            324
+          ]
+        },
+        {
+          "elapsed_ms": 702373.504,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            329
+          ]
+        },
+        {
+          "elapsed_ms": 702386.116,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            335
+          ]
+        },
+        {
+          "elapsed_ms": 702408.468,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            340
+          ]
+        },
+        {
+          "elapsed_ms": 702420.035,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            345
+          ]
+        },
+        {
+          "elapsed_ms": 702433.927,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            351
+          ]
+        },
+        {
+          "elapsed_ms": 702452.344,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            356
+          ]
+        },
+        {
+          "elapsed_ms": 702467.381,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            361
+          ]
+        },
+        {
+          "elapsed_ms": 702483.095,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            367
+          ]
+        },
+        {
+          "elapsed_ms": 702498.419,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            372
+          ]
+        },
+        {
+          "elapsed_ms": 702519.027,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            377
+          ]
+        },
+        {
+          "elapsed_ms": 702530.815,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            383
+          ]
+        },
+        {
+          "elapsed_ms": 702546.338,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            388
+          ]
+        },
+        {
+          "elapsed_ms": 702558.378,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            607,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702574.498,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            601,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702592.067,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            594,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702607.576,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            588,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702621.938,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            581,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702643.989,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            575,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702654.673,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            569,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702670.556,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            562,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702686.977,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            556,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702706.989,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            549,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702720.249,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            543,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702734.278,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            537,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702755.005,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            530,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702768.026,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            524,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702782.356,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            517,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702802.536,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            511,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702816.551,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            505,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702831.727,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            498,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702850.054,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            492,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702859.297,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            392
+          ]
+        },
+        {
+          "elapsed_ms": 702878.418,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            387
+          ]
+        },
+        {
+          "elapsed_ms": 702891.782,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            381
+          ]
+        },
+        {
+          "elapsed_ms": 702906.61,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            376
+          ]
+        },
+        {
+          "elapsed_ms": 702921.537,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            371
+          ]
+        },
+        {
+          "elapsed_ms": 702942.757,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            365
+          ]
+        },
+        {
+          "elapsed_ms": 702955.051,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            360
+          ]
+        },
+        {
+          "elapsed_ms": 702970.351,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            355
+          ]
+        },
+        {
+          "elapsed_ms": 702991.785,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            349
+          ]
+        },
+        {
+          "elapsed_ms": 703004.063,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            344
+          ]
+        },
+        {
+          "elapsed_ms": 703018.753,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            339
+          ]
+        },
+        {
+          "elapsed_ms": 703037.012,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            333
+          ]
+        },
+        {
+          "elapsed_ms": 703052.795,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            328
+          ]
+        },
+        {
+          "elapsed_ms": 703065.972,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            323
+          ]
+        },
+        {
+          "elapsed_ms": 703081.96,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            317
+          ]
+        },
+        {
+          "elapsed_ms": 703102.276,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            312
+          ]
+        },
+        {
+          "elapsed_ms": 703127.347,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            307
+          ]
+        },
+        {
+          "elapsed_ms": 703127.721,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            307
+          ]
+        },
+        {
+          "elapsed_ms": 703132.822,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            301
+          ]
+        },
+        {
+          "elapsed_ms": 703149.798,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            296
+          ]
+        },
+        {
+          "elapsed_ms": 703158.977,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 703159.32,
+          "kind": "up",
+          "left_down": false,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 703221.868,
+          "kind": "settled",
+          "left_down": false,
+          "pid": 256,
+          "point": null
+        }
+      ],
+      "mcp_trace": [
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 74.09533299999998,
+          "isError": false
+        },
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 1654.3987499999998,
+          "isError": false
+        }
+      ],
+      "native_screenshot_sha256": "24d2e4cdd26de40e1f83cab586bed433b918ee8c94d02939cfbaa569faf646f4",
+      "receipt": {
+        "correlation_id": null,
+        "deduplicated": false,
+        "dispatch": "returned",
+        "dispatch_error": null,
+        "frame": "49d383bc-5c19-4a42-bc85-646b25b60bae",
+        "goal_verified": false,
+        "input_domain_fenced": false,
+        "native_dispatch_entered": true,
+        "operation": {
+          "cancel_requested": false,
+          "finish_requested": true,
+          "native_call_depth": 0,
+          "native_call_pending": false,
+          "phase": "finished",
+          "resource_release_uncertain": false,
+          "resources_released": true,
+          "stage": "finished",
+          "strong_native_preemption": false,
+          "terminal": true
+        },
+        "operation_ref": {
+          "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+          "context_generation": "2e032c0d-22af-47b4-b84a-14ff33a7c245",
+          "device_id": "win11-vm",
+          "execution_nonce": "5:4cf3c76b-e16c-4b70-8327-9602d8c3e30c",
+          "ref_version": 1
+        },
+        "receipt_ref": {
+          "device_id": "win11-vm",
+          "request_id": "pointer-square-52ee7b4-1"
+        },
+        "replay": "forbidden",
+        "request_id": "pointer-square-52ee7b4-1",
+        "scope": {
+          "element": "0e9518be9150848368175b37be2bee7cf6b2f3a30b5ee1be9cf1a83054ba56f3",
+          "pid": 256,
+          "window": "hwnd:4f05d8"
+        },
+        "system_accepted": true
+      }
+    },
+    "circle": {
+      "received_stroke_ms": 1603.5969999998342,
+      "event_counts": {
+        "down": 1,
+        "move": 125,
+        "up": 1,
+        "settled": 1
+      },
+      "events": [
+        {
+          "elapsed_ms": 1087865.685,
+          "kind": "down",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 1087882.415,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            296
+          ]
+        },
+        {
+          "elapsed_ms": 1087894.595,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            301
+          ]
+        },
+        {
+          "elapsed_ms": 1087913.248,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            305
+          ]
+        },
+        {
+          "elapsed_ms": 1087916.384,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            306
+          ]
+        },
+        {
+          "elapsed_ms": 1087928.729,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            484,
+            310
+          ]
+        },
+        {
+          "elapsed_ms": 1087944.23,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            483,
+            314
+          ]
+        },
+        {
+          "elapsed_ms": 1087960.401,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            482,
+            318
+          ]
+        },
+        {
+          "elapsed_ms": 1087963.87,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            482,
+            319
+          ]
+        },
+        {
+          "elapsed_ms": 1087978.548,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            480,
+            323
+          ]
+        },
+        {
+          "elapsed_ms": 1087994.059,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            478,
+            327
+          ]
+        },
+        {
+          "elapsed_ms": 1088014.367,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            475,
+            330
+          ]
+        },
+        {
+          "elapsed_ms": 1088017.531,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            475,
+            331
+          ]
+        },
+        {
+          "elapsed_ms": 1088028.245,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            472,
+            334
+          ]
+        },
+        {
+          "elapsed_ms": 1088045.554,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            470,
+            338
+          ]
+        },
+        {
+          "elapsed_ms": 1088061.785,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            467,
+            341
+          ]
+        },
+        {
+          "elapsed_ms": 1088065.254,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            466,
+            341
+          ]
+        },
+        {
+          "elapsed_ms": 1088080.991,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            463,
+            344
+          ]
+        },
+        {
+          "elapsed_ms": 1088095.063,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            460,
+            347
+          ]
+        },
+        {
+          "elapsed_ms": 1088111.321,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            456,
+            350
+          ]
+        },
+        {
+          "elapsed_ms": 1088127.843,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            452,
+            352
+          ]
+        },
+        {
+          "elapsed_ms": 1088145.949,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            448,
+            354
+          ]
+        },
+        {
+          "elapsed_ms": 1088163.957,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            444,
+            356
+          ]
+        },
+        {
+          "elapsed_ms": 1088167.222,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            444,
+            357
+          ]
+        },
+        {
+          "elapsed_ms": 1088180.637,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            440,
+            358
+          ]
+        },
+        {
+          "elapsed_ms": 1088196.288,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            435,
+            359
+          ]
+        },
+        {
+          "elapsed_ms": 1088210.79,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            431,
+            360
+          ]
+        },
+        {
+          "elapsed_ms": 1088214.346,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            431,
+            361
+          ]
+        },
+        {
+          "elapsed_ms": 1088229.215,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            426,
+            361
+          ]
+        },
+        {
+          "elapsed_ms": 1088249.975,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            422,
+            362
+          ]
+        },
+        {
+          "elapsed_ms": 1088260.768,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            418,
+            362
+          ]
+        },
+        {
+          "elapsed_ms": 1088263.832,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            417,
+            362
+          ]
+        },
+        {
+          "elapsed_ms": 1088281.359,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            413,
+            362
+          ]
+        },
+        {
+          "elapsed_ms": 1088294.766,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            408,
+            361
+          ]
+        },
+        {
+          "elapsed_ms": 1088312.599,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            404,
+            361
+          ]
+        },
+        {
+          "elapsed_ms": 1088315.733,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            403,
+            361
+          ]
+        },
+        {
+          "elapsed_ms": 1088329.333,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            399,
+            359
+          ]
+        },
+        {
+          "elapsed_ms": 1088347.796,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            395,
+            358
+          ]
+        },
+        {
+          "elapsed_ms": 1088360.615,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            391,
+            357
+          ]
+        },
+        {
+          "elapsed_ms": 1088363.758,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            390,
+            357
+          ]
+        },
+        {
+          "elapsed_ms": 1088381.872,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            386,
+            355
+          ]
+        },
+        {
+          "elapsed_ms": 1088393.899,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            382,
+            353
+          ]
+        },
+        {
+          "elapsed_ms": 1088409.99,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            379,
+            350
+          ]
+        },
+        {
+          "elapsed_ms": 1088412.941,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            378,
+            350
+          ]
+        },
+        {
+          "elapsed_ms": 1088430.172,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            375,
+            347
+          ]
+        },
+        {
+          "elapsed_ms": 1088445.988,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            371,
+            345
+          ]
+        },
+        {
+          "elapsed_ms": 1088465.556,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            368,
+            342
+          ]
+        },
+        {
+          "elapsed_ms": 1088468.906,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            368,
+            341
+          ]
+        },
+        {
+          "elapsed_ms": 1088479.275,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            365,
+            338
+          ]
+        },
+        {
+          "elapsed_ms": 1088499.701,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            362,
+            335
+          ]
+        },
+        {
+          "elapsed_ms": 1088511.316,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            359,
+            331
+          ]
+        },
+        {
+          "elapsed_ms": 1088531.18,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            357,
+            327
+          ]
+        },
+        {
+          "elapsed_ms": 1088546.691,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            355,
+            323
+          ]
+        },
+        {
+          "elapsed_ms": 1088561.391,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            353,
+            319
+          ]
+        },
+        {
+          "elapsed_ms": 1088564.744,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            352,
+            319
+          ]
+        },
+        {
+          "elapsed_ms": 1088583.917,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            351,
+            315
+          ]
+        },
+        {
+          "elapsed_ms": 1088597.406,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            350,
+            310
+          ]
+        },
+        {
+          "elapsed_ms": 1088611.122,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            349,
+            306
+          ]
+        },
+        {
+          "elapsed_ms": 1088614.972,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            348,
+            306
+          ]
+        },
+        {
+          "elapsed_ms": 1088627.823,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            348,
+            301
+          ]
+        },
+        {
+          "elapsed_ms": 1088645.972,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            347,
+            297
+          ]
+        },
+        {
+          "elapsed_ms": 1088662.524,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            347,
+            293
+          ]
+        },
+        {
+          "elapsed_ms": 1088667.011,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            347,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 1088679.435,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            347,
+            288
+          ]
+        },
+        {
+          "elapsed_ms": 1088694.499,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            348,
+            283
+          ]
+        },
+        {
+          "elapsed_ms": 1088711.086,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            348,
+            279
+          ]
+        },
+        {
+          "elapsed_ms": 1088714.482,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            348,
+            278
+          ]
+        },
+        {
+          "elapsed_ms": 1088728.06,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            350,
+            274
+          ]
+        },
+        {
+          "elapsed_ms": 1088745.65,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            351,
+            270
+          ]
+        },
+        {
+          "elapsed_ms": 1088763.803,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            352,
+            266
+          ]
+        },
+        {
+          "elapsed_ms": 1088773.24,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            352,
+            265
+          ]
+        },
+        {
+          "elapsed_ms": 1088781.271,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            354,
+            261
+          ]
+        },
+        {
+          "elapsed_ms": 1088782.041,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            354,
+            261
+          ]
+        },
+        {
+          "elapsed_ms": 1088795.277,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            356,
+            257
+          ]
+        },
+        {
+          "elapsed_ms": 1088812.282,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            359,
+            254
+          ]
+        },
+        {
+          "elapsed_ms": 1088815.898,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            359,
+            253
+          ]
+        },
+        {
+          "elapsed_ms": 1088827.942,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            362,
+            250
+          ]
+        },
+        {
+          "elapsed_ms": 1088844.82,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            364,
+            246
+          ]
+        },
+        {
+          "elapsed_ms": 1088861.164,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            367,
+            243
+          ]
+        },
+        {
+          "elapsed_ms": 1088864.397,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            368,
+            243
+          ]
+        },
+        {
+          "elapsed_ms": 1088879.483,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            371,
+            240
+          ]
+        },
+        {
+          "elapsed_ms": 1088893.891,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            374,
+            237
+          ]
+        },
+        {
+          "elapsed_ms": 1088912.169,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            378,
+            234
+          ]
+        },
+        {
+          "elapsed_ms": 1088929.979,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            382,
+            232
+          ]
+        },
+        {
+          "elapsed_ms": 1088946.355,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            386,
+            230
+          ]
+        },
+        {
+          "elapsed_ms": 1088965.72,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            390,
+            228
+          ]
+        },
+        {
+          "elapsed_ms": 1088969.032,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            390,
+            227
+          ]
+        },
+        {
+          "elapsed_ms": 1088979.334,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            394,
+            226
+          ]
+        },
+        {
+          "elapsed_ms": 1088994.453,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            399,
+            225
+          ]
+        },
+        {
+          "elapsed_ms": 1089013.82,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            403,
+            224
+          ]
+        },
+        {
+          "elapsed_ms": 1089016.732,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            403,
+            223
+          ]
+        },
+        {
+          "elapsed_ms": 1089028.399,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            408,
+            223
+          ]
+        },
+        {
+          "elapsed_ms": 1089048.967,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            412,
+            222
+          ]
+        },
+        {
+          "elapsed_ms": 1089062.417,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            416,
+            222
+          ]
+        },
+        {
+          "elapsed_ms": 1089065.682,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            417,
+            222
+          ]
+        },
+        {
+          "elapsed_ms": 1089079.064,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            421,
+            222
+          ]
+        },
+        {
+          "elapsed_ms": 1089097.838,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            426,
+            223
+          ]
+        },
+        {
+          "elapsed_ms": 1089111.356,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            430,
+            223
+          ]
+        },
+        {
+          "elapsed_ms": 1089114.546,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            431,
+            223
+          ]
+        },
+        {
+          "elapsed_ms": 1089128.302,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            435,
+            225
+          ]
+        },
+        {
+          "elapsed_ms": 1089145.776,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            439,
+            226
+          ]
+        },
+        {
+          "elapsed_ms": 1089159.965,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            443,
+            227
+          ]
+        },
+        {
+          "elapsed_ms": 1089163.39,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            444,
+            227
+          ]
+        },
+        {
+          "elapsed_ms": 1089183.999,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            448,
+            229
+          ]
+        },
+        {
+          "elapsed_ms": 1089195.027,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            452,
+            231
+          ]
+        },
+        {
+          "elapsed_ms": 1089213.477,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            455,
+            234
+          ]
+        },
+        {
+          "elapsed_ms": 1089216.726,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            456,
+            234
+          ]
+        },
+        {
+          "elapsed_ms": 1089228.898,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            459,
+            237
+          ]
+        },
+        {
+          "elapsed_ms": 1089250.059,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            463,
+            239
+          ]
+        },
+        {
+          "elapsed_ms": 1089262.654,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            466,
+            242
+          ]
+        },
+        {
+          "elapsed_ms": 1089265.99,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            466,
+            243
+          ]
+        },
+        {
+          "elapsed_ms": 1089277.831,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            469,
+            246
+          ]
+        },
+        {
+          "elapsed_ms": 1089298.712,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            472,
+            249
+          ]
+        },
+        {
+          "elapsed_ms": 1089311.127,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            475,
+            253
+          ]
+        },
+        {
+          "elapsed_ms": 1089333.476,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            477,
+            257
+          ]
+        },
+        {
+          "elapsed_ms": 1089346.099,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            479,
+            261
+          ]
+        },
+        {
+          "elapsed_ms": 1089361.114,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            481,
+            265
+          ]
+        },
+        {
+          "elapsed_ms": 1089364.211,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            482,
+            265
+          ]
+        },
+        {
+          "elapsed_ms": 1089379.512,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            483,
+            269
+          ]
+        },
+        {
+          "elapsed_ms": 1089394.422,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            484,
+            274
+          ]
+        },
+        {
+          "elapsed_ms": 1089411.245,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            485,
+            278
+          ]
+        },
+        {
+          "elapsed_ms": 1089414.36,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            278
+          ]
+        },
+        {
+          "elapsed_ms": 1089429.351,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            283
+          ]
+        },
+        {
+          "elapsed_ms": 1089444.527,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            287
+          ]
+        },
+        {
+          "elapsed_ms": 1089465.763,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            291
+          ]
+        },
+        {
+          "elapsed_ms": 1089468.951,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 1089469.282,
+          "kind": "up",
+          "left_down": false,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 1089540.825,
+          "kind": "settled",
+          "left_down": false,
+          "pid": 256,
+          "point": null
+        }
+      ],
+      "mcp_trace": [
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 27.59466599999996,
+          "isError": false
+        },
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 1842.5220839999997,
+          "isError": false
+        }
+      ],
+      "native_screenshot_sha256": "b1b831671f1c6e86089abcdbcb2864cdaa96e37c328a5773d516253591a239b8",
+      "receipt": {
+        "correlation_id": null,
+        "deduplicated": false,
+        "dispatch": "returned",
+        "dispatch_error": null,
+        "frame": "4f78e44c-b992-4423-bc25-26f95d67cebf",
+        "goal_verified": false,
+        "input_domain_fenced": false,
+        "native_dispatch_entered": true,
+        "operation": {
+          "cancel_requested": false,
+          "finish_requested": true,
+          "native_call_depth": 0,
+          "native_call_pending": false,
+          "phase": "finished",
+          "resource_release_uncertain": false,
+          "resources_released": true,
+          "stage": "finished",
+          "strong_native_preemption": false,
+          "terminal": true
+        },
+        "operation_ref": {
+          "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+          "context_generation": "f9c13af6-6e95-48d0-aa1f-7825cd8f4407",
+          "device_id": "win11-vm",
+          "execution_nonce": "5:fcb4dcc7-38e0-4052-a61f-94da3ffbeca5",
+          "ref_version": 1
+        },
+        "receipt_ref": {
+          "device_id": "win11-vm",
+          "request_id": "pointer-circle-52ee7b4-1"
+        },
+        "replay": "forbidden",
+        "request_id": "pointer-circle-52ee7b4-1",
+        "scope": {
+          "element": "0e9518be9150848368175b37be2bee7cf6b2f3a30b5ee1be9cf1a83054ba56f3",
+          "pid": 256,
+          "window": "hwnd:4f05d8"
+        },
+        "system_accepted": true
+      },
+      "native_counters": {
+        "events_inserted": 130,
+        "last_drag": {
+          "elapsed_ms": 1610,
+          "moves_inserted": 128,
+          "release_inserted": true,
+          "samples_planned": 129
+        },
+        "release_cleanup_calls": 1,
+        "release_events_inserted": 1,
+        "sendinput_calls": 129
+      }
+    },
+    "cancelled_line": {
+      "received_stroke_ms": 361.9899999999907,
+      "event_counts": {
+        "down": 1,
+        "move": 15,
+        "up": 1,
+        "settled": 1
+      },
+      "events": [
+        {
+          "elapsed_ms": 831878.774,
+          "kind": "down",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            487,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 831893.427,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            292
+          ]
+        },
+        {
+          "elapsed_ms": 831908.495,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            486,
+            291
+          ]
+        },
+        {
+          "elapsed_ms": 831929.68,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            485,
+            291
+          ]
+        },
+        {
+          "elapsed_ms": 831945.108,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            485,
+            290
+          ]
+        },
+        {
+          "elapsed_ms": 831958.379,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            484,
+            290
+          ]
+        },
+        {
+          "elapsed_ms": 831987.44,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            483,
+            289
+          ]
+        },
+        {
+          "elapsed_ms": 832003.56,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            482,
+            289
+          ]
+        },
+        {
+          "elapsed_ms": 832036.037,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            481,
+            288
+          ]
+        },
+        {
+          "elapsed_ms": 832068.312,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            480,
+            287
+          ]
+        },
+        {
+          "elapsed_ms": 832103.178,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            479,
+            287
+          ]
+        },
+        {
+          "elapsed_ms": 832117.754,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            478,
+            286
+          ]
+        },
+        {
+          "elapsed_ms": 832151.067,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            477,
+            285
+          ]
+        },
+        {
+          "elapsed_ms": 832179.439,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            476,
+            285
+          ]
+        },
+        {
+          "elapsed_ms": 832196.007,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            475,
+            284
+          ]
+        },
+        {
+          "elapsed_ms": 832227.423,
+          "kind": "move",
+          "left_down": true,
+          "pid": 256,
+          "point": [
+            474,
+            284
+          ]
+        },
+        {
+          "elapsed_ms": 832240.764,
+          "kind": "up",
+          "left_down": false,
+          "pid": 256,
+          "point": [
+            474,
+            284
+          ]
+        },
+        {
+          "elapsed_ms": 832308.415,
+          "kind": "settled",
+          "left_down": false,
+          "pid": 256,
+          "point": null
+        }
+      ],
+      "mcp_trace": [
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 24.518125000000055,
+          "isError": false
+        },
+        {
+          "tool": "computer.operation",
+          "elapsed_ms": 2.56966599999987,
+          "isError": false
+        },
+        {
+          "tool": "computer.cancel",
+          "elapsed_ms": 1.8259590000000117,
+          "isError": false
+        },
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 580.369084,
+          "isError": true
+        },
+        {
+          "tool": "computer.operation",
+          "elapsed_ms": 2.0346250000000055,
+          "isError": false
+        },
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 20.218374999999924,
+          "isError": false
+        },
+        {
+          "tool": "computer.js",
+          "elapsed_ms": 66.65129200000001,
+          "isError": false
+        },
+        {
+          "tool": "computer.targets",
+          "elapsed_ms": 5.078875000000153,
+          "isError": false
+        }
+      ],
+      "native_screenshot_sha256": "442c42221ca8bbc95294bcfb6b6ab0323073f37e24caaff9d61bfbe883ca051a",
+      "native_dispatch_evidence": {
+        "code": "operation_cancelled",
+        "dispatch": "uncertain",
+        "dispatch_error": {
+          "code": "operation_cancelled",
+          "diagnostic": {
+            "original_diagnostic": null,
+            "release_error": null,
+            "trajectory": {
+              "elapsed_ms": 370,
+              "moves_inserted": 22,
+              "release_inserted": true,
+              "samples_planned": 314
+            }
+          },
+          "next_step": "Reobserve on resume; never replay uncertain input."
+        },
+        "elapsed_ms": 481.832292,
+        "goal_verified": false,
+        "is_error": true,
+        "native_dispatch_entered": true,
+        "operation_ref": {
+          "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+          "context_generation": "95868cd7-a4f6-4d6a-9794-0884832ea70a",
+          "device_id": "win11-vm",
+          "execution_nonce": "5:8c64763b-dc4f-4499-8258-d53faf21c176",
+          "ref_version": 1
+        },
+        "outcome": "returned",
+        "request_id": "pointer-cancel-52ee7b4-1",
+        "result_ref": "d7ec05ae-4523-489c-a3c5-bd90cffbfcad",
+        "system_accepted": null,
+        "tool": "computer.act_checked"
+      }
+    }
+  },
+  "cancellation": {
+    "operation_ref": {
+      "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+      "context_generation": "95868cd7-a4f6-4d6a-9794-0884832ea70a",
+      "device_id": "win11-vm",
+      "execution_nonce": "5:8c64763b-dc4f-4499-8258-d53faf21c176",
+      "ref_version": 1
+    },
+    "cancel_ack": {
+      "cancel_requested": true,
+      "correlation_id": null,
+      "finish_requested": false,
+      "native_call_depth": 0,
+      "native_call_pending": false,
+      "operation_ref": {
+        "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+        "context_generation": "95868cd7-a4f6-4d6a-9794-0884832ea70a",
+        "device_id": "win11-vm",
+        "execution_nonce": "5:8c64763b-dc4f-4499-8258-d53faf21c176",
+        "ref_version": 1
+      },
+      "phase": "executing",
+      "resource_release_uncertain": false,
+      "resources_released": false,
+      "stage": "drag_wait",
+      "strong_native_preemption": false,
+      "terminal": false
+    },
+    "terminal": {
+      "cancel_requested": true,
+      "correlation_id": null,
+      "finish_requested": true,
+      "native_call_depth": 0,
+      "native_call_pending": false,
+      "operation_ref": {
+        "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+        "context_generation": "95868cd7-a4f6-4d6a-9794-0884832ea70a",
+        "device_id": "win11-vm",
+        "execution_nonce": "5:8c64763b-dc4f-4499-8258-d53faf21c176",
+        "ref_version": 1
+      },
+      "phase": "finished",
+      "resource_release_uncertain": false,
+      "resources_released": true,
+      "stage": "finished",
+      "strong_native_preemption": false,
+      "terminal": true
+    },
+    "original_error": "Error: computer.act_checked: operation_cancelled: Reobserve on resume; never replay uncertain input.\n    at RcuToolError (eval_script:12:191)\n    at call (eval_script:28:54)\n",
+    "original_request_replay_allowed_after_recovery": false,
+    "domain_fenced_after_cancel": true,
+    "recovery_passed": true,
+    "post_recovery_keys": [],
+    "input_sent_by_recovery": false
+  },
+  "f5": {
+    "received_events": [
+      {
+        "elapsed_ms": 923846.955,
+        "kind": "f5",
+        "left_down": false,
+        "pid": 256,
+        "point": null
+      }
+    ],
+    "receipt": {
+      "correlation_id": null,
+      "deduplicated": false,
+      "dispatch": "returned",
+      "dispatch_error": null,
+      "frame": "89262033-919f-42ad-a48a-fed3c0df66f1",
+      "goal_verified": false,
+      "input_domain_fenced": false,
+      "native_dispatch_entered": true,
+      "operation": {
+        "cancel_requested": false,
+        "finish_requested": true,
+        "native_call_depth": 0,
+        "native_call_pending": false,
+        "phase": "finished",
+        "resource_release_uncertain": false,
+        "resources_released": true,
+        "stage": "finished",
+        "strong_native_preemption": false,
+        "terminal": true
+      },
+      "operation_ref": {
+        "agent_instance": "146250c6-5898-420e-990c-57a31a0bb0aa",
+        "context_generation": "3865954b-7586-47ec-9097-99e685bec52c",
+        "device_id": "win11-vm",
+        "execution_nonce": "6:d957884f-0d7a-4ddc-9b63-e1472b86d01d",
+        "ref_version": 1
+      },
+      "receipt_ref": {
+        "device_id": "win11-vm",
+        "request_id": "pointer-f5-52ee7b4-1"
+      },
+      "replay": "forbidden",
+      "request_id": "pointer-f5-52ee7b4-1",
+      "scope": {
+        "element": "0e9518be9150848368175b37be2bee7cf6b2f3a30b5ee1be9cf1a83054ba56f3",
+        "pid": 256,
+        "window": "hwnd:4f05d8"
+      },
+      "system_accepted": true
+    }
+  },
+  "cleanup": {
+    "fixture_closed": true,
+    "temporary_task_removed": true,
+    "agent_running": true,
+    "agent_launch_task_preserved": true
+  },
+  "open_acceptance_items": [
+    "Windows Paint Nemessix icon drawing",
+    "Mac Computer Use Notes Markup icon drawing",
+    "MCP device TCP/TLS connection reuse",
+    "visible Pointer and cursor capture",
+    "full model-result-to-next-tool timings in matched icon trials",
+    "Mac production device-agent input support"
+  ]
+}

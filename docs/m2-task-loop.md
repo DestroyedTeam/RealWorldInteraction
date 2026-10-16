@@ -40,7 +40,7 @@ M2 的 Windows 输入已实现并交叉构建；**这不等于原生输入或完
 | 0–10 | 一次 ZIP stdin 传输、SHA 读回、Limited interactive Rust server；owner 分配全新 Notepad baseline/decoy 窗口；只读 native bootstrap；owner 确认 fresh root/decoy tuple；激活固定 grant |
 | 10–32 | 实际 Codex→新 Rust MCP→常见 Notepad：中文/emoji/换行编辑，真实菜单/另存为、打开 baseline、再打开 result、完整独立 UIA 验证，最后回 baseline |
 | 32–37 | owner 只将焦点移到已分配 decoy；模型不得抢焦点或输入。计数零增量与 decoy 独立未保存缓冲读回分别取证。此例不冒充高频抢焦点竞态 |
-| 37–44 | owner 恢复 root 前台；模型经 RCU 清空临时缓冲，发送一次 512 ASCII A；owner 在确实出现输入后按住 Escape 一秒；保留停止计数/operation/实际前缀 |
+| 37–44 | owner 恢复 root 前台；模型经 RWI 清空临时缓冲，发送一次 512 ASCII A；owner 在确实出现输入后按住 Escape 一秒；保留停止计数/operation/实际前缀 |
 | 44–50 | 独立 UIA 检查精确停止前缀；显式启动 restore 模型阶段，重新观察后恢复 baseline，不重放旧动作 |
 | 50–55 | 实际文件 SHA/字节、baseline/result/decoy；恢复 UIA、资源/操作终态与每例真实结果；没有时间就不追加场景 |
 | 55–60 | 不发新任务输入；停止本轮模型，等待 worker；仅清理精确 candidate 路径/任务，读回剩余进程和任务，列出保留文件，截止前交回 |
@@ -49,7 +49,7 @@ M2 的 Windows 输入已实现并交叉构建；**这不等于原生输入或完
 
 ## 完整任务验收与失败分类
 
-结果文件只能由模型经新 RCU 在真实 Notepad 中产生。开发脚本只写预先声明的 baseline/decoy，绝不写 result；独立文件 oracle 只读字节。原生 readonly oracle 可用新 Rust MCP 连接验证精确 UIA 元素，并单独标 scripted oracle，不冒称模型选择工具。
+结果文件只能由模型经新 RWI 在真实 Notepad 中产生。开发脚本只写预先声明的 baseline/decoy，绝不写 result；独立文件 oracle 只读字节。原生 readonly oracle 可用新 Rust MCP 连接验证精确 UIA 元素，并单独标 scripted oracle，不冒称模型选择工具。
 
 必须同时具备：实际 Codex tools/call 事件、固定 candidate SHA、真正菜单/dialog owner 链、保存/切换文档/重新打开、精确 UIA 验证、result 文件字节、baseline/decoy 未变化和恢复证据。CLI exit 0、动作确认、截图或正确拒绝都不单独构成通过。
 

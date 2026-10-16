@@ -1,0 +1,485 @@
+{
+  "source": "work/b1-native-link-r2/source",
+  "destination": "repository root",
+  "source_files": 95,
+  "deleted_files": [],
+  "frozen_sources_modified": false,
+  "candidate_not_full_native_acceptance": true,
+  "files": [
+    {
+      "path": "crates/rcu-core/Cargo.toml",
+      "previous_sha256": "c1a161fa9fe1d042a07f34ee8aee772da8be4392e0a61cc786309af42d0404d0",
+      "candidate_sha256": "c1a161fa9fe1d042a07f34ee8aee772da8be4392e0a61cc786309af42d0404d0"
+    },
+    {
+      "path": "crates/rcu-mcp/Cargo.toml",
+      "previous_sha256": "3697969245c6ba45772c8e3d1309d0c0ee07b08b2f5ef873222ee0de323efbe0",
+      "candidate_sha256": "c042b19e010db65d7d4ac4bc554d44a6302727e34d2e9efd1658176e5de51679"
+    },
+    {
+      "path": "crates/rcu-windows/Cargo.toml",
+      "previous_sha256": "0e1c59ac3adfdc4bf89c03713c3d464de1305bf12865d4ee6bd0ff46bf29f41f",
+      "candidate_sha256": "2cdc1aacbbfd1e9d516c0e8ddfc6c5480f944c2ddcbbcc80289d475ef7f7b421"
+    },
+    {
+      "path": "crates/rcu-native-link/Cargo.toml",
+      "previous_sha256": null,
+      "candidate_sha256": "cc16f4814252d40908ce6fb596c2681cb4352853a68d48ca7d7631ae523820f5"
+    },
+    {
+      "path": "crates/rcu-macos/Cargo.toml",
+      "previous_sha256": "7295a0beac8295c8c3ef4df20a5c3e9d2d5c8743ab5455155235afdb61455264",
+      "candidate_sha256": "7295a0beac8295c8c3ef4df20a5c3e9d2d5c8743ab5455155235afdb61455264"
+    },
+    {
+      "path": "crates/rcu-imaging/Cargo.toml",
+      "previous_sha256": "5a19ea2bd9b5e2f3cf31e234ec33ba5a3f32574dd2e688bbae8d32686c3231bd",
+      "candidate_sha256": "5a19ea2bd9b5e2f3cf31e234ec33ba5a3f32574dd2e688bbae8d32686c3231bd"
+    },
+    {
+      "path": "crates/rcu-link-trust/Cargo.toml",
+      "previous_sha256": null,
+      "candidate_sha256": "a0fee446dc9c993a7c08aef8f85acad737af67b9d80704ffe79739e0dbcf0e05"
+    },
+    {
+      "path": "crates/rcu-link-trust/README.md",
+      "previous_sha256": null,
+      "candidate_sha256": "a0262d1ae1c897521d1b644d8e6542b2c9912e510c3eff90bea48465c86d17e0"
+    },
+    {
+      "path": "crates/rcu-core/tests/parent_review.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "8640033966a48755e8010fc1c8fa6221c22b4a72412f3a1b7c7e8e48606e0229"
+    },
+    {
+      "path": "crates/rcu-core/examples/lifecycle.rs",
+      "previous_sha256": "f679c7ac7e77da28f9f054234c24e1709fa8d060a90820b383ac2fc2329f60fa",
+      "candidate_sha256": "f679c7ac7e77da28f9f054234c24e1709fa8d060a90820b383ac2fc2329f60fa"
+    },
+    {
+      "path": "crates/rcu-core/src/operation.rs",
+      "previous_sha256": "1493af30729884ca7d49eb8213f03e72a9e977383a3da4a20820d6feb476a846",
+      "candidate_sha256": "32ca72d6b101d327b92871ad45c1b7e62f6f456d0ed0459674bc41e86006ea6c"
+    },
+    {
+      "path": "crates/rcu-core/src/lifecycle_preflight.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "70691c7129ecd8e19fc9521d7f75cb24fcf194974d855c136f22e0d1ca1abdec"
+    },
+    {
+      "path": "crates/rcu-core/src/lib.rs",
+      "previous_sha256": "ecc1d21bc3a2abad4b8fe941cddec98a16695076d08cb13ad6fd87ca57116aee",
+      "candidate_sha256": "ae5b37c85a12f1f62cef5d08dc5f5d382efe39aea5c482e5d75ea8c38d821561"
+    },
+    {
+      "path": "crates/rcu-core/src/fixture.rs",
+      "previous_sha256": "9af4d66219dbc67e165fb3c3623f563ca5e0040ef3e359b564d29bcc8963bef5",
+      "candidate_sha256": "959a27e6871c61e8053c83e4395248065dafbd152274e49462465dfbf169ad9a"
+    },
+    {
+      "path": "crates/rcu-core/src/lease.rs",
+      "previous_sha256": "b09e36b66006a6d48fc790e887ffc9e6aac3670ff0c65bca36249ef3424124bc",
+      "candidate_sha256": "b09e36b66006a6d48fc790e887ffc9e6aac3670ff0c65bca36249ef3424124bc"
+    },
+    {
+      "path": "crates/rcu-core/src/tests.rs",
+      "previous_sha256": "81cac6965ff20116792f368fa58824b01a8e07a3ef2bd40c2c16bd319a18c75f",
+      "candidate_sha256": "81cac6965ff20116792f368fa58824b01a8e07a3ef2bd40c2c16bd319a18c75f"
+    },
+    {
+      "path": "crates/rcu-core/src/checked_action.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "3e16431c878500c40ae10f64f7c5f6356aef449cf64691cba9648e35076709cb"
+    },
+    {
+      "path": "crates/rcu-core/src/lifecycle_tests.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "544ff4f2d8d9c320c5c9ae0fe3b7ed38d28f8c3f257e1f030ab8c979740e7306"
+    },
+    {
+      "path": "crates/rcu-core/src/lifecycle.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "e9574cd9dfb9fe53dc54bdb37bf1cfaf6cd020b9f8f739adb0c8a53d8033de6b"
+    },
+    {
+      "path": "crates/rcu-core/src/lifecycle_controller.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "080e464818b49f6e6749f007ec852f052a91657c6f3fe94e129e8d831f726456"
+    },
+    {
+      "path": "crates/rcu-mcp/tests/stdio.rs",
+      "previous_sha256": "710ccbcb8c1815f168c27bb023ca842d220260a2dd8ed833fe5419d35dae0c89",
+      "candidate_sha256": "3a982409ccfa4559dcd7f260112a5c019200a256a73ad924619eefdaba7ee1e3"
+    },
+    {
+      "path": "crates/rcu-mcp/src/agent_worker.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "2ffd01a5a8cd4171fa5c9829df1245334baaf81fbda23070d2277d7c38129c62"
+    },
+    {
+      "path": "crates/rcu-mcp/src/link_fixture.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "ea821763d9ea43bcad7d3a36562cf4093cca5981e369f2c5bed2a5b175474afb"
+    },
+    {
+      "path": "crates/rcu-mcp/src/eof_diagnostics.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "9d130ee6018d43a19398b937763c57f11244a69f3d97253fbcf0ab10e0d8609b"
+    },
+    {
+      "path": "crates/rcu-mcp/src/main.rs",
+      "previous_sha256": "4f2d740b511b6a32104decdfa8f45fe1db8c7bcdceb3f3888fd0dff07325e139",
+      "candidate_sha256": "29501d7bcb7c09670a2b93684f7d344695e470f501d21ef54b21d99c9de5daa6"
+    },
+    {
+      "path": "crates/rcu-mcp/src/bin/rcu-pipe-client.rs",
+      "previous_sha256": "5cecf56557a801d608142d83fc15bd8e2f8abda3d21a17e24d0089745cb24970",
+      "candidate_sha256": "5cecf56557a801d608142d83fc15bd8e2f8abda3d21a17e24d0089745cb24970"
+    },
+    {
+      "path": "crates/rcu-windows/src/native.rs",
+      "previous_sha256": "aa5ac5733aaf9ea7316f771a8dc522541afc61552fcbb2e1c1688e5396d53a35",
+      "candidate_sha256": "d648799b3934a5abcb3a758f6236ce14dd3716f2e07da7f4456364b2d551b71c"
+    },
+    {
+      "path": "crates/rcu-windows/src/application_pin.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "28d0e8d9c22fc36229a5f5875280036af1bbc2802dc33f551d4123c1e30710a1"
+    },
+    {
+      "path": "crates/rcu-windows/src/package_policy_r7_tests.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "5bbe6f89f3764da14b80758bca667738f03cf92f6cc6370ad7c9292b7d74eb62"
+    },
+    {
+      "path": "crates/rcu-windows/src/lib.rs",
+      "previous_sha256": "4ae8d05c83c1920f8579115803db51e0f68b181225b1bd5c4f55809a4ed20a61",
+      "candidate_sha256": "8811e101f6afd5468ebd93826c77fbe4183e521451849c3b6081daa89aeccbfd"
+    },
+    {
+      "path": "crates/rcu-windows/src/input_plan.rs",
+      "previous_sha256": "5294ecd4772c044972a53b623fa7d9d1e7e794282e50c1f753e96d371a775714",
+      "candidate_sha256": "7edeefedd4a6ed928eb2daa185cb14327f97e6b5161016b70f1caaed35dab736"
+    },
+    {
+      "path": "crates/rcu-windows/src/pipe.rs",
+      "previous_sha256": "7262509f55aae510785e7cb76c83d15df66455a922cf0a89063233701d1bf26a",
+      "candidate_sha256": "550f493f279b3ce96de2541efda06849d423a3f2798e8641e58a920df7c14f92"
+    },
+    {
+      "path": "crates/rcu-windows/src/desktop.rs",
+      "previous_sha256": "3613b9550dea66afe43c20614abc08a933be8de040d4b4eff3be59334d27e459",
+      "candidate_sha256": "3613b9550dea66afe43c20614abc08a933be8de040d4b4eff3be59334d27e459"
+    },
+    {
+      "path": "crates/rcu-windows/src/package_policy.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "18ab2d039d7e4ea3dd0417b3e74daf874708a791ec3dadfe9a0a3591290cedba"
+    },
+    {
+      "path": "crates/rcu-windows/src/uia.rs",
+      "previous_sha256": "7d5add1722c932a31abb9504263cd556a60e4d8cc4fc593364214fb16cf67757",
+      "candidate_sha256": "3d7209c5f3b12bada23eb3f8fee9f8adba2197a9467d4fc8f5892973c0e9b114"
+    },
+    {
+      "path": "crates/rcu-windows/src/contract.rs",
+      "previous_sha256": "b76726a10804f3048fb15068adf0e04ebe1ec6e9c6cf50688b6376826707c42f",
+      "candidate_sha256": "b76726a10804f3048fb15068adf0e04ebe1ec6e9c6cf50688b6376826707c42f"
+    },
+    {
+      "path": "crates/rcu-windows/src/application_package.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "1d63b5bf8661c35c7eceaa7cf3431c8143988b94287af53722bc44ea9ddcb39e"
+    },
+    {
+      "path": "crates/rcu-windows/src/input.rs",
+      "previous_sha256": "b25bc0fab8ffb3f31069cd25d4a32be17f7b690cbd71552ad18ba74370daf0c6",
+      "candidate_sha256": "d02080a3916c6c309e86b8a568ce589a69278513a1e59a6f207af31659d6e7ca"
+    },
+    {
+      "path": "crates/rcu-windows/src/document_context.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "9eeb859bf042ab4f478eb0879b3fb06927b6187a3d6e6b18719784f3db1af5be"
+    },
+    {
+      "path": "crates/rcu-windows/src/application.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "ff9af910300153172948d7f26d669403c629159d9c2d16327242c7f9b5cad8b0"
+    },
+    {
+      "path": "crates/rcu-windows/src/agent_contract.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "636298ae5592f14f0d117240fc46d85f5b6811d5bc2ba8d84298014af64db039"
+    },
+    {
+      "path": "crates/rcu-windows/src/agent_binding.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "4c4207de72b2dea9400969d86c6a6f1812e4e0adfad21f9b1d399be84f7140d3"
+    },
+    {
+      "path": "crates/rcu-windows/src/capture.rs",
+      "previous_sha256": "43874ee591cf3db5ff9667b2b398c211404274790e06a6dd7d1897c8a6893060",
+      "candidate_sha256": "43874ee591cf3db5ff9667b2b398c211404274790e06a6dd7d1897c8a6893060"
+    },
+    {
+      "path": "crates/rcu-windows/tests/fixtures/r5-launch-grant.json",
+      "previous_sha256": null,
+      "candidate_sha256": "465ab927a32930ef81420fac29cf648edee114d9076c773665ae26792fedf75c"
+    },
+    {
+      "path": "crates/rcu-windows/tests/fixtures/r5-preflight.json",
+      "previous_sha256": null,
+      "candidate_sha256": "76c36b81973e9e3143ee5c4d8b63b8458523b9efbb4b4bd7c10471dc15558539"
+    },
+    {
+      "path": "crates/rcu-native-link/tests/control.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "ee4f5a1affe3fff8a082dbf8006beac72addb72e63623e54c5d39b843560d6cf"
+    },
+    {
+      "path": "crates/rcu-native-link/tests/catalog_budget.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "23f6969c28371b2e9578ca21e5fe020aa8daf8e0e1de29c92203b3c3c7734b90"
+    },
+    {
+      "path": "crates/rcu-native-link/tests/preparation.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "c8f6f428a7abcca46bd0667ede5d1e9511fd9b6fa347d88c526e630b18c97c4b"
+    },
+    {
+      "path": "crates/rcu-native-link/tests/network.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "83bf6b25577883a1b95f03d174428490e433cf0dc1a4ba597d74d63a452b3e2b"
+    },
+    {
+      "path": "crates/rcu-native-link/tests/full_link.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "9518c32c2c7b89e9ad5a13fb1442e323a24b57c41b438034705c2b163a466f28"
+    },
+    {
+      "path": "crates/rcu-native-link/examples/measure_output.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "cbea958d9694952118f85de2216b7387501b02b26b7d64fa0bfb4bb7c70485a3"
+    },
+    {
+      "path": "crates/rcu-native-link/fixtures/golden-schema.json",
+      "previous_sha256": null,
+      "candidate_sha256": "38891d33211c85c351ec8c3681d3d31482ccc5a671b556174490964743471810"
+    },
+    {
+      "path": "crates/rcu-native-link/src/runtime.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "13414044c4285e101b99c7398e00f0be66b41ea757a64234972f012d23b02fbb"
+    },
+    {
+      "path": "crates/rcu-native-link/src/types.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "22aad7c1fd6af7026c3960b9d1c6e409ca30004bda598a93a606232195dcff1e"
+    },
+    {
+      "path": "crates/rcu-native-link/src/installation.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "e40ea5ef8e39dba909236ea50235a6a9d4674fbf329f7f1174b8c6b5e05e874b"
+    },
+    {
+      "path": "crates/rcu-native-link/src/budget.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "03bd4de5f8c587994b3e43dc2959c5d5ebd95aa854e96ca5326bf54866e804b8"
+    },
+    {
+      "path": "crates/rcu-native-link/src/net.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "465007b097b9c8b67586621e2b85954d79c8405037a728d5f6cc5239577b48f1"
+    },
+    {
+      "path": "crates/rcu-native-link/src/control.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "47a29811f79cd71015b3bbcbc71993729d635e639e4d548d5a9268108e47666e"
+    },
+    {
+      "path": "crates/rcu-native-link/src/client.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "81194dfaa287e77e9511b324db225f3583bc429b5aa3d9851f698865292386ff"
+    },
+    {
+      "path": "crates/rcu-native-link/src/lib.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "201ef9ff219db9fc009e23ead9c15061aa4f0425bbe99a8eb892765b7c7d8dcf"
+    },
+    {
+      "path": "crates/rcu-native-link/src/store.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "9c727b7f0ca38be11dd193351a7437591c8ac01be43f3eccaaa7188acab76745"
+    },
+    {
+      "path": "crates/rcu-native-link/src/worker.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "44c662234d2a6d73805bc77c44e6506652eab4c72f64a9feca4f2d7dc3388acd"
+    },
+    {
+      "path": "crates/rcu-native-link/src/server.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "31a8d6a9ae679a0b62717af1de84a01742f029f5b5134bcfca0178b9784aa8b9"
+    },
+    {
+      "path": "crates/rcu-native-link/src/plan.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "4f42e6e55924f493ec17af7c3977fc80a356d67f6d294473550d4ef820d18ddc"
+    },
+    {
+      "path": "crates/rcu-native-link/src/private.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "14a51fbdab51d657dfe2576167666c87b35a249d83c9a5553d9508c76dc45767"
+    },
+    {
+      "path": "crates/rcu-native-link/src/install.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "687b33a1ce587b41dad6db079af81b16858f2a7a28ea1cc6de035de1e7b0abab"
+    },
+    {
+      "path": "crates/rcu-native-link/src/frame.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "626e6ad565cb13820f23f7ed75af075a46560078bd370b7bfcc034df80f02e77"
+    },
+    {
+      "path": "crates/rcu-native-link/src/entry.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "c86dd1b3acc1949f742b9a78fad4f5acca275e9d0ec94fb2e00538635a3c6820"
+    },
+    {
+      "path": "crates/rcu-native-link/src/model.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "34163f8f23aadcf868484a501f878ec2962f784d0d0f840d9554c59001e7def5"
+    },
+    {
+      "path": "crates/rcu-native-link/src/mcp.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "9715df3fbd67c93663a81e97a14e0c350df550864b8cac8dba9ba7660d28c0f0"
+    },
+    {
+      "path": "crates/rcu-native-link/tests/full_link/codex_host.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "5f615bb793d8fb84a93c3b053d9f4e33a9929a2511592792e4ee757bba998f43"
+    },
+    {
+      "path": "crates/rcu-native-link/assets/skills/real-computer-use-native/SKILL.md",
+      "previous_sha256": null,
+      "candidate_sha256": "1f0c6b1eb616ae5a09cf627ccad31d83cadd718f38eaf1e61e66aea3ceed56bd"
+    },
+    {
+      "path": "crates/rcu-native-link/src/bin/rcu-native-setup.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "ebf358118659ae1353fb6bbc174734c43a3d29934e63ac50a8c6e89d00c51dc4"
+    },
+    {
+      "path": "crates/rcu-native-link/src/bin/rcu-native-relay.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "dadc5b559cd4306454099d8c06e657a6fb53a3472049e48d972ae48117890baf"
+    },
+    {
+      "path": "crates/rcu-native-link/src/bin/rcu-native-agent.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "9a09f1cf157a49b1bb6e2deb3f5dced8340e44d217719eee8a422a38d44d2744"
+    },
+    {
+      "path": "crates/rcu-native-link/src/bin/rcu-native-control.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "bd8b2d39bc45df078de21b96e5b5ae16b501662b8d82352493c45c238fdd7bd9"
+    },
+    {
+      "path": "crates/rcu-native-link/src/integration/model_output.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "14ecac3fb66107850b4bf8212a04f0a348692000053388073077737c449f3c11"
+    },
+    {
+      "path": "crates/rcu-native-link/src/integration/mod.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "6a827d211e0bb751fdb2ca387c7c87122b58ddc725f61784e30b798df05e3bc3"
+    },
+    {
+      "path": "crates/rcu-native-link/src/integration/codex_plugin.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "ed3d5e85c7684f5068f5d249f666b22d5f96db8762496c48f6636984f938054f"
+    },
+    {
+      "path": "crates/rcu-macos/src/native.rs",
+      "previous_sha256": "b6291c50bb52f6014c8585292cbef87b13fd3750f07fb6185ae61813346a9f41",
+      "candidate_sha256": "76c5f13a5b0518767eb8c3f277edc2b2b93a64a74e39f5932522db01b354533a"
+    },
+    {
+      "path": "crates/rcu-macos/src/lib.rs",
+      "previous_sha256": "e51ad0c7b76b48b84bd05c0e3b04c478904ad782bac5efd7e3e3b4404886dd88",
+      "candidate_sha256": "e51ad0c7b76b48b84bd05c0e3b04c478904ad782bac5efd7e3e3b4404886dd88"
+    },
+    {
+      "path": "crates/rcu-macos/src/ffi.rs",
+      "previous_sha256": "f08a1a8118ebc5af21e504b91ee99d876944f1291004fed07c29d09c66410868",
+      "candidate_sha256": "f08a1a8118ebc5af21e504b91ee99d876944f1291004fed07c29d09c66410868"
+    },
+    {
+      "path": "crates/rcu-macos/src/geometry.rs",
+      "previous_sha256": "2809b0550e49e7816dabb8c792347aa81d325f8c7688326f208ddd4821635827",
+      "candidate_sha256": "2809b0550e49e7816dabb8c792347aa81d325f8c7688326f208ddd4821635827"
+    },
+    {
+      "path": "crates/rcu-macos/src/capture.rs",
+      "previous_sha256": "33555ab3288c02a040d6170bd94ee80acf3bc14f37d6aa20b5082d1cde670652",
+      "candidate_sha256": "33555ab3288c02a040d6170bd94ee80acf3bc14f37d6aa20b5082d1cde670652"
+    },
+    {
+      "path": "crates/rcu-imaging/src/lib.rs",
+      "previous_sha256": "025cc372cab5a183026aece8dd1e3baac39137a895237cf222349915dfde4891",
+      "candidate_sha256": "025cc372cab5a183026aece8dd1e3baac39137a895237cf222349915dfde4891"
+    },
+    {
+      "path": "crates/rcu-link-trust/tests/provision_cli.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "3d3ace33d9e825de1bddbbb55035fc8d89e139e5ce30013cef155a5924a16eac"
+    },
+    {
+      "path": "crates/rcu-link-trust/src/private_files.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "1d1d425ff1a6128348e659d1ce9805c8b702312003cadd1b5f29313491f10b0b"
+    },
+    {
+      "path": "crates/rcu-link-trust/src/lib.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "37e2d579116cbae841bee1de7a574410abf2f7e389425e21b9fb3723f83f7295"
+    },
+    {
+      "path": "crates/rcu-link-trust/src/verifier.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "67829f503c57391b4965ee47038f90b809c4c94d8a95a296ef7e1501b68bcd15"
+    },
+    {
+      "path": "crates/rcu-link-trust/src/tests.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "cc256d6231be17efec1a260a2fcc97584be3166d2c72ce31b96a5c14d76d31b0"
+    },
+    {
+      "path": "crates/rcu-link-trust/src/provision.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "817eff557242be6a91012ad1a3fefe50079c2b0bc473a6bc13e0e07b36431a35"
+    },
+    {
+      "path": "crates/rcu-link-trust/src/bin/rcu-link-provision.rs",
+      "previous_sha256": null,
+      "candidate_sha256": "985b8536731e5749d3c95a0279c0aa5e00f039410bdf9f16b0e155405e1d446c"
+    },
+    {
+      "path": "Cargo.toml",
+      "previous_sha256": "86c7da2a6b031b8bc22e6179185eb4fdcacf6f9d007ba409f2f689e3f343d185",
+      "candidate_sha256": "ea3beedac2cadea838136b90fdfc089e0470f2c56114b55b8f41e54ca179bf7f"
+    },
+    {
+      "path": "Cargo.lock",
+      "previous_sha256": "89f3815a4f042830d5d7991ce9d5fc673851d56360ff18467c6ca1e015753712",
+      "candidate_sha256": "588d8d1aa293f062c6a23ad350adce358a37c775b0adf5812f54f7d1b5f6b5a5"
+    },
+    {
+      "path": "crates/rcu-native-link/fixtures/instructions.txt",
+      "previous_sha256": null,
+      "candidate_sha256": "e43e4a6c3f3c1a10d1f4757f0f177cc0c535606c1eb54a8fa5fb8b4c091715f6"
+    }
+  ]
+}

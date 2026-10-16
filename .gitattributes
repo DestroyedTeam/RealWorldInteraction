@@ -1,0 +1,3 @@
+# Byte-pinned immutable native evidence: never newline-convert on checkout.
+/crates/rwi-windows/tests/fixtures/r5-preflight.json -text
+/crates/rwi-windows/tests/fixtures/r5-launch-grant.json -text

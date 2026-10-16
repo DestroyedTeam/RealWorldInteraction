@@ -1,0 +1,129 @@
+{
+  "run_id": "M3-native-20260911-r5-01",
+  "route_vm_id": "1d91ce65-b3ef-4bdd-a60c-5e556ee4ad4a",
+  "expected_identity": {
+    "desktop": "Default",
+    "guest": null,
+    "host": "windows-machine:171517b05558a370b65c0a3a8821311b43bed9ce260f5be10f324e1c3e91345a",
+    "seat": "WinSta0",
+    "session": "wts:1:logon:134335120472572060:luid:0:60583"
+  },
+  "expires_unix_ms": 1789077000000,
+  "launches": [
+    {
+      "authorization_id": "main-open-once",
+      "application": {
+        "executable": "C:\\WINDOWS\\System32\\notepad.exe",
+        "sha256": "aa1fff87dcf72e58a38d0581613032286aacbe0d2e3efa4d6fc1e5e09fa11584"
+      },
+      "arguments": [
+        "C:\\Temp\\RealComputerUse-M3-native-20260911-r5-01\\case\\M3-native-20260911-r5-01-baseline.txt"
+      ],
+      "allowed_files": [
+        {
+          "path": "C:\\Temp\\RealComputerUse-M3-native-20260911-r5-01\\case\\M3-native-20260911-r5-01-baseline.txt",
+          "sha256": "e714e1035d0ab9adafb7d0a872b519545562beb90dd473a759d9948a0844ef1e"
+        }
+      ],
+      "observed_applications": [],
+      "observed_packages": [
+        {
+          "application": {
+            "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe\\Notepad\\Notepad.exe",
+            "sha256": "229e2d1684e89f054c0907f73028b111819124376a3eb7b87027e996b16747c6"
+          },
+          "package_full_name": "Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe",
+          "install_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_arm64__8wekyb3d8bbwe"
+        }
+      ],
+      "allowed_existing_windows": [
+        {
+          "window": "hwnd:80436",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "712f9973e5d16f706185f072b7ddf26031c7966f0788aaec690e24508ac9970b"
+        },
+        {
+          "window": "hwnd:70438",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "b35d2ebd060c81fe20661840b02a2e76f9ecf4d1e06c576a36020777fb1eb762"
+        },
+        {
+          "window": "hwnd:90526",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "39c5ec6fe0a638e37ff1874e9e1a83395a3e01b0735c918a2b50fb401b94cab2"
+        },
+        {
+          "window": "hwnd:80068",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "e91a2ddaa17b6f0d34b27d5e339410679407f4c4233d6957d6621284c7abfa09"
+        },
+        {
+          "window": "hwnd:304ae",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "cddecb296af4f211b080760d29eedbf12202bcf4614683641159cd8f46bfd3ae"
+        },
+        {
+          "window": "hwnd:50478",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "87f266a588f49f2c991d89c341083a79e989d1c03a31a719f81c159ab16f3743"
+        },
+        {
+          "window": "hwnd:a0422",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "b7dd831b2498d79ead81aeab960cad80160df03c39b0cce090a682c76cbd4d51"
+        },
+        {
+          "window": "hwnd:c01d0",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "8da1d37d21e21f42ed2867391d4ea3740ec78861225afa079cb206dbc70ba260"
+        },
+        {
+          "window": "hwnd:60432",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "214211c5aec20de00bbf52abcc2a62c299e24e2f678671e7bb38de840b462ece"
+        },
+        {
+          "window": "hwnd:5042c",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "a756c36669e3f2bc9bad19116d948a4d883626b01716b589464f5f1435f11b4e"
+        },
+        {
+          "window": "hwnd:30486",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "bb3a8771e3984f6892c6e4a411132dd7ea44d054044d007e1db6e523c660fe00"
+        },
+        {
+          "window": "hwnd:80260",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "a4cdd7bff1b2962d8c9103a0882b5ad76ec767993ff4da36fc53aecefacfa011"
+        },
+        {
+          "window": "hwnd:604e2",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "0683ed9c89bdcdfe05558b18ad31233628d7ce59d3cdc7654ee34aef7e7fc670"
+        },
+        {
+          "window": "hwnd:d0250",
+          "pid": 7524,
+          "process_created": 134335198145995687,
+          "native_epoch": "3759c222bb739aa7236fa347255fcd2c5dda751e67d5e565703aa4dad25ea715"
+        }
+      ],
+      "application_startup_effects_authorized": true
+    }
+  ],
+  "activations": []
+}

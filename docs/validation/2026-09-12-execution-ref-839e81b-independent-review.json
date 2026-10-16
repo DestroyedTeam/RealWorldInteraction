@@ -1,0 +1,276 @@
+{
+  "schema": "rcu.execution_reference_independent_review.v1",
+  "recorded_utc": "2026-09-11T18:46:35.347743+00:00",
+  "candidate_commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+  "decision": "core_identity_and_major_U_P_progress_confirmed_R01_not_fully_closed",
+  "R01_status": "open_due_to_accepted_error_reference_retention_gap",
+  "A01_status": "owned_process_worker_not_implemented",
+  "architecture_complete": false,
+  "findings": [
+    {
+      "id": "ER01",
+      "priority": "P1",
+      "status": "open_at_fixed_candidate",
+      "title": "Accepted operation reference is omitted from cancellation transport-error responses",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway/cancellation.rs",
+          "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+          "start": 20,
+          "end": 45,
+          "sha256": "1a2bffd5e0718f31fb370de9463a571106977a89ba97d26e80e804569e4effa0"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway/invocation.rs",
+          "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+          "start": 110,
+          "end": 139,
+          "sha256": "730816e4946bc482207e10b41dc484d09986b8471be82e6d42c9de5575ab670a"
+        }
+      ],
+      "proof": "Static fixed-source control-flow derivation; implementation acknowledged and reported an unreviewed later working-tree patch.",
+      "impact": "Pending non-durable read may remain owned by agent while caller receives no public ref for query/cancel.",
+      "close_tests": [
+        "Cancel timeout and disconnection return the exact accepted operation_ref",
+        "Cover accepted-only and already-running execution",
+        "Restored control query resolves the same execution",
+        "Original Execute count never increases"
+      ],
+      "tests_run_by_reviewer": false
+    },
+    {
+      "id": "ER02",
+      "priority": "P2",
+      "status": "open_at_fixed_candidate",
+      "title": "Interrupted first device-namespace creation can poison later service startup",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime/namespace.rs",
+          "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+          "start": 7,
+          "end": 29,
+          "sha256": "8578b36fc1fe136361798e2df07ae857299d2b38281b01541b6302f71c8881c8"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+          "start": 58,
+          "end": 71,
+          "sha256": "bfcd937c2da7afada03b59971e4e9e71587047465434c5a4c119d1ff06e5f31f"
+        }
+      ],
+      "proof": "Static create_new/write/sync to final filename followed by strict AlreadyExists JSON parsing.",
+      "impact": "An empty/truncated first namespace file can prevent restart after transient IO conditions recover.",
+      "close_tests": [
+        "Initialize under create/partial-write/sync/publish interruption",
+        "Preserve authority of existing namespace and old ledger bytes",
+        "Same proven device can retry or enter explicit repair without allowing DeviceId substitution"
+      ],
+      "tests_run_by_reviewer": false
+    }
+  ],
+  "confirmed_in_source": [
+    "Service-owned generation-qualified ref validates actual principal and exact stored record",
+    "Tagged execution/request selectors and cancel-only-by-ref",
+    "Correlation stripped from identity/routing/durable fingerprint",
+    "Prepare performs no native provider work or input lease acquisition",
+    "Execute/Cancel serialize on one-shot phase",
+    "Pending native controls survive normal TTL/quota/context close checks",
+    "Durable request namespaces retain epoch-independent keys and old bytes"
+  ],
+  "validation_gaps": [
+    "Full Runtime.dispatch blocked-fixture cancellation plus subsequent-batch count remains to combine the separate tests",
+    "No reviewer native/Host/model operation; later 24fac6b live package not adjudicated in this U/P review",
+    "Capacity-retention and full device/OS recovery remain under the complete ADR obligations"
+  ],
+  "source_files": [
+    {
+      "path": "crates/rcu-core/src/device.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "801a5f7827fc815735287e791756e3e7a3a335cf2524244eb8c325aacdda0ad4",
+      "lines": 143
+    },
+    {
+      "path": "crates/rcu-core/src/device/api.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "64afff40c6c374a3614f9c02d806a02924c260a9a0ec2f99094f3e4eb8bea046",
+      "lines": 210
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "bfcd937c2da7afada03b59971e4e9e71587047465434c5a4c119d1ff06e5f31f",
+      "lines": 257
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/namespace.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "8578b36fc1fe136361798e2df07ae857299d2b38281b01541b6302f71c8881c8",
+      "lines": 35
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/execution.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "210d3ff232a6d113cccfd6dfe0a0c8a1d7e14a90adb2fb17a5ebff93658ad527",
+      "lines": 458
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/dispatch.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "4ab1500eac2ae7d1db0e50b6eb60f830916c2b1b1f4d53dd9bd6b9459a92701c",
+      "lines": 227
+    },
+    {
+      "path": "crates/rcu-mcp/src/gateway/invocation.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "730816e4946bc482207e10b41dc484d09986b8471be82e6d42c9de5575ab670a",
+      "lines": 257
+    },
+    {
+      "path": "crates/rcu-mcp/src/gateway/cancellation.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "1a2bffd5e0718f31fb370de9463a571106977a89ba97d26e80e804569e4effa0",
+      "lines": 85
+    },
+    {
+      "path": "crates/rcu-mcp/src/gateway/routing.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "dde269e52bf7132a993c0b62b7228244f851ce1dc3bd5321d16c364059077739",
+      "lines": 135
+    },
+    {
+      "path": "crates/rcu-native-link/src/device.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "36702486cea1e00fe6ed5a2b94cc66a4d569b4beefb5c26f5a9f73b97141cb99",
+      "lines": 223
+    },
+    {
+      "path": "crates/rcu-agent/src/ledger.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "2fa7f19b9670556dd0ef850c41c1cf318441d85fa9b387c623bf90b0c6886f08",
+      "lines": 343
+    },
+    {
+      "path": "crates/rcu-core/src/device/catalog.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "6b4fa1cd1971caed076683cb78ee6efffac1f15cb6aece4c4f3961c5b70b1af2",
+      "lines": 239
+    },
+    {
+      "path": "crates/rcu-agent/tests/execution_refs.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "09c82032607d07243c62db245621b488fd54f8457923cea19da1fe406cf23176",
+      "lines": 397
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/dispatch_tests.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "aaf3922b0063bbb71b8fe6c06615018259b5782352e018db64fa3dd6eac6ea3f",
+      "lines": 146
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/recovery.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "1e6960b88b5f7dd9abe6ed908c5ac7b3fbd866a2811e8c22c5785f3d7f9b989f",
+      "lines": 211
+    },
+    {
+      "path": "crates/rcu-mcp/tests/gateway_transport.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "f1af52e6c5f36764c6b0e8b08f627ce028c34524abc23793ae75f198357ab643",
+      "lines": 525
+    },
+    {
+      "path": "crates/rcu-core/src/operation.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "6bc00a748555300da247441610943f1630829df5352896af748ab96ec9063cc8",
+      "lines": 399
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/capabilities.rs",
+      "commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+      "sha256": "12a9c47ebee88b74325e509010fa58795787edf875ef7d03292dbe63aa9c14ce",
+      "lines": 107
+    }
+  ],
+  "source_read_records": 21,
+  "gates": {
+    "recorded_utc": "2026-09-11T18:41:28.249296+00:00",
+    "end_marker_present": true,
+    "files": [
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/raw-gates-commit.txt",
+        "sha256": "01924eb62be2dcfe6ddb1e8a2a1cb9703593450d7b0efa5af46fbb32d7ee4fa2",
+        "bytes": 41
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/raw-gates-end-commit.txt",
+        "sha256": "01924eb62be2dcfe6ddb1e8a2a1cb9703593450d7b0efa5af46fbb32d7ee4fa2",
+        "bytes": 41
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/default-tests.raw.log",
+        "sha256": "8647256a6af00e502f7adbadd97fb47ce1370ff2fa7b3e6bbb30e7b8cec83bb6",
+        "bytes": 26160,
+        "totals": {
+          "passed": 215,
+          "failed": 0,
+          "ignored": 1,
+          "blocks": 31
+        }
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/all-features-tests.raw.log",
+        "sha256": "aea37bc121f116a87f0962e33329b05cd443eafd717d3f6e2c9c887d58ff3b53",
+        "bytes": 35161,
+        "totals": {
+          "passed": 302,
+          "failed": 0,
+          "ignored": 2,
+          "blocks": 35
+        }
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/clippy.raw.log",
+        "sha256": "fecede7c2157efe2f16c8c8b9dce94b0fb4dd384dca8207046c8bf7636eb0ffe",
+        "bytes": 72
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/default-tests.log",
+        "sha256": "7e19004fee62261e1c4b1afeb49574694f810e29654f6bd199fe64e415c53ee3",
+        "bytes": 54
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/all-features-tests.log",
+        "sha256": "3ab6a75ce3ddb8102015be45d23c8c1942a53bf467947f05f2df795c59c5c506",
+        "bytes": 54
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/windows-clippy.log",
+        "sha256": "54af716416ac6b876f7e9c80322f53418f1344c4fc08ec22354efc161214adc9",
+        "bytes": 658
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/architecture.json",
+        "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924",
+        "bytes": 1923
+      }
+    ],
+    "reviewer_executed_product_gates": false,
+    "native_or_model_evidence_used": false
+  },
+  "gate_provenance": "Raw source-gate output supplied by implementation; begin/end commit markers match. Reviewer parsed and preserved output, did not rerun products.",
+  "reviewer_actions": {
+    "read_fixed_git_objects": true,
+    "read_existing_gate_output": true,
+    "wrote_review_and_audit_artifacts_only": true,
+    "product_code_or_project_config_modified": false,
+    "cargo_or_product_process_executed": false,
+    "host_or_native_started": false,
+    "vm_connection_or_gui_operation": false,
+    "new_native_capture": false,
+    "codegraph_initialized": false,
+    "commit_or_push": false
+  },
+  "subsequent_fix_notice": "Implementation reported a working-tree CancelDispatch error-reference patch during review. It is not included in 839e81b and is not marked verified here."
+}

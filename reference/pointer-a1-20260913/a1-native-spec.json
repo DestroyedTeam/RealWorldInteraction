@@ -1,0 +1,321 @@
+{
+  "schema": "rcu.pointer-a1-native-handoff/v1",
+  "status": "human-selected-design-parameters-not-native-verified",
+  "direction": "a1-atmospheric-lens",
+  "source_refs": {
+    "index.html": {
+      "path": "objects/a2/a2ee0e15771bf324f7aa47bfdcfa382588ff840b250967b2d37f7aeee3dd53d4",
+      "sha256": "a2ee0e15771bf324f7aa47bfdcfa382588ff840b250967b2d37f7aeee3dd53d4",
+      "size_bytes": 7666,
+      "media_type": "text/html",
+      "source_tool": "human-selected-prototype-source-unchanged"
+    },
+    "styles.css": {
+      "path": "objects/a2/a2618bd35e8966c68dc16f8de475d060ff69eddfe2d5def9a458c160b62717fb",
+      "sha256": "a2618bd35e8966c68dc16f8de475d060ff69eddfe2d5def9a458c160b62717fb",
+      "size_bytes": 13283,
+      "media_type": "text/css",
+      "source_tool": "human-selected-prototype-source-unchanged"
+    },
+    "script.js": {
+      "path": "objects/8d/8d4e87d24901f536d880d10507c9312af550066b07595d4809014159cce62871",
+      "sha256": "8d4e87d24901f536d880d10507c9312af550066b07595d4809014159cce62871",
+      "size_bytes": 13427,
+      "media_type": "text/javascript",
+      "source_tool": "human-selected-prototype-source-unchanged"
+    },
+    "selection.json": {
+      "path": "objects/a2/a2b8414885fd9407c71560bd9168b387f3747c57ad0f489c37aaa01bb613dff1",
+      "sha256": "a2b8414885fd9407c71560bd9168b387f3747c57ad0f489c37aaa01bb613dff1",
+      "size_bytes": 1022,
+      "media_type": "application/json",
+      "source_tool": "current-conversation-or-read-only-observation"
+    }
+  },
+  "units": {
+    "geometry": "CSS logical px design intent; raster scale=dpi/96 only for local expression",
+    "coordinate_truth": "accepted physical device sample remains exact; no logical round-trip of anchor",
+    "raster_extent_logical": 160,
+    "hotspot_in_raster_logical": [
+      80,
+      80
+    ],
+    "dpi_examples": [
+      96,
+      120,
+      144,
+      192
+    ],
+    "alpha": "premultiplied BGRA for existing Win32 Surface; premultiply once after local layer compositing",
+    "unverified": [
+      "native blur kernel/gamma",
+      "font bytes",
+      "DPI raster sampling",
+      "premultiplied alpha presentation"
+    ]
+  },
+  "truth": {
+    "shape": "centered original nested diamond",
+    "outer_vertices": [
+      [
+        0,
+        -6
+      ],
+      [
+        6,
+        0
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        -6,
+        0
+      ]
+    ],
+    "outer_fill": "#113b48",
+    "outer_stroke": "#ffffff",
+    "stroke_width": 1.8,
+    "inner_vertices": [
+      [
+        0,
+        -3
+      ],
+      [
+        3,
+        0
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        -3,
+        0
+      ]
+    ],
+    "inner_fill": "#b6f7ff",
+    "svg_viewbox": [
+      0,
+      0,
+      14,
+      14
+    ],
+    "drop_shadow": {
+      "dx": 0,
+      "dy": 1,
+      "blur": 1,
+      "color": "#173b5266"
+    },
+    "position_transition": null,
+    "position_filter": null,
+    "live_input_interpolation": null
+  },
+  "layers_back_to_front": [
+    {
+      "id": "ambient",
+      "size": [
+        112,
+        112
+      ],
+      "center": [
+        0,
+        0
+      ],
+      "blur": 3,
+      "radial_stops": [
+        [
+          0,
+          "#53d5ff35"
+        ],
+        [
+          0.22,
+          "#4abdfd30"
+        ],
+        [
+          0.39,
+          "#50c4fa24"
+        ],
+        [
+          0.55,
+          "#77d5fb12"
+        ],
+        [
+          0.72,
+          "#77d5fb00"
+        ]
+      ],
+      "opacity": ".85+.14*speedEnvelope+.01*reversalEnvelope",
+      "transform": "uniform shellScale only"
+    },
+    {
+      "id": "contact-shadow",
+      "parent": "energy",
+      "size": [
+        25,
+        25
+      ],
+      "center": [
+        0,
+        3.25
+      ],
+      "blur": 2.4,
+      "radial_stops": [
+        [
+          0,
+          "#163b5e65"
+        ],
+        [
+          0.32,
+          "#183d5830"
+        ],
+        [
+          0.72,
+          "transparent"
+        ]
+      ],
+      "opacity": ".66+press*.24"
+    },
+    {
+      "id": "lens-body",
+      "parent": "energy",
+      "size": [
+        42,
+        42
+      ],
+      "gradient_center_percent": [
+        34,
+        25
+      ],
+      "gradient_extent": "circle farthest corner",
+      "radial_stops": [
+        [
+          0,
+          "#e5feffc2"
+        ],
+        [
+          0.2,
+          "#a1f9fd45"
+        ],
+        [
+          0.48,
+          "#40c7f848"
+        ],
+        [
+          0.64,
+          "#52bef746"
+        ],
+        [
+          0.75,
+          "#8ce9ff16"
+        ]
+      ],
+      "opacity": ".84+press*.14",
+      "css_box_shadow": "inset 0 1px 2px #efffffaa,inset 0 -2px 5px #2388c13a,0 5px 8px -5px #12496275,0 0 15px #33c4ff40"
+    },
+    {
+      "id": "lens-rim",
+      "parent": "energy",
+      "size": [
+        44,
+        44
+      ],
+      "border_width": 1,
+      "border_colors": {
+        "top": "#e5ffffa3",
+        "left": "#bcf6ff40",
+        "bottom": "#2195bd2b",
+        "right": "transparent"
+      },
+      "css_box_shadow": "0 0 1px #3fb1d244"
+    },
+    {
+      "id": "pressure-ring",
+      "parent": "energy",
+      "size": [
+        21,
+        21
+      ],
+      "border_width": 1,
+      "border_color": "#eaffffe6",
+      "css_box_shadow": "0 0 0 1px #1d87a378,0 0 9px #75efff80",
+      "opacity": "press"
+    },
+    {
+      "id": "hotspot",
+      "geometry_ref": "truth",
+      "transform": "only exact anchor translation"
+    },
+    {
+      "id": "identity",
+      "text": "RCU",
+      "intended_native_font": "Segoe UI Variable then Segoe UI; target bytes/metrics unverified",
+      "size": 7,
+      "weight": 750,
+      "tracking": 1,
+      "top_left": [
+        14,
+        14
+      ],
+      "color": "#194e62",
+      "css_text_shadow": "0 1px 1px #ffffffed,0 0 3px #ffffffd9",
+      "edge_correction": {
+        "right_threshold": "width-50",
+        "right_offset": [
+          -54,
+          0
+        ],
+        "left_threshold": 8,
+        "left_offset": [
+          4,
+          0
+        ],
+        "bottom_threshold": "height-45",
+        "bottom_offset": [
+          0,
+          -47
+        ]
+      },
+      "bounds_mapping": "Use affected monitor work area in native mapping; never move hotspot to keep label inside."
+    }
+  ],
+  "motion": {
+    "dt_ms_clamp": [
+      8,
+      80
+    ],
+    "speed": "clamp(distance/dt/1.4,0,1)",
+    "speed_envelope": "speed*(1-clamp(elapsed/180,0,1))^2",
+    "reversal": "clamp(-dot(currentDelta,previousDelta)/(lengths product),0,1), only both lengths>.01 and sample age<180ms",
+    "reversal_envelope": "reversal*(1-clamp(elapsed/150,0,1))^2",
+    "press": "90ms cubic-out from current pressure to 1/0; interrupt, never queue",
+    "shellScale": "reduced?1:1+.12*speedEnvelope+.03*reversalEnvelope-.06*press",
+    "shellScale_range": [
+      0.94,
+      1.15
+    ],
+    "energyScaleY": "reduced?1:1-.04*speedEnvelope-.03*press",
+    "energyScaleY_range": [
+      0.93,
+      1
+    ],
+    "energyAngle": "reduced?0:atan2(actualDelta.y,actualDelta.x), [-180,180] degrees",
+    "hotspot_rotation": 0,
+    "idle": "Static retained exact anchor; no indefinite render loop.",
+    "capture": "Hide immediately; preserve original monotonic start; resume elapsed current envelope, no replay.",
+    "cancel": "Clear held/expression immediately; retain anchor while service enabled.",
+    "stop": "Withdraw feedback and stop envelope updates; accept no visual samples until explicit service start.",
+    "reduced": "Exact position retained; local scales 1, angle/speed/reversal 0, static pressure ring."
+  },
+  "theme": "Exact dark and high-contrast overrides remain bound in full styles.css; no new theme invented.",
+  "forbidden": [
+    "A2 implementation",
+    "Codex branded arrow",
+    "lagged/predicted hotspot",
+    "autonomous breathing/spin",
+    "detached heavy black badge",
+    "authorization/lease/endpoint changes",
+    "input replay"
+  ]
+}

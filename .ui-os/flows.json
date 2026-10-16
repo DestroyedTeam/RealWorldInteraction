@@ -1,0 +1,106 @@
+{
+  "schema_version": "uios.flows/v0.1",
+  "flows": [
+    {
+      "id": "pointer-feedback",
+      "entry": "Configured interactive device agent starts; no business task/window required.",
+      "success": "Operator can distinguish agent position from human pointer without false action or completion signals.",
+      "actions": [
+        "agent-start",
+        "native-pointer-progress",
+        "native-pointer-pressed",
+        "activity-expire",
+        "capture-suspend",
+        "capture-resume",
+        "agent-stop"
+      ]
+    }
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "scope": "control",
+      "severity": "info",
+      "blocks": [],
+      "recovery": [
+        "native-pointer-progress",
+        "agent-stop"
+      ],
+      "presentation": {
+        "allowed_hosts": [
+          "device-pointer-layer"
+        ],
+        "max_primary_instances": 1,
+        "global_banner": "forbidden"
+      }
+    },
+    {
+      "id": "pointer",
+      "scope": "control",
+      "severity": "info",
+      "blocks": [],
+      "recovery": [
+        "activity-expire",
+        "agent-stop"
+      ],
+      "presentation": {
+        "allowed_hosts": [
+          "device-pointer-layer"
+        ],
+        "max_primary_instances": 1,
+        "global_banner": "forbidden"
+      }
+    },
+    {
+      "id": "pressed",
+      "scope": "control",
+      "severity": "info",
+      "blocks": [],
+      "recovery": [
+        "native-pointer-progress",
+        "activity-expire",
+        "agent-stop"
+      ],
+      "presentation": {
+        "allowed_hosts": [
+          "device-pointer-layer"
+        ],
+        "max_primary_instances": 1,
+        "global_banner": "forbidden"
+      }
+    },
+    {
+      "id": "capture-suspended",
+      "scope": "control",
+      "severity": "info",
+      "blocks": [],
+      "recovery": [
+        "capture-resume",
+        "agent-stop"
+      ],
+      "presentation": {
+        "allowed_hosts": [
+          "device-pointer-layer"
+        ],
+        "max_primary_instances": 1,
+        "global_banner": "forbidden"
+      }
+    },
+    {
+      "id": "service-stopped",
+      "scope": "control",
+      "severity": "info",
+      "blocks": [],
+      "recovery": [
+        "agent-start"
+      ],
+      "presentation": {
+        "allowed_hosts": [
+          "device-pointer-layer"
+        ],
+        "max_primary_instances": 1,
+        "global_banner": "forbidden"
+      }
+    }
+  ]
+}

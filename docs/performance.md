@@ -43,10 +43,10 @@
 从正式工程根目录执行，仅启动零目标 MCP 和合成引擎：
 
 ```sh
-rtk cargo build --release -p rcu-mcp --locked
-rtk cargo build --release -p rcu-core --example lifecycle --features fixture --locked
+rtk cargo build --release -p rwi-mcp --locked
+rtk cargo build --release -p rwi-core --example lifecycle --features fixture --locked
 rtk proxy mkdir -p work/tmp
-rtk proxy env TMPDIR="$PWD/work/tmp" ./target/release/examples/lifecycle "$PWD/target/release/rcu-mcp" > work/benchmark-rerun.json
+rtk proxy env TMPDIR="$PWD/work/tmp" ./target/release/examples/lifecycle "$PWD/target/release/rwi-mcp" > work/benchmark-rerun.json
 ```
 
 原生性能测试另行安排授权窗口，不能把上面的合成命令改名为 native acceptance。

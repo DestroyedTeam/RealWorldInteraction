@@ -1,0 +1,191 @@
+{
+  "schema": "rcu.architecture_migration_progress.v1",
+  "date": "2026-09-12",
+  "architecture_baseline": "ADR 0002: full binding design; delivery stages are not alternate architecture",
+  "architecture_complete": false,
+  "tests": {
+    "default-regression-current.log": {
+      "passed": 192,
+      "ignored": 1,
+      "sha256": "759dacaea6b869609f9b26c8605cb0e4f5cc25e14709e4ba9494e3a33a1fc3d2"
+    },
+    "all-feature-regression-current.log": {
+      "passed": 283,
+      "ignored": 2,
+      "sha256": "be68cd9eb76a43e341452715b3cb37f509ccd6f94c6cee54af8a26e6467ffda1"
+    }
+  },
+  "host": {
+    "actual_codex": true,
+    "model_inference_in_probe": false,
+    "skill_discovered": true,
+    "production_tool_count": 20,
+    "diagnostic_only": false,
+    "project_native_entry_enabled": true,
+    "global_plugin_installation_claimed": false
+  },
+  "native": {
+    "platform": "Windows ARM64",
+    "agent_pid": 6820,
+    "instance": "c3f68bc1-83e8-478f-ba52-4be8b0d5df9d",
+    "agent_sha256": "445e201302438038b41307c563f07cc673b6aa70f33331585c19bce7dc16ed68",
+    "pe_subsystem": "Windows GUI",
+    "own_main_window_handle": 0,
+    "task_manifest_required": false,
+    "app_started_for_service_boot": false,
+    "mouse_sendinput_calls": 2,
+    "page_changes": [
+      "Processes -> Performance",
+      "Performance -> Processes"
+    ],
+    "independent_verification": "new UIA observations and native PNG images; separate two-sample Win32 title predicate",
+    "search_text_preserved": "rcu",
+    "keyboard_tested_in_this_run": false,
+    "any_process_terminated": false,
+    "new_host_reconnected_same_agent": true,
+    "prior_operation_receipt_query_succeeded": true,
+    "replay_allowed": false
+  },
+  "firewall": {
+    "user_approved": true,
+    "rule": "RealComputerUse-Agent-TCP-Mac-45128",
+    "local": "10.211.55.3:45128",
+    "remote": "10.211.55.2",
+    "protocol": "TCP",
+    "program_scope": "installed rcu-agent.exe only",
+    "replaced_broad_tcp_allow": true,
+    "udp_modified_by_agent": false,
+    "global_profiles_modified": false
+  },
+  "evidence": [
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-stable-entry/response-0005.json",
+      "bytes": 537957,
+      "sha256": "9a093a004ba63995f48f0e502a28176370535d509e2b724a9f4bb8acb1bb757c",
+      "structured_json_bytes": null
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-stable-entry/response-0006.json",
+      "bytes": 739,
+      "sha256": "11facc7a42115bbc6365fa8429c8228967386b3de632cd028780ddbad2894447",
+      "structured_json_bytes": 307
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-connected/response-0005.json",
+      "bytes": 537957,
+      "sha256": "030b0d3e695f9d2b1ad9074a11b5afcfa0a634c6ec6f99e986bc681613084e6a",
+      "structured_json_bytes": null
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-connected/response-0006.json",
+      "bytes": 16931,
+      "sha256": "4cbbc0172d2ceecdbdad60445a55c5220a029e00da404b01bdb82e9f0e3ab6ef",
+      "structured_json_bytes": 8106
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0005.json",
+      "bytes": 16931,
+      "sha256": "497a96265080fab844ccf29ed816095ee9295497f0da582995afe35d8d528059",
+      "structured_json_bytes": 8106
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0006.json",
+      "bytes": 4735,
+      "sha256": "2c8835f35d8f46c7c21458082f949fadbe51724330cf1a3b812bf11d318e033d",
+      "structured_json_bytes": 2218
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0007.json",
+      "bytes": 11745,
+      "sha256": "2d1beb208c11d52ff21d4d62c09b22507ea2061580ffd624eb56a3a8200e3cfb",
+      "structured_json_bytes": 5527
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0008.json",
+      "bytes": 2485,
+      "sha256": "35506b7c5e496025652484f4fd31e567884dd703c82373cd992f99fb2fa23aa8",
+      "structured_json_bytes": 1138
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0009.json",
+      "bytes": 230247,
+      "sha256": "c59b8d28bf3e395a6a3261e9f4bf404109b49f7816c4c1545b6e114051488a39",
+      "structured_json_bytes": 81842
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0010.json",
+      "bytes": 1082,
+      "sha256": "80c3fe820ef567680b49f0937500fa2258ba916a01f8bceb9170e909319471b6",
+      "structured_json_bytes": 473
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0011.json",
+      "bytes": 1654,
+      "sha256": "144a3f8596b1775cde575b686ceabe433ddf47db7a8e8d69c14294e04f1f80fe",
+      "structured_json_bytes": 744
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0012.json",
+      "bytes": 986,
+      "sha256": "cefbea434ad78b447bd699f6f9e9eedd845c17aeae609a7d4b773c52a0a2c657",
+      "structured_json_bytes": 427
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0013.json",
+      "bytes": 347482,
+      "sha256": "399cb5a4ac8fa531647189d3f1c89e2c661c46a90c16dfebc4c8b622c00bd674",
+      "structured_json_bytes": 114537
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0014.json",
+      "bytes": 1082,
+      "sha256": "9c66ed2647724f85e37f0a3db2b79870103b2bcd95c002322958793f4ce20b89",
+      "structured_json_bytes": 473
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0015.json",
+      "bytes": 1642,
+      "sha256": "e864d458d6562edf3ffb8b9c1b65c82c5e74745bcb47a61603bb33a94b565fff",
+      "structured_json_bytes": 738
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0016.json",
+      "bytes": 986,
+      "sha256": "8aa01c435f3f7ca50344d144e604ee9f140bd8dbb7f2e2d86899883ccbbba988",
+      "structured_json_bytes": 427
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0017.json",
+      "bytes": 229614,
+      "sha256": "b18a17bec8efdb49795e0b6b4a7a55eca25deb2eeb849592a55d07c947d2f1c4",
+      "structured_json_bytes": 81843
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-observe/response-0018.json",
+      "bytes": 2190,
+      "sha256": "8cb39e4224015727c74edeb5b1c83305c72a6272f8b5b69a622983367faa4879",
+      "structured_json_bytes": 998
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-reconnect/response-0005.json",
+      "bytes": 2599,
+      "sha256": "70812d86024f60a3a06f834f5a5b668f8c2ee30713cad4281ef9ac58f976f42e",
+      "structured_json_bytes": 1200
+    },
+    {
+      "evidence": "work/architecture-migration-20260911/codex-host-native-reconnect/response-0006.json",
+      "bytes": 16931,
+      "sha256": "de2b79e39bfef1e2edc57b252af03e1ab203a5e753a76c53288f630025b3e6b1",
+      "structured_json_bytes": 8106
+    }
+  ],
+  "remaining": [
+    "native application launch policy and generic launch integration",
+    "complete native cancellation/crash/focus-loss matrix, window close/rebind and ordinary/admin contrast",
+    "compact MCP presentation with full evidence fetch",
+    "physical migration of remaining legacy evaluation modules",
+    "non-Windows native platform integration and acceptance",
+    "model-autonomous M-layer and actual global plugin installation acceptance",
+    "independent Control Center re-review"
+  ]
+}

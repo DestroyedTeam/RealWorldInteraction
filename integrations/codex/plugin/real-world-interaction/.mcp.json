@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "real_world_interaction": {
+      "command": "rwi-mcp",
+      "args": []
+    }
+  }
+}

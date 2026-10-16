@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "research_run": {
+    "input_sent": false,
+    "screen_captured": false,
+    "app_started": false,
+    "service_deployed": false,
+    "external_project_modified": false,
+    "retrieved_at": "2026-10-08T05:24:28.087364+00:00"
+  },
+  "thread": {
+    "id": "01a10280-b3ea-72c1-9b86-c58ddd9b2cb3",
+    "title": "任务接力/前后台相关",
+    "project_root": "/Users/vincentadamnemessis/Documents/ChatGPT/Strange Beasts General Store"
+  },
+  "calibration_scan": {
+    "retrieved_at": "2026-10-08T05:19:16.510400+00:00",
+    "base": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs",
+    "kinds": {
+      "background_input_hover_calibration": 37,
+      "background_window_click_calibration": 23,
+      "background_window_keyboard_calibration": 48,
+      "background_window_dragged_hover_calibration": 1,
+      "background_window_fatigue_reveal_calibration": 28
+    },
+    "total": 137,
+    "hover_posted_count": 24,
+    "hover_not_posted_count": 13
+  },
+  "samples": [
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261006-120646-655047/result.json",
+      "sha256": "a0f97162551b8e0af14bd1f29bf5fd9fdb636aea2b1c6d238114f52e8ad831ce",
+      "kind": "background_window_click_calibration",
+      "outcome": "visually_confirmed",
+      "reason": "map_open_and_close_confirmed",
+      "samples": null,
+      "posted": true,
+      "visually_confirmed": true,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 46833,
+      "window_id": 22944,
+      "pid_receive_observed": null,
+      "receiver_scope": null,
+      "event_sequence": null,
+      "mouse_down_posted": null,
+      "mouse_up_posted": null,
+      "global_cursor_unchanged": null
+    },
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261006-134622-482540-keyboard/result.json",
+      "sha256": "32aa2a5b7743fcba1583bd6bbeaa705e85a70f6b66a77633b853e6531228a7f8",
+      "kind": "background_window_keyboard_calibration",
+      "outcome": "visually_confirmed",
+      "reason": "map_open_escape_close_confirmed",
+      "samples": null,
+      "posted": null,
+      "visually_confirmed": true,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 39106,
+      "window_id": 24806,
+      "pid_receive_observed": null,
+      "receiver_scope": null,
+      "event_sequence": null,
+      "mouse_down_posted": null,
+      "mouse_up_posted": null,
+      "global_cursor_unchanged": null
+    },
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261006-235519-563499-dragged-hover/result.json",
+      "sha256": "a716202c6c19af9d4129e68076ad941b4aa30a7333b723de306d42bd6ea96ee8",
+      "kind": "background_window_dragged_hover_calibration",
+      "outcome": "unconfirmed",
+      "reason": "two_matching_tooltip_values_not_observed",
+      "samples": [
+        null,
+        null
+      ],
+      "posted": true,
+      "visually_confirmed": false,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 33895,
+      "window_id": 554,
+      "pid_receive_observed": true,
+      "receiver_scope": "process_event_tap_not_NSView",
+      "event_sequence": [
+        "left_mouse_dragged_without_button"
+      ],
+      "mouse_down_posted": false,
+      "mouse_up_posted": false,
+      "global_cursor_unchanged": true
+    },
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261008-022043-419337-fatigue-reveal/result.json",
+      "sha256": "6849c8d15ef9e494b9599c5facc9a2e3f61d793b1eefbe8d1e617adbd2e61238",
+      "kind": "background_window_fatigue_reveal_calibration",
+      "outcome": "visually_confirmed",
+      "reason": "fatigue_reveal_single_valid_tooltip_value",
+      "samples": [
+        [
+          0,
+          1000
+        ]
+      ],
+      "posted": null,
+      "visually_confirmed": true,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 5152,
+      "window_id": 421,
+      "pid_receive_observed": null,
+      "receiver_scope": null,
+      "event_sequence": null,
+      "mouse_down_posted": null,
+      "mouse_up_posted": null,
+      "global_cursor_unchanged": null
+    },
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261008-022127-516451-fatigue-reveal/result.json",
+      "sha256": "129fa28e83b8c2dc5c7d6cddb16f36512819d951e92855fb855baaedc3344629",
+      "kind": "background_window_fatigue_reveal_calibration",
+      "outcome": "visually_confirmed",
+      "reason": "fatigue_reveal_single_valid_tooltip_value",
+      "samples": [
+        [
+          0,
+          1000
+        ]
+      ],
+      "posted": null,
+      "visually_confirmed": true,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 5152,
+      "window_id": 421,
+      "pid_receive_observed": null,
+      "receiver_scope": null,
+      "event_sequence": null,
+      "mouse_down_posted": null,
+      "mouse_up_posted": null,
+      "global_cursor_unchanged": null
+    },
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261008-022142-413650-fatigue-reveal/result.json",
+      "sha256": "160dbc9b5201c68bee3feed33912fdd06236c8267923ded7aaa889356b7cfc87",
+      "kind": "background_window_fatigue_reveal_calibration",
+      "outcome": "visually_confirmed",
+      "reason": "fatigue_reveal_single_valid_tooltip_value",
+      "samples": [
+        [
+          0,
+          1000
+        ]
+      ],
+      "posted": null,
+      "visually_confirmed": true,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 5152,
+      "window_id": 421,
+      "pid_receive_observed": null,
+      "receiver_scope": null,
+      "event_sequence": null,
+      "mouse_down_posted": null,
+      "mouse_up_posted": null,
+      "global_cursor_unchanged": null
+    },
+    {
+      "path": "/Users/vincentadamnemessis/Library/Application Support/CreatureCurios Automation/logs/background-input-calibration-20261006-134631-046939-hover/result.json",
+      "sha256": "195e2214ddc3484d66b92da205378c38f5897ee55b901555c88145ec8c801d00",
+      "kind": "background_input_hover_calibration",
+      "outcome": "unconfirmed",
+      "reason": "two_matching_tooltip_values_not_observed",
+      "samples": [
+        null,
+        null
+      ],
+      "posted": true,
+      "visually_confirmed": false,
+      "target_active_before": false,
+      "target_active_after": false,
+      "pid": 39106,
+      "window_id": 24806,
+      "pid_receive_observed": null,
+      "receiver_scope": null,
+      "event_sequence": null,
+      "mouse_down_posted": null,
+      "mouse_up_posted": null,
+      "global_cursor_unchanged": null
+    }
+  ],
+  "dragged_hover_is_complete_drag": false,
+  "full_background_drag_acceptance": false,
+  "acceptance_scope": "only records in scanned collection; no blanket historical claim",
+  "capability_parser_gap": {
+    "literal_history_reason": "two_matching_tooltip_values_not_observed",
+    "literal_parser_reason": "single_valid_tooltip_value_not_observed",
+    "implication": "business receipt incompatibility; not OS unsupported"
+  },
+  "native_implementation_added": false,
+  "next_executable_action": "offline Rust/macOS NSEvent mouse construction and roundtrip probe; no GUI allocation yet",
+  "window_states": [
+    "active-visible",
+    "inactive-visible",
+    "fully-occluded",
+    "same-app-sibling-covered",
+    "offscreen",
+    "other-Space",
+    "minimized",
+    "hidden"
+  ],
+  "result_layers": [
+    "constructed",
+    "dispatch_attempted",
+    "pid_received",
+    "window_view_received",
+    "client_position_consumed",
+    "goal_readback_verified"
+  ],
+  "important_hypotheses_not_established_causes": [
+    "Command changes app semantics",
+    "drag source lifecycle",
+    "event delta/state roundtrip",
+    "tracking policy",
+    "client global polling",
+    "rendering suspension"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "source_commit": "d1f237d886473c7bb493c833a2ac93023c527ffa",
+  "fixes": [
+    "Cancellation timeout/disconnect preserves the accepted operation_ref and delivery uncertainty",
+    "Device rejection after acceptance preserves the original operation_ref"
+  ],
+  "default_tests": {
+    "passed": 216,
+    "failed": 0,
+    "ignored": 1
+  },
+  "fmt_passed": true,
+  "clippy_all_features_passed": true,
+  "all_features_suite_scope": {
+    "source_commit": "06ebeb7c95eea75d4beea2bf44ac4c86e942a6b4",
+    "passed": 303,
+    "failed": 0,
+    "ignored": 2,
+    "not_rerun_after_last_reference_only_extension": true
+  },
+  "windows_agent_unchanged_from": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+  "deployment": {
+    "source_commit": "d1f237d886473c7bb493c833a2ac93023c527ffa",
+    "adapter_sha256": "fae961b7046e9ed56c0c3908807d8ccad046c7162ea2622185ddf171414672ff",
+    "same_installation_entry": true,
+    "same_profile": true,
+    "windows_agent_unchanged": true
+  },
+  "independent_review": "pending",
+  "architecture_complete": false,
+  "evidence": {
+    "work/execution-ref-v2-20260912/accepted-error-fix/default-tests.raw.log": {
+      "bytes": 26377,
+      "sha256": "4b556fb2ce25f4af21de781f4c347a7dac167c3581780b5edcf75e6a4619c054"
+    },
+    "work/execution-ref-v2-20260912/accepted-error-fix/clippy.raw.log": {
+      "bytes": 180,
+      "sha256": "9de0b2ca80fb6d975d3f674aee7fea193f2067f20a752e6e5c26a6f059c41bd2"
+    },
+    "work/execution-ref-v2-20260912/cancel-fix/all-features-tests.raw.log": {
+      "bytes": 35378,
+      "sha256": "b61b14e0950e1eb9dc14d71f76aa8d9e285b71be3065ba271b4a37abed89cb0e"
+    },
+    "work/execution-ref-v2-20260912/cancel-reference-fix.raw.log": {
+      "bytes": 483,
+      "sha256": "5f1ebe0bf84d3f1f94beed525f0c2a3639c466a788b4ea3c0b0c4c744c370790"
+    }
+  }
+}

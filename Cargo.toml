@@ -1,9 +1,9 @@
 [workspace]
-members = ["crates/rcu-core", "crates/rcu-mcp", "crates/rcu-macos", "crates/rcu-windows", "crates/rcu-imaging"]
+members = ["crates/rwi-agent", "crates/rwi-core", "crates/rwi-mcp", "crates/rwi-macos", "crates/rwi-windows", "crates/rwi-imaging", "crates/rwi-pointer", "crates/rwi-link-trust", "crates/rwi-native-link", "crates/rwi-js"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0-m3a.7"
 edition = "2024"
 license = "GPL-3.0-only"
 rust-version = "1.95"

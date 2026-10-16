@@ -1,0 +1,176 @@
+{
+  "thread_id": "01a09428-8f54-7be1-a500-9091dd9fb7ff",
+  "title": "验证新 JS MCP 并清理 Windows CrossMacro 进程",
+  "turn_id": "01a09428-90c2-75c1-9e59-afd25b6de9cb",
+  "start_local": "2026-09-12T13:48:01.679+08:00",
+  "complete_local": "2026-09-12T13:58:56.960+08:00",
+  "host_turn_ms": 655366,
+  "logged_elapsed_ms": 655281,
+  "host_tool_batches": 25,
+  "mcp_duration_sum_ms": 63250.718877,
+  "mcp_interval_union_ms": 63253,
+  "batch_interval_union_ms": 66548,
+  "result_to_next_step_sum_ms": 577732,
+  "result_to_next_step_p50_ms": 20763,
+  "result_to_next_step_p95_ms": 43822,
+  "initial_dispatch_ms": 10911,
+  "last_message_to_turn_end_ms": 90,
+  "output_text_utf8_bytes": 167067,
+  "output_images": 14,
+  "groups": {
+    "computer.js": {
+      "count": 23,
+      "duration_sum_ms": 63250.718877,
+      "failures": 2,
+      "p50_ms": 1145.114542,
+      "p95_ms": 10912.110417
+    }
+  },
+  "routed_calls": 133,
+  "routed_duration_sum_ms": 63138.090372,
+  "routed_groups": {
+    "computer.targets": {
+      "count": 3,
+      "elapsed_ms": 30.002416999999998,
+      "errors": 0
+    },
+    "computer.discover": {
+      "count": 4,
+      "elapsed_ms": 112.71520799999999,
+      "errors": 0
+    },
+    "computer.bind_window": {
+      "count": 2,
+      "elapsed_ms": 29.191291999999997,
+      "errors": 0
+    },
+    "computer.observe": {
+      "count": 36,
+      "elapsed_ms": 23806.084079000007,
+      "errors": 0
+    },
+    "computer.result": {
+      "count": 17,
+      "elapsed_ms": 2.940211,
+      "errors": 0
+    },
+    "computer.claim": {
+      "count": 18,
+      "elapsed_ms": 198.306874,
+      "errors": 0
+    },
+    "computer.act_checked": {
+      "count": 21,
+      "elapsed_ms": 33473.31591600001,
+      "errors": 1
+    },
+    "computer.release": {
+      "count": 18,
+      "elapsed_ms": 85.04141700000001,
+      "errors": 0
+    },
+    "computer.image": {
+      "count": 4,
+      "elapsed_ms": 162.70775,
+      "errors": 0
+    },
+    "computer.resolve_view": {
+      "count": 3,
+      "elapsed_ms": 7.222916,
+      "errors": 0
+    },
+    "computer.act": {
+      "count": 2,
+      "elapsed_ms": 3663.17675,
+      "errors": 0
+    },
+    "computer.operation": {
+      "count": 3,
+      "elapsed_ms": 13.791666,
+      "errors": 0
+    },
+    "computer.verify": {
+      "count": 2,
+      "elapsed_ms": 1553.593876,
+      "errors": 0
+    }
+  },
+  "outer_mcp_calls": 23,
+  "model": "gpt-6-astra",
+  "reasoning_effort": "max",
+  "without_project_mcp_config": true,
+  "routed_device_capability_calls": 116,
+  "outcome": {
+    "final_visible_filter": "crossma",
+    "final_visible_state": "No filter results",
+    "final_uia_elements_returned": 46,
+    "final_uia_elements_total": 46,
+    "final_native_uia_complete": true,
+    "initial_visible_processes": {
+      "CrossMacro.exe": [
+        7232,
+        2480,
+        4724,
+        668,
+        4436,
+        7084
+      ],
+      "CrossMacroMCPBridge.exe": [
+        2356,
+        7132,
+        6248,
+        2324,
+        4828,
+        9500
+      ]
+    },
+    "individually_confirmed_termination_pids": [
+      4724,
+      668,
+      4436,
+      7084
+    ],
+    "other_exit_causes": "not independently established",
+    "native_screenshot_sha256": "f8d0fc23fe95b66acf468b89023f5b96b1ea799dbf7dcdcf59237f5fb0833e63",
+    "process_absence_scope": "Task Manager GUI during final rechecks, not independent kernel enumeration or future restart monitoring"
+  },
+  "previous_observation": {
+    "thread_id": "01a09395-5b92-7812-ba25-878aceb09466",
+    "host_turn_ms": 557308,
+    "mcp_duration_sum_ms": 108145.765669,
+    "host_tool_batches": 30,
+    "result_to_next_step_sum_ms": 426820,
+    "output_text_utf8_bytes": 219890,
+    "output_images": 4
+  },
+  "comparison": {
+    "elapsed_increase_ms": 98058,
+    "elapsed_increase_percent": 17.59493852591385,
+    "controlled_ab_test": false,
+    "efficiency_acceptance": "not demonstrated; this observed whole turn was slower"
+  },
+  "boundary": "Outer MCP and inner routed calls are nested, not additive. Routed calls include 17 adapter-local metadata reads. Model/Host gaps are not pure inference timing. Explicit source/effect evidence only; no private reasoning content exported.",
+  "findings": [
+    {
+      "kind": "uia_coverage",
+      "observed": "128 nodes / 1500 ms cooperative traversal budget; initial native_complete false; modal controls intermittently absent",
+      "precise_trigger": "node count versus elapsed budget not disambiguated"
+    },
+    {
+      "kind": "input_capability",
+      "observed": "Windows input planner supports F4/F10 but not F5; unsupported_chord; native_dispatch_entered false"
+    },
+    {
+      "kind": "error_presentation",
+      "observed": "F5 result is_error false with nested dispatch_error; SDK threw generic operation_failed, cell reset required rebuilding state"
+    },
+    {
+      "kind": "precondition_guard",
+      "observed": "checked_precondition_changed and a failed coordinate acknowledgement led to original-record queries; do not remove guards to claim speed"
+    },
+    {
+      "kind": "model_output",
+      "observed": "14 delivered images and 167067 visible UTF-8 text bytes; these correlate with this run but do not establish causation for the model gaps"
+    }
+  ]
+}

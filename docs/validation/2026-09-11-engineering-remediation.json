@@ -1,0 +1,106 @@
+{
+  "schema": "rcu.engineering-remediation.validation.v1",
+  "date": "2026-09-11",
+  "source_commit": "a46d4cd",
+  "tests": {
+    "release-gate-default.log": {
+      "passed": 223,
+      "failed": 0,
+      "ignored": 1
+    },
+    "release-gate-all-features.log": {
+      "passed": 265,
+      "failed": 0,
+      "ignored": 2
+    },
+    "release-gate-codex-host.log": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    }
+  },
+  "fmt": true,
+  "clippy_host_all_targets_all_features": true,
+  "windows_arm64_cross_clippy": true,
+  "actual_codex_host": true,
+  "actual_model_inference": false,
+  "windows_native_executed_in_this_remediation": false,
+  "registered_app": false,
+  "full_architecture_acceptance": false,
+  "git_remote": "https://github.com/DestroyedTeam/RealComputerUse",
+  "visibility": "private",
+  "branch": "engineering/governance-native-mcp",
+  "evidence": [
+    {
+      "local_relative_path": "work/native-mcp-remediation/release-gate-default.log",
+      "bytes": 26700,
+      "sha256": "2be0ed0223ea4a2ab22d9a868cb97cb902da327c93ce0501f0de871064c5a098",
+      "raw_evidence_not_committed": true
+    },
+    {
+      "local_relative_path": "work/native-mcp-remediation/release-gate-all-features.log",
+      "bytes": 30626,
+      "sha256": "2ca81274090162804d92693060cb3df6ef99b4860286e98bec1173c056d5387e",
+      "raw_evidence_not_committed": true
+    },
+    {
+      "local_relative_path": "work/native-mcp-remediation/release-gate-codex-host.log",
+      "bytes": 473,
+      "sha256": "5172889360dc0bfe217bf1be7dfae326355c288cc02222f821848355a444e812",
+      "raw_evidence_not_committed": true
+    },
+    {
+      "local_relative_path": "work/native-mcp-remediation/release-gate-clippy.log",
+      "bytes": 312,
+      "sha256": "afe5ad456438c1eeda2465fb5dc02953aa758beb111a19a476f26aff9b8005da",
+      "raw_evidence_not_committed": true
+    },
+    {
+      "local_relative_path": "work/native-mcp-remediation/release-gate-windows-arm64.log",
+      "bytes": 312,
+      "sha256": "a39d4c5eca755803178b094c1d9f22e4ebb6d1d880769717e395ab841ecb4d37",
+      "raw_evidence_not_committed": true
+    },
+    {
+      "local_relative_path": "work/native-mcp-remediation/root-host-evidence/codex-native-host.json",
+      "bytes": 439769,
+      "sha256": "57f6c0279be8d825fbac4ba551d730e156604268cb4c02ebedf99ae30f466961",
+      "raw_evidence_not_committed": true
+    },
+    {
+      "local_relative_path": "work/native-mcp-remediation/output-measurement-final.json",
+      "bytes": 1211,
+      "sha256": "a65a0123a63c246652436caa2532f92e88c742163eb6db8f1ded3dab79bac20b",
+      "raw_evidence_not_committed": true
+    }
+  ],
+  "observation_text_measurements": [
+    {
+      "source_response": "response-006.json",
+      "before_text_bytes": 136876,
+      "after_text_bytes": 16925,
+      "before_wire_bytes": 449181,
+      "after_wire_bytes": 200853,
+      "projection_and_durable_archive_ms": 41.296292,
+      "offline_replay": true
+    },
+    {
+      "source_response": "response-018.json",
+      "before_text_bytes": 76459,
+      "after_text_bytes": 18823,
+      "before_wire_bytes": 223331,
+      "after_wire_bytes": 104151,
+      "projection_and_durable_archive_ms": 23.477709,
+      "offline_replay": true
+    },
+    {
+      "source_response": "response-198.json",
+      "before_text_bytes": 569,
+      "after_text_bytes": 863,
+      "before_wire_bytes": 1314,
+      "after_wire_bytes": 1892,
+      "projection_and_durable_archive_ms": 0.5002500000000001,
+      "offline_replay": true
+    }
+  ]
+}

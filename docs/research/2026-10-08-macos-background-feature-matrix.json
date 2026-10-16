@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-10-08",
+  "ratings_definition": {
+    "difficulty_stars": "1 isolated local change;2 public FFI/state;3 cross-layer state/tests;4 multiwindow/framework/window-local authority;5 SPI ABI/focus/raw/DnD/paused rendering and broad validation",
+    "complexity": "independent state/coupling/ABI/test-matrix estimate; not calendar duration",
+    "api_support": "public app-side API is not universal cross-process goal guarantee; SPI availability is not public stability"
+  },
+  "live_acceptance_performed": false,
+  "features": [
+    {
+      "id": "F01",
+      "name": "NSEvent构造/roundtrip",
+      "difficulty_stars": 2,
+      "complexity": "medium",
+      "api_support": "公开构造API；不负责transport",
+      "scope": "macOS factory，非跨进程投递",
+      "completion_judgment": "windowNumber/base坐标、uptime、bridge null与字段读回；容易补构造层，不单独交付真后台",
+      "evidence_ids": [
+        "root-apple-d4e9b1767dbbb82b",
+        "NI-R01-CODE01"
+      ]
+    },
+    {
+      "id": "F02",
+      "name": "PID/window click与key",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开CGEvent PID post＋部分SPI stamping",
+      "scope": "应用普通事件，不含全局hotkey/raw game",
+      "completion_judgment": "接收窗口/firstResponder、flags/timestamp及goal读回；void post不算消费ACK",
+      "evidence_ids": [
+        "auto-trycua-cua-file-4",
+        "NI-R02-CODE01",
+        "root-so-79530459"
+      ]
+    },
+    {
+      "id": "F03",
+      "name": "SkyLight候选transport",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "私有SPI，无Apple公开稳定ABI契约",
+      "scope": "仅明确探测OS/arch/ABI的实验route",
+      "completion_judgment": "dlsym/null、private auth、no-raise恢复、一次派发及错误隔离；可受控实现，不全量默认替换",
+      "evidence_ids": [
+        "auto-trycua-cua-file-3",
+        "auto-trycua-cua-issue-2688"
+      ]
+    },
+    {
+      "id": "F04",
+      "name": "完整drag/source状态",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开event/state/field；目标接受有条件",
+      "scope": "同window有界drag，不继承DnD",
+      "completion_judgment": "down/dragged/up、Quartz配对eventNumber/pressure/delta、source lifetime、release-only；优先补并禁止重发down",
+      "evidence_ids": [
+        "NI-R07-CODE01",
+        "root-apple-6eeaca7b1989a113",
+        "root-apple-9683e1ad62dba15a",
+        "NI-R03-ISSUE159"
+      ]
+    },
+    {
+      "id": "F05",
+      "name": "typed move/hover/tooltip",
+      "difficulty_stars": 4,
+      "complexity": "high",
+      "api_support": "公开app-side tracking；非通用跨进程效果保证",
+      "scope": "callback/enter/exit/高亮/tooltip分开",
+      "completion_judgment": "active策略、nested loop、global poll、dwell/readback；应原创实现，不伪造tracking指针/把overlay当hover",
+      "evidence_ids": [
+        "auto-trycua-cua-file-9",
+        "root-apple-f2c9ebd40e801549",
+        "FW-S083"
+      ]
+    },
+    {
+      "id": "F06",
+      "name": "relative/raw游戏兼容",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "公开client raw API，无通用定向raw保证",
+      "scope": "确认实际framework/GameHub/Wine构建",
+      "completion_judgment": "event-local/global-poll、delta/GCMouse/capture；按client补，未知诚实报告，不静默warp",
+      "evidence_ids": [
+        "FW-S009",
+        "FW-S034",
+        "NI-R07-CODE01"
+      ]
+    },
+    {
+      "id": "F07",
+      "name": "key-focus接收与恢复",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "公开状态＋SPI focus，frontmost PID不足",
+      "scope": "用户前台输入不受干扰及目标AppKit key状态",
+      "completion_judgment": "记录key recipient、physical-input连续性、restore；CPS panel与normal window不同",
+      "evidence_ids": [
+        "auto-trycua-cua-file-3",
+        "root-article-philz-nonactivating",
+        "NI-R12-CODE01"
+      ]
+    },
+    {
+      "id": "F08",
+      "name": "covered/offscreen capture",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开SCK明确支持",
+      "scope": "单window流，非minimized连续刷新",
+      "completion_judgment": "non-on-screen枚举、SC status/dirty/scale/stride；RWI枚举与input mapping缺口应补",
+      "evidence_ids": [
+        "root-article-wwdc22-10155",
+        "FW-S069",
+        "NI-A19"
+      ]
+    },
+    {
+      "id": "F09",
+      "name": "window-local authority",
+      "difficulty_stars": 4,
+      "complexity": "high",
+      "api_support": "公开geometry/capture，input效果有条件",
+      "scope": "输入不依赖window完整落入一个display",
+      "completion_judgment": "identity/epoch、pixel-point-base、frame/content/负origin；可改架构，不直接删mapping/hit/lease",
+      "evidence_ids": [
+        "root-apple-5fe5b308649c51dd",
+        "FW-S102",
+        "auto-trycua-cua-file-2"
+      ]
+    },
+    {
+      "id": "F10",
+      "name": "minimized/hidden目标",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "minimized SCK pause已说明，renderer策略app依赖",
+      "scope": "语义动作与fresh pixels分别报告",
+      "completion_judgment": "paused/stale不可作fresh proof，不能自动unhide伪装后台；semantic-only/合作app另定义",
+      "evidence_ids": [
+        "root-article-wwdc22-10155",
+        "FW-S094",
+        "auto-trycua-cua-file-2"
+      ]
+    },
+    {
+      "id": "F11",
+      "name": "AX语义/hover-like动作",
+      "difficulty_stars": 2,
+      "complexity": "medium",
+      "api_support": "公开AX，provider支持/效果需验证",
+      "scope": "仅advertised action/可写attribute",
+      "completion_judgment": "Press/ShowAlternateUI/SetValue不是pointer；可能no-op须goal读回，优先补且不连带禁其他route",
+      "evidence_ids": [
+        "NI-R14-CODE01",
+        "NI-R15-CODE01",
+        "auto-trycua-cua-issue-4864"
+      ]
+    },
+    {
+      "id": "F12",
+      "name": "多window/popup Live",
+      "difficulty_stars": 4,
+      "complexity": "high",
+      "api_support": "公开catalog/AX/SCK，归属需证据",
+      "scope": "授权归属图，不是单PID硬门禁",
+      "completion_judgment": "single-window不带child/popup，OS dialog可不同PID；补聚合/重发现，不扩大secure-session授权",
+      "evidence_ids": [
+        "root-article-wwdc22-10155",
+        "NI-R02-ISSUE2650",
+        "auto-doc-selenium-windows"
+      ]
+    },
+    {
+      "id": "F13",
+      "name": "跨window/app原生DnD",
+      "difficulty_stars": 5,
+      "complexity": "very_high",
+      "api_support": "公开app-side session/pasteboard，不保证任意注入",
+      "scope": "与slider/canvas drag独立",
+      "completion_judgment": "MIME/destination/capture/enter/move/leave/drop与多资源scope；独立长阶段先自有fixture，未提供不等于不能做",
+      "evidence_ids": [
+        "FW-S088",
+        "FW-S089",
+        "FW-S101"
+      ]
+    },
+    {
+      "id": "F14",
+      "name": "browser内容独立route",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开browser协议，不是任意Mac input API",
+      "scope": "CDP/page/DOM，不含native toolbar/OS panels",
+      "completion_judgment": "context lifecycle、buttons/dragover/incognito；可显式整合，native route保留，不静默global fallback",
+      "evidence_ids": [
+        "auto-doc-pw-pages",
+        "auto-doc-pw-input",
+        "auto-doc-webdriver-spec"
+      ]
+    },
+    {
+      "id": "F15",
+      "name": "hook/runloop/取消恢复",
+      "difficulty_stars": 3,
+      "complexity": "high",
+      "api_support": "公开tap/runloop，权限和模式仍有约束",
+      "scope": "native source/observer/tap生命周期",
+      "completion_judgment": "common modes、callback retain、disabled/wake、cancel/up清理；迁移状态机而非global干扰",
+      "evidence_ids": [
+        "NI-A11",
+        "NI-A12",
+        "NI-R13-CODE01",
+        "NI-R12-CODE01"
+      ]
+    },
+    {
+      "id": "F16",
+      "name": "capture性能/画质/Live",
+      "difficulty_stars": 3,
+      "complexity": "medium",
+      "api_support": "公开SCK metadata；需独立hardware测量",
+      "scope": "capture/convert/encode/MCP分层",
+      "completion_judgment": "bytesPerRow、dirty/contentRect/scale、fresh status/source调度；可做性能工程，不凭语言/上游benchmark推快",
+      "evidence_ids": [
+        "NI-A19",
+        "root-article-wwdc22-10155",
+        "FW-S069"
+      ]
+    }
+  ],
+  "decision": "Rust原生、多route、按动作/窗口状态报告能力；NSEvent工厂为优先候选之一，SkyLight显式SPI候选比较；不等待完美开源库，也不凭库缺口宣判不可能。",
+  "first_implementation_gate": "offline constructor/roundtrip/source-state and protocol-capability tests before allocated GUI recorder",
+  "acceptance_layers": [
+    "constructed",
+    "dispatch attempted",
+    "PID tap received",
+    "window/view callback",
+    "client uses expected state/coordinates",
+    "goal readback",
+    "user physical-input continuity and restoration"
+  ],
+  "non_goals": [
+    "no unreviewed install script or third-party runtime deployment",
+    "no Python/Node/Ruby/Java as RWI backend",
+    "no silent activate/warp, identity/lease/no-replay weakening",
+    "trycua/cua is not Codex built-in Computer Use",
+    "no Mac results extrapolated to Windows/Linux"
+  ]
+}
