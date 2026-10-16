@@ -16,6 +16,7 @@ before native testing; default behavior uses only its own window on that display
 An explicit peer-pinned Command+Tab test actor and --native-dnd-controls are default-off; --check-only validates allocated configuration without GUI/input.\n\
 Default own-window lifetime is 120000 ms; no timer is started by help/no arguments.\n\
 Own-client --first-mouse=true|false policy is default YES; check-only creates no GUI.\n\
+Default-off --ax-focused-window-once-delay-ms 55..100 requires a regular sampled own app; preserves superclass focused-window values and never posts input.\n\
 Default-off --legacy-tracking-calibration registers only its own displayed hover view with NULL userData; not a generic modern hover oracle.";
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
@@ -61,6 +62,8 @@ pub struct Options {
     pub legacy_self_foreground: bool,
     /// Explicit own-provider latency test, no production agent behavior.
     pub ax_windows_delay_ms: Option<u32>,
+    /// Own provider only: delay one active focused-window read after an inactive read.
+    pub ax_focused_window_once_delay_ms: Option<u32>,
     pub command_tab: Option<command_tab::Config>,
     /// Validation only: no state directory, framework call, window or timer.
     pub check_only: bool,
@@ -123,6 +126,7 @@ impl Options {
         let mut self_foreground_on_first_down_after_ms = None;
         let mut legacy_self_foreground = false;
         let mut ax_windows_delay_ms = None;
+        let mut ax_focused_window_once_delay_ms = None;
         let mut command_tab_delay = None;
         let mut command_tab_start_foreground = false;
         let mut command_tab_peer_pid = None;
@@ -230,6 +234,18 @@ impl Options {
                             .ok_or("first-down own foreground delay must be 100..5000 ms")?,
                     );
                 }
+                "--ax-focused-window-once-delay-ms"
+                    if ax_focused_window_once_delay_ms.is_none() =>
+                {
+                    ax_focused_window_once_delay_ms = Some(
+                        args.next()
+                            .ok_or("focused window delay missing")?
+                            .parse::<u32>()
+                            .ok()
+                            .filter(|ms| (55..=100).contains(ms))
+                            .ok_or("own focused-window once delay must be 55..100 ms")?,
+                    );
+                }
                 "--ax-windows-delay-ms" if ax_windows_delay_ms.is_none() => {
                     ax_windows_delay_ms = Some(
                         args.next()
@@ -294,6 +310,7 @@ impl Options {
             && self_foreground_on_first_down_after_ms.is_none()
             && !legacy_self_foreground
             && ax_windows_delay_ms.is_none()
+            && ax_focused_window_once_delay_ms.is_none()
             && command_tab_delay.is_none()
             && !command_tab_start_foreground
             && command_tab_peer_pid.is_none()
@@ -347,6 +364,7 @@ impl Options {
                 || self_foreground_on_first_down_after_ms.is_some()
                 || legacy_self_foreground
                 || ax_windows_delay_ms.is_some()
+                || ax_focused_window_once_delay_ms.is_some()
                 || command_tab_delay.is_some()
                 || command_tab_peer_pid.is_some()
                 || command_tab_peer_window.is_some()
@@ -368,6 +386,7 @@ impl Options {
                 || self_foreground_on_first_down_after_ms.is_some()
                 || legacy_self_foreground
                 || ax_windows_delay_ms.is_some()
+                || ax_focused_window_once_delay_ms.is_some()
                 || command_tab_delay.is_some()
                 || command_tab_peer_pid.is_some()
                 || command_tab_peer_window.is_some()
@@ -439,6 +458,31 @@ impl Options {
         }
         if ax_windows_delay_ms.is_some() && !regular_app {
             return Err("own AX windows provider test requires --regular-app".into());
+        }
+        if ax_focused_window_once_delay_ms.is_some()
+            && (!regular_app
+                || environment_sample_ms.is_none()
+                || ax_windows_delay_ms.is_some()
+                || cover_controls
+                || right_side
+                || boundary_right
+                || boundary_canvas_right
+                || modal_controls
+                || system_panel_controls
+                || native_dnd_controls
+                || semantic_alternate_ui
+                || hover_first_responder
+                || live_freshness_ticks
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || legacy_self_foreground
+                || command_tab_delay.is_some()
+                || command_tab_start_foreground
+                || command_tab_peer_pid.is_some()
+                || command_tab_peer_window.is_some()
+                || command_tab_peer_bundle.is_some())
+        {
+            return Err("focused-window delay requires one allocated regular own app with environment samples, without other delays, geometry, panels or actors".into());
         }
         let command_tab = if command_tab_delay.is_some()
             || command_tab_start_foreground
@@ -523,6 +567,7 @@ impl Options {
             self_foreground_on_first_down_after_ms,
             legacy_self_foreground,
             ax_windows_delay_ms,
+            ax_focused_window_once_delay_ms,
             command_tab,
             check_only,
         }))
@@ -3706,5 +3751,101 @@ mod live_freshness_ticks_contract {
         assert_eq!(s.environment_probe_ticks, 1);
         assert!(s.live_freshness_last_canvas_draw_tick.is_none());
         assert_eq!((s.sequence, s.safe_button_actions), (0, 0));
+    }
+}
+
+#[cfg(test)]
+mod f119_focused_provider_contract {
+    use super::*;
+    fn parse(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "own-focused-provider",
+                "--state-dir",
+                "/tmp/rwi-f119-check-only",
+                "--display-id",
+                "4",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn f119_foreground_provider_cli_default_and_valid_ranges() {
+        assert!(
+            parse(&[])
+                .unwrap()
+                .unwrap()
+                .ax_focused_window_once_delay_ms
+                .is_none()
+        );
+        for ms in ["55", "60", "100"] {
+            assert!(
+                parse(&[
+                    "--regular-app",
+                    "--environment-sample-ms",
+                    "100",
+                    "--ax-focused-window-once-delay-ms",
+                    ms
+                ])
+                .unwrap()
+                .unwrap()
+                .ax_focused_window_once_delay_ms
+                .is_some()
+            );
+        }
+    }
+    #[test]
+    fn f119_foreground_provider_cli_refuses_ranges_duplicates_and_mixed_modes() {
+        let base = [
+            "--regular-app",
+            "--environment-sample-ms",
+            "100",
+            "--ax-focused-window-once-delay-ms",
+        ];
+        for ms in ["0", "54", "101", "-1", "x"] {
+            let mut args = base.to_vec();
+            args.push(ms);
+            assert!(parse(&args).is_err());
+        }
+        assert!(parse(&base).is_err());
+        let mut args = base.to_vec();
+        args.push("60");
+        for extra in [
+            vec!["--ax-focused-window-once-delay-ms", "60"],
+            vec!["--ax-windows-delay-ms", "75"],
+            vec!["--modal-controls"],
+            vec!["--right-side"],
+            vec!["--native-dnd-controls"],
+        ] {
+            let mut all = args.clone();
+            all.extend(extra);
+            assert!(parse(&all).is_err());
+        }
+    }
+    #[test]
+    fn f119_foreground_provider_cli_requires_allocation_and_regular_sampled_app() {
+        assert!(
+            Options::parse(
+                ["--ax-focused-window-once-delay-ms", "60", "--check-only"]
+                    .into_iter()
+                    .map(str::to_owned)
+            )
+            .is_err()
+        );
+        assert!(parse(&["--ax-focused-window-once-delay-ms", "60"]).is_err());
+        assert!(parse(&["--regular-app", "--ax-focused-window-once-delay-ms", "60"]).is_err());
+        assert!(
+            parse(&[
+                "--environment-sample-ms",
+                "100",
+                "--ax-focused-window-once-delay-ms",
+                "60"
+            ])
+            .is_err()
+        );
     }
 }

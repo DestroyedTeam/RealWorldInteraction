@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "command_tab":options.command_tab,
                 "first_mouse_acceptance_requested":options.first_mouse_acceptance,
                 "first_mouse_native_selector_observed":false,
+                "ax_focused_window_once_delay_ms":options.ax_focused_window_once_delay_ms,
                 "semantic_alternate_ui_requested":options.semantic_alternate_ui,
                 "semantic_native_callbacks_observed":false,
                 "legacy_tracking_calibration_requested":options.legacy_tracking_calibration,

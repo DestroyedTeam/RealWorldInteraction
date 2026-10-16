@@ -1877,10 +1877,7 @@ fn classes() -> Result<FixtureClasses, String> {
             sel!(view:stringForToolTip:point:userData:),
             tooltip_requested as extern "C" fn(_, _, _, _, _, _) -> _,
         );
-        application.add_method(
-            sel!(accessibilityWindows),
-            super::ax_delay::accessibility_windows as extern "C" fn(_, _) -> _,
-        );
+        super::ax_delay::register(&mut application);
         application.add_method(
             sel!(sendEvent:),
             application_send_event as extern "C" fn(_, _, _),
@@ -2542,7 +2539,10 @@ pub fn run(options: Options) -> Result<(), String> {
                     cell.borrow_mut().as_mut().unwrap().self_foreground_timer = Some(timer);
                 });
             }
-            super::ax_delay::configure(options.ax_windows_delay_ms);
+            super::ax_delay::configure(
+                options.ax_windows_delay_ms,
+                options.ax_focused_window_once_delay_ms,
+            );
             let _: () = msg_send![&*app, run];
             let result: Result<(), String> = with_detached_ui(|ui| {
                 ui.invalidate_lifetime_timer();
