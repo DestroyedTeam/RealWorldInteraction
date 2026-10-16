@@ -40,8 +40,15 @@ struct StartArgs {
     options: rwi_core::LiveOptions,
 }
 pub(super) fn start_tool() -> Tool {
-    Tool::new(START_TOOL, "Start a bounded Live preview and render its conversation component on a Host that negotiated MCP Apps HTML. Supply an already selected window target and an explicit viewer display in options; native authorization remains authoritative. No independent browser tab required by this route. Use computer.live for status/hide/resume/stop so control calls do not recreate the component. A returned resource is not proof of visible UI or task-switch binding.",
-        Arc::new(serde_json::to_value(schemars::schema_for!(StartArgs)).unwrap().as_object().unwrap().clone()))
+    let mut schema = serde_json::to_value(schemars::schema_for!(StartArgs)).unwrap();
+    // Only this negotiated component entry point permits display omission. Keep
+    // computer.live and the shared Native options schema explicit-display-only.
+    schema["$defs"]["LiveOptions"]["required"]
+        .as_array_mut()
+        .expect("LiveOptions required fields")
+        .retain(|field| field != "display");
+    Tool::new(START_TOOL, "Show a bounded Live preview in this conversation (MCP Apps HTML required). Supply a selected target and options: omit display for conversation-only cached pixels; specify display to also show a native overlay there. Stop the prior preview before changing presentation. Native authorization remains authoritative. Use computer.live for status/hide/resume/stop; a resource is not proof of rendered pixels or task-switch binding.",
+        Arc::new(schema.as_object().unwrap().clone()))
         .with_title("Show conversation Live preview")
         .with_annotations(ToolAnnotations::new().read_only(false).destructive(false))
         .with_meta(meta(json!({"ui":{"resourceUri":URI}})))
@@ -125,12 +132,20 @@ impl Gateway {
                 "Host has not declared MCP Apps HTML support; use computer.live and its explicit viewer result. No Live was started.",
             ));
         }
-        let args = match serde_json::from_value::<StartArgs>(Value::Object(args)) {
+        let args = Value::Object(args);
+        // Reject before serde can erase an explicitly supplied false flag.
+        if presence::reserved_arguments(&args) {
+            return mcp_result(DeviceResult::error(
+                "host_view_reserved",
+                "Host visibility is published only by the task-owned view, not tool arguments.",
+            ));
+        }
+        let args = match serde_json::from_value::<StartArgs>(args) {
             Ok(args) => args,
             Err(_) => {
                 return mcp_result(DeviceResult::error(
                     "invalid_live_ui_start",
-                    "Supply an already selected target and explicit viewer options, without action or visibility fields.",
+                    "Supply a selected target and options, without action or visibility fields; display is optional on this component route.",
                 ));
             }
         };
@@ -143,13 +158,17 @@ impl Gateway {
                 ));
             }
         };
-        let mut result = self
-            .invoke(
+        let mut result = if args.options.display.is_some() {
+            self.invoke(
                 "computer.live",
                 json!({"target":args.target,"action":"start","options":args.options}),
                 Some(context),
             )
-            .await;
+            .await
+        } else {
+            self.host_component_start(&args.target, args.options, context)
+                .await
+        };
         let metadata = self.prepare_live_app(&mut result, &args.target).await;
         let mut reply = mcp_result(result);
         reply.meta = metadata;
@@ -269,6 +288,33 @@ mod tests {
         ] {
             assert_eq!(supports(&serde_json::from_value(value).unwrap()), expected);
         }
+    }
+    #[test]
+    fn only_show_live_schema_allows_display_omission_and_keeps_bindings_private() {
+        let tool = serde_json::to_value(start_tool()).unwrap();
+        let options = &tool["inputSchema"]["$defs"]["LiveOptions"];
+        assert!(
+            !options["required"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("display"))
+        );
+        for name in ["host_view_id", "host_image_only"] {
+            assert!(options["properties"].get(name).is_none());
+        }
+        let native = serde_json::to_value(schemars::schema_for!(rwi_core::LiveOptions)).unwrap();
+        assert!(
+            native["required"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("display"))
+        );
+        assert!(
+            tool["inputSchema"]["required"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("options"))
+        );
     }
     #[test]
     fn component_events_cannot_select_targets_or_replay_old_pages() {

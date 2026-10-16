@@ -1,7 +1,9 @@
 //! Loopback-only Host-panel visibility publisher. No screen, input or credentials
 //! are served over HTTP. The authenticated device context remains in Gateway.
 use super::*;
+mod component;
 mod image;
+pub(super) use component::reserved_arguments;
 use std::{
     net::SocketAddr,
     time::{Duration, Instant},
@@ -184,12 +186,7 @@ impl Gateway {
         mut args: Value,
         context: Option<RequestContext<RoleServer>>,
     ) -> DeviceResult {
-        if args.pointer("/options/host_image_only").is_some()
-            || args.get("view").is_some_and(|v| !v.is_null())
-            || args
-                .pointer("/options/host_view_id")
-                .is_some_and(|v| !v.is_null())
-        {
+        if reserved_arguments(&args) {
             return err(
                 "host_view_reserved",
                 "Host visibility is published only by the task-owned view, not tool arguments.",
