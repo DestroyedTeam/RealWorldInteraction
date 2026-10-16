@@ -21,6 +21,9 @@ mod native_dnd;
 #[path = "receiver_fixture/semantic_alternate_ui.rs"]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod semantic_alternate_ui;
+#[path = "receiver_fixture/text_client.rs"]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod text_client;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(options) = model::Options::parse(std::env::args().skip(1))? else {
@@ -39,6 +42,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "ax_focused_window_once_delay_ms":options.ax_focused_window_once_delay_ms,
                 "semantic_alternate_ui_requested":options.semantic_alternate_ui,
                 "semantic_native_callbacks_observed":false,
+                "text_client_trace_requested":options.text_client_trace,
+                "text_client_native_callbacks_observed":false,
                 "legacy_tracking_calibration_requested":options.legacy_tracking_calibration,
                 "legacy_tracking_registered":false,
                 "cooperative_owner_configured":options.cooperative_owner.is_some(),

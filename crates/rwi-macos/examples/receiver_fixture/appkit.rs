@@ -64,6 +64,7 @@ struct UI {
     command_tab_actor: Option<command_tab::native::Actor>,
     native_dnd_objects: Option<native_dnd::Objects>,
     semantic_ui_objects: Option<super::semantic_alternate_ui::native::Objects>,
+    _text_client_objects: Option<super::text_client::native::Objects>,
     // AppKit target and delegate are unretained properties. Keep them alive.
     _actions: Retained<AnyObject>,
 }
@@ -503,6 +504,12 @@ impl UI {
     fn flush_sampled(&mut self) {
         self.state.first_mouse = FIRST_MOUSE.with(Cell::get);
         self.state.ax_provider_probe = super::ax_delay::snapshot();
+        if self._text_client_objects.is_some()
+            && let Err(error) = super::text_client::native::flush()
+        {
+            self.state.output_error = Some(error);
+            self.state.status = "error";
+        }
         if let Err(error) = self.store.persist(&self.state) {
             self.state.output_error = Some(error.to_string());
             self.state.status = "error";
@@ -1826,6 +1833,10 @@ fn classes() -> Result<FixtureClasses, String> {
             text_changed as extern "C" fn(_, _, _),
         );
         actions.add_method(
+            sel!(windowWillReturnFieldEditor:toObject:),
+            super::text_client::native::field_editor as extern "C" fn(_, _, _, _) -> _,
+        );
+        actions.add_method(
             sel!(windowShouldClose:),
             window_should_close as extern "C" fn(_, _, _) -> _,
         );
@@ -2158,6 +2169,16 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*input, setPlaceholderString:&*placeholder];
             identify(&input, "rwi-fixture-input", "RWI fixture text input");
             let _: () = msg_send![&*content, addSubview:&*input];
+            let text_client_objects = if options.text_client_trace {
+                Some(super::text_client::native::Objects::new(
+                    &app,
+                    &window,
+                    &input,
+                    &options.state_dir,
+                )?)
+            } else {
+                None
+            };
             if options.native_dnd_controls {
                 let stop = view(button_class, rect(464., 430., 172., 34.));
                 let title = NSString::from_str("End own fixture");
@@ -2297,6 +2318,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     command_tab_actor,
                     native_dnd_objects,
                     semantic_ui_objects,
+                    _text_client_objects: text_client_objects,
                     _actions: actions,
                 })
             });

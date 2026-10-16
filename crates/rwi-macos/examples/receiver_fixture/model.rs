@@ -17,7 +17,8 @@ An explicit peer-pinned Command+Tab test actor and --native-dnd-controls are def
 Default own-window lifetime is 120000 ms; no timer is started by help/no arguments.\n\
 Own-client --first-mouse=true|false policy is default YES; check-only creates no GUI.\n\
 Default-off --ax-focused-window-once-delay-ms 55..100 requires a regular sampled own app; preserves superclass focused-window values and never posts input.\n\
-Default-off --legacy-tracking-calibration registers only its own displayed hover view with NULL userData; not a generic modern hover oracle.";
+Default-off --legacy-tracking-calibration registers only its own displayed hover view with NULL userData; not a generic modern hover oracle.\n\
+Default-off --text-client-trace records only the own field editor's public callbacks; requires a regular sampled ordinary window and never changes RWI delivery.";
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
 
@@ -55,6 +56,8 @@ pub struct Options {
     pub cooperative_owner: Option<CooperativeOwnerConfig>,
     /// Independent semantic control; never changes the existing pointer hover.
     pub semantic_alternate_ui: bool,
+    /// Own nonsecure field editor only, not a third-party input-context oracle.
+    pub text_client_trace: bool,
     /// Explicit own-app lifecycle test, never enabled by ordinary fixtures.
     pub self_foreground_after_ms: Option<u32>,
     /// Explicit receiving-fixture actor; armed once by its first actual canvas down.
@@ -134,6 +137,7 @@ impl Options {
         let mut command_tab_peer_bundle = None;
         let mut check_only = false;
         let mut semantic_alternate_ui = false;
+        let mut text_client_trace = false;
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => return Ok(None),
@@ -158,6 +162,7 @@ impl Options {
                 "--check-only" if !check_only => check_only = true,
                 "--live-freshness-ticks" if !live_freshness_ticks => live_freshness_ticks = true,
                 "--semantic-alternate-ui" if !semantic_alternate_ui => semantic_alternate_ui = true,
+                "--text-client-trace" if !text_client_trace => text_client_trace = true,
                 "--legacy-tracking-calibration" if !legacy_tracking_calibration => {
                     legacy_tracking_calibration = true
                 }
@@ -484,6 +489,29 @@ impl Options {
         {
             return Err("focused-window delay requires one allocated regular own app with environment samples, without other delays, geometry, panels or actors".into());
         }
+        if text_client_trace
+            && (!regular_app
+                || environment_sample_ms.is_none()
+                || cover_controls
+                || interactive_sibling_window
+                || boundary_right
+                || boundary_canvas_right
+                || modal_controls
+                || system_panel_controls
+                || native_dnd_controls
+                || semantic_alternate_ui
+                || hover_first_responder
+                || legacy_tracking_calibration
+                || live_freshness_ticks
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || ax_windows_delay_ms.is_some()
+                || ax_focused_window_once_delay_ms.is_some()
+                || command_tab_delay.is_some()
+                || command_tab_start_foreground)
+        {
+            return Err("text-client trace requires one regular sampled ordinary own window without panels, calibration, delays or input actors".into());
+        }
         let command_tab = if command_tab_delay.is_some()
             || command_tab_start_foreground
             || command_tab_peer_pid.is_some()
@@ -563,6 +591,7 @@ impl Options {
             legacy_tracking_calibration,
             cooperative_owner,
             semantic_alternate_ui,
+            text_client_trace,
             self_foreground_after_ms,
             self_foreground_on_first_down_after_ms,
             legacy_self_foreground,
