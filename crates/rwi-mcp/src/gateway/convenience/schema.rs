@@ -385,6 +385,12 @@ pub(super) fn compact_action_reply(data: &Value, details_ref: Option<String>) ->
             reply.insert(key.into(), value.clone());
         }
     }
+    if let Some(observation) = data.get("focus_observation") {
+        reply.insert(
+            "focus_observation".into(),
+            click::focus::compact(observation),
+        );
+    }
     reply.insert("goal_verified".into(), json!(false));
     reply.insert("details_ref".into(), json!(details_ref));
     Value::Object(reply)

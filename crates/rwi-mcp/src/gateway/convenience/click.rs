@@ -1,5 +1,6 @@
 //! Explicit route negotiation is read-only and never retries or claims input.
 use super::*;
+pub(super) mod focus;
 
 pub(super) fn validate_click_delivery(a: &ClickArgs) -> Result<&'static str, DeviceResult> {
     let action = matches!(
@@ -101,6 +102,7 @@ where
     } else {
         "computer.act"
     };
+    let mut focus_probe = None;
     let value = if let Some(delivery) = &a.delivery {
         if a.target.is_empty() || !device::valid_id(&a.request_id) {
             return invalid("Use an exact target and stable request_id.");
@@ -118,6 +120,7 @@ where
         if let Err(error) = click_capability(&a, &device_id, tool, &inspected) {
             return error;
         }
+        focus_probe = focus::Probe::from_preflight(&inspected, &device_id, &a.target);
         match serde_json::to_string(delivery) {
             Ok(value) => Some(value),
             Err(_) => return invalid("Cannot encode explicit click delivery."),
@@ -156,7 +159,18 @@ where
             action
         }
     };
-    let mut result = leased(&a.target, &a.request_id, tool, action, call).await;
+    let mut result = leased(&a.target, &a.request_id, tool, action, &mut call).await;
+    if let Some(probe) = focus_probe.filter(|probe| probe.needs_post(&result)) {
+        // The action has already returned and released its lease. Observation
+        // failure must never turn into input replay, restoration or fallback.
+        let after = call(
+            "computer.targets",
+            json!({"device_id":probe.device_id()}),
+            false,
+        )
+        .await;
+        result.data["focus_observation"] = probe.finish(&after);
+    }
     if let Some(requested_delivery) = requested_delivery {
         result.data["requested_delivery"] = json!(requested_delivery);
         result.data["goal_verified"] = json!(false);
