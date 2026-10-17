@@ -733,6 +733,12 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
                     None
                 };
                 let framework_pointer = own_window_match.then(|| ui.framework_pointer()).flatten();
+                // Passive own-window getters only, before superclass dispatch.
+                // Preserve unknown for unmatched events; never make key or activate.
+                let own_window_key_at_entry =
+                    own_window_match.then(|| msg_send![&*ui.window, isKeyWindow]);
+                let own_app_active_at_entry =
+                    own_window_match.then(|| msg_send![&*ui.app, isActive]);
                 let [delta_x, delta_y] = passive_event_mouse_delta(event, native_type);
                 ui.state.dispatch_probe.receive(DispatchEvent {
                     sequence: 0,
@@ -745,6 +751,8 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
                     delta_x,
                     delta_y,
                     own_window_match,
+                    own_window_key_at_entry,
+                    own_app_active_at_entry,
                     hit_region,
                     framework_pointer,
                 });

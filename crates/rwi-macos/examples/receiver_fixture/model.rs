@@ -1050,6 +1050,9 @@ pub struct DispatchEvent {
     pub delta_x: Option<f64>,
     pub delta_y: Option<f64>,
     pub own_window_match: bool,
+    /// Own window/app public state before superclass sendEvent; unknown is not false.
+    pub own_window_key_at_entry: Option<bool>,
+    pub own_app_active_at_entry: Option<bool>,
     /// Public own-content hitTest snapshot, not a received view callback.
     pub hit_region: Option<DispatchRegion>,
     /// Read-only public framework state, not a view receipt or HID attestation.
@@ -2327,9 +2330,46 @@ mod tests {
             delta_x: None,
             delta_y: None,
             own_window_match: true,
+            own_window_key_at_entry: None,
+            own_app_active_at_entry: None,
             hit_region: Some(DispatchRegion::HoverZone),
             framework_pointer: None,
         }
+    }
+    #[test]
+    fn focus_entry_unknown_remains_null_without_inventing_inactive_state() {
+        let event = dispatch(DispatchStage::Application);
+        let json = serde_json::to_value(event).unwrap();
+        assert!(json["own_window_key_at_entry"].is_null());
+        assert!(json["own_app_active_at_entry"].is_null());
+    }
+    #[test]
+    fn focus_entry_preserves_distinct_application_and_window_entry_states() {
+        let mut state = State::new("pure-focus-entry".into());
+        let mut app = dispatch(DispatchStage::Application);
+        app.own_window_key_at_entry = Some(false);
+        app.own_app_active_at_entry = Some(true);
+        let mut window = dispatch(DispatchStage::Window);
+        window.own_window_key_at_entry = Some(true);
+        window.own_app_active_at_entry = Some(true);
+        state.dispatch_probe.receive(app);
+        state.dispatch_probe.receive(window);
+        let json = serde_json::to_value(&state).unwrap();
+        assert_eq!(
+            json["dispatch_probe"]["records"][0]["own_window_key_at_entry"],
+            false
+        );
+        assert_eq!(
+            json["dispatch_probe"]["records"][1]["own_window_key_at_entry"],
+            true
+        );
+        assert_eq!(
+            json["dispatch_probe"]["records"][0]["own_app_active_at_entry"],
+            true
+        );
+        assert_eq!(state.safe_button_actions, 0);
+        assert_eq!(state.drag.downs, 0);
+        assert_eq!(state.hover.moves, 0);
     }
     #[test]
     fn dispatch_stage_receipts_preserve_raw_values_without_view_or_tooltip_receipts() {
