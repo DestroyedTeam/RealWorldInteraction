@@ -44,6 +44,8 @@ struct UI {
     font_panel: Option<Retained<AnyObject>>,
     file_panel: Option<Retained<AnyObject>>,
     file_panel_directory: Option<std::path::PathBuf>,
+    save_panel: bool,
+    hide_button: Option<Retained<AnyObject>>,
     button: Retained<AnyObject>,
     hover: Retained<AnyObject>,
     canvas: Retained<AnyObject>,
@@ -75,6 +77,8 @@ thread_local! {
     static COOPERATIVE_CLOSE_GUARD: RefCell<Option<rwi_macos::cooperative_tracking::BusyState>> = const { RefCell::new(None) };
     static COOPERATIVE_CLOSE_PENDING: Cell<bool> = const { Cell::new(false) };
     static DISPATCH_BORROW_SKIPS: Cell<u64> = const { Cell::new(0) };
+    static FOCUS_NOTIFICATION_SKIPS: Cell<u64> = const { Cell::new(0) };
+    static FOCUS_NOTIFICATIONS_ARMED: Cell<bool> = const { Cell::new(false) };
     // Independent selector diagnostics survive unavailable or reentrant UI_STATE.
     static DEFAULT_RESPONDER_DIAGNOSTICS: Cell<super::model::DefaultResponderDiagnostics> =
         const { Cell::new(super::model::DefaultResponderDiagnostics {
@@ -409,6 +413,9 @@ impl UI {
         // No title/text, app enumeration, capture or global event hook.
         unsafe {
             self.state.app_active = Some(msg_send![&*self.app, isActive]);
+            if let Some(probe) = self.state.visibility.as_mut() {
+                probe.app_hidden = Some(msg_send![&*self.app, isHidden]);
+            }
             self.state.window_key = Some(msg_send![&*self.window, isKeyWindow]);
             self.state.responder.window_miniaturized =
                 Some(msg_send![&*self.window, isMiniaturized]);
@@ -502,6 +509,7 @@ impl UI {
         self.flush_sampled();
     }
     fn flush_sampled(&mut self) {
+        self.state.focus_notifications.callback_skips = FOCUS_NOTIFICATION_SKIPS.with(Cell::get);
         self.state.first_mouse = FIRST_MOUSE.with(Cell::get);
         self.state.ax_provider_probe = super::ax_delay::snapshot();
         if self._text_client_objects.is_some()
@@ -852,6 +860,102 @@ extern "C" fn default_button_mouse_moved(this: &AnyObject, _cmd: Sel, event: &An
     persist_dispatch_only();
 }
 
+// Own public Foundation thread symbols only; no debugger attach or foreign process memory.
+unsafe fn own_focus_callers() -> Result<Vec<String>, String> {
+    let frames: Retained<AnyObject> = unsafe { msg_send![class(c"NSThread")?, callStackSymbols] };
+    let count: usize = unsafe { msg_send![&*frames, count] };
+    if count == 0 {
+        return Err("own call stack unavailable".into());
+    }
+    let mut result = Vec::with_capacity(count.min(24));
+    for index in 0..count.min(24) {
+        let text: Retained<NSString> = unsafe { msg_send![&*frames, objectAtIndex:index] };
+        result.push(text.to_string().chars().take(192).collect());
+    }
+    Ok(result)
+}
+
+// Public delegate notifications only. Never changes ordering, key state or input delivery.
+extern "C" fn own_focus_notification(this: &AnyObject, cmd: Sel, note: &AnyObject) {
+    if !FOCUS_NOTIFICATIONS_ARMED.with(Cell::get) {
+        return;
+    }
+    callback(|| {
+        UI_STATE.with(|cell| {
+            let Ok(mut slot) = cell.try_borrow_mut() else {
+                FOCUS_NOTIFICATION_SKIPS.with(|n| n.set(n.get().saturating_add(1)));
+                return;
+            };
+            let Some(ui) = slot.as_mut() else {
+                FOCUS_NOTIFICATION_SKIPS.with(|n| n.set(n.get().saturating_add(1)));
+                return;
+            };
+            if !ui.state.focus_notifications.enabled {
+                return;
+            }
+            let (kind, application) = if cmd == sel!(applicationDidBecomeActive:) {
+                ("application_did_become_active", true)
+            } else if cmd == sel!(applicationDidResignActive:) {
+                ("application_did_resign_active", true)
+            } else if cmd == sel!(windowDidBecomeKey:) {
+                ("window_did_become_key", false)
+            } else if cmd == sel!(windowDidResignKey:) {
+                ("window_did_resign_key", false)
+            } else if cmd == sel!(windowDidMove:) {
+                ("window_did_move", false)
+            } else if cmd == sel!(windowDidResize:) {
+                ("window_did_resize", false)
+            } else {
+                return;
+            };
+            unsafe {
+                let sender: *const AnyObject = msg_send![note, object];
+                let expected = if application { &*ui.app } else { &*ui.window };
+                if !std::ptr::eq(this, &*ui._actions) || !std::ptr::eq(sender, expected) {
+                    ui.state.focus_notifications.unmatched_objects = ui
+                        .state
+                        .focus_notifications
+                        .unmatched_objects
+                        .saturating_add(1);
+                    return;
+                }
+                let active: bool = msg_send![&*ui.app, isActive];
+                let key: bool = msg_send![&*ui.window, isKeyWindow];
+                let unix_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64;
+                ui.state
+                    .focus_notifications
+                    .receive(kind, unix_ms, active, key);
+                if kind == "window_did_become_key" && ui.state.focus_notifications.capture_callers {
+                    if ui.state.focus_notifications.captured_callers_events >= 2 {
+                        ui.state.focus_notifications.callers_budget_omissions += 1;
+                    } else {
+                        match own_focus_callers() {
+                            Ok(callers) => {
+                                if let Some(event) = ui.state.focus_notifications.events.back_mut()
+                                {
+                                    event.own_callers = Some(callers);
+                                    ui.state.focus_notifications.captured_callers_events += 1;
+                                }
+                            }
+                            Err(_) => ui.state.focus_notifications.callers_unavailable_events += 1,
+                        }
+                    }
+                }
+                ui.state.focus_notifications.callback_skips =
+                    FOCUS_NOTIFICATION_SKIPS.with(Cell::get);
+                // JSON only: do not call UI flush, redraw, focus setters or superclass input.
+                if let Err(error) = ui.store.persist(&ui.state) {
+                    ui.state.output_error = Some(error.to_string());
+                    ui.state.status = "error";
+                }
+            }
+        });
+    });
+}
+
 extern "C" fn application_send_event(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
     let recorded = record_dispatch(this, event, DispatchStage::Application);
     // Both base classes are permanent AppKit classes validated before registering
@@ -1091,6 +1195,7 @@ fn sample_system_panel(
     observed: &mut SystemPanelOracle,
 ) {
     // AppKit shared panel readback; no capture, global hook or guessed owner chain.
+    observed.native_class = Some(panel.class().name().to_string_lossy().into_owned());
     unsafe {
         observed.window_number = Some(msg_send![panel, windowNumber]);
         observed.visible = Some(msg_send![panel, isVisible]);
@@ -1173,6 +1278,34 @@ fn own_panel_quartz_description(window: u32) -> serde_json::Value {
     );
     data
 }
+/// Public own-app hide action; no activation, timer, or foreign application target.
+extern "C" fn hide_own_app(_this: &AnyObject, _cmd: Sel, sender: &AnyObject) {
+    callback(|| {
+        let app = UI_STATE.with(|cell| {
+            let mut slot = cell.borrow_mut();
+            let ui = slot.as_mut()?;
+            if !ui
+                .hide_button
+                .as_ref()
+                .is_some_and(|b| std::ptr::eq(&**b, sender))
+                || !ui.state.request_own_hide()
+            {
+                return None;
+            }
+            Some(ui.app.clone())
+        });
+        let Some(app) = app else { return };
+        // hide: can invoke application callbacks. No RefCell borrow crosses it.
+        unsafe {
+            let _: () = msg_send![&*app, hide:sender];
+        }
+        UI_STATE.with(|cell| {
+            if let Some(ui) = cell.borrow_mut().as_mut() {
+                ui.flush();
+            }
+        });
+    });
+}
 fn open_system_panel(kind: &'static str, sender: &AnyObject) {
     callback(|| {
         let allowed = UI_STATE.with(|cell| {
@@ -1230,23 +1363,42 @@ extern "C" fn file_panel_open(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject)
             {
                 return None;
             }
-            Some((ui.window.clone(), ui.file_panel_directory.clone()?))
+            Some((
+                ui.window.clone(),
+                ui.file_panel_directory.clone()?,
+                ui.save_panel,
+            ))
         });
-        let Some((parent, directory)) = request else {
+        let Some((parent, directory, save)) = request else {
             return;
         };
         // Never hold a UI RefCell borrow across reentrant framework calls.
         let result: Result<Retained<AnyObject>, String> = (|| unsafe {
-            let panel: Retained<AnyObject> = msg_send![class(c"NSOpenPanel")?, openPanel];
+            let panel: Retained<AnyObject> = if save {
+                msg_send![class(c"NSSavePanel")?, savePanel]
+            } else {
+                msg_send![class(c"NSOpenPanel")?, openPanel]
+            };
             let path =
                 NSString::from_str(directory.to_str().ok_or("file_panel_directory_not_utf8")?);
             let url: Retained<AnyObject> =
                 msg_send![class(c"NSURL")?, fileURLWithPath:&*path, isDirectory:true];
             let _: () = msg_send![&*panel, setDirectoryURL:&*url];
-            let _: () = msg_send![&*panel, setCanChooseFiles:true];
-            let _: () = msg_send![&*panel, setCanChooseDirectories:false];
-            let _: () = msg_send![&*panel, setAllowsMultipleSelection:false];
-            let title = NSString::from_str("RWI own empty file chooser — cancel only");
+            if save {
+                let name = NSString::from_str("RWI-cancel-only.txt");
+                let _: () = msg_send![&*panel, setNameFieldStringValue:&*name];
+                let _: () = msg_send![&*panel, setCanCreateDirectories:false];
+            } else {
+                let _: () = msg_send![&*panel, setCanChooseFiles:true];
+                let _: () = msg_send![&*panel, setCanChooseDirectories:false];
+                let _: () = msg_send![&*panel, setAllowsMultipleSelection:false];
+            }
+            // The completion callback only records a response; no selected file is written.
+            let title = NSString::from_str(if save {
+                "RWI own save panel — cancel only"
+            } else {
+                "RWI own empty file chooser — cancel only"
+            });
             let _: () = msg_send![&*panel, setTitle:&*title];
             let completion = block2::RcBlock::new(|response: isize| {
                 FILE_PANEL_RESPONSES.with(|queue| {
@@ -1808,6 +1960,17 @@ fn classes() -> Result<FixtureClasses, String> {
     // SAFETY: selector signatures exactly match the public AppKit SDK headers.
     unsafe {
         actions.add_method(sel!(clicked:), clicked as extern "C" fn(_, _, _));
+        for selector in [
+            sel!(applicationDidBecomeActive:),
+            sel!(applicationDidResignActive:),
+            sel!(windowDidBecomeKey:),
+            sel!(windowDidResignKey:),
+            sel!(windowDidMove:),
+            sel!(windowDidResize:),
+        ] {
+            actions.add_method(selector, own_focus_notification as extern "C" fn(_, _, _));
+        }
+
         actions.add_method(
             sel!(nativeFixtureClose:),
             native_fixture_close as extern "C" fn(_, _, _),
@@ -1816,6 +1979,7 @@ fn classes() -> Result<FixtureClasses, String> {
             sel!(systemFileOpen:),
             file_panel_open as extern "C" fn(_, _, _),
         );
+        actions.add_method(sel!(hideOwnApp:), hide_own_app as extern "C" fn(_, _, _));
         actions.add_method(
             sel!(systemColorOpen:),
             color_panel_open as extern "C" fn(_, _, _),
@@ -1991,6 +2155,9 @@ pub fn run(options: Options) -> Result<(), String> {
     state.environment_sample_ms = options.environment_sample_ms;
     state.live_freshness_ticks = options.live_freshness_ticks.then_some(true);
     state.system_panels.enabled = options.system_panel_controls;
+    state.visibility = options
+        .visibility_controls
+        .then(super::model::VisibilityProbe::default);
     state.native_dnd.enabled = options.native_dnd_controls;
     state.self_foreground_on_first_down_after_ms = options.self_foreground_on_first_down_after_ms;
     state.command_tab.config = options.command_tab.clone();
@@ -2110,7 +2277,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     478.,
                     if options.system_panel_controls {
                         216.
-                    } else if options.modal_controls {
+                    } else if options.modal_controls || options.visibility_controls {
                         420.
                     } else {
                         612.
@@ -2137,7 +2304,12 @@ pub fn run(options: Options) -> Result<(), String> {
                         sel!(systemColorOpen:),
                     ),
                     (360., "Fonts", "rwi-system-font-open", sel!(systemFontOpen:)),
-                    (468., "Files", "rwi-system-file-open", sel!(systemFileOpen:)),
+                    (
+                        468.,
+                        if options.save_panel { "Save" } else { "Files" },
+                        "rwi-system-file-open",
+                        sel!(systemFileOpen:),
+                    ),
                 ] {
                     let control = view(class(c"NSButton")?, rect(x, 474., 98., 30.));
                     let title = NSString::from_str(title);
@@ -2149,6 +2321,23 @@ pub fn run(options: Options) -> Result<(), String> {
                     let _: () = msg_send![&*content,addSubview:&*control];
                 }
             }
+            let hide_button = if options.visibility_controls {
+                let control = view(class(c"NSButton")?, rect(464., 474., 172., 30.));
+                let title = NSString::from_str("Hide own app");
+                let _: () = msg_send![&*control,setTitle:&*title];
+                let _: () = msg_send![&*control,setBezelStyle:1usize];
+                let _: () = msg_send![&*control,setTarget:&*actions];
+                let _: () = msg_send![&*control,setAction:sel!(hideOwnApp:)];
+                identify(
+                    &control,
+                    "rwi-fixture-hide-own-app",
+                    "RWI hide own application",
+                );
+                let _: () = msg_send![&*content,addSubview:&*control];
+                Some(control)
+            } else {
+                None
+            };
             let button = view(button_class, rect(24., 430., 180., 34.));
             let button_title = NSString::from_str("Safe count: 0");
             let _: () = msg_send![&*button, setTitle:&*button_title];
@@ -2307,6 +2496,8 @@ pub fn run(options: Options) -> Result<(), String> {
                     font_panel: None,
                     file_panel: None,
                     file_panel_directory,
+                    save_panel: options.save_panel,
+                    hide_button,
                     button,
                     hover,
                     canvas,
@@ -2508,6 +2699,29 @@ pub fn run(options: Options) -> Result<(), String> {
                 ui.state.status = "running";
                 ui.flush();
             });
+
+            if options.environment_sample_ms.is_some() {
+                let delegate: *const AnyObject = msg_send![&*app, delegate];
+                if !delegate.is_null() {
+                    return Err("own app already has a delegate; no replacement".into());
+                }
+                let actions =
+                    UI_STATE.with(|cell| cell.borrow().as_ref().unwrap()._actions.clone());
+                UI_STATE.with(|cell| {
+                    let mut slot = cell.borrow_mut();
+                    let ui = slot.as_mut().unwrap();
+                    ui.state.focus_notifications.enabled = true;
+                    ui.state.focus_notifications.capture_callers = options.focus_stack_trace;
+                    ui.state.focus_notifications.started_unix_ms = Some(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64,
+                    );
+                });
+                FOCUS_NOTIFICATIONS_ARMED.with(|armed| armed.set(true));
+                let _: () = msg_send![&*app, setDelegate:&*actions];
+            }
             // A nonrepeating timer is scoped to this validated own window/run.
             // No timer is made on help/no arguments or failed initial placement.
             let timer_class = class(c"NSTimer")?;
@@ -2574,6 +2788,25 @@ pub fn run(options: Options) -> Result<(), String> {
                 options.ax_focused_window_once_delay_ms,
             );
             let _: () = msg_send![&*app, run];
+            if options.environment_sample_ms.is_some() {
+                FOCUS_NOTIFICATIONS_ARMED.with(|armed| armed.set(false));
+                let _: () = msg_send![&*app, setDelegate:std::ptr::null_mut::<AnyObject>()];
+                UI_STATE.with(|cell| {
+                    let mut slot = cell.borrow_mut();
+                    let ui = slot.as_mut().unwrap();
+                    ui.state.focus_notifications.ended_unix_ms = Some(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64,
+                    );
+                    ui.state.focus_notifications.callback_skips =
+                        FOCUS_NOTIFICATION_SKIPS.with(Cell::get);
+                    if let Err(error) = ui.store.persist(&ui.state) {
+                        ui.state.output_error = Some(error.to_string());
+                    }
+                });
+            }
             let result: Result<(), String> = with_detached_ui(|ui| {
                 ui.invalidate_lifetime_timer();
                 ui.close_own_modal();
@@ -2602,6 +2835,7 @@ pub fn run(options: Options) -> Result<(), String> {
             })
             .unwrap_or(Ok(()));
             // Drop retained AppKit objects with no temporary RefCell borrow.
+
             let released = UI_STATE.with(|cell| cell.borrow_mut().take());
             drop(released);
             result?;

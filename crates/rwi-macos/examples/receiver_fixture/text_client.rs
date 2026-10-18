@@ -107,6 +107,36 @@ impl InputContextSource {
     }
 }
 
+/// Public per-process currently activated context, sampled read-only. A selected
+/// source on an editor's context is not proof that this context is current.
+#[derive(Debug, Serialize)]
+pub struct CurrentInputContext {
+    pub api_available: bool,
+    pub context_present: Option<bool>,
+    pub client_present: Option<bool>,
+    pub client_is_editor: Option<bool>,
+    pub unavailable_reason: Option<&'static str>,
+}
+impl CurrentInputContext {
+    pub fn sample(api: bool, present: bool, client: bool, own: bool) -> Self {
+        Self {
+            api_available: api,
+            context_present: api.then_some(present),
+            client_present: (api && present).then_some(client),
+            client_is_editor: (api && present && client).then_some(own),
+            unavailable_reason: if !api {
+                Some("current_context_api_unavailable")
+            } else if !present {
+                Some("no_current_activated_context")
+            } else if !client {
+                Some("current_context_client_unavailable")
+            } else {
+                None
+            },
+        }
+    }
+}
+
 /// Separately sampled public AppKit properties, never an atomic focus proof.
 #[derive(Debug, Serialize)]
 pub struct Context {
@@ -117,6 +147,9 @@ pub struct Context {
     pub marked_text: MarkedTextState,
     /// Only sampled after keyDown's superclass returns. None means not sampled.
     pub input_context_source_after_key: Option<InputContextSource>,
+    /// Sampled only while interpreting a real delivered key or after keyDown.
+    /// None means unsampled. No inputContext getter, activation or mode proof.
+    pub current_input_context: Option<CurrentInputContext>,
 }
 
 #[derive(Debug, Serialize)]
@@ -193,6 +226,73 @@ impl Trace {
 #[cfg(target_os = "macos")]
 #[path = "text_client_native.rs"]
 pub mod native;
+
+#[cfg(test)]
+mod f288_tests {
+    use super::CurrentInputContext;
+    #[test]
+    fn f288_api_unavailable_does_not_fabricate_absence() {
+        let x = CurrentInputContext::sample(false, true, true, true);
+        assert!(!x.api_available);
+        assert_eq!(x.context_present, None);
+        assert_eq!(x.client_present, None);
+        assert_eq!(x.client_is_editor, None);
+        assert_eq!(
+            x.unavailable_reason,
+            Some("current_context_api_unavailable")
+        );
+    }
+    #[test]
+    fn f288_nil_context_is_known_absence_not_client_mismatch() {
+        let x = CurrentInputContext::sample(true, false, true, true);
+        assert_eq!(x.context_present, Some(false));
+        assert_eq!(x.client_present, None);
+        assert_eq!(x.client_is_editor, None);
+        assert_eq!(x.unavailable_reason, Some("no_current_activated_context"));
+    }
+    #[test]
+    fn f288_nil_client_keeps_match_unknown() {
+        let x = CurrentInputContext::sample(true, true, false, true);
+        assert_eq!(x.context_present, Some(true));
+        assert_eq!(x.client_present, Some(false));
+        assert_eq!(x.client_is_editor, None);
+        assert_eq!(
+            x.unavailable_reason,
+            Some("current_context_client_unavailable")
+        );
+    }
+    #[test]
+    fn f288_other_client_is_observed_mismatch_not_nil() {
+        let x = CurrentInputContext::sample(true, true, true, false);
+        assert_eq!(x.client_present, Some(true));
+        assert_eq!(x.client_is_editor, Some(false));
+        assert_eq!(x.unavailable_reason, None);
+    }
+    #[test]
+    fn f288_own_current_client_is_identity_only() {
+        let x = serde_json::to_value(CurrentInputContext::sample(true, true, true, true)).unwrap();
+        assert_eq!(x["client_is_editor"], true);
+        for key in [
+            "goal_verified",
+            "ime_effect",
+            "source_selected",
+            "input_sent",
+            "os_foreground",
+        ] {
+            assert!(x.get(key).is_none());
+        }
+    }
+    #[test]
+    fn f288_unknown_and_known_false_serialize_differently() {
+        let unknown =
+            serde_json::to_value(CurrentInputContext::sample(false, false, false, false)).unwrap();
+        let absent =
+            serde_json::to_value(CurrentInputContext::sample(true, false, false, false)).unwrap();
+        assert!(unknown["context_present"].is_null());
+        assert_eq!(absent["context_present"], false);
+        assert!(absent["client_is_editor"].is_null());
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -316,6 +416,7 @@ mod tests {
                     first_responder_is_editor: true,
                     marked_text: MarkedTextState::sample(false, [u64::MAX, 0], false),
                     input_context_source_after_key: None,
+                    current_input_context: None,
                 },
             ));
         }

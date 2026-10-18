@@ -1,8 +1,8 @@
 //! Own-window field-editor instrumentation using public AppKit superclass calls.
 //! No swizzling, input-context activation, observer injection or text substitution.
 use super::{
-    Context, Event, InputContextSource, MAX_INPUT_SOURCE_UNITS, MAX_UNITS, MarkedTextState, Trace,
-    Units,
+    Context, CurrentInputContext, Event, InputContextSource, MAX_INPUT_SOURCE_UNITS, MAX_UNITS,
+    MarkedTextState, Trace, Units,
 };
 use objc2::{
     msg_send,
@@ -113,6 +113,9 @@ impl Drop for Objects {
             true
         });
         if own {
+            if let Err(error) = crate::ime_source_native::restore(&self.editor) {
+                eprintln!("own input source restoration unconfirmed: {error}");
+            }
             if let Err(error) = flush() {
                 eprintln!("own text trace final flush failed: {error}");
             }
@@ -198,6 +201,12 @@ fn observe(this: &AnyObject, phase: &'static str, decorate: impl FnOnce(&mut Eve
                 // Do not ask for a possibly lazy inputContext before keyDown
                 // has completed. This metadata cannot explain an earlier key's
                 // internal mode, nor prove that a later key is unperturbed.
+                // Sample before the older lazy source getter at keyDown exit.
+                current_input_context: matches!(
+                    phase,
+                    "interpret_enter" | "interpret_exit" | "key_down_exit"
+                )
+                .then(|| current_input_context(this)),
                 input_context_source_after_key: (phase == "key_down_exit")
                     .then(|| input_context_source(this)),
             }
@@ -222,6 +231,24 @@ fn observe(this: &AnyObject, phase: &'static str, decorate: impl FnOnce(&mut Eve
             }
         });
     }
+}
+unsafe fn current_input_context(editor: &AnyObject) -> CurrentInputContext {
+    // Read the public current activated context only. Do not ask this editor
+    // for its potentially lazy inputContext, activate it, or handle any event.
+    let Some(class) = AnyClass::get(c"NSTextInputContext") else {
+        return CurrentInputContext::sample(false, false, false, false);
+    };
+    let context: Option<Retained<AnyObject>> = unsafe { msg_send![class, currentInputContext] };
+    let Some(context) = context else {
+        return CurrentInputContext::sample(true, false, false, false);
+    };
+    let client: *mut AnyObject = unsafe { msg_send![&*context, client] };
+    CurrentInputContext::sample(
+        true,
+        true,
+        !client.is_null(),
+        std::ptr::eq(client.cast_const(), editor),
+    )
 }
 unsafe fn input_context_source(editor: &AnyObject) -> InputContextSource {
     // Retain each public getter result across other potentially reentrant calls.
@@ -357,6 +384,23 @@ extern "C" fn unmark(this: &AnyObject, _cmd: Sel) {
 
 /// Flush outside key callbacks using the own fixture's existing bounded timer.
 pub fn flush() -> Result<(), String> {
+    if crate::ime_source_native::configured() {
+        let owner = RECORDER.with(|cell| {
+            let borrowed = cell.try_borrow().ok()?;
+            let r = borrowed.as_ref()?;
+            r.active.then(|| {
+                (
+                    r.app.clone(),
+                    r.editor.clone(),
+                    r.window.clone(),
+                    r.input.clone(),
+                )
+            })
+        });
+        if let Some((app, editor, window, input)) = owner {
+            crate::ime_source_native::poll(&app, &editor, &window, &input)?;
+        }
+    }
     let dump = RECORDER.with(|cell| {
         let b = cell
             .try_borrow()

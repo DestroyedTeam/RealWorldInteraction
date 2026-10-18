@@ -18,7 +18,9 @@ Default own-window lifetime is 120000 ms; no timer is started by help/no argumen
 Own-client --first-mouse=true|false policy is default YES; check-only creates no GUI.\n\
 Default-off --ax-focused-window-once-delay-ms 55..100 requires a regular sampled own app; preserves superclass focused-window values and never posts input.\n\
 Default-off --legacy-tracking-calibration registers only its own displayed hover view with NULL userData; not a generic modern hover oracle.\n\
-Default-off --text-client-trace records only the own field editor's public callbacks; requires a regular sampled ordinary window and never changes RWI delivery.";
+Default-off --text-client-trace records only the own field editor's public callbacks; requires a regular sampled ordinary window and never changes RWI delivery.\n\
+Default-off --save-panel requires --system-panel-controls; the own NSSavePanel is cancel-only and never writes a selected file.\n\
+Default-off --visibility-controls exposes an own Hide button; requires --regular-app and --environment-sample-ms, without system/modal controls.";
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
 
@@ -40,6 +42,10 @@ pub struct Options {
     pub boundary_canvas_right: bool,
     pub modal_controls: bool,
     pub system_panel_controls: bool,
+    /// Cancel-only NSSavePanel fixture; requires explicit system panel controls.
+    pub save_panel: bool,
+    /// Own-app lifecycle setup only; not a production hide capability.
+    pub visibility_controls: bool,
     /// Default-off native pasteboard source/destination, not a canvas drag oracle.
     pub native_dnd_controls: bool,
     pub environment_sample_ms: Option<u32>,
@@ -58,6 +64,8 @@ pub struct Options {
     pub semantic_alternate_ui: bool,
     /// Own nonsecure field editor only, not a third-party input-context oracle.
     pub text_client_trace: bool,
+    /// Default-off bounded own-thread symbols, regular sampled fixture only.
+    pub focus_stack_trace: bool,
     /// Explicit own-app lifecycle test, never enabled by ordinary fixtures.
     pub self_foreground_after_ms: Option<u32>,
     /// Explicit receiving-fixture actor; armed once by its first actual canvas down.
@@ -115,6 +123,8 @@ impl Options {
         let mut boundary_canvas_right = false;
         let mut modal_controls = false;
         let mut system_panel_controls = false;
+        let mut save_panel = false;
+        let mut visibility_controls = false;
         let mut native_dnd_controls = false;
         let mut environment_sample_ms = None;
         let mut live_freshness_ticks = false;
@@ -138,6 +148,7 @@ impl Options {
         let mut check_only = false;
         let mut semantic_alternate_ui = false;
         let mut text_client_trace = false;
+        let mut focus_stack_trace = false;
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => return Ok(None),
@@ -163,6 +174,7 @@ impl Options {
                 "--live-freshness-ticks" if !live_freshness_ticks => live_freshness_ticks = true,
                 "--semantic-alternate-ui" if !semantic_alternate_ui => semantic_alternate_ui = true,
                 "--text-client-trace" if !text_client_trace => text_client_trace = true,
+                "--focus-stack-trace" if !focus_stack_trace => focus_stack_trace = true,
                 "--legacy-tracking-calibration" if !legacy_tracking_calibration => {
                     legacy_tracking_calibration = true
                 }
@@ -206,6 +218,8 @@ impl Options {
                 "--boundary-canvas-right" if !boundary_canvas_right => boundary_canvas_right = true,
                 "--modal-controls" if !modal_controls => modal_controls = true,
                 "--system-panel-controls" if !system_panel_controls => system_panel_controls = true,
+                "--save-panel" if !save_panel => save_panel = true,
+                "--visibility-controls" if !visibility_controls => visibility_controls = true,
                 "--native-dnd-controls" if !native_dnd_controls => native_dnd_controls = true,
                 "--regular-app" if !regular_app => regular_app = true,
                 "--first-mouse=true" | "--first-mouse=false"
@@ -305,6 +319,8 @@ impl Options {
             && !boundary_canvas_right
             && !modal_controls
             && !system_panel_controls
+            && !save_panel
+            && !visibility_controls
             && !native_dnd_controls
             && environment_sample_ms.is_none()
             && !live_freshness_ticks
@@ -323,11 +339,23 @@ impl Options {
             && command_tab_peer_bundle.is_none()
             && !check_only
             && !semantic_alternate_ui
+            && !focus_stack_trace
         {
             return Ok(None);
         }
         if !open {
             return Err("--open-window is required to create a GUI fixture".into());
+        }
+        if save_panel && !system_panel_controls {
+            return Err("--save-panel requires --system-panel-controls".into());
+        }
+        if visibility_controls
+            && (!regular_app
+                || environment_sample_ms.is_none()
+                || system_panel_controls
+                || modal_controls)
+        {
+            return Err("--visibility-controls requires a regular sampled own app and an unshared controls row".into());
         }
         let run_id = run_id.ok_or("--run-id is required")?;
         if run_id.is_empty()
@@ -489,6 +517,20 @@ impl Options {
         {
             return Err("focused-window delay requires one allocated regular own app with environment samples, without other delays, geometry, panels or actors".into());
         }
+        if focus_stack_trace
+            && (!regular_app
+                || environment_sample_ms.is_none()
+                || modal_controls
+                || system_panel_controls
+                || native_dnd_controls
+                || text_client_trace
+                || self_foreground_after_ms.is_some()
+                || self_foreground_on_first_down_after_ms.is_some()
+                || command_tab_delay.is_some()
+                || command_tab_start_foreground)
+        {
+            return Err("focus stack trace requires regular sampled own fixture without panels, text tracing or input actors".into());
+        }
         if text_client_trace
             && (!regular_app
                 || environment_sample_ms.is_none()
@@ -582,6 +624,8 @@ impl Options {
             boundary_canvas_right,
             modal_controls,
             system_panel_controls,
+            save_panel,
+            visibility_controls,
             native_dnd_controls,
             environment_sample_ms,
             live_freshness_ticks,
@@ -592,6 +636,7 @@ impl Options {
             cooperative_owner,
             semantic_alternate_ui,
             text_client_trace,
+            focus_stack_trace,
             self_foreground_after_ms,
             self_foreground_on_first_down_after_ms,
             legacy_self_foreground,
@@ -1215,6 +1260,8 @@ pub struct ScrollOracle {
 #[derive(Default, Serialize)]
 pub struct SystemPanelOracle {
     pub open_actions: u64,
+    /// Actual retained native object's runtime class, not the requested mode.
+    pub native_class: Option<String>,
     pub window_number: Option<isize>,
     pub visible: Option<bool>,
     pub window_key: Option<bool>,
@@ -1231,6 +1278,58 @@ pub struct SystemPanelOracle {
     /// Only a real native file-panel completion callback supplies this value.
     pub completion_response: Option<isize>,
     pub completion_callbacks_dropped: u64,
+}
+
+#[cfg(test)]
+mod save_panel_contract {
+    use super::*;
+    fn parse(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "save-panel",
+                "--state-dir",
+                "/tmp/rwi-save-panel-check-only",
+                "--display-id",
+                "4",
+                "--check-only",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn f198_save_panel_default_remains_open() {
+        assert!(
+            !parse(&["--system-panel-controls"])
+                .unwrap()
+                .unwrap()
+                .save_panel
+        );
+    }
+    #[test]
+    fn f198_save_panel_requires_explicit_controls_and_rejects_duplicate() {
+        assert!(Options::parse(["--save-panel".to_owned()]).is_err());
+        assert!(parse(&["--save-panel"]).is_err());
+        assert!(parse(&["--system-panel-controls", "--save-panel", "--save-panel"]).is_err());
+        let options = parse(&["--system-panel-controls", "--save-panel"])
+            .unwrap()
+            .unwrap();
+        assert!(options.save_panel && options.system_panel_controls && options.check_only);
+    }
+    #[test]
+    fn f198_save_panel_request_or_completion_is_not_native_class_evidence() {
+        let mut state = State::new("save-only".into());
+        state.status = "running";
+        state.system_panels.enabled = true;
+        assert!(state.system_panel_open("file"));
+        state.native_file_panel_completed(0);
+        assert!(state.system_panels.file.native_class.is_none());
+        assert!(state.system_panels.file.visible.is_none());
+        assert_eq!(state.system_panels.file.completion_response, Some(0));
+    }
 }
 
 #[cfg(test)]
@@ -1654,6 +1753,69 @@ impl LegacyTrackingProbe {
     }
 }
 
+/// Requests do not assert native visibility.
+#[derive(Default, Serialize)]
+pub struct VisibilityProbe {
+    pub hide_requests: u64,
+    pub app_hidden: Option<bool>,
+}
+
+/// Bounded own-app/window notification evidence; never a global foreground oracle.
+#[derive(Default, Serialize)]
+pub struct FocusNotifications {
+    pub enabled: bool,
+    pub started_unix_ms: Option<u64>,
+    pub ended_unix_ms: Option<u64>,
+    pub callback_skips: u64,
+    pub capture_callers: bool,
+    pub captured_callers_events: u64,
+    pub callers_budget_omissions: u64,
+    pub callers_unavailable_events: u64,
+    pub unmatched_objects: u64,
+    pub dropped_events: u64,
+    pub events: VecDeque<FocusNotification>,
+}
+#[derive(Serialize)]
+pub struct FocusNotification {
+    /// First two key transitions only: at most 24 own frames, 192 chars each.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub own_callers: Option<Vec<String>>,
+    pub sequence: u64,
+    pub unix_ms: u64,
+    pub kind: &'static str,
+    pub app_active: bool,
+    pub window_key: bool,
+}
+impl FocusNotifications {
+    pub fn receive(
+        &mut self,
+        kind: &'static str,
+        unix_ms: u64,
+        app_active: bool,
+        window_key: bool,
+    ) {
+        if !self.enabled || self.ended_unix_ms.is_some() {
+            return;
+        }
+        let sequence = self
+            .events
+            .back()
+            .map_or(1, |e| e.sequence.saturating_add(1));
+        if self.events.len() == HISTORY_LIMIT {
+            self.events.pop_front();
+            self.dropped_events = self.dropped_events.saturating_add(1);
+        }
+        self.events.push_back(FocusNotification {
+            own_callers: None,
+            sequence,
+            unix_ms,
+            kind,
+            app_active,
+            window_key,
+        });
+    }
+}
+
 #[derive(Serialize)]
 pub struct State {
     pub schema_version: u32,
@@ -1669,6 +1831,8 @@ pub struct State {
     /// Actual key readback for the opt-in sibling; absent in all old fixtures.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interactive_sibling_window_key: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visibility: Option<VisibilityProbe>,
     pub app_active: Option<bool>,
     pub window_key: Option<bool>,
     pub frontmost_pid: Option<i32>,
@@ -1715,6 +1879,7 @@ pub struct State {
     pub text: TextOracle,
     pub scroll: ScrollOracle,
     pub dispatch_probe: DispatchProbe,
+    pub focus_notifications: FocusNotifications,
     pub responder: ResponderProbe,
     pub default_responder_mouse: DefaultResponderMouse,
     /// Configured policy and actual selector calls; not a received mouse callback.
@@ -1742,6 +1907,7 @@ impl State {
             cover_above_primary: None,
             cover_display_id: None,
             interactive_sibling_window_key: None,
+            visibility: None,
             app_active: None,
             window_key: None,
             frontmost_pid: None,
@@ -1781,6 +1947,7 @@ impl State {
             text: TextOracle::default(),
             scroll: ScrollOracle::default(),
             dispatch_probe: DispatchProbe::default(),
+            focus_notifications: FocusNotifications::default(),
             responder: ResponderProbe::default(),
             default_responder_mouse: DefaultResponderMouse::default(),
             first_mouse: FirstMouseProbe::new(true),
@@ -1974,6 +2141,17 @@ impl State {
         }
         self.status = "closed";
         self.record("window_closed", None);
+    }
+    pub fn request_own_hide(&mut self) -> bool {
+        if self.status != "running" {
+            return false;
+        }
+        let Some(probe) = self.visibility.as_mut() else {
+            return false;
+        };
+        probe.hide_requests = probe.hide_requests.saturating_add(1);
+        self.record("own_hide_requested", None);
+        true
     }
     pub fn text_changed(&mut self, value: &str) {
         self.text.changes += 1;
@@ -3916,5 +4094,194 @@ mod f119_focused_provider_contract {
             ])
             .is_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod visibility_controls_contract {
+    use super::*;
+    fn options(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "own-hide",
+                "--state-dir",
+                "/tmp/rwi-hide-check-only",
+                "--display-id",
+                "4",
+                "--check-only",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn f204_visibility_controls_default_has_no_control_or_observation() {
+        assert!(!options(&[]).unwrap().unwrap().visibility_controls);
+        assert!(
+            serde_json::to_value(State::new("default".into()))
+                .unwrap()
+                .get("visibility")
+                .is_none()
+        );
+    }
+    #[test]
+    fn f204_visibility_controls_require_explicit_regular_sampled_allocation() {
+        assert!(Options::parse(["--visibility-controls".into()]).is_err());
+        for args in [
+            vec!["--visibility-controls"],
+            vec!["--visibility-controls", "--regular-app"],
+            vec!["--visibility-controls", "--environment-sample-ms", "25"],
+        ] {
+            assert!(options(&args).is_err());
+        }
+        let args = [
+            "--visibility-controls",
+            "--regular-app",
+            "--environment-sample-ms",
+            "25",
+        ];
+        assert!(options(&args).unwrap().unwrap().visibility_controls);
+        for extra in [
+            "--visibility-controls",
+            "--modal-controls",
+            "--system-panel-controls",
+        ] {
+            let mut all = args.to_vec();
+            all.push(extra);
+            assert!(options(&all).is_err());
+        }
+    }
+    #[test]
+    fn f204_visibility_controls_request_never_fabricates_hidden_state() {
+        let mut s = State::new("requested".into());
+        s.status = "running";
+        s.visibility = Some(VisibilityProbe::default());
+        assert!(s.request_own_hide());
+        assert_eq!(s.visibility.as_ref().unwrap().hide_requests, 1);
+        assert_eq!(s.visibility.as_ref().unwrap().app_hidden, None);
+        s.visibility.as_mut().unwrap().app_hidden = Some(false);
+        assert!(s.request_own_hide());
+        assert_eq!(s.visibility.as_ref().unwrap().app_hidden, Some(false));
+    }
+    #[test]
+    fn f204_visibility_controls_disabled_or_stopped_never_dispatches_request() {
+        let mut s = State::new("gates".into());
+        s.status = "running";
+        assert!(!s.request_own_hide());
+        s.visibility = Some(VisibilityProbe::default());
+        s.status = "stopped";
+        assert!(!s.request_own_hide());
+        assert_eq!(s.visibility.as_ref().unwrap().hide_requests, 0);
+    }
+}
+
+#[cfg(test)]
+mod focus_notifications_tests {
+    use super::*;
+    #[test]
+    fn focus_notifications_disabled_and_ended_do_not_invent_coverage() {
+        let mut probe = FocusNotifications::default();
+        probe.receive("window_did_become_key", 1, true, true);
+        assert!(probe.events.is_empty());
+        assert!(probe.started_unix_ms.is_none());
+        probe.enabled = true;
+        probe.ended_unix_ms = Some(2);
+        probe.receive("window_did_resign_key", 3, false, false);
+        assert!(probe.events.is_empty());
+    }
+    #[test]
+    fn focus_notifications_preserve_both_loss_and_return_in_order() {
+        let mut probe = FocusNotifications {
+            enabled: true,
+            started_unix_ms: Some(1),
+            ..Default::default()
+        };
+        probe.receive("window_did_resign_key", 2, true, false);
+        probe.receive("application_did_resign_active", 3, false, false);
+        probe.receive("application_did_become_active", 4, true, false);
+        probe.receive("window_did_become_key", 5, true, true);
+        assert_eq!(probe.events.len(), 4);
+        assert_eq!(probe.events[0].sequence, 1);
+        assert_eq!(probe.events[3].sequence, 4);
+        assert!(!probe.events[0].window_key);
+        assert!(!probe.events[1].app_active);
+        assert!(probe.events[3].window_key);
+        let json = serde_json::to_value(&probe).unwrap();
+        assert_eq!(json["callback_skips"], 0);
+        assert_eq!(json["dropped_events"], 0);
+    }
+    #[test]
+    fn focus_notifications_bounded_loss_is_explicit_not_silent() {
+        let mut probe = FocusNotifications {
+            enabled: true,
+            ..Default::default()
+        };
+        for ms in 0..130 {
+            probe.receive("window_did_move", ms, true, true);
+        }
+        assert_eq!(probe.events.len(), HISTORY_LIMIT);
+        assert_eq!(probe.dropped_events, 2);
+        assert_eq!(probe.events.front().unwrap().sequence, 3);
+        assert_eq!(probe.events.back().unwrap().sequence, 130);
+    }
+}
+
+#[cfg(test)]
+mod focus_stack_trace_tests {
+    use super::*;
+    fn options(extra: &[&str]) -> Result<Option<Options>, String> {
+        Options::parse(
+            [
+                "--open-window",
+                "--run-id",
+                "own-key-stack",
+                "--state-dir",
+                "/tmp/rwi-own-key-stack",
+                "--display-id",
+                "4",
+                "--check-only",
+            ]
+            .into_iter()
+            .chain(extra.iter().copied())
+            .map(str::to_owned),
+        )
+    }
+    #[test]
+    fn focus_stack_trace_default_is_off_without_inventing_callers() {
+        assert!(!options(&[]).unwrap().unwrap().focus_stack_trace);
+        let mut p = FocusNotifications {
+            enabled: true,
+            ..Default::default()
+        };
+        p.receive("window_did_become_key", 1, true, true);
+        assert!(p.events[0].own_callers.is_none());
+        assert!(!p.capture_callers);
+        assert_eq!(p.captured_callers_events, 0);
+    }
+    #[test]
+    fn focus_stack_trace_requires_explicit_regular_sampled_allocation() {
+        assert!(Options::parse(["--focus-stack-trace".to_owned()]).is_err());
+        assert!(options(&["--focus-stack-trace"]).is_err());
+        assert!(options(&["--focus-stack-trace", "--regular-app"]).is_err());
+        let args = [
+            "--focus-stack-trace",
+            "--regular-app",
+            "--environment-sample-ms",
+            "25",
+        ];
+        let parsed = options(&args).unwrap().unwrap();
+        assert!(parsed.focus_stack_trace && parsed.regular_app && parsed.check_only);
+        for bad in [
+            "--focus-stack-trace",
+            "--text-client-trace",
+            "--system-panel-controls",
+        ] {
+            let mut all = args.to_vec();
+            all.push(bad);
+            assert!(options(&all).is_err());
+        }
     }
 }
