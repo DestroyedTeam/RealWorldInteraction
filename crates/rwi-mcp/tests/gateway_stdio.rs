@@ -12,6 +12,7 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let adapter_pid = child.id();
     let mut input = child.stdin.take().unwrap();
     let mut output = BufReader::new(child.stdout.take().unwrap());
     let mut rpc = |v: Value, reply: bool| -> Value {
@@ -68,6 +69,7 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         "computer.press_key",
         "computer.place_window",
         "computer.bring_to_front",
+        "computer.show_native_live",
     ]);
     assert_eq!(names, expected);
     assert!(names.contains("computer.act_checked"));
@@ -123,6 +125,11 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
         true,
     );
     assert_eq!(targets["result"]["structuredContent"]["service"], "healthy");
+    let adapter_runtime = &targets["result"]["structuredContent"]["adapter_runtime"];
+    assert_eq!(adapter_runtime["pid"], adapter_pid);
+    assert_eq!(adapter_runtime["version"], env!("CARGO_PKG_VERSION"));
+    assert!(uuid::Uuid::parse_str(adapter_runtime["instance"].as_str().unwrap()).is_ok());
+    assert_eq!(adapter_runtime.as_object().unwrap().len(), 3);
     assert_eq!(targets["result"]["structuredContent"]["targets"], json!([]));
     assert_eq!(
         targets["result"]["structuredContent"]["workflow_required"],
@@ -201,12 +208,13 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
 #[test]
 fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
     let mime = "text/html;profile=mcp-app";
-    let uri = "ui://real-world-interaction/live/v5.html";
+    let uri = "ui://real-world-interaction/live/v6.html";
     let legacy_uris = [
         "ui://real-world-interaction/live/v1.html",
         "ui://real-world-interaction/live/v2.html",
         "ui://real-world-interaction/live/v3.html",
         "ui://real-world-interaction/live/v4.html",
+        "ui://real-world-interaction/live/v5.html",
     ];
     for (capabilities, supported) in [
         (json!({}), false),
@@ -283,6 +291,10 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
                 )
             })
             .collect();
+        let fullscreen = rpc(
+            json!({"jsonrpc":"2.0","id":20,"method":"resources/read","params":{"uri":"ui://real-world-interaction/live/v6-fullscreen.html"}}),
+            true,
+        );
         drop(input);
         assert!(child.wait().unwrap().success());
         assert!(init["result"]["capabilities"]["resources"].is_object());
@@ -298,6 +310,21 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
             assert_eq!(render["_meta"]["ui"]["resourceUri"], uri);
         }
 
+        let expanded = tools
+            .iter()
+            .find(|t| t["name"] == "computer.show_live_expanded");
+        assert_eq!(expanded.is_some(), supported);
+        if let Some(tool) = expanded {
+            assert_eq!(
+                tool["_meta"]["ui"]["resourceUri"],
+                "ui://real-world-interaction/live/v6-fullscreen.html"
+            );
+            assert!(
+                tool["inputSchema"]["properties"]
+                    .get("presentation")
+                    .is_none()
+            );
+        }
         let presence = tools.iter().find(|t| t["name"] == "computer.live_panel");
         assert_eq!(presence.is_some(), supported);
         if let Some(presence) = presence {
@@ -309,13 +336,34 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
             );
         }
         assert_eq!(resources["result"]["resources"][0]["uri"], uri);
+        let fullscreen = &fullscreen["result"]["contents"][0];
+        assert_eq!(
+            fullscreen["uri"],
+            "ui://real-world-interaction/live/v6-fullscreen.html"
+        );
+        assert_eq!(
+            fullscreen["_meta"]["openai/ui"]["availableDisplayModes"],
+            json!(["fullscreen"])
+        );
+        assert!(
+            fullscreen["text"]
+                .as_str()
+                .unwrap()
+                .contains("availableDisplayModes: ['fullscreen']")
+        );
+        assert!(
+            fullscreen["text"]
+                .as_str()
+                .unwrap()
+                .contains("const defaultPresentation = 'fullscreen';")
+        );
         let content = &resource["result"]["contents"][0];
         assert_eq!(content["uri"], uri);
         assert_eq!(content["mimeType"], mime);
         assert_eq!(content["_meta"]["ui"]["csp"]["connectDomains"], json!([]));
         assert_eq!(
             content["_meta"]["openai/ui"]["availableDisplayModes"],
-            json!(["inline", "fullscreen"])
+            json!(["inline", "fullscreen", "pip"])
         );
         assert_eq!(
             content["_meta"]["openai/ui"]["preferredDisplayMode"],

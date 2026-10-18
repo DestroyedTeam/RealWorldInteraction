@@ -71,6 +71,8 @@
       let enabled = true, intersecting = false, ended = false, closing = false;
       let queued = null, flight = null;
       let displayRequested = false, displayEpoch = 0, lastSize = null;
+      const defaultPresentation = 'automatic';
+      let hostModes = null, fullscreenOwner = null, fullscreenRequested = false;
       const validDisplayMode = mode => ['inline', 'fullscreen', 'pip'].includes(mode);
       function updateToggle() {
         const label = enabled ? '隐藏预览' : '恢复预览';
@@ -90,9 +92,33 @@
         send({ method: 'ui/notifications/size-changed', params: size });
       }
       const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(notifySize) : null;
+      function requestFullscreen(owner) {
+        if (!ready || ended || closing || owner !== capability || fullscreenRequested) return;
+        if (!hostModes) { panel.setAttribute('data-display-request-status', 'awaiting_host_modes'); return; }
+        fullscreenRequested = true;
+        displayRequested = true;
+        const epoch = ++displayEpoch;
+        panel.setAttribute('data-display-request', 'fullscreen');
+        if (!hostModes.includes('fullscreen')) {
+          panel.setAttribute('data-display-request-status', 'unsupported'); return;
+        }
+        // An explicit request, never an intersection/presence grant or Native fallback.
+        request('ui/request-display-mode', { mode: 'fullscreen' }).then(reply => {
+          if (ended || closing || owner !== capability || epoch !== displayEpoch) return;
+          if (validDisplayMode(reply?.mode)) {
+            panel.setAttribute('data-display-mode', reply.mode);
+            panel.setAttribute('data-display-request-status', reply.mode === 'fullscreen' ? 'returned' : 'mode_differs');
+          } else panel.setAttribute('data-display-request-status', 'unconfirmed');
+        }).catch(() => {
+          if (!ended && !closing && owner === capability && epoch === displayEpoch) panel.setAttribute('data-display-request-status', 'unconfirmed');
+        });
+      }
       function hostContext(context) {
         if (!ready || ended || closing || !context || typeof context !== 'object') return;
         if (validDisplayMode(context.displayMode)) panel.setAttribute('data-display-mode', context.displayMode);
+        if (Array.isArray(context.availableDisplayModes)) hostModes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
+        if (fullscreenOwner) { requestFullscreen(fullscreenOwner); return; }
+        if (defaultPresentation === 'fullscreen' && !capability) return;
         if (displayRequested || !Array.isArray(context.availableDisplayModes)) return;
         const modes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
         const preferred = modes.includes('pip') ? 'pip' : modes.includes('inline') ? 'inline' : null;
@@ -350,6 +376,9 @@
           closing = false;
           enabled = true;
           queued = null;
+          fullscreenOwner = next.presentation === 'fullscreen' ? capability : null;
+          fullscreenRequested = false;
+          if (fullscreenOwner) requestFullscreen(fullscreenOwner);
           updateToggle();
           sizeObserver?.observe(panel);
           notifySize();

@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 const html = readFileSync(new URL('../src/gateway/live_ui.html', import.meta.url), 'utf8');
 const code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const drain = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-function harness({ observer = true, resizer = false, deferDecode = false, decodedSize = [1, 1], decodeError = null, denyBlob = false } = {}) {
+function harness({ fullscreenResource = false, observer = true, resizer = false, deferDecode = false, decodedSize = [1, 1], decodeError = null, denyBlob = false } = {}) {
   const sent = [], timers = new Map(), delays = new Map(), intervals = new Map(), listeners = new Map();
   const blobs = new Map(), revoked = [], decoders = [];
   let timerId = 0, intersection, resize, focused = true, panelSize = [320, 310];
@@ -66,7 +66,8 @@ function harness({ observer = true, resizer = false, deferDecode = false, decode
     observe(node) { assert.equal(node.id, 'panel'); resizeState.observed++; }
     disconnect() { resizeState.disconnected++; }
   };
-  vm.runInNewContext(code, context, { timeout: 1000 });
+  const executedCode = fullscreenResource ? code.replace("const defaultPresentation = 'automatic';", "const defaultPresentation = 'fullscreen';").replace("availableDisplayModes: ['inline', 'fullscreen', 'pip']", "availableDisplayModes: ['fullscreen']") : code;
+  vm.runInNewContext(executedCode, context, { timeout: 1000 });
   const deliver = (message, source = parent) => listeners.get('window:message')({ source, data: { jsonrpc: '2.0', ...message } });
   return { sent, nodes, timers, delays, intervals, document, deliver, blobs, revoked, decoders, resizeState,
     setDocumentFocus(value) { focused = value; },
@@ -655,4 +656,62 @@ test('f131 decoded inline PNG remains the exact verified payload and hide releas
   assert.equal(h.nodes.get('preview').src, undefined);
   h.decoders[0].resolve(); await drain(); assert.equal(h.nodes.get('preview').hidden, true);
   assert.equal(h.blobs.size, 0);
+});
+
+// Explicit Host presentation is not a render/visibility or Native acceptance oracle.
+test('explicit fullscreen requests only an offered Host mode and never marks a component visible', async () => {
+  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['inline','fullscreen']});
+  await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
+  assert.equal(h.modeCalls().length,1); const q=h.modeCalls()[0]; assert.equal(q.params.mode,'fullscreen');
+  assert.equal(h.calls()[0].params.arguments.visible,false); assert.equal(h.imageCalls().length,0);
+  await h.deliver({id:q.id,result:{mode:'pip'}}); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'],'pip');
+  assert.equal(h.nodes.get('panel').attrs['data-display-request-status'],'mode_differs');
+  await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
+  assert.equal(h.modeCalls().length,1);
+});
+test('explicit fullscreen waits for actual offered modes and does not retry a known unsupported mode', async () => {
+  const cap={view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'};
+  const waiting=harness(); await waiting.init(); await waiting.result(cap); await drain(); assert.equal(waiting.modeCalls().length,0);
+  await waiting.deliver({method:'ui/notifications/host-context-changed',params:{availableDisplayModes:['fullscreen']}}); await drain(); assert.equal(waiting.modeCalls().length,1);
+  const unsupported=harness(); await unsupported.init({displayMode:'inline',availableDisplayModes:['inline']}); await unsupported.result(cap); await drain();
+  assert.equal(unsupported.modeCalls().length,0); assert.equal(unsupported.nodes.get('panel').attrs['data-display-request-status'],'unsupported');
+  await unsupported.deliver({method:'ui/notifications/host-context-changed',params:{availableDisplayModes:['fullscreen']}}); await drain(); assert.equal(unsupported.modeCalls().length,0);
+});
+test('explicit fullscreen supersedes a pending default PiP response without changing default behavior', async () => {
+  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['inline','fullscreen','pip']});
+  const old=h.modeCalls()[0]; assert.equal(old.params.mode,'pip');
+  await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
+  const explicit=h.modeCalls()[1]; assert.equal(explicit.params.mode,'fullscreen');
+  await h.deliver({id:explicit.id,result:{mode:'fullscreen'}}); await h.deliver({id:old.id,result:{mode:'pip'}}); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'],'fullscreen'); assert.equal(h.modeCalls().length,2);
+});
+test('explicit fullscreen late responses cannot revive closed or replaced views', async () => {
+  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['inline','fullscreen']});
+  await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain(); const q=h.modeCalls()[0]; await h.ack();
+  await h.click('close'); await h.ack(); await h.result({view_key:'c'.repeat(32),page:'d'.repeat(32)}); await drain();
+  await h.deliver({id:q.id,result:{mode:'fullscreen'}}); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'],'inline'); assert.equal(h.imageCalls().length,0);
+});
+test('explicit fullscreen rejection is bounded and never switches routes or grants visibility', async () => {
+  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['inline','fullscreen']});
+  await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();const q=h.modeCalls()[0];
+  await h.deliver({id:q.id,error:{code:-32601}}); await drain(); await h.tick();
+  assert.equal(h.nodes.get('panel').attrs['data-display-request-status'],'unconfirmed'); assert.equal(h.modeCalls().length,1);
+  assert.equal(h.calls()[0].params.arguments.visible,false); assert.equal(h.imageCalls().length,0);
+});
+test('explicit fullscreen cannot be requested by an unowned or foreign tool-result message', async () => {
+  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['inline','fullscreen']});
+  const message={method:'ui/notifications/tool-result',params:{_meta:{'rwi/live_panel':{view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}}}};
+  await h.deliver(message,{}); await h.result({view_key:'bad',page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
+  assert.equal(h.modeCalls().length,0); assert.equal(h.calls().length,0);
+});
+
+test('explicit fullscreen pre-mount resource declares only fullscreen and never sends default PiP', async () => {
+  const h=harness({fullscreenResource:true});
+  const init=h.sent.find(m=>m.method==='ui/initialize'); assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes),['fullscreen']);
+  await h.init({displayMode:'fullscreen',availableDisplayModes:['inline','fullscreen','pip']}); assert.equal(h.modeCalls().length,0); assert.equal(h.calls().length,0);
+  await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
+  assert.equal(h.modeCalls().length,1); assert.equal(h.modeCalls()[0].params.mode,'fullscreen');
+  assert.equal(h.calls()[0].params.arguments.visible,false); assert.equal(h.imageCalls().length,0);
 });

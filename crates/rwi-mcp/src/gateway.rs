@@ -9,6 +9,7 @@ mod control_lane_tests;
 mod convenience;
 mod hotkey_result;
 mod invocation;
+mod native_live;
 mod numbers;
 mod selection_refresh;
 use numbers::{numeric_inputs, portable_numbers, schema_numbers};
@@ -170,7 +171,7 @@ impl Gateway {
             }
         }
         DeviceResult::value(
-            json!({"devices":devices,"targets":targets,"profile_error":self.profile_error,"service":"healthy","workflow_required":false}),
+            json!({"devices":devices,"targets":targets,"profile_error":self.profile_error,"service":"healthy","workflow_required":false,"adapter_runtime":{"pid":std::process::id(),"instance":self.instance,"version":env!("CARGO_PKG_VERSION")}}),
         )
     }
     async fn inspect_device(&self, id: &str) -> DeviceResult {
@@ -385,7 +386,7 @@ impl ServerHandler for Gateway {
                     Arc::new(d.input_schema.as_object().unwrap().clone()),
                 );
                 match d.name {
-                    "computer.live" => tool.with_title("Control task Live preview"),
+                    "computer.live" => tool.with_title("Control Live preview"),
                     "computer.hotkey" => tool.with_title("Send foreground/system shortcut"),
                     "computer.attach_window" => tool.with_title("Attach independent window"),
                     "computer.detach_window" => tool.with_title("Detach window binding"),
@@ -407,10 +408,8 @@ impl ServerHandler for Gateway {
         tools.push(Tool::new("computer.result", "Read retained original metadata from this adapter's result_ref. No device RPC, capture or input. Use a JSON pointer and array pages; byte_offset=0 exports any large value as bounded UTF-8 JSON chunks. References expire independently of native execution; never replay input to recreate them.", Arc::new(serde_json::to_value(schemars::schema_for!(presentation::ResultArgs)).unwrap().as_object().unwrap().clone())));
         tools.extend(repl::tools());
         tools.extend(convenience::tools());
+        tools.extend(native_live::tools(ui_supported));
         presentation::snapshot_summary::advertise(&mut tools);
-        if ui_supported {
-            tools.extend(live_ui::tools());
-        }
         Ok(ListToolsResult {
             tools,
             ..Default::default()
@@ -444,10 +443,8 @@ impl ServerHandler for Gateway {
         ) {
             return Ok(self.call_live_app(p, &context).await);
         }
-        if p.name == live_ui::START_TOOL {
-            return Ok(self
-                .start_live_app(p.arguments.unwrap_or_default(), context)
-                .await);
+        if live_ui::is_start(&p.name) {
+            return Ok(self.start_live_app(p, context).await);
         }
         if p.name == "computer.js" {
             return Ok(self

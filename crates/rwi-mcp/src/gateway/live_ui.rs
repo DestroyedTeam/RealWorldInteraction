@@ -6,15 +6,21 @@ pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v5.html";
-const LEGACY_URIS: [&str; 4] = [
+pub(super) const URI: &str = "ui://real-world-interaction/live/v6.html";
+const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v6-fullscreen.html";
+const LEGACY_URIS: [&str; 5] = [
     "ui://real-world-interaction/live/v1.html",
     "ui://real-world-interaction/live/v2.html",
     "ui://real-world-interaction/live/v3.html",
     "ui://real-world-interaction/live/v4.html",
+    "ui://real-world-interaction/live/v5.html",
 ];
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
+pub(super) const EXPANDED_START_TOOL: &str = "computer.show_live_expanded";
+pub(super) fn is_start(name: &str) -> bool {
+    matches!(name, START_TOOL | EXPANDED_START_TOOL)
+}
 
 fn supports(capabilities: &ClientCapabilities) -> bool {
     capabilities
@@ -39,8 +45,39 @@ fn meta(value: Value) -> Meta {
 struct StartArgs {
     target: String,
     options: rwi_core::LiveOptions,
+    /// Explicit Host expansion request only; never Native visibility authority.
+    #[serde(default)]
+    presentation: HostPresentation,
 }
-pub(super) fn start_tool() -> Tool {
+#[derive(Clone, Copy, Default, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+enum HostPresentation {
+    #[default]
+    Automatic,
+    Fullscreen,
+}
+impl HostPresentation {
+    fn decorate(self, metadata: &mut Option<Meta>) {
+        if !matches!(self, Self::Fullscreen) {
+            return;
+        }
+        let Some(metadata) = metadata.as_mut() else {
+            return;
+        };
+        let Some(owner) = metadata
+            .0
+            .get_mut("rwi/live_panel")
+            .and_then(Value::as_object_mut)
+        else {
+            return;
+        };
+        owner.insert("presentation".into(), json!("fullscreen"));
+        metadata
+            .0
+            .insert("ui".into(), json!({"resourceUri":FULLSCREEN_URI}));
+    }
+}
+fn start_schema() -> Value {
     let mut schema = serde_json::to_value(schemars::schema_for!(StartArgs)).unwrap();
     // Only this negotiated component entry point permits display omission. Keep
     // computer.live and the shared Native options schema explicit-display-only.
@@ -48,11 +85,26 @@ pub(super) fn start_tool() -> Tool {
         .as_array_mut()
         .expect("LiveOptions required fields")
         .retain(|field| field != "display");
-    Tool::new(START_TOOL, "Show a bounded Live preview in this conversation (MCP Apps HTML required). Supply a selected target and options: omit display for conversation-only cached pixels; specify display to also show a native overlay there. Stop the prior preview before changing presentation. Native authorization remains authoritative. Use computer.live for status/hide/resume/stop; a resource is not proof of rendered pixels or task-switch binding.",
+    schema
+}
+pub(super) fn start_tool() -> Tool {
+    let schema = start_schema();
+    Tool::new(START_TOOL, "Show a bounded Live preview in this conversation (MCP Apps HTML required). Supply a selected target and options: omit display for conversation-only cached pixels; specify display to also show a native overlay there. Optional presentation=fullscreen requests Host expansion once when offered; omission keeps the existing compact preference. It is not visibility or render proof. Stop the prior preview before changing presentation. Native authorization remains authoritative. Use computer.live for status/hide/resume/stop; a resource is not proof of rendered pixels or task-switch binding.",
         Arc::new(schema.as_object().unwrap().clone()))
         .with_title("Show conversation Live preview")
         .with_annotations(ToolAnnotations::new().read_only(false).destructive(false))
         .with_meta(meta(json!({"ui":{"resourceUri":URI}})))
+}
+pub(super) fn expanded_start_tool() -> Tool {
+    let mut schema = start_schema();
+    schema["properties"]
+        .as_object_mut()
+        .unwrap()
+        .remove("presentation");
+    Tool::new(EXPANDED_START_TOOL, "Start the selected read-only Live with a static fullscreen-only MCP App resource. Explicit Host expansion, not a visibility grant or render proof. Same target/options and native authorization as show_live; no default preview changes, input, fallback or retry.", Arc::new(schema.as_object().unwrap().clone()))
+        .with_title("Show expanded conversation Live")
+        .with_annotations(ToolAnnotations::new().read_only(false).destructive(false))
+        .with_meta(meta(json!({"ui":{"resourceUri":FULLSCREEN_URI}})))
 }
 pub(super) fn resource() -> Resource {
     RawResource::new(URI, "rwi_live_panel").with_title("RWI Live · 会话内预览")
@@ -60,13 +112,26 @@ pub(super) fn resource() -> Resource {
         .with_mime_type(MIME).no_annotation()
 }
 pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
+    if uri == FULLSCREEN_URI {
+        let html = include_str!("live_ui.html")
+            .replace(
+                "const defaultPresentation = 'automatic';",
+                "const defaultPresentation = 'fullscreen';",
+            )
+            .replace(
+                "availableDisplayModes: ['inline', 'fullscreen', 'pip']",
+                "availableDisplayModes: ['fullscreen']",
+            );
+        return Ok(ReadResourceResult::new(vec![ResourceContents::text(html, uri)
+            .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["fullscreen"],"preferredDisplayMode":"fullscreen"}})))]));
+    }
     if uri != URI && !LEGACY_URIS.contains(&uri) {
         return Err(ErrorData::invalid_params("Unknown RWI UI resource", None));
     }
     // Prefer a compact inline container without forcing a fullscreen-only view.
     // A collapsed/unmounted card still stays hidden: metadata is not presence.
     Ok(ReadResourceResult::new(vec![ResourceContents::text(include_str!("live_ui.html"), uri)
-        .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["inline","fullscreen"],"preferredDisplayMode":"inline"}}))) ]))
+        .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["inline","fullscreen","pip"],"preferredDisplayMode":"inline"}}))) ]))
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]
@@ -103,7 +168,12 @@ pub(super) fn presence_tool() -> Tool {
         .with_meta(meta(json!({"ui":{"visibility":["app"]}})))
 }
 pub(super) fn tools() -> Vec<Tool> {
-    vec![start_tool(), presence_tool(), image::tool()]
+    vec![
+        start_tool(),
+        expanded_start_tool(),
+        presence_tool(),
+        image::tool(),
+    ]
 }
 impl Gateway {
     pub(super) async fn call_live_app(
@@ -123,7 +193,7 @@ impl Gateway {
     }
     pub(super) async fn start_live_app(
         &self,
-        args: serde_json::Map<String, Value>,
+        request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> CallToolResult {
         if !negotiated(&context) {
@@ -131,6 +201,16 @@ impl Gateway {
                 "live_ui_not_negotiated",
                 "Host has not declared MCP Apps HTML support; use computer.live and its explicit viewer result. No Live was started.",
             ));
+        }
+        let mut args = request.arguments.unwrap_or_default();
+        if request.name == EXPANDED_START_TOOL {
+            if args.contains_key("presentation") {
+                return mcp_result(DeviceResult::error(
+                    "invalid_live_ui_start",
+                    "Expanded Live takes target/options only; its template is explicitly fullscreen.",
+                ));
+            }
+            args.insert("presentation".into(), json!("fullscreen"));
         }
         let args = Value::Object(args);
         // Reject before serde can erase an explicitly supplied false flag.
@@ -169,7 +249,11 @@ impl Gateway {
             self.host_component_start(&args.target, args.options, context)
                 .await
         };
-        let metadata = self.prepare_live_app(&mut result, &args.target).await;
+        let mut metadata = self.prepare_live_app(&mut result, &args.target).await;
+        args.presentation.decorate(&mut metadata);
+        if matches!(args.presentation, HostPresentation::Fullscreen) && metadata.is_some() {
+            result.data["viewer"]["resource_uri"] = json!(FULLSCREEN_URI);
+        }
         let mut reply = mcp_result(result);
         reply.meta = metadata;
         reply
@@ -273,6 +357,95 @@ impl Gateway {
 mod tests {
     use super::*;
     #[test]
+    fn explicit_host_presentation_fullscreen_resource_is_predeclared_not_presence() {
+        let value = serde_json::to_value(read(FULLSCREEN_URI).unwrap()).unwrap();
+        assert_eq!(value["contents"][0]["uri"], FULLSCREEN_URI);
+        assert_eq!(
+            value["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
+            json!(["fullscreen"])
+        );
+        assert_eq!(
+            value["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
+            "fullscreen"
+        );
+        let html = value["contents"][0]["text"].as_str().unwrap();
+        assert!(html.contains("availableDisplayModes: ['fullscreen']"));
+        assert!(html.contains("const defaultPresentation = 'fullscreen';"));
+        assert!(html.contains("if (defaultPresentation === 'fullscreen' && !capability) return;"));
+        assert!(value["contents"][0]["_meta"].get("visible").is_none());
+    }
+    #[test]
+    fn explicit_host_presentation_expanded_entry_has_static_resource_and_no_mode_ambiguity() {
+        let tool = serde_json::to_value(expanded_start_tool()).unwrap();
+        assert_eq!(tool["name"], EXPANDED_START_TOOL);
+        assert_eq!(tool["_meta"]["ui"]["resourceUri"], FULLSCREEN_URI);
+        assert!(
+            tool["inputSchema"]["properties"]
+                .get("presentation")
+                .is_none()
+        );
+        assert!(is_start(START_TOOL) && is_start(EXPANDED_START_TOOL));
+        assert!(!is_start(PRESENCE_TOOL) && !is_start("computer.click"));
+    }
+    #[test]
+    fn explicit_host_presentation_defaults_and_strict_values() {
+        let input = json!({"target":"fixture","options":{"display":null,"label":"fixture","max_edge":64,"interval_ms":500,"duration_ms":1000}});
+        assert!(matches!(
+            serde_json::from_value::<StartArgs>(input.clone())
+                .unwrap()
+                .presentation,
+            HostPresentation::Automatic
+        ));
+        let mut explicit = input.clone();
+        explicit["presentation"] = json!("fullscreen");
+        assert!(matches!(
+            serde_json::from_value::<StartArgs>(explicit)
+                .unwrap()
+                .presentation,
+            HostPresentation::Fullscreen
+        ));
+        for invalid in [Value::Null, json!(true), json!("pip"), json!("visible")] {
+            let mut value = input.clone();
+            value["presentation"] = invalid;
+            assert!(serde_json::from_value::<StartArgs>(value).is_err());
+        }
+    }
+    #[test]
+    fn explicit_host_presentation_schema_is_optional_and_host_only() {
+        let schema = serde_json::to_value(start_tool()).unwrap();
+        assert!(
+            !schema["inputSchema"]["required"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("presentation"))
+        );
+        assert_eq!(
+            schema["inputSchema"]["$defs"]["HostPresentation"]["enum"],
+            json!(["automatic", "fullscreen"])
+        );
+        let native = serde_json::to_value(schemars::schema_for!(rwi_core::LiveOptions)).unwrap();
+        assert!(native["properties"].get("presentation").is_none());
+    }
+    #[test]
+    fn explicit_host_presentation_does_not_create_or_replace_owned_capabilities() {
+        let mut missing = None;
+        HostPresentation::Fullscreen.decorate(&mut missing);
+        assert!(missing.is_none());
+        let original = meta(
+            json!({"rwi/live_panel":{"view_key":"owned","page":"page","adapter_instance":"instance"}}),
+        );
+        let mut automatic = Some(original.clone());
+        HostPresentation::Automatic.decorate(&mut automatic);
+        assert_eq!(automatic, Some(original.clone()));
+        let mut explicit = Some(original);
+        HostPresentation::Fullscreen.decorate(&mut explicit);
+        let m = explicit.unwrap();
+        assert_eq!(m.0["rwi/live_panel"]["view_key"], "owned");
+        assert_eq!(m.0["rwi/live_panel"]["page"], "page");
+        assert_eq!(m.0["rwi/live_panel"]["presentation"], "fullscreen");
+        assert!(m.0["rwi/live_panel"].get("visible").is_none());
+    }
+    #[test]
     fn apps_support_is_explicit_and_html_specific() {
         for (value, expected) in [
             (json!({}), false),
@@ -367,6 +540,25 @@ mod tests {
         assert!(rejected.data.get("target").is_none());
     }
     #[test]
+    fn independent_native_live_does_not_diverge_host_display_mode_declarations() {
+        let resource = serde_json::to_value(read(URI).unwrap()).unwrap();
+        assert_eq!(
+            resource["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
+            json!(["inline", "fullscreen", "pip"])
+        );
+        assert!(
+            resource["contents"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("availableDisplayModes: ['inline', 'fullscreen', 'pip']")
+        );
+        // Offering a mode does not prove this Host supports or renders it.
+        assert_eq!(
+            resource["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
+            "inline"
+        );
+    }
+    #[test]
     fn ui_resource_is_static_closed_network_and_exact_uri() {
         let resource = serde_json::to_value(read(URI).unwrap()).unwrap();
         assert_eq!(resource["contents"][0]["mimeType"], MIME);
@@ -377,13 +569,13 @@ mod tests {
         assert!(read("file:///etc/passwd").is_err());
         assert_eq!(
             resource["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
-            json!(["inline", "fullscreen"])
+            json!(["inline", "fullscreen", "pip"])
         );
         assert_eq!(
             resource["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
             "inline"
         );
-        assert_eq!(URI, "ui://real-world-interaction/live/v5.html");
+        assert_eq!(URI, "ui://real-world-interaction/live/v6.html");
         for uri in LEGACY_URIS {
             let legacy = serde_json::to_value(read(uri).unwrap()).unwrap();
             assert_eq!(legacy["contents"][0]["uri"], uri);
@@ -404,3 +596,4 @@ mod tests {
         assert!(render["inputSchema"]["properties"].get("action").is_none());
     }
 }
+

@@ -19,6 +19,9 @@ impl Gateway {
         args: Value,
         context: Option<RequestContext<RoleServer>>,
     ) -> DeviceResult {
+        if tool == native_live::TOOL {
+            return self.independent_native_live(args, context).await;
+        }
         if tool == "computer.live" {
             return self.host_live(args, context).await;
         }
