@@ -17,6 +17,7 @@ mod public_appkit_click;
 pub(crate) use appkit_click::{appkit_click_capabilities, prepare_selected_click_pair};
 pub(crate) use click::click_capabilities;
 pub(crate) use public_appkit_click::capabilities as public_appkit_click_capabilities;
+pub(crate) use public_appkit_click::zero_number_capabilities as public_appkit_zero_number_click_capabilities;
 
 type PostToPid = unsafe extern "C" fn(libc::pid_t, *mut c_void);
 struct Driver {

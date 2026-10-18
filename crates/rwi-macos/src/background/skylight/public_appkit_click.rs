@@ -14,6 +14,16 @@ pub(crate) struct PreparedPublicClickEvent {
     pid: libc::pid_t,
 }
 impl PreparedPublicClickEvent {
+    #[cfg(test)]
+    pub(super) fn number_for_test(&self) -> i64 {
+        self.event
+            .get_integer_value_field(EventField::MOUSE_EVENT_NUMBER)
+    }
+    #[cfg(test)]
+    pub(super) fn subtype_for_test(&self) -> i64 {
+        self.event
+            .get_integer_value_field(EventField::MOUSE_EVENT_SUB_TYPE)
+    }
     // Void public post, not target receipt. No private driver, auth or fallback.
     pub(super) fn post(&self) {
         self.event.post_to_pid(self.pid);
@@ -24,6 +34,23 @@ pub(super) fn prepare_pair(
     up: &CGEvent,
     delivery: &Delivery,
     point: [f64; 2],
+) -> Result<(PreparedPublicClickEvent, PreparedPublicClickEvent)> {
+    prepare_numbered_pair(down, up, delivery, point, false)
+}
+pub(super) fn prepare_zero_number_pair(
+    down: &CGEvent,
+    up: &CGEvent,
+    delivery: &Delivery,
+    point: [f64; 2],
+) -> Result<(PreparedPublicClickEvent, PreparedPublicClickEvent)> {
+    prepare_numbered_pair(down, up, delivery, point, true)
+}
+fn prepare_numbered_pair(
+    down: &CGEvent,
+    up: &CGEvent,
+    delivery: &Delivery,
+    point: [f64; 2],
+    zero_number: bool,
 ) -> Result<(PreparedPublicClickEvent, PreparedPublicClickEvent)> {
     let integer = |event: &CGEvent, field| event.get_integer_value_field(field);
     let location = |event: &CGEvent| {
@@ -37,7 +64,11 @@ pub(super) fn prepare_pair(
         || integer(up, EventField::MOUSE_EVENT_BUTTON_NUMBER) != CGMouseButton::Left as i64
         || integer(down, EventField::MOUSE_EVENT_CLICK_STATE) != 1
         || integer(up, EventField::MOUSE_EVENT_CLICK_STATE) != 1
-        || integer(down, EventField::MOUSE_EVENT_NUMBER) <= 0
+        || if zero_number {
+            integer(down, EventField::MOUSE_EVENT_NUMBER) != 0
+        } else {
+            integer(down, EventField::MOUSE_EVENT_NUMBER) <= 0
+        }
         || integer(down, EventField::MOUSE_EVENT_NUMBER)
             != integer(up, EventField::MOUSE_EVENT_NUMBER)
         || integer(down, EventField::EVENT_SOURCE_STATE_ID)
@@ -89,6 +120,24 @@ pub(crate) fn capabilities(input_enabled: bool, semantic_only: bool) -> serde_js
         crate::background::pointer_delivery_available(),
     )
 }
+pub(crate) fn zero_number_capabilities(
+    input_enabled: bool,
+    semantic_only: bool,
+) -> serde_json::Value {
+    let mut cap = capabilities(input_enabled, semantic_only);
+    cap.as_object_mut()
+        .expect("literal capability object")
+        .remove("mouse_subtypes");
+    cap["value"] =
+        serde_json::json!({"delivery":"background_public_appkit_zero_number_experimental"});
+    cap["event_number"] = serde_json::json!(0);
+    cap["event_number_override_requested"] = serde_json::json!(true);
+    cap["focus_preservation_verified"] = serde_json::json!(false);
+    cap["scope"] = serde_json::json!(
+        "explicit ordinary left pair, zero event number only; existing positive default untouched; no focus or app-effect promise"
+    );
+    cap
+}
 fn capability(
     input_enabled: bool,
     semantic_only: bool,
@@ -97,6 +146,10 @@ fn capability(
 ) -> serde_json::Value {
     serde_json::json!({"implemented":true,"available":input_enabled&&!semantic_only&&factory&&window_location,
         "opt_in_required":true,"value":{"delivery":"background_public_appkit_experimental"},
+        "mouse_subtypes":{"touch":{"implemented":true,"available":input_enabled&&!semantic_only&&factory&&window_location,
+            "opt_in_required":true,"event_subtype":3,"name":"NSEventSubtypeTouch",
+            "focus_preservation_verified":false,"application_effect_attested":false,
+            "command_modifier_added":false,"fallback":false}},
         "route":"public NSEvent mouse factory + explicit CGEventPostToPid/window-addressed plain left pair",
         "private_post_symbol_required":false,"fallback":false,"native_acknowledgement":false,
         "application_effect_attested":false,"target_state_preservation_attested":false,

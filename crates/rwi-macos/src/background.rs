@@ -19,6 +19,7 @@ use objc2::{
 use objc2_foundation::NSPoint;
 pub(crate) mod appkit_move;
 pub(crate) mod appkit_tracking;
+pub(crate) mod key_window_record;
 pub(crate) mod skylight;
 
 /// AppKit-defined event, subtype 1 = NSApplicationActivatedEventType. Posted

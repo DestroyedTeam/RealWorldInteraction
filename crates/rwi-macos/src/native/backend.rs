@@ -14,6 +14,7 @@ impl NativeMac {
             "background_skylight_experimental":crate::background::skylight::click_capabilities(input_enabled, semantic_only),
             "background_skylight_appkit_experimental":crate::background::skylight::appkit_click_capabilities(input_enabled, semantic_only),
             "background_public_appkit_experimental":crate::background::skylight::public_appkit_click_capabilities(input_enabled, semantic_only),
+            "background_public_appkit_zero_number_experimental":crate::background::skylight::public_appkit_zero_number_click_capabilities(input_enabled, semantic_only),
         })
     }
 }

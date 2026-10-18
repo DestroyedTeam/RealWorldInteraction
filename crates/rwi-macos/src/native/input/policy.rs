@@ -37,9 +37,10 @@ pub(super) fn validate_keyboard_payload(intent: &Intent, value: Option<&str>) ->
             value.ok_or_else(|| fault("value_required", "Text intent requires Unicode value."))?;
         }
         Intent::KeyChord => {
-            parse_chord(value.ok_or_else(|| {
+            let payload = rwi_core::KeyChordPayload::parse(value.ok_or_else(|| {
                 fault("value_required", "Key chord requires a supported chord.")
             })?)?;
+            parse_chord(&payload.key)?;
         }
         _ => {}
     }

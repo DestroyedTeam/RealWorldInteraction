@@ -503,28 +503,33 @@ impl NativeMac {
             },
             |sample| {
                 let _call = operation::native_call("macos_semantic_focus_setter_once")?;
-                let name = CFString::new("AXFocused");
-                let yes = CFBoolean::true_value();
-                operation::checkpoint("before_exact_semantic_focus_setter")?;
-                // This actual pair is retained even when saturated/concurrent. The
-                // Agent exemption accepts only known non-saturated before + 1.
-                let before = self
-                    .dispatches
-                    .fetch_update(
-                        std::sync::atomic::Ordering::AcqRel,
-                        std::sync::atomic::Ordering::Acquire,
-                        |n| Some(n.saturating_add(1)),
-                    )
-                    .expect("saturating update always returns Some");
-                let native_status = unsafe {
-                    ffi::AXUIElementSetAttributeValue(
-                        sample.element.0,
-                        name.as_concrete_TypeRef().cast(),
-                        yes.as_concrete_TypeRef().cast(),
-                    )
-                };
-                let after = self.dispatches.load(std::sync::atomic::Ordering::Acquire);
-                Ok((native_status, before, after))
+                with_focus_setter_budget(
+                    |seconds| timeout(&sample.element, seconds),
+                    || {
+                        let name = CFString::new("AXFocused");
+                        let yes = CFBoolean::true_value();
+                        operation::checkpoint("before_exact_semantic_focus_setter")?;
+                        // This actual pair is retained even when saturated/concurrent. The
+                        // Agent exemption accepts only known non-saturated before + 1.
+                        let before = self
+                            .dispatches
+                            .fetch_update(
+                                std::sync::atomic::Ordering::AcqRel,
+                                std::sync::atomic::Ordering::Acquire,
+                                |n| Some(n.saturating_add(1)),
+                            )
+                            .expect("saturating update always returns Some");
+                        let native_status = unsafe {
+                            ffi::AXUIElementSetAttributeValue(
+                                sample.element.0,
+                                name.as_concrete_TypeRef().cast(),
+                                yes.as_concrete_TypeRef().cast(),
+                            )
+                        };
+                        let after = self.dispatches.load(std::sync::atomic::Ordering::Acquire);
+                        Ok((native_status, before, after))
+                    },
+                )
             },
         )?;
         let status = attempted.map(|(native_status, _, _)| native_status);
@@ -546,6 +551,7 @@ impl NativeMac {
             error.diagnostic = Some(Box::new(serde_json::json!({
                 "version":1,"api":"AXUIElementSetAttributeValue","attribute":"AXFocused",
                 "operation_kind":"semantic_focus","native_setter_attempted":true,"native_setter_attempts":1,
+                "native_setter_timeout_ms":250,
                 "native_status":native_status,"native_dispatch_counter_known":true,
                 "native_dispatch_count_before":attempted.map(|(_, before, _)| before),
                 "native_dispatch_count_after":attempted.map(|(_, _, after)| after),

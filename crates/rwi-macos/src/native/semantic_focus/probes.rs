@@ -57,6 +57,17 @@ pub(super) fn timeout(element: &Cf, seconds: f32) -> Result<()> {
     Ok(())
 }
 
+/// A focus write may create a field editor, unlike a bounded metadata read.
+/// Configure this exact retained object before the single counted write, never
+/// the system-wide AX object. Failure does not call or retry the setter.
+pub(super) fn with_focus_setter_budget<T>(
+    configure: impl FnOnce(f32) -> Result<()>,
+    write: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    configure(0.25)?;
+    write()
+}
+
 pub(super) fn cf_focus_match(
     application: &Cf,
     attribute: &str,
@@ -290,4 +301,83 @@ pub(super) fn once<T, W>(
         None
     };
     Ok((plan, sample, status))
+}
+
+#[cfg(test)]
+mod setter_budget_tests {
+    use super::*;
+    use std::cell::{Cell, RefCell};
+
+    #[test]
+    fn f195_focus_setter_budget_configures_before_one_write() {
+        let calls = RefCell::new(Vec::new());
+        let value = with_focus_setter_budget(
+            |seconds| {
+                assert_eq!(seconds, 0.25);
+                calls.borrow_mut().push("configure");
+                Ok(())
+            },
+            || {
+                calls.borrow_mut().push("write");
+                Ok(7)
+            },
+        )
+        .unwrap();
+        assert_eq!(value, 7);
+        assert_eq!(*calls.borrow(), ["configure", "write"]);
+    }
+
+    #[test]
+    fn f195_focus_setter_budget_configuration_error_has_zero_writes() {
+        let writes = Cell::new(0);
+        let error = with_focus_setter_budget(
+            |_| Err(fault("fixture_timeout_configuration", "no setter")),
+            || {
+                writes.set(writes.get() + 1);
+                Ok(())
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "fixture_timeout_configuration");
+        assert_eq!(writes.get(), 0);
+    }
+
+    #[test]
+    fn f195_focus_setter_budget_preserves_uncertain_error_without_retry() {
+        let writes = Cell::new(0);
+        let error = with_focus_setter_budget(
+            |_| Ok(()),
+            || {
+                writes.set(writes.get() + 1);
+                Err::<(), _>(fault("semantic_focus_unconfirmed", "inspect only"))
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "semantic_focus_unconfirmed");
+        assert_eq!(writes.get(), 1);
+    }
+
+    #[test]
+    fn f195_focus_setter_budget_noop_never_configures_or_writes() {
+        let calls = Cell::new(0);
+        let (_, _, attempted) = once(
+            || Ok((FocusWritePlan::NoWriteAlreadyFocused, ())),
+            |plan, value| Ok((plan, value)),
+            |_| {
+                with_focus_setter_budget(
+                    |_| {
+                        calls.set(calls.get() + 1);
+                        Ok(())
+                    },
+                    || {
+                        calls.set(calls.get() + 1);
+                        Ok(())
+                    },
+                )
+            },
+        )
+        .unwrap();
+        assert!(attempted.is_none());
+        assert_eq!(calls.get(), 0);
+    }
 }

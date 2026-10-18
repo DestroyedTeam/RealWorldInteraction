@@ -5,6 +5,20 @@ use crate::{Result, fault};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Explicit AppKit mouse subtype experiment, not a no-focus guarantee.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ClickMouseSubtype {
+    #[default]
+    Mouse,
+    Touch,
+}
+impl ClickMouseSubtype {
+    fn is_mouse(&self) -> bool {
+        *self == Self::Mouse
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "delivery", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ClickDeliveryOptions {
@@ -15,7 +29,14 @@ pub enum ClickDeliveryOptions {
     BackgroundSkylightAppkitExperimental {},
     /// Same plain public AppKit construction, with explicit public PID posting.
     /// Never a downgrade from an unavailable private route or an app guarantee.
-    BackgroundPublicAppkitExperimental {},
+    BackgroundPublicAppkitExperimental {
+        /// Omit for unchanged ordinary mouse. Touch requires separate capability.
+        #[serde(default, skip_serializing_if = "ClickMouseSubtype::is_mouse")]
+        mouse_subtype: ClickMouseSubtype,
+    },
+    /// Explicit macOS zero-event-number experiment, ordinary left pair only.
+    /// No modifier, activation, focus restoration, fallback or effect guarantee.
+    BackgroundPublicAppkitZeroNumberExperimental {},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,11 +90,18 @@ impl ClickDeliveryOptions {
     /// This check is a policy prerequisite, not native authority or app evidence.
     pub fn require_capability(&self, capabilities: &serde_json::Value) -> Result<()> {
         let route = &capabilities["pointer_click"][self.delivery_name()];
-        if route["implemented"] != true || route["available"] != true {
+        let subtype_ready = !matches!(
+            self,
+            Self::BackgroundPublicAppkitExperimental {
+                mouse_subtype: ClickMouseSubtype::Touch
+            }
+        ) || (route["mouse_subtypes"]["touch"]["implemented"] == true
+            && route["mouse_subtypes"]["touch"]["available"] == true);
+        if route["implemented"] != true || route["available"] != true || !subtype_ready {
             return Err(fault(
                 "capability_unavailable",
-                if matches!(self, Self::BackgroundPublicAppkitExperimental {}) {
-                    "Explicit public AppKit click delivery is unavailable; no fallback."
+                if matches!(self, Self::BackgroundPublicAppkitExperimental { .. }) {
+                    "Explicit public AppKit click delivery or mouse subtype is unavailable; no fallback."
                 } else {
                     "Experimental macOS SkyLight click delivery is unavailable; no fallback."
                 },
@@ -89,7 +117,12 @@ impl ClickDeliveryOptions {
             Self::BackgroundSkylightAppkitExperimental {} => {
                 "background_skylight_appkit_experimental"
             }
-            Self::BackgroundPublicAppkitExperimental {} => "background_public_appkit_experimental",
+            Self::BackgroundPublicAppkitExperimental { .. } => {
+                "background_public_appkit_experimental"
+            }
+            Self::BackgroundPublicAppkitZeroNumberExperimental {} => {
+                "background_public_appkit_zero_number_experimental"
+            }
         }
     }
 
@@ -102,6 +135,10 @@ impl ClickDeliveryOptions {
         ]
     }
 }
+
+#[cfg(test)]
+#[path = "click_delivery_options/zero_number_tests.rs"]
+mod zero_number_tests;
 
 #[cfg(test)]
 mod tests {
@@ -422,5 +459,69 @@ mod public_pid_appkit_tests {
             .unwrap()
             .is_some()
         );
+    }
+}
+
+#[cfg(test)]
+mod touch_policy_tests {
+    use super::*;
+    use serde_json::json;
+    const PLAIN: &str = r#"{"delivery":"background_public_appkit_experimental"}"#;
+    const TOUCH: &str =
+        r#"{"delivery":"background_public_appkit_experimental","mouse_subtype":"touch"}"#;
+    #[test]
+    fn f188_touch_click_is_explicit_and_preserves_legacy_default_encoding() {
+        let plain = ClickDeliveryOptions::parse(Some(PLAIN)).unwrap().unwrap();
+        assert_eq!(serde_json::to_string(&plain).unwrap(), PLAIN);
+        let explicit_mouse = ClickDeliveryOptions::parse(Some(
+            r#"{"delivery":"background_public_appkit_experimental","mouse_subtype":"mouse"}"#,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(plain, explicit_mouse);
+        let touch = ClickDeliveryOptions::parse(Some(TOUCH)).unwrap().unwrap();
+        assert_ne!(plain, touch);
+        assert_eq!(serde_json::to_string(&touch).unwrap(), TOUCH);
+        assert_eq!(touch.event_pair(), plain.event_pair());
+        for subtype in [json!(3), json!(null), json!("auto"), json!(false)] {
+            let value =
+                json!({"delivery":"background_public_appkit_experimental","mouse_subtype":subtype})
+                    .to_string();
+            assert!(ClickDeliveryOptions::parse(Some(&value)).is_err());
+        }
+        assert!(
+            ClickDeliveryOptions::parse(Some(
+                r#"{"delivery":"background_skylight_appkit_experimental","mouse_subtype":"touch"}"#
+            ))
+            .is_err()
+        );
+    }
+    #[test]
+    fn f188_touch_click_requires_both_route_and_exact_subtype_capability() {
+        let plain = ClickDeliveryOptions::parse(Some(PLAIN)).unwrap().unwrap();
+        let touch = ClickDeliveryOptions::parse(Some(TOUCH)).unwrap().unwrap();
+        let mut cap = json!({"pointer_click":{"background_public_appkit_experimental":{"implemented":true,"available":true}}});
+        assert!(plain.require_capability(&cap).is_ok());
+        assert!(touch.require_capability(&cap).is_err());
+        for (implemented, available) in [
+            (json!(true), json!(false)),
+            (json!(false), json!(true)),
+            (json!("true"), json!(true)),
+            (json!(true), json!(true)),
+        ] {
+            cap["pointer_click"]["background_public_appkit_experimental"]["mouse_subtypes"]["touch"] =
+                json!({"implemented":implemented,"available":available});
+            assert_eq!(
+                touch.require_capability(&cap).is_ok(),
+                implemented == true && available == true
+            );
+        }
+        cap["pointer_click"]["background_public_appkit_experimental"]["available"] = json!(false);
+        assert!(touch.require_capability(&cap).is_err());
+        for name in ["modifiers", "fallback", "activate", "subtype"] {
+            let mut value: serde_json::Value = serde_json::from_str(TOUCH).unwrap();
+            value[name] = json!(true);
+            assert!(ClickDeliveryOptions::parse(Some(&value.to_string())).is_err());
+        }
     }
 }

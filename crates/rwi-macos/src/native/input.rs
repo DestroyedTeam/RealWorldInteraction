@@ -16,6 +16,7 @@ use anchor_native::AxObject;
 use continuation::{Facts, Kind, Sequence};
 use mouse_gesture::MouseGesture;
 mod foreground_move;
+mod key_preparation;
 mod text_effect;
 mod visible_desktop;
 
@@ -143,6 +144,7 @@ impl NativeMac {
         // counter and is correctly (but unnecessarily) reported as uncertain.
         // The sequence still revalidates immediately before every down/up pair.
         let text_witness = self.prepare_text_witness(expected, target, intent, value)?;
+        let key_input = self.prepare_key_input(intent, value)?;
         // The local animated-pixel exception is valid only on a native bitmap
         // canvas. Confirm the exact AX hit before even a background AppKit
         // activation, then repeat the check at dispatch.
@@ -321,17 +323,13 @@ impl NativeMac {
                     }
                 }
                 Intent::KeyChord => {
-                    let (key, flags) = parse_chord(value.ok_or_else(|| {
-                        fault("value_required", "Key chord requires a supported chord.")
-                    })?)?;
-                    let (down, up) = key_events(key, flags, None)?;
-                    sequence.pair(
+                    self.dispatch_key_input(
                         expected,
                         target,
-                        &counter,
-                        (down, up),
-                        |first| self.read_input_batch(first, expected, target, intent),
-                        |e| crate::background::deliver_key(e, &delivery),
+                        intent,
+                        &mut sequence,
+                        &delivery,
+                        key_input.expect("validated key input"),
                     )?;
                 }
                 Intent::Scroll => {

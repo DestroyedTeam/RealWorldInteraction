@@ -343,6 +343,7 @@ pub(crate) fn native_capabilities(
     capabilities["paired_pointer_drag"] = json!({"implemented":true,"endpoint_authority":"two independently resolved input targets; same native desktop/shared lease","delivery":"initiating PID/window addressed; native drag manager owns destination routing","fallback":false,"native_goal_attested":false,"required_destination_readback":true});
     capabilities["background_input"]["foreground_transition_scope"] =
         json!("no explicit system-frontmost request; not target AppKit key/order preservation");
+    capabilities["keyboard_preparation"] = crate::background::key_window_record::capabilities();
     capabilities["background_input"]["target_appkit_state_unchanged_attested"] = json!(false);
     capabilities["background_input"]["window_order_unchanged_attested"] = json!(false);
     capabilities["background_input"]["receiver_preparation"] = json!({
