@@ -208,13 +208,14 @@ fn production_catalog_is_not_a_diagnostic_fallback_or_business_session() {
 #[test]
 fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
     let mime = "text/html;profile=mcp-app";
-    let uri = "ui://real-world-interaction/live/v6.html";
+    let uri = "ui://real-world-interaction/live/v7.html";
     let legacy_uris = [
         "ui://real-world-interaction/live/v1.html",
         "ui://real-world-interaction/live/v2.html",
         "ui://real-world-interaction/live/v3.html",
         "ui://real-world-interaction/live/v4.html",
         "ui://real-world-interaction/live/v5.html",
+        "ui://real-world-interaction/live/v6.html",
     ];
     for (capabilities, supported) in [
         (json!({}), false),
@@ -292,7 +293,7 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
             })
             .collect();
         let fullscreen = rpc(
-            json!({"jsonrpc":"2.0","id":20,"method":"resources/read","params":{"uri":"ui://real-world-interaction/live/v6-fullscreen.html"}}),
+            json!({"jsonrpc":"2.0","id":20,"method":"resources/read","params":{"uri":"ui://real-world-interaction/live/v7-fullscreen.html"}}),
             true,
         );
         drop(input);
@@ -317,7 +318,7 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
         if let Some(tool) = expanded {
             assert_eq!(
                 tool["_meta"]["ui"]["resourceUri"],
-                "ui://real-world-interaction/live/v6-fullscreen.html"
+                "ui://real-world-interaction/live/v7-fullscreen.html"
             );
             assert!(
                 tool["inputSchema"]["properties"]
@@ -339,7 +340,7 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
         let fullscreen = &fullscreen["result"]["contents"][0];
         assert_eq!(
             fullscreen["uri"],
-            "ui://real-world-interaction/live/v6-fullscreen.html"
+            "ui://real-world-interaction/live/v7-fullscreen.html"
         );
         assert_eq!(
             fullscreen["_meta"]["openai/ui"]["availableDisplayModes"],
@@ -363,7 +364,7 @@ fn live_ui_resource_negotiation_is_optional_and_does_not_grant_a_window() {
         assert_eq!(content["_meta"]["ui"]["csp"]["connectDomains"], json!([]));
         assert_eq!(
             content["_meta"]["openai/ui"]["availableDisplayModes"],
-            json!(["inline", "fullscreen", "pip"])
+            json!(["inline", "fullscreen"])
         );
         assert_eq!(
             content["_meta"]["openai/ui"]["preferredDisplayMode"],

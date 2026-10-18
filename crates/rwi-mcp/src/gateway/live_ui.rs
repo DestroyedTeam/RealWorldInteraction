@@ -6,14 +6,15 @@ pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v6.html";
-const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v6-fullscreen.html";
-const LEGACY_URIS: [&str; 5] = [
+pub(super) const URI: &str = "ui://real-world-interaction/live/v7.html";
+const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v7-fullscreen.html";
+const LEGACY_URIS: [&str; 6] = [
     "ui://real-world-interaction/live/v1.html",
     "ui://real-world-interaction/live/v2.html",
     "ui://real-world-interaction/live/v3.html",
     "ui://real-world-interaction/live/v4.html",
     "ui://real-world-interaction/live/v5.html",
+    "ui://real-world-interaction/live/v6.html",
 ];
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
@@ -89,7 +90,7 @@ fn start_schema() -> Value {
 }
 pub(super) fn start_tool() -> Tool {
     let schema = start_schema();
-    Tool::new(START_TOOL, "Show a bounded Live preview in this conversation (MCP Apps HTML required). Supply a selected target and options: omit display for conversation-only cached pixels; specify display to also show a native overlay there. Optional presentation=fullscreen requests Host expansion once when offered; omission keeps the existing compact preference. It is not visibility or render proof. Stop the prior preview before changing presentation. Native authorization remains authoritative. Use computer.live for status/hide/resume/stop; a resource is not proof of rendered pixels or task-switch binding.",
+    Tool::new(START_TOOL, "Show a bounded Live preview in this conversation (MCP Apps HTML required). Supply a selected target and options: omit display for conversation-only cached pixels; specify display to also show a native overlay there. Optional presentation=fullscreen requests Host expansion once when offered; omission prefers task-contained inline and never requests PiP; a known Host PiP reply suspends this conversation view. Use independent native Live for a persistent overlay. It is not visibility or render proof. Stop the prior preview before changing presentation. Native authorization remains authoritative. Use computer.live for status/hide/resume/stop; a resource is not proof of rendered pixels or task-switch binding.",
         Arc::new(schema.as_object().unwrap().clone()))
         .with_title("Show conversation Live preview")
         .with_annotations(ToolAnnotations::new().read_only(false).destructive(false))
@@ -112,14 +113,14 @@ pub(super) fn resource() -> Resource {
         .with_mime_type(MIME).no_annotation()
 }
 pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
-    if uri == FULLSCREEN_URI {
+    if uri == FULLSCREEN_URI || uri == "ui://real-world-interaction/live/v6-fullscreen.html" {
         let html = include_str!("live_ui.html")
             .replace(
                 "const defaultPresentation = 'automatic';",
                 "const defaultPresentation = 'fullscreen';",
             )
             .replace(
-                "availableDisplayModes: ['inline', 'fullscreen', 'pip']",
+                "availableDisplayModes: ['inline', 'fullscreen']",
                 "availableDisplayModes: ['fullscreen']",
             );
         return Ok(ReadResourceResult::new(vec![ResourceContents::text(html, uri)
@@ -131,7 +132,7 @@ pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
     // Prefer a compact inline container without forcing a fullscreen-only view.
     // A collapsed/unmounted card still stays hidden: metadata is not presence.
     Ok(ReadResourceResult::new(vec![ResourceContents::text(include_str!("live_ui.html"), uri)
-        .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["inline","fullscreen","pip"],"preferredDisplayMode":"inline"}}))) ]))
+        .with_mime_type(MIME).with_meta(meta(json!({"ui":{"prefersBorder":false,"csp":{"connectDomains":[],"resourceDomains":[],"frameDomains":[]}},"openai/ui":{"availableDisplayModes":["inline","fullscreen"],"preferredDisplayMode":"inline"}}))) ]))
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]

@@ -66,7 +66,7 @@ function harness({ fullscreenResource = false, observer = true, resizer = false,
     observe(node) { assert.equal(node.id, 'panel'); resizeState.observed++; }
     disconnect() { resizeState.disconnected++; }
   };
-  const executedCode = fullscreenResource ? code.replace("const defaultPresentation = 'automatic';", "const defaultPresentation = 'fullscreen';").replace("availableDisplayModes: ['inline', 'fullscreen', 'pip']", "availableDisplayModes: ['fullscreen']") : code;
+  const executedCode = fullscreenResource ? code.replace("const defaultPresentation = 'automatic';", "const defaultPresentation = 'fullscreen';").replace("availableDisplayModes: ['inline', 'fullscreen']", "availableDisplayModes: ['fullscreen']") : code;
   vm.runInNewContext(executedCode, context, { timeout: 1000 });
   const deliver = (message, source = parent) => listeners.get('window:message')({ source, data: { jsonrpc: '2.0', ...message } });
   return { sent, nodes, timers, delays, intervals, document, deliver, blobs, revoked, decoders, resizeState,
@@ -139,10 +139,10 @@ test('f144 missing or unsupported Host display modes never cause a guessed reque
   }
 });
 
-test('f144 offered PiP is one preference and an actual fullscreen reply is not mislabeled PiP', async () => {
-  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['inline', 'fullscreen', 'pip'] });
+test('f144 task-contained inline is preferred to PiP and actual Host replies stay authoritative', async () => {
+  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['inline', 'fullscreen'] });
   assert.equal(h.modeCalls().length, 1); const request = h.modeCalls()[0];
-  assert.equal(request.params.mode, 'pip'); assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'fullscreen');
+  assert.equal(request.params.mode, 'inline'); assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'fullscreen');
   await h.deliver({ id: request.id, result: { mode: 'fullscreen' } }); await drain();
   assert.equal(h.nodes.get('panel').attrs['data-display-mode'], 'fullscreen');
   await h.deliver({ method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen', availableDisplayModes: ['pip'] } });
@@ -160,7 +160,7 @@ test('f144 inline is requested only when offered and actual Host mode remains au
 
 test('f144 late Host context is parent-only and cannot mint presence or repeat a rejected mode request', async () => {
   const h = harness(); await h.init();
-  const message = { method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen', availableDisplayModes: ['pip'] } };
+  const message = { method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen', availableDisplayModes: ['inline'] } };
   await h.deliver(message, {}); assert.equal(h.modeCalls().length, 0);
   await h.deliver(message); assert.equal(h.modeCalls().length, 1);
   await h.deliver({ id: h.modeCalls()[0].id, error: { code: -32601, message: 'not available' } }); await drain();
@@ -169,7 +169,7 @@ test('f144 late Host context is parent-only and cannot mint presence or repeat a
 });
 
 test('f144 a late mode reply cannot revive or relabel a closed then replaced observation', async () => {
-  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['pip'] });
+  const h = harness(); await h.init({ displayMode: 'fullscreen', availableDisplayModes: ['inline'] });
   const mode = h.modeCalls()[0]; await h.intersect(true); await h.result(); await drain(); await h.ack();
   await h.click('close'); await h.ack();
   const count = h.calls().length;
@@ -269,7 +269,7 @@ test('stopped preview ends heartbeat and cannot misleadingly resume a terminal o
 test('component declares responsive modes before mount and explains the actual native viewer location', async () => {
   const h = harness();
   const init = h.sent.find(m => m.method === 'ui/initialize');
-  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['inline', 'fullscreen', 'pip']);
+  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['inline', 'fullscreen']);
   await h.init();
   await h.deliver({ method: 'ui/notifications/tool-result', params: {
     _meta: { 'rwi/live_panel': { view_key: 'a'.repeat(32), page: 'b'.repeat(32) } },
@@ -678,12 +678,12 @@ test('explicit fullscreen waits for actual offered modes and does not retry a kn
   assert.equal(unsupported.modeCalls().length,0); assert.equal(unsupported.nodes.get('panel').attrs['data-display-request-status'],'unsupported');
   await unsupported.deliver({method:'ui/notifications/host-context-changed',params:{availableDisplayModes:['fullscreen']}}); await drain(); assert.equal(unsupported.modeCalls().length,0);
 });
-test('explicit fullscreen supersedes a pending default PiP response without changing default behavior', async () => {
-  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['inline','fullscreen','pip']});
-  const old=h.modeCalls()[0]; assert.equal(old.params.mode,'pip');
+test('explicit fullscreen supersedes a pending default inline response without reviving stale modes', async () => {
+  const h=harness(); await h.init({displayMode:'fullscreen',availableDisplayModes:['inline','fullscreen','pip']});
+  const old=h.modeCalls()[0]; assert.equal(old.params.mode,'inline');
   await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
   const explicit=h.modeCalls()[1]; assert.equal(explicit.params.mode,'fullscreen');
-  await h.deliver({id:explicit.id,result:{mode:'fullscreen'}}); await h.deliver({id:old.id,result:{mode:'pip'}}); await drain();
+  await h.deliver({id:explicit.id,result:{mode:'fullscreen'}}); await h.deliver({id:old.id,result:{mode:'inline'}}); await drain();
   assert.equal(h.nodes.get('panel').attrs['data-display-mode'],'fullscreen'); assert.equal(h.modeCalls().length,2);
 });
 test('explicit fullscreen late responses cannot revive closed or replaced views', async () => {
@@ -714,4 +714,27 @@ test('explicit fullscreen pre-mount resource declares only fullscreen and never 
   await h.result({view_key:'a'.repeat(32),page:'b'.repeat(32),presentation:'fullscreen'}); await drain();
   assert.equal(h.modeCalls().length,1); assert.equal(h.modeCalls()[0].params.mode,'fullscreen');
   assert.equal(h.calls()[0].params.arguments.visible,false); assert.equal(h.imageCalls().length,0);
+});
+
+test('conversation_live_no_pip does not request a detached mode even when it is the only offer', async () => {
+  const h=harness(); await h.init({displayMode:'inline',availableDisplayModes:['pip']});
+  assert.equal(h.modeCalls().length,0);
+  const init=h.sent.find(m=>m.method==='ui/initialize');
+  assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes),['inline','fullscreen']);
+});
+test('conversation_live_no_pip known Host PiP clears pixels and publishes hidden', async () => {
+  const h=await imageHarness(); await h.imageAck(image());
+  assert.equal(h.nodes.get('preview').hidden,false);
+  await h.deliver({method:'ui/notifications/host-context-changed',params:{displayMode:'pip'}}); await drain();
+  assert.equal(h.nodes.get('panel').attrs['data-display-mode'],'pip');
+  assert.equal(h.nodes.get('preview').hidden,true);
+  assert.equal(h.nodes.get('preview').src,undefined);
+  assert.equal(h.calls().at(-1).params.arguments.visible,false);
+});
+test('conversation_live_no_pip mode changes cannot revive closed ownership', async () => {
+  const h=harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  await h.deliver({method:'ui/notifications/host-context-changed',params:{displayMode:'pip'}}); await h.ack();
+  await h.click('close'); await h.ack(); const count=h.calls().length;
+  await h.deliver({method:'ui/notifications/host-context-changed',params:{displayMode:'inline'}}); await h.tick();
+  assert.equal(h.calls().length,count); assert.equal(h.nodes.get('preview').hidden,true);
 });

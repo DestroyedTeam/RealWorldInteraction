@@ -187,13 +187,13 @@ fn independent_native_live_does_not_diverge_host_display_mode_declarations() {
     let resource = serde_json::to_value(read(URI).unwrap()).unwrap();
     assert_eq!(
         resource["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
-        json!(["inline", "fullscreen", "pip"])
+        json!(["inline", "fullscreen"])
     );
     assert!(
         resource["contents"][0]["text"]
             .as_str()
             .unwrap()
-            .contains("availableDisplayModes: ['inline', 'fullscreen', 'pip']")
+            .contains("availableDisplayModes: ['inline', 'fullscreen']")
     );
     // Offering a mode does not prove this Host supports or renders it.
     assert_eq!(
@@ -212,13 +212,13 @@ fn ui_resource_is_static_closed_network_and_exact_uri() {
     assert!(read("file:///etc/passwd").is_err());
     assert_eq!(
         resource["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
-        json!(["inline", "fullscreen", "pip"])
+        json!(["inline", "fullscreen"])
     );
     assert_eq!(
         resource["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
         "inline"
     );
-    assert_eq!(URI, "ui://real-world-interaction/live/v6.html");
+    assert_eq!(URI, "ui://real-world-interaction/live/v7.html");
     for uri in LEGACY_URIS {
         let legacy = serde_json::to_value(read(uri).unwrap()).unwrap();
         assert_eq!(legacy["contents"][0]["uri"], uri);
@@ -237,4 +237,46 @@ fn ui_resource_is_static_closed_network_and_exact_uri() {
     let render = serde_json::to_value(start_tool()).unwrap();
     assert_eq!(render["_meta"]["ui"]["resourceUri"], URI);
     assert!(render["inputSchema"]["properties"].get("action").is_none());
+}
+
+#[test]
+fn conversation_live_no_pip_canonical_and_legacy_resources_are_task_contained() {
+    for uri in std::iter::once(URI).chain(LEGACY_URIS) {
+        let value = serde_json::to_value(read(uri).unwrap()).unwrap();
+        assert_eq!(
+            value["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
+            json!(["inline", "fullscreen"])
+        );
+        let html = value["contents"][0]["text"].as_str().unwrap();
+        assert!(html.contains("availableDisplayModes: ['inline', 'fullscreen']"));
+        assert!(html.contains("!detachedHostMode && enabled"));
+    }
+}
+#[test]
+fn conversation_live_no_pip_fullscreen_aliases_keep_exact_requested_uri() {
+    for uri in [
+        FULLSCREEN_URI,
+        "ui://real-world-interaction/live/v6-fullscreen.html",
+    ] {
+        let value = serde_json::to_value(read(uri).unwrap()).unwrap();
+        assert_eq!(value["contents"][0]["uri"], uri);
+        assert_eq!(
+            value["contents"][0]["_meta"]["openai/ui"]["availableDisplayModes"],
+            json!(["fullscreen"])
+        );
+    }
+}
+#[test]
+fn conversation_live_no_pip_does_not_add_native_options_or_visibility_authority() {
+    let native = serde_json::to_value(schemars::schema_for!(rwi_core::LiveOptions)).unwrap();
+    assert!(native["properties"].get("presentation").is_none());
+    let tool = serde_json::to_value(start_tool()).unwrap();
+    assert_eq!(tool["_meta"]["ui"]["resourceUri"], URI);
+    assert!(
+        tool["description"]
+            .as_str()
+            .unwrap()
+            .contains("never requests PiP")
+    );
+    assert!(tool["inputSchema"]["properties"].get("visible").is_none());
 }

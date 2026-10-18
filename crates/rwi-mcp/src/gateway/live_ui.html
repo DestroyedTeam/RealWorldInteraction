@@ -73,7 +73,18 @@
       let displayRequested = false, displayEpoch = 0, lastSize = null;
       const defaultPresentation = 'automatic';
       let hostModes = null, fullscreenOwner = null, fullscreenRequested = false;
+      let detachedHostMode = false;
       const validDisplayMode = mode => ['inline', 'fullscreen', 'pip'].includes(mode);
+      function acceptHostMode(mode) {
+        if (!validDisplayMode(mode)) return;
+        panel.setAttribute('data-display-mode', mode);
+        const detached = mode === 'pip';
+        if (detachedHostMode === detached) return;
+        detachedHostMode = detached;
+        // A Host-owned detached mode is not a task visibility signal. Clear and
+        // publish hidden through the existing owned bridge, never fake a mode.
+        report(visible());
+      }
       function updateToggle() {
         const label = enabled ? '隐藏预览' : '恢复预览';
         toggleLabel.textContent = label;
@@ -106,7 +117,7 @@
         request('ui/request-display-mode', { mode: 'fullscreen' }).then(reply => {
           if (ended || closing || owner !== capability || epoch !== displayEpoch) return;
           if (validDisplayMode(reply?.mode)) {
-            panel.setAttribute('data-display-mode', reply.mode);
+            acceptHostMode(reply.mode);
             panel.setAttribute('data-display-request-status', reply.mode === 'fullscreen' ? 'returned' : 'mode_differs');
           } else panel.setAttribute('data-display-request-status', 'unconfirmed');
         }).catch(() => {
@@ -115,13 +126,13 @@
       }
       function hostContext(context) {
         if (!ready || ended || closing || !context || typeof context !== 'object') return;
-        if (validDisplayMode(context.displayMode)) panel.setAttribute('data-display-mode', context.displayMode);
+        acceptHostMode(context.displayMode);
         if (Array.isArray(context.availableDisplayModes)) hostModes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
         if (fullscreenOwner) { requestFullscreen(fullscreenOwner); return; }
         if (defaultPresentation === 'fullscreen' && !capability) return;
         if (displayRequested || !Array.isArray(context.availableDisplayModes)) return;
         const modes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
-        const preferred = modes.includes('pip') ? 'pip' : modes.includes('inline') ? 'inline' : null;
+        const preferred = modes.includes('inline') ? 'inline' : modes.includes('fullscreen') ? 'fullscreen' : null;
         if (!preferred) return;
         displayRequested = true;
         if (context.displayMode === preferred) return;
@@ -131,7 +142,7 @@
         // visibility grant. The actual returned mode may differ from our request.
         request('ui/request-display-mode', { mode: preferred }).then(reply => {
           if (ended || closing || epoch !== displayEpoch) return;
-          if (validDisplayMode(reply?.mode)) panel.setAttribute('data-display-mode', reply.mode);
+          if (validDisplayMode(reply?.mode)) acceptHostMode(reply.mode);
         }).catch(() => {
           if (!ended && !closing && epoch === displayEpoch) panel.setAttribute('data-display-request-status', 'unconfirmed');
         });
@@ -147,7 +158,7 @@
           send({ id: requestId, method, params });
         });
       }
-      const visible = () => enabled && !closing && intersecting && document.visibilityState === 'visible';
+      const visible = () => !detachedHostMode && enabled && !closing && intersecting && document.visibilityState === 'visible';
       function clearImages(message) {
         imageStatus.removeAttribute('data-error-stage');
         imageStatus.removeAttribute('data-error-code');
@@ -429,7 +440,7 @@
       let heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
       request('ui/initialize', {
         protocolVersion: '2026-01-26', appInfo: { name: 'RWI Live', version: '1' },
-        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen', 'pip'] }
+        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] }
       }).then(result => {
         if (result?.protocolVersion !== '2026-01-26') { finish('Host UI 协议未确认 · 不发布可见性'); return; }
         ready = true;
