@@ -31,6 +31,7 @@ const IMAGE: &str = "computer.live_panel_image";
 struct State {
     calls: Mutex<Vec<Request>>,
     targets_fixture: Mutex<Option<Value>>,
+    native_reply: Mutex<Option<Value>>,
     prepared: Mutex<BTreeMap<String, Value>>,
     binding: Mutex<String>,
     visible: AtomicBool,
@@ -107,10 +108,13 @@ impl Peer {
                                 .remove(&operation_ref.execution_nonce)
                                 .unwrap();
                             let mut data = if args["action"] == "start" {
-                                *s.binding.lock().unwrap() =
-                                    args["options"]["host_view_id"].as_str().unwrap().into();
-                                s.visible.store(false, Ordering::Release);
-                                json!({"status":"running","expires_in_ms":60000,"host_view_binding":args["options"]["host_view_id"]})
+                                if let Some(binding) = args["options"]["host_view_id"].as_str() {
+                                    *s.binding.lock().unwrap() = binding.into();
+                                    s.visible.store(false, Ordering::Release);
+                                    json!({"status":"running","expires_in_ms":60000,"host_view_binding":binding})
+                                } else {
+                                    s.native_reply.lock().unwrap().clone().expect("independent test explicitly supplies its data-only Native reply")
+                                }
                             } else if args["action"] == "stop" {
                                 s.visible.store(false, Ordering::Release);
                                 json!({"status":"stopped"})
@@ -327,6 +331,88 @@ fn image(cap: &Value, sequence: u64) -> Value {
 }
 fn presence(cap: &Value, sequence: u64, visible: bool, close: bool) -> Value {
     json!({"view_key":cap["view_key"],"page":cap["page"],"sequence":sequence,"visible":visible,"close":close})
+}
+
+#[tokio::test]
+async fn independent_native_live_real_mcp_no_apps_no_presence_and_original_conflict() {
+    let peer = Peer::new().await;
+    let mut host = Host::start(&peer.profile, false).await;
+    let native = json!({"session_id":"live:synthetic","status":"running","presentation":"RWI_Agent_native_nonactivating_panel","ownership":"this_MCP_device_context","host_view_binding":null,"host_view_lease_ms":null,"presenter_visible":false,"frames_captured":0,"expires_in_ms":60000,"input_sent":false});
+    *peer.state.native_reply.lock().unwrap() = Some(native.clone());
+    host.send(json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}))
+        .await;
+    let catalog = host.receive(2).await;
+    let listed = catalog["result"]["tools"].as_array().unwrap();
+    assert!(
+        listed
+            .iter()
+            .any(|t| t["name"] == "computer.show_native_live" && t.get("_meta").is_none())
+    );
+    assert!(!listed.iter().any(|t| t["name"] == "computer.show_live"));
+    host.call(3, "computer.targets", json!({"device_id":"image-device"}))
+        .await;
+    let args = json!({"target":TARGET,"options":{"display":{"id":4},"duration_ms":60000}});
+    let start = host
+        .call(4, "computer.show_native_live", args.clone())
+        .await;
+    assert_eq!(start["isError"], false, "{start}");
+    assert!(start.get("_meta").is_none());
+    for (key, value) in native.as_object().unwrap() {
+        assert_eq!(&start["structuredContent"][key], value);
+    }
+    assert!(start["structuredContent"].get("viewer").is_none());
+    let mut bad = args.clone();
+    bad["options"]["host_view_id"] = Value::Null;
+    assert_eq!(
+        host.call(5, "computer.show_native_live", bad).await["isError"],
+        true
+    );
+    let mut conflict = native;
+    conflict["host_view_binding"] = json!("old-component");
+    conflict["start"] = json!("already_running; stop before reconfiguring");
+    *peer.state.native_reply.lock().unwrap() = Some(conflict);
+    let refused = host.call(6, "computer.show_native_live", args).await;
+    assert_eq!(refused["isError"], true);
+    assert_eq!(
+        refused["structuredContent"]["code"],
+        "live_presentation_restart_required"
+    );
+    assert_eq!(
+        refused["structuredContent"]["host_view_binding"],
+        "old-component"
+    );
+    let stop = host
+        .call(7, "computer.live", json!({"target":TARGET,"action":"stop"}))
+        .await;
+    assert_eq!(stop["structuredContent"]["status"], "stopped");
+    host.stop().await;
+    {
+        let calls = peer.state.calls.lock().unwrap();
+        let prepared: Vec<_> = calls
+            .iter()
+            .filter_map(|r| match &r.call {
+                Call::Prepare { tool, arguments } => Some((tool, arguments)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            prepared.len(),
+            3,
+            "two distinct explicit starts and one explicit stop; invalid call did not dispatch"
+        );
+        for (tool, args) in prepared {
+            assert_eq!(tool, "computer.live");
+            assert!(args.get("view").is_none());
+            assert!(args["options"].get("host_view_id").is_none());
+            assert!(args["options"].get("host_image_only").is_none());
+        }
+        assert!(
+            !calls
+                .iter()
+                .any(|r| matches!(r.call, Call::Cached { .. } | Call::Cancel { .. }))
+        );
+    }
+    peer.stop().await;
 }
 #[path = "live_image_transport/targets_summary.rs"]
 mod targets_summary;

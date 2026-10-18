@@ -39,7 +39,7 @@ pub(super) fn tools() -> Vec<Tool> {
         ),
         tool::<SnapshotArgs>(
             "computer.snapshot",
-            "Inspect selected window: compact controls and screenshot in one call. Default max_edge=2048 for text detail; use computer.image with an original-pixel crop for a readable tile. AX-incompatible macOS windows may return visual_only=true with image but no controls, input binding, or resolvable view_id; computer.image remains read-only. Semantic-only dialogs have no image or pixel mapping. Terminal, released AXWindows read errors may include a separate exact-current-bound-window visual read; the AX error stays explicit and no frame, view or input authority is created. Full metadata via computer.result. No JS, activation or permission grant.",
+            "Inspect selected window: compact controls and screenshot in one call. Default max_edge=2048 for text detail; use computer.image with an original-pixel crop for a readable tile. AX-incompatible macOS windows may return visual_only=true with image but no controls, input binding, or resolvable view_id; computer.image remains read-only. Semantic-only dialogs have no image or pixel mapping. Terminal, released AXWindows read errors may include a separate exact-current-bound-window visual read; the AX error stays explicit and no frame, view or input authority is created. Pass native_details to computer.result for cached native status (not current state); observation_ref is the original native observation, details_ref is the snapshot wrapper. No JS, activation or permission grant.",
         ),
         tool::<ControlsArgs>(
             "computer.controls",
@@ -63,7 +63,7 @@ pub(super) fn tools() -> Vec<Tool> {
         ),
         tool::<KeyArgs>(
             "computer.press_key",
-            "Send one key or shortcut to the exact currently focused native element (target/frame/element). Stable request_id; key e.g. escape or cmd+s on macOS, ctrl+s on Windows. Uses existing platform chord parser; unsupported keys are rejected. No auto-focus, shell, global fallback or retry; snapshot afterward.",
+            "Send one key or shortcut to the exact currently focused native element (target/frame/element). Stable request_id; key e.g. escape or cmd+s on macOS, ctrl+s on Windows. Uses the platform chord parser. Optional preparation=target_key_window_record248_experimental is macOS-only, explicit target-only private key-window preparation with unverified legacy248 layout; no global front-process setter or previous-app defocus. Old peers refuse, never downgrade. It may change target AppKit key state; receipt is not IME proof. No automatic element focus, shell, global fallback or retry; snapshot afterward.",
         ),
         tool::<DragArgs>(
             "computer.drag",

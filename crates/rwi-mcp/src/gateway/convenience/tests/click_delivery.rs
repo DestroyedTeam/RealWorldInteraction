@@ -1,6 +1,57 @@
 use super::*;
 
 #[test]
+fn f235_zero_number_schema_and_strict_input_are_separate_from_plain_click() {
+    let schema = input_schema::<ClickArgs>();
+    assert!(
+        schema
+            .to_string()
+            .contains("background_public_appkit_zero_number_experimental")
+    );
+    let value = json!({"target":"t","request_id":"zero-once","at":element(),"delivery":{"delivery":"background_public_appkit_zero_number_experimental"}});
+    assert!(serde_json::from_value::<ClickArgs>(value).is_ok());
+}
+
+#[tokio::test]
+async fn f235_zero_number_checks_specific_capability_before_one_pair_and_release() {
+    for available in [false, true] {
+        let args=serde_json::from_value(json!({"target":"t","request_id":"zero-once","at":element(),"delivery":{"delivery":"background_public_appkit_zero_number_experimental"}})).unwrap();
+        let calls = RefCell::new(Vec::new());
+        let result=click(args,Some("mac-host".into()),|tool,args,cleanup| {
+            calls.borrow_mut().push((tool,args,cleanup));
+            let mut result=reply(tool);
+            if tool=="computer.targets" {
+                result.data["targets"][0]["capabilities"]["pointer_click"]["background_public_appkit_zero_number_experimental"]=json!({"implemented":true,"available":available});
+            }
+            std::future::ready(result)
+        }).await;
+        let calls = calls.borrow();
+        assert_eq!(result.is_error, !available);
+        if available {
+            let actions: Vec<_> = calls
+                .iter()
+                .filter(|x| x.0 == "computer.act_checked")
+                .collect();
+            assert_eq!(actions.len(), 1);
+            assert_eq!(
+                actions[0].1["value"],
+                r#"{"delivery":"background_public_appkit_zero_number_experimental"}"#
+            );
+            assert_eq!(calls.last().unwrap().0, "computer.release");
+            assert!(calls.last().unwrap().2);
+            assert_eq!(
+                result.data["requested_delivery"],
+                "background_public_appkit_zero_number_experimental"
+            );
+            assert_eq!(result.data["goal_verified"], false);
+        } else {
+            assert_eq!(calls.len(), 1);
+            assert_eq!(calls[0].0, "computer.targets");
+        }
+    }
+}
+
+#[test]
 fn r92_click_delivery_schema_is_explicit_and_null_is_not_omission() {
     let schema = input_schema::<ClickArgs>();
     assert!(schema["properties"].get("delivery").is_some());
@@ -356,4 +407,84 @@ fn public_appkit_click_schema_is_explicit_and_uses_the_existing_prelease_policy(
     );
     let schema = serde_json::to_string(&schemars::schema_for!(super::super::ClickArgs)).unwrap();
     assert!(schema.contains("background_public_appkit_experimental"));
+}
+
+#[tokio::test]
+async fn f188_touch_click_old_peer_refuses_before_claim_and_new_peer_receives_exact_option() {
+    for available in [false, true] {
+        let mut cap = support();
+        cap["targets"][0]["capabilities"]["pointer_click"] =
+            json!({"background_public_appkit_experimental":{"implemented":true,"available":true}});
+        if available {
+            cap["targets"][0]["capabilities"]["pointer_click"]["background_public_appkit_experimental"]
+                ["mouse_subtypes"] = json!({"touch":{"implemented":true,"available":true}});
+        }
+        let mut a = arguments(element(), false);
+        a.delivery = serde_json::from_value(
+            json!({"delivery":"background_public_appkit_experimental","mouse_subtype":"touch"}),
+        )
+        .unwrap();
+        let calls = RefCell::new(Vec::new());
+        let result = click(a, Some("mac-host".into()), |tool, args, cleanup| {
+            calls.borrow_mut().push((tool, args, cleanup));
+            std::future::ready(if tool == "computer.targets" {
+                DeviceResult::value(cap.clone())
+            } else {
+                reply(tool)
+            })
+        })
+        .await;
+        let calls = calls.borrow();
+        if !available {
+            assert!(result.is_error);
+            assert_eq!(result.data["code"], "capability_unavailable");
+            assert_eq!(calls.len(), 1);
+            assert_eq!(calls[0].0, "computer.targets");
+        } else {
+            assert!(!result.is_error);
+            assert_eq!(result.data["requested_mouse_subtype"], "touch");
+            assert_eq!(result.data["goal_verified"], false);
+            assert_eq!(
+                calls.iter().map(|r| r.0).collect::<Vec<_>>(),
+                [
+                    "computer.targets",
+                    "computer.claim",
+                    "computer.act_checked",
+                    "computer.release"
+                ]
+            );
+            let value: Value = serde_json::from_str(calls[2].1["value"].as_str().unwrap()).unwrap();
+            assert_eq!(
+                value,
+                json!({"delivery":"background_public_appkit_experimental","mouse_subtype":"touch"})
+            );
+            assert!(calls[3].2);
+        }
+    }
+}
+#[tokio::test]
+async fn f188_touch_click_schema_and_action_exclusion_remain_strict() {
+    let schema = serde_json::to_string(&input_schema::<ClickArgs>()).unwrap();
+    assert!(schema.contains("mouse_subtype") && schema.contains("touch"));
+    for at in [
+        element(),
+        json!({"kind":"element","frame":"f","element":"e","action":"AXPress"}),
+    ] {
+        let mut a = arguments(at, false);
+        a.delivery = serde_json::from_value(
+            json!({"delivery":"background_public_appkit_experimental","mouse_subtype":"touch"}),
+        )
+        .unwrap();
+        if matches!(&a.at, ClickTarget::Element { action: None, .. }) {
+            a.click_count = 2;
+        }
+        let calls = RefCell::new(0);
+        let result = click(a, Some("mac-host".into()), |_, _, _| {
+            *calls.borrow_mut() += 1;
+            std::future::ready(DeviceResult::value(json!({})))
+        })
+        .await;
+        assert!(result.is_error);
+        assert_eq!(*calls.borrow(), 0);
+    }
 }

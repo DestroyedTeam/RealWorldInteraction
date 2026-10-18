@@ -333,3 +333,35 @@ async fn invalid_request_and_failed_claim_never_dispatch() {
     assert!(result.is_error);
     assert_eq!(*n.borrow(), 1);
 }
+
+#[test]
+fn f293_key_preparation_schema_is_explicit_and_null_rejected() {
+    let v = json!({"target":"t","frame":"f","element":"e","request_id":"r","key":"n"});
+    assert!(
+        serde_json::from_value::<KeyArgs>(v.clone())
+            .unwrap()
+            .preparation
+            .is_none()
+    );
+    let mut bad = v;
+    bad["preparation"] = Value::Null;
+    assert!(serde_json::from_value::<KeyArgs>(bad).is_err());
+    let schema = serde_json::to_value(schemars::schema_for!(KeyArgs)).unwrap();
+    eprintln!(
+        "KEY_PREPARATION_SCHEMA {}",
+        schema["properties"]["preparation"]
+    );
+    assert!(
+        !schema["properties"]["preparation"]
+            .to_string()
+            .contains("null")
+    );
+}
+#[test]
+fn f293_key_preparation_schema_preserves_typed_key_and_no_fallback() {
+    let v = json!({"target":"t","frame":"f","element":"e","request_id":"r","key":"n","preparation":"target_key_window_record248_experimental"});
+    let a = serde_json::from_value::<KeyArgs>(v).unwrap();
+    let encoded = rwi_core::KeyChordPayload::encode(a.key, a.preparation).unwrap();
+    assert_eq!(rwi_core::KeyChordPayload::parse(&encoded).unwrap().key, "n");
+    assert!(!encoded.contains("fallback"));
+}

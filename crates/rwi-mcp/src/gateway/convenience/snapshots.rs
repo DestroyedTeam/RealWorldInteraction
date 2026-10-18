@@ -1,5 +1,16 @@
 use super::*;
 
+/// Direct cache-read arguments for the original observation, not the snapshot
+/// wrapper. This neither refreshes native state nor changes reference lifetime.
+pub(super) fn snapshot_native_details_ref(
+    data: &Value,
+    observation_ref: Option<&str>,
+) -> Option<Value> {
+    data.get("adapter_status")?;
+    let reference = observation_ref.filter(|reference| !reference.is_empty())?;
+    Some(json!({"result_ref":reference,"pointer":"/adapter_status"}))
+}
+
 /// Snapshot display only, after the original reply was retained. Timing output
 /// does not require a second identical coverage object; errors stay unmodified.
 pub(super) fn compact_snapshot_reply_diagnostics(name: &str, result: &mut DeviceResult) {

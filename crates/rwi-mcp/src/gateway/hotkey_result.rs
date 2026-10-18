@@ -1,8 +1,8 @@
-//! Error presentation for this hotkey invocation, never historical operation data.
+//! Current hotkey/window-focus error presentation, never historical operation data.
 use rwi_core::device::DeviceResult;
 
 pub(super) fn promote_current_error(tool: &str, result: &mut DeviceResult) {
-    if tool != "computer.hotkey" {
+    if !matches!(tool, "computer.hotkey" | "computer.focus_window") {
         return;
     }
     let Some(failure) = result
@@ -14,7 +14,7 @@ pub(super) fn promote_current_error(tool: &str, result: &mut DeviceResult) {
     else {
         return;
     };
-    // Older Agents can return a failed current hotkey in a successful envelope.
+    // Older Agents can wrap a current input/focus failure in a successful envelope.
     // Keep the complete original receipt, dispatch/uncertainty and operation ref.
     result.is_error = true;
     for (destination, source) in [("code", "code"), ("message", "next_step")] {
@@ -122,5 +122,83 @@ mod tests {
         assert_eq!(result.data, data);
         assert!(result.data.get("code").is_none());
         assert!(result.data.get("message").is_none());
+    }
+
+    fn focus_failure() -> Value {
+        json!({
+            "receipt":{"dispatch":"uncertain","dispatch_error":{
+                "code":"foreground_identity_unknown",
+                "next_step":"No exact foreground window number; do not guess."
+            },"request_id":"fixture-focus","replay":"forbidden","goal_verified":false},
+            "native_dispatch_entered":true,"operation_ref":{"fixture":"retained"},
+            "diagnostic":{"native_request_counts":{"AXFrontmost":1,"AXRaise":1}},
+            "operation":{"terminal":true,"native_call_pending":false,"resources_released":true}
+        })
+    }
+
+    #[test]
+    fn focus_receipt_error_preserves_uncertain_effect_and_original_evidence() {
+        let original = focus_failure();
+        let mut result = DeviceResult::value(original.clone());
+        promote_current_error("computer.focus_window", &mut result);
+        assert!(result.is_error);
+        assert_eq!(result.data["code"], "foreground_identity_unknown");
+        assert_eq!(
+            result.data["message"],
+            original["receipt"]["dispatch_error"]["next_step"]
+        );
+        let once = result.data.clone();
+        promote_current_error("computer.focus_window", &mut result);
+        assert_eq!(result.data, once);
+        result.data.as_object_mut().unwrap().remove("code");
+        result.data.as_object_mut().unwrap().remove("message");
+        assert_eq!(result.data, original);
+    }
+
+    #[test]
+    fn focus_receipt_error_does_not_invent_success_or_unknown_shape_failures() {
+        for data in [
+            Value::Null,
+            json!([]),
+            json!({}),
+            json!({"receipt":null}),
+            json!({"receipt":{"dispatch":"returned","dispatch_error":null,"goal_verified":false}}),
+            json!({"receipt":{"dispatch":"uncertain"}}),
+            json!({"receipt":{"dispatch_error":"future representation"}}),
+            json!({"receipt":{"dispatch_error":false}}),
+            json!({"receipt":{"dispatch_error":[]}}),
+        ] {
+            let mut result = DeviceResult::value(data.clone());
+            promote_current_error("computer.focus_window", &mut result);
+            assert!(!result.is_error);
+            assert_eq!(result.data, data);
+        }
+        let data = json!({"receipt":{"dispatch_error":{}}});
+        let mut result = DeviceResult::value(data.clone());
+        promote_current_error("computer.focus_window", &mut result);
+        assert!(result.is_error);
+        assert_eq!(result.data, data, "do not fabricate diagnostics");
+    }
+
+    #[test]
+    fn focus_receipt_error_keeps_existing_diagnostics_and_history_query_envelopes() {
+        let mut data = focus_failure();
+        data["code"] = json!("existing_native_code");
+        data["message"] = json!("Keep the original diagnostic.");
+        let mut current = DeviceResult::value(data.clone());
+        promote_current_error("computer.focus_window", &mut current);
+        assert!(current.is_error);
+        assert_eq!(current.data, data);
+        for tool in [
+            "computer.operation",
+            "computer.cancel",
+            "computer.targets",
+            "computer.act",
+        ] {
+            let mut query = DeviceResult::value(data.clone());
+            promote_current_error(tool, &mut query);
+            assert!(!query.is_error, "{tool}");
+            assert_eq!(query.data, data);
+        }
     }
 }

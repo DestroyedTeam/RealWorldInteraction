@@ -35,7 +35,7 @@ fn observation() -> DeviceResult {
         "scene":{"binding":{"scope":{"pid":7,"window":"cgwindow:77"},"mutation_context":{"window_title":"Synthetic snapshot"}},
             "mutation_ready":true,"blocked":false,"assurance":"synthetic-fixture","image_size":[1,1],
             "pixel_to_desktop":[1,0,0,1,0,0],"elements":controls},
-        "adapter_status":{"input_proposal_max_age_ms":120000,
+        "adapter_status":{"input_proposal_max_age_ms":120000,"diagnostic_padding":"🙂".repeat(4096),
             "observation_consistency":{"scope":"synthetic-data-only","pixel_semantic_atomic":false,
                 "ax_coverage_after":coverage,"future_unknown":{"large":9007199254740993_u64,"value":null}}}
     }))
@@ -282,6 +282,35 @@ async fn run() -> Value {
         .await;
     check_snapshot(&full);
     assert_eq!(text(&full), full["structuredContent"]);
+    let mut native_details_readable = false;
+    if let Some(reference) = full["structuredContent"].get("native_details") {
+        assert_eq!(
+            reference["result_ref"],
+            full["structuredContent"]["observation_ref"]
+        );
+        assert_eq!(reference["pointer"], "/adapter_status");
+        let read = host.tool(8, "computer.result", reference.clone()).await;
+        assert_eq!(read["isError"], false);
+        assert_eq!(read["structuredContent"]["source_tool"], "computer.observe");
+        assert_eq!(read["structuredContent"]["native_dispatched"], false);
+        assert_eq!(read["structuredContent"]["value_included"], false);
+        assert!(
+            read["structuredContent"]["children"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("observation_consistency"))
+        );
+        let mut child = reference.clone();
+        child["pointer"] = json!("/adapter_status/observation_consistency");
+        let read = host.tool(9, "computer.result", child).await;
+        assert_eq!(read["isError"], false);
+        assert_eq!(read["structuredContent"]["native_dispatched"], false);
+        assert_eq!(
+            read["structuredContent"]["value"]["scope"],
+            "synthetic-data-only"
+        );
+        native_details_readable = true;
+    }
     let compact = host
         .tool(
             5,
@@ -292,6 +321,10 @@ async fn run() -> Value {
     let projected = !compact["isError"].as_bool().unwrap();
     if projected {
         check_snapshot(&compact);
+        assert_eq!(
+            text(&compact)["native_details"],
+            compact["structuredContent"]["native_details"]
+        );
         assert_eq!(
             text(&compact)["_text_projection"]["version"],
             "snapshot_summary_v1"
@@ -333,7 +366,14 @@ async fn run() -> Value {
     assert_eq!(observe_count, if projected { 2 } else { 1 });
     let full_bytes = full["content"][0]["text"].as_str().unwrap().len();
     let compact_bytes = compact["content"][0]["text"].as_str().unwrap().len();
-    json!({"schema_has_mode":advertised,"optin_summary":projected,"optin_isError":compact["isError"],"default_text_equals_structured":true,"exact_controls_points_and_PNG_retained":true,"unknown_argument_specific":unknown_specific,"default_text_bytes":full_bytes,"optin_text_bytes":compact_bytes,"observe_count":observe_count,"MCP_child_exit0_checked":true,"synthetic_only_no_OS_input":true})
+    json!({"native_details_readable":native_details_readable,"schema_has_mode":advertised,"optin_summary":projected,"optin_isError":compact["isError"],"default_text_equals_structured":true,"exact_controls_points_and_PNG_retained":true,"unknown_argument_specific":unknown_specific,"default_text_bytes":full_bytes,"optin_text_bytes":compact_bytes,"observe_count":observe_count,"MCP_child_exit0_checked":true,"synthetic_only_no_OS_input":true})
+}
+
+#[tokio::test]
+async fn native_details_ref_actual_mcp_protocol_without_extra_observe() {
+    let observed = run().await;
+    assert_eq!(observed["native_details_readable"], true);
+    assert_eq!(observed["observe_count"], 2);
 }
 
 #[tokio::test]

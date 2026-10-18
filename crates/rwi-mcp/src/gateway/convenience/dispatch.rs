@@ -228,11 +228,15 @@ impl Gateway {
                 let omitted = total.saturating_sub(elements.len());
                 let (view_id, input_reference_available) =
                     snapshot_input_view(&d["scene"], &image.data);
-                DeviceResult {
+                let mut result = DeviceResult {
                     is_error: false,
                     data: json!({"target":a.target,"window":snapshot_window(d),"consistency":d["adapter_status"]["observation_consistency"],"frame":d["frame"],"view_id":view_id,"mapping":image.data["mapping"],"visual_available":!d["artifact_id"].is_null(),"visual_only":d["scene"]["binding"].is_null() && !d["artifact_id"].is_null(),"assurance":d["scene"]["assurance"],"input_reference_available":input_reference_available,"elements":elements,"available_controls":total,"omitted_controls":omitted,"control_projection":"preferred controls; unnamed unavailable containers may be collapsed; computer.controls keeps full original pages","coverage":d["adapter_status"]["observation_consistency"]["ax_coverage_after"],"native_complete":snapshot_native_complete(d),"reference_max_age_ms":d["adapter_status"]["input_proposal_max_age_ms"],"observation_ref":details,"blocked":d["scene"]["blocked"],"mutation_ready":snapshot_mutation_ready(d),"input_domain_fenced":d["input_domain_fenced"]}),
                     images: image.images,
+                };
+                if let Some(reference) = snapshot_native_details_ref(d, details.as_deref()) {
+                    result.data["native_details"] = reference;
                 }
+                result
             }
             "computer.click" => {
                 let a = match serde_json::from_value::<ClickArgs>(args) {
@@ -275,11 +279,22 @@ impl Gateway {
                     Ok(a) => a,
                     Err(e) => return invalid(&e.to_string()),
                 };
-                let args = match keyboard_action(a.frame, a.element, a.key, "key_chord", 128) {
+                let preparation = a.preparation;
+                let value = match rwi_core::KeyChordPayload::encode(a.key, preparation) {
+                    Ok(value) => value,
+                    Err(e) => return invalid(&e.to_string()),
+                };
+                let limit = if preparation.is_some() { 512 } else { 128 };
+                let args = match keyboard_action(a.frame, a.element, value, "key_chord", limit) {
                     Ok(args) => args,
                     Err(e) => return e,
                 };
-                leased(&a.target, &a.request_id, "computer.act_checked", args, call).await
+                let mut result =
+                    leased(&a.target, &a.request_id, "computer.act_checked", args, call).await;
+                if let Some(p) = preparation {
+                    result.data["requested_preparation"] = json!(p);
+                }
+                result
             }
             "computer.drag" => {
                 let a = match serde_json::from_value::<DragArgs>(args) {

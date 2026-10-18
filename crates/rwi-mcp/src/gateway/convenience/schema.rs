@@ -313,6 +313,19 @@ pub(super) struct KeyArgs {
     pub(super) element: String,
     pub(super) request_id: String,
     pub(super) key: String,
+    /// macOS-only opt-in legacy248 key-window records; runtime ABI/effect unverified.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "key_preparation_option"
+    )]
+    #[schemars(with = "rwi_core::KeyPreparation")]
+    pub(super) preparation: Option<rwi_core::KeyPreparation>,
+}
+fn key_preparation_option<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Option<rwi_core::KeyPreparation>, D::Error> {
+    rwi_core::KeyPreparation::deserialize(d).map(Some)
 }
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]

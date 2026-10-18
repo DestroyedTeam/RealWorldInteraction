@@ -97,6 +97,14 @@ where
         Err(error) => return error,
     };
     let requested_delivery = a.delivery.as_ref().map(|delivery| delivery.delivery_name());
+    let touch_requested = matches!(
+        &a.delivery,
+        Some(
+            rwi_core::ClickDeliveryOptions::BackgroundPublicAppkitExperimental {
+                mouse_subtype: rwi_core::ClickMouseSubtype::Touch
+            }
+        )
+    );
     let tool = if matches!(&a.at, ClickTarget::Element { .. }) {
         "computer.act_checked"
     } else {
@@ -174,6 +182,9 @@ where
     if let Some(requested_delivery) = requested_delivery {
         result.data["requested_delivery"] = json!(requested_delivery);
         result.data["goal_verified"] = json!(false);
+        if touch_requested {
+            result.data["requested_mouse_subtype"] = json!("touch");
+        }
     }
     result
 }

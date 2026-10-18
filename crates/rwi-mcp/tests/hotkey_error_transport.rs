@@ -50,6 +50,24 @@ fn failure_data() -> Value {
     data
 }
 
+fn focus_failure_data() -> Value {
+    json!({
+        "native_dispatch_entered":true,"input_domain_fenced":false,
+        "receipt":{"dispatch":"uncertain","dispatch_error":{
+            "code":"foreground_identity_unknown",
+            "next_step":"No exact foreground window number; do not guess."
+        },"scope":{"pid":7,"window":"cgwindow:77","element":null},
+        "goal_verified":false,"replay":"forbidden"},
+        "diagnostic":{"native_request_counts":{"AXFrontmost":1,"AXRaise":1}},
+        "operation":{"terminal":true,"native_call_pending":false,"resources_released":true},
+        "retained_unknown":{"button":"Close","point":[17,29]}
+    })
+}
+
+fn foreground() -> Value {
+    json!({"pid":7,"window":"cgwindow:77","process_start":"fixture-process-start","native_epoch":"a".repeat(64)})
+}
+
 struct Host {
     child: Child,
     input: Option<ChildStdin>,
@@ -127,7 +145,7 @@ impl Host {
     }
 }
 
-async fn run() -> Value {
+async fn run(input_tool: &'static str) -> Value {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().canonicalize().unwrap().join("private");
     std::fs::DirBuilder::new()
@@ -144,8 +162,12 @@ async fn run() -> Value {
     let endpoint = listener.local_addr().unwrap();
     let requests = Arc::new(Mutex::new(Vec::<Request>::new()));
     let seen = requests.clone();
-    let accepted = Arc::new(Mutex::new(BTreeMap::<String, Value>::new()));
-    let rejected = failure_data();
+    let accepted = Arc::new(Mutex::new(BTreeMap::<String, (String, Value)>::new()));
+    let rejected = if input_tool == "computer.focus_window" {
+        focus_failure_data()
+    } else {
+        failure_data()
+    };
     let original_receipt = rejected["receipt"].clone();
     let (stop, rx) = tokio::sync::watch::channel(false);
     let server = tokio::spawn(rwi_native_link::device::serve(
@@ -166,7 +188,13 @@ async fn run() -> Value {
                         DeviceResult::value(json!({"context":CONTEXT,"targets":targets}))
                     }
                     Call::Prepare { tool, arguments } => {
-                        assert_eq!(tool, "computer.hotkey");
+                        assert!(
+                            tool == input_tool
+                                || matches!(
+                                    tool.as_str(),
+                                    "computer.observe" | "computer.claim" | "computer.release"
+                                )
+                        );
                         let reference = OperationRef {
                             ref_version: 1,
                             device_id: request.device.clone(),
@@ -177,16 +205,33 @@ async fn run() -> Value {
                         accepted
                             .lock()
                             .unwrap()
-                            .insert(reference.execution_nonce.clone(), arguments);
+                            .insert(reference.execution_nonce.clone(), (tool, arguments));
                         DeviceResult::value(json!({"operation_ref":reference}))
                     }
                     Call::Execute { operation_ref } => {
-                        let arguments = accepted
+                        let (tool, arguments) = accepted
                             .lock()
                             .unwrap()
                             .get(&operation_ref.execution_nonce)
                             .unwrap()
                             .clone();
+                        let metadata = match tool.as_str() {
+                            "computer.observe" => Some(
+                                json!({"frame":"fixture-frame","adapter_status":{"current_foreground":foreground()}}),
+                            ),
+                            "computer.claim" => Some(json!({"lease":"fixture-lease"})),
+                            "computer.release" => Some(json!({"released":true})),
+                            _ => None,
+                        };
+                        if let Some(metadata) = metadata {
+                            return Reply {
+                                version: PROTOCOL_VERSION,
+                                id: request.id,
+                                device: request.device,
+                                instance: INSTANCE.into(),
+                                result: DeviceResult::value(metadata),
+                            };
+                        }
                         let mut data = rejected;
                         data["receipt"]["request_id"] = arguments["request_id"].clone();
                         if arguments["request_id"] == "f49-success" {
@@ -195,6 +240,12 @@ async fn run() -> Value {
                         }
                         DeviceResult::value(data)
                     }
+                    Call::Cached { tool, .. } => match tool.as_str() {
+                        "computer.resolve" => {
+                            DeviceResult::value(json!({"reference":"fixture-window-ref"}))
+                        }
+                        _ => panic!("unexpected cached tool {tool}"),
+                    },
                     // A successful status query may contain historical failure data.
                     Call::Operation { .. } => {
                         let mut data = rejected;
@@ -243,14 +294,19 @@ async fn run() -> Value {
         .tool(2, "computer.targets", json!({"device_id":"device"}))
         .await;
     assert_eq!(targets["isError"], false, "{targets}");
-    let arguments = json!({"target":TARGET,"request_id":"f49-direct","lease":"fixture-lease","key":"cmd+tab","expected_foreground":{"pid":7,"window":"cgwindow:77","process_start":"fixture-process-start","native_epoch":"fixture-native-epoch"}});
-    let direct = host.tool(3, "computer.hotkey", arguments.clone()).await;
+    let mut arguments = json!({"target":TARGET,"request_id":"f49-direct","lease":"fixture-lease","expected_foreground":foreground()});
+    if input_tool == "computer.focus_window" {
+        arguments["reference"] = json!("fixture-window-ref");
+    } else {
+        arguments["key"] = json!("cmd+tab");
+    }
+    let direct = host.tool(3, input_tool, arguments.clone()).await;
     let mut expected_receipt = original_receipt;
     expected_receipt["request_id"] = json!("f49-direct");
     assert_eq!(direct["structuredContent"]["receipt"], expected_receipt);
     assert_eq!(
         direct["structuredContent"]["native_dispatch_entered"],
-        false
+        input_tool == "computer.focus_window"
     );
     let query = host.tool(4,"computer.operation",json!({"selector":{"kind":"execution","operation_ref":direct["structuredContent"]["operation_ref"]}})).await;
     assert_eq!(
@@ -264,22 +320,43 @@ async fn run() -> Value {
         .tool(
             5,
             "computer.js",
-            json!({"code":format!("emit(await rwi.call('computer.hotkey', {js_arguments}));")}),
+            json!({"code":format!("emit(await rwi.call('{input_tool}', {js_arguments}));")}),
         )
         .await;
     let js_data = &js["structuredContent"];
     assert_eq!(js_data["calls"].as_array().map(Vec::len), Some(1), "{js}");
-    assert_eq!(js_data["calls"][0]["tool"], "computer.hotkey");
+    assert_eq!(js_data["calls"][0]["tool"], input_tool);
     assert_eq!(js_data["calls"][0]["is_error"], direct["isError"]);
     assert_eq!(js_data["original_action_replayed"], false);
     let mut success_arguments = arguments;
     success_arguments["request_id"] = json!("f49-success");
-    let success = host.tool(6, "computer.hotkey", success_arguments).await;
+    let success = host.tool(6, input_tool, success_arguments).await;
     assert_eq!(success["isError"], false);
     assert_eq!(
         success["structuredContent"]["receipt"]["dispatch_error"],
         Value::Null
     );
+    let convenience = if input_tool == "computer.focus_window" {
+        let result = host
+            .tool(
+                7,
+                "computer.bring_to_front",
+                json!({"target":TARGET,"request_id":"fixture-focus-convenience"}),
+            )
+            .await;
+        assert_eq!(
+            result["structuredContent"]["receipt"]["dispatch"],
+            "uncertain"
+        );
+        assert_eq!(result["structuredContent"]["native_dispatch_entered"], true);
+        assert_eq!(
+            result["structuredContent"]["diagnostic"]["native_request_counts"],
+            json!({"AXFrontmost":1,"AXRaise":1})
+        );
+        Some(result)
+    } else {
+        None
+    };
     host.stop().await;
     stop.send_replace(true);
     server.await.unwrap().unwrap();
@@ -289,33 +366,71 @@ async fn run() -> Value {
             .iter()
             .filter(|r| matches!(r.call, Call::Prepare { .. }))
             .count(),
-        3
+        if convenience.is_some() { 7 } else { 3 }
     );
     assert_eq!(
         calls
             .iter()
             .filter(|r| matches!(r.call, Call::Execute { .. }))
             .count(),
-        3
+        if convenience.is_some() { 7 } else { 3 }
     );
     assert!(!calls.iter().any(|r| matches!(r.call, Call::Cancel { .. })));
-    json!({"direct_MCP_isError":direct["isError"],"direct_root_code":direct["structuredContent"]["code"],"JS_call_is_error":js_data["calls"][0]["is_error"],"JS_call_root_code":js_data["calls"][0]["code"],"history_query_isError":query["isError"],"success_control_isError":success["isError"],"original_receipt_retained":true,"prepare_count":3,"execute_count":3,"native_OS_input_sent":false})
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|r| matches!(&r.call, Call::Prepare { tool, .. } if tool == input_tool))
+            .count(),
+        if convenience.is_some() { 4 } else { 3 }
+    );
+    json!({"direct_MCP_isError":direct["isError"],"direct_root_code":direct["structuredContent"]["code"],"JS_call_is_error":js_data["calls"][0]["is_error"],"JS_call_root_code":js_data["calls"][0]["code"],"history_query_isError":query["isError"],"success_control_isError":success["isError"],"original_receipt_retained":true,"prepare_count":if convenience.is_some() { 7 } else { 3 },"execute_count":if convenience.is_some() { 7 } else { 3 },"bring_to_front_isError":convenience.as_ref().map(|r| &r["isError"]),"bring_to_front_root_code":convenience.as_ref().map(|r| &r["structuredContent"]["code"]),"native_OS_input_sent":false})
 }
 
 #[tokio::test]
 async fn f49_probe_protocol_observation() {
     // This observation entry point intentionally reports either version's flag.
     // A frozen copy can compare original/changed/rolled-back/reapplied binaries.
-    println!("F49_OBSERVED={}", run().await);
+    println!("F49_OBSERVED={}", run("computer.hotkey").await);
 }
 
 #[tokio::test]
 async fn f49_hotkey_error_metadata_direct_and_js_not_success_or_query() {
-    let result = run().await;
+    let result = run("computer.hotkey").await;
     assert_eq!(result["direct_MCP_isError"], true, "{result}");
     assert_eq!(result["direct_root_code"], "foreground_changed");
     assert_eq!(result["JS_call_is_error"], true);
     assert_eq!(result["JS_call_root_code"], "foreground_changed");
+    assert_eq!(result["history_query_isError"], false);
+    assert_eq!(result["success_control_isError"], false);
+}
+
+#[tokio::test]
+async fn focus_receipt_error_protocol_observation() {
+    // Frozen evaluator may observe either version. All replies are synthetic;
+    // no paired host, GUI fixture, focus request or OS input is used.
+    println!(
+        "FOCUS_RECEIPT_OBSERVED={}",
+        run("computer.focus_window").await
+    );
+}
+
+#[tokio::test]
+async fn focus_receipt_error_direct_js_convenience_preserve_history_and_success() {
+    let result = run("computer.focus_window").await;
+    for key in [
+        "direct_MCP_isError",
+        "JS_call_is_error",
+        "bring_to_front_isError",
+    ] {
+        assert_eq!(result[key], true, "{result}");
+    }
+    for key in [
+        "direct_root_code",
+        "JS_call_root_code",
+        "bring_to_front_root_code",
+    ] {
+        assert_eq!(result[key], "foreground_identity_unknown", "{result}");
+    }
     assert_eq!(result["history_query_isError"], false);
     assert_eq!(result["success_control_isError"], false);
 }

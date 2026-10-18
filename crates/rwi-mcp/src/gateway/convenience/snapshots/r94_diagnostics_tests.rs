@@ -1,4 +1,92 @@
 use super::*;
+
+#[test]
+fn native_details_ref_large_status_indexes_children_without_another_native_observe() {
+    use crate::gateway::presentation::{Presentation, ResultArgs};
+    let diagnostics = json!({"scope":"last_metadata_read","mismatches":[{"hit_role":"AXSheet"}]});
+    let raw =
+        json!({"adapter_status":{"large":"🙂".repeat(4096),"ax_hit_diagnostics":diagnostics}});
+    let mut cache = Presentation::default();
+    let original = cache.retain("computer.observe", raw).unwrap();
+    let raw =
+        json!({"adapter_status":{"large":"🙂".repeat(4096),"ax_hit_diagnostics":diagnostics}});
+    let reference = snapshot_native_details_ref(&raw, Some(&original)).unwrap();
+    let read = cache.read(serde_json::from_value::<ResultArgs>(reference.clone()).unwrap());
+    assert!(!read.is_error, "{read:?}");
+    assert_eq!(read.data["value_included"], false);
+    assert_eq!(read.data["children_complete"], true);
+    assert_eq!(
+        read.data["children"],
+        json!(["ax_hit_diagnostics", "large"])
+    );
+    assert_eq!(read.data["native_dispatched"], false);
+    let mut child = reference;
+    child["pointer"] = json!("/adapter_status/ax_hit_diagnostics");
+    let read = cache.read(serde_json::from_value::<ResultArgs>(child).unwrap());
+    assert!(!read.is_error);
+    assert_eq!(read.data["value"], diagnostics);
+    assert_eq!(read.data["native_dispatched"], false);
+}
+
+#[test]
+fn native_details_ref_reads_original_status_not_wrapper_and_preserves_hash() {
+    use crate::gateway::presentation::{Presentation, ResultArgs};
+    let native = json!({"frame":"frame-v1","scene":{"binding":null},
+        "adapter_status":{"ax_hit_diagnostics":{"scope":"last_metadata_read",
+            "mismatches":[{"hit_role":"AXSheet","node_window":4513,"hit_window":4512}]},
+            "future_unknown":null}});
+    let hash = rwi_core::digest(&serde_json::to_vec(&native).unwrap());
+    let mut cache = Presentation::default();
+    let original = cache.retain("computer.observe", native.clone()).unwrap();
+    let reference = snapshot_native_details_ref(&native, Some(&original)).unwrap();
+    assert_eq!(reference.as_object().unwrap().len(), 2);
+    let mut raw = snapshot();
+    raw["observation_ref"] = json!(original);
+    raw["native_details"] = reference.clone();
+    let wrapper = cache.retain("computer.snapshot", raw.clone()).unwrap();
+    raw["details_ref"] = json!(wrapper);
+    let reply = default_reply("computer.snapshot", DeviceResult::value(raw), false);
+    assert_ne!(reply.data["observation_ref"], reply.data["details_ref"]);
+    assert_eq!(reply.data["native_details"], reference);
+    let read = cache.read(serde_json::from_value::<ResultArgs>(reference).unwrap());
+    assert!(!read.is_error);
+    assert_eq!(read.data["source_tool"], "computer.observe");
+    assert_eq!(read.data["value"], native["adapter_status"]);
+    assert_eq!(read.data["metadata_sha256"], hash);
+    assert_eq!(read.data["native_dispatched"], false);
+    assert_eq!(reply.data["mutation_ready"], false);
+    assert_eq!(reply.data["input_domain_fenced"], true);
+}
+
+#[test]
+fn native_details_ref_requires_retained_reference_and_existing_status() {
+    for reference in [None, Some("")] {
+        assert!(snapshot_native_details_ref(&json!({"adapter_status":null}), reference).is_none());
+    }
+    for missing in [json!({}), Value::Null, json!([])] {
+        assert!(snapshot_native_details_ref(&missing, Some("original-ref")).is_none());
+    }
+}
+
+#[test]
+fn native_details_ref_preserves_unknown_or_null_native_status_without_claims() {
+    use crate::gateway::presentation::{Presentation, ResultArgs};
+    for status in [
+        Value::Null,
+        json!("unknown"),
+        json!([false, null]),
+        json!({"future":null}),
+    ] {
+        let raw = json!({"adapter_status":status});
+        let mut cache = Presentation::default();
+        let original = cache.retain("computer.observe", raw.clone()).unwrap();
+        let reference = snapshot_native_details_ref(&raw, Some(&original)).unwrap();
+        let read = cache.read(serde_json::from_value::<ResultArgs>(reference).unwrap());
+        assert!(!read.is_error);
+        assert_eq!(read.data["value"], status);
+        assert_eq!(read.data["native_dispatched"], false);
+    }
+}
 fn coverage() -> Value {
     json!({"absence_proven":false,"child_reads_failed":2,"complete":false,
         "described_nodes":50,"descriptions_failed":4,"dropped_queue_nodes":0,
