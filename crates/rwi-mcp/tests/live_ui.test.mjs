@@ -738,3 +738,44 @@ test('conversation_live_no_pip mode changes cannot revive closed ownership', asy
   await h.deliver({method:'ui/notifications/host-context-changed',params:{displayMode:'inline'}}); await h.tick();
   assert.equal(h.calls().length,count); assert.equal(h.nodes.get('preview').hidden,true);
 });
+
+const f340Stopped = { status: 'stopped', worker_done: true, capture_pending: false, native_call_pending: false, presenter_visible: false, presenter_image_present: false, session_id: 'live:42' };
+const f340Suspended = { state: 'suspended', read_only: true, presentation_suspended: true, capture_pending: false, native_call_pending: false, worker_done: false, frames_captured: 12, session_id: 'live:42', status: 'running' };
+async function f340Ready() { const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack(); return h; }
+test('f340 drained native close is distinct from a returned stop request', async () => {
+  const h = await f340Ready(); await h.click('close'); await h.ack(undefined, f340Stopped);
+  assert.equal(h.nodes.get('state').textContent, '采集已停止 · 工作线程已结束');
+  assert.equal(h.nodes.get('panel').attrs['data-native-worker-done'], 'true');
+  assert.equal(h.nodes.get('preview').hidden, true); assert.equal(h.nodes.get('close').disabled, true);
+  const count = h.calls().length; await h.tick(); assert.equal(h.calls().length, count);
+});
+test('f340 pending missing or string stop flags never attest drained worker', async () => {
+  for (const data of [{accepted:true}, {...f340Stopped,worker_done:false}, {...f340Stopped,capture_pending:true}, {...f340Stopped,worker_done:'true'}, {...f340Stopped,native_call_pending:undefined}]) {
+    const h = await f340Ready(); await h.click('close'); await h.ack(undefined, data);
+    assert.match(h.nodes.get('state').textContent, /停止状态尚未确认/);
+  }
+});
+test('f340 hide receipt without actual capture observation does not attest suspension', async () => {
+  for (const observation of [undefined, {...f340Suspended,capture_pending:true}, {...f340Suspended,read_only:false}]) {
+    const h = await f340Ready(); await h.click('toggle'); await h.ack(undefined, {accepted:true,native_observation:observation});
+    assert.match(h.nodes.get('state').textContent, /停采尚未确认/); assert.equal(h.nodes.get('preview').hidden, true);
+  }
+});
+test('f340 settled exact-view hide renders metadata and resume clears old observation', async () => {
+  const h = await f340Ready(); await h.click('toggle'); await h.ack(undefined, {accepted:true,native_observation:f340Suspended});
+  assert.match(h.nodes.get('state').textContent, /采集已暂停/);
+  assert.equal(h.nodes.get('panel').attrs['data-native-frames-captured'], '12');
+  assert.equal(h.nodes.get('panel').attrs['data-native-session'], 'live:42');
+  await h.click('toggle'); assert.equal(h.nodes.get('panel').attrs['data-native-session'], undefined);
+  await h.ack(); assert.match(h.nodes.get('state').textContent, /组件可见/);
+  // Resume can be queued before the hide observation comes back.
+  const queued = await f340Ready(); await queued.click('toggle'); await queued.click('toggle');
+  await queued.ack(undefined, {accepted:true,native_observation:f340Suspended});
+  await queued.ack(); assert.equal(queued.nodes.get('panel').attrs['data-native-session'], undefined);
+});
+test('f340 close error clears old native observation without replay', async () => {
+  const h = await f340Ready(); await h.click('toggle'); await h.ack(undefined, {accepted:true,native_observation:f340Suspended});
+  await h.click('close'); const call=h.calls().at(-1);await h.deliver({id:call.id,error:{code:-32000,message:'uncertain'}});await drain();
+  assert.match(h.nodes.get('state').textContent,/关闭未确认/);assert.equal(h.nodes.get('panel').attrs['data-native-session'],undefined);
+  const count=h.calls().length;await h.tick();assert.equal(h.calls().length,count);
+});

@@ -307,7 +307,25 @@
         status.textContent = message;
         disableControls();
       }
+      function clearNativeObservation() {
+        for (const field of ['status', 'worker-done', 'capture-pending', 'frames-captured', 'session', 'observed-at']) panel.removeAttribute(`data-native-${field}`);
+      }
+      function showNativeObservation(data) {
+        clearNativeObservation();
+        for (const [field, key] of [['status', 'status'], ['worker-done', 'worker_done'], ['capture-pending', 'capture_pending'], ['frames-captured', 'frames_captured'], ['session', 'session_id']]) {
+          if (typeof data?.[key] === 'boolean' || typeof data?.[key] === 'string' || Number.isSafeInteger(data?.[key])) panel.setAttribute(`data-native-${field}`, String(data[key]));
+        }
+        panel.setAttribute('data-native-observed-at', String(Date.now()));
+      }
+      function suspendedCapture(data) {
+        return data?.state === 'suspended' && data.read_only === true && data.presentation_suspended === true && data.capture_pending === false && data.native_call_pending === false;
+      }
+      function stoppedWorker(data) {
+        return data.status === 'stopped' && data.worker_done === true &&
+          ['capture_pending', 'native_call_pending', 'presenter_visible', 'presenter_image_present'].every(field => data[field] === false);
+      }
       function report(shown, stop = false) {
+        clearNativeObservation();
         if (!shown || stop) clearImages(stop ? '本轮画面已关闭' : '画面已隐藏');
         if (!ready || !capability || ended) return Promise.resolve();
         // One request in flight; later state supersedes a queued heartbeat.
@@ -326,8 +344,12 @@
               });
               if (owner !== capability) continue;
               const data = reply.structuredContent ?? {};
+              // A queued Resume may have cleared attributes before the older
+              // Hide reply arrived. Replace observations at reply time too.
+              clearNativeObservation();
               if (event.stop) {
-                finish(reply.isError ? '关闭未确认 · 不重试，请核对原始状态' : '关闭请求已返回 · 重新打开需新建观察');
+                if (!reply.isError) showNativeObservation(data);
+                finish(reply.isError ? '关闭未确认 · 不重试，请核对原始状态' : stoppedWorker(data) ? '采集已停止 · 工作线程已结束' : '关闭请求已返回 · 停止状态尚未确认');
               } else if (data.accepted === false && data.reason === 'preview_stopped') {
                 finish('本轮预览已结束 · 恢复不会重开，需新建观察');
               } else if (data.code === 'live_ui_event_rejected') {
@@ -339,14 +361,16 @@
                 }[data.message] ?? '视图事件被拒绝（unknown_reason）';
                 finish(reason);
               } else {
+                if (!event.shown && !reply.isError && data.accepted === true && data.native_observation) showNativeObservation(data.native_observation);
                 if (!reply.isError && data.accepted === true && event.shown && visible()) allowImages();
                 else clearImages('等待已确认的可见连接');
                 status.textContent = !reply.isError && data.accepted === true
-                  ? (event.shown ? '组件可见 · 预览连接已确认' : '隐藏已确认')
+                  ? (event.shown ? '组件可见 · 预览连接已确认' : suspendedCapture(data.native_observation) ? '隐藏已确认 · 采集已暂停' : '隐藏已确认 · 停采尚未确认')
                   : '连接未确认 · 预览将自动隐藏';
               }
             } catch {
               if (owner !== capability) continue;
+              clearNativeObservation();
               clearImages('连接未确认 · 已清除旧画面');
               if (event.stop) finish('关闭未确认 · 不重试，请核对原始状态');
               else status.textContent = '连接未确认 · 预览将自动隐藏';
@@ -378,6 +402,7 @@
           }
           if (next.view_key === capability?.view_key && next.page === capability?.page) return;
           clearImages('等待已确认的可见连接');
+          clearNativeObservation();
           capability = { view_key: next.view_key, page: next.page, adapter_instance: /^[0-9a-f]{32}$/.test(next.adapter_instance) ? next.adapter_instance : null };
           images = { owner: capability, epoch: 0, allowed: false, blocked: false, sequence: 0, after: null };
           sequence = 0;

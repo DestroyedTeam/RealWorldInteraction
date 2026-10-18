@@ -218,7 +218,7 @@ fn ui_resource_is_static_closed_network_and_exact_uri() {
         resource["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
         "inline"
     );
-    assert_eq!(URI, "ui://real-world-interaction/live/v7.html");
+    assert_eq!(URI, "ui://real-world-interaction/live/v8.html");
     for uri in LEGACY_URIS {
         let legacy = serde_json::to_value(read(uri).unwrap()).unwrap();
         assert_eq!(legacy["contents"][0]["uri"], uri);
@@ -279,4 +279,77 @@ fn conversation_live_no_pip_does_not_add_native_options_or_visibility_authority(
             .contains("never requests PiP")
     );
     assert!(tool["inputSchema"]["properties"].get("visible").is_none());
+}
+
+fn f340_state(pending: bool) -> Value {
+    json!({"host_view_binding":"owned", "session_id":"live:42", "status":"running", "presentation_suspended":true, "capture_pending":pending, "native_call_pending":false,"worker_done":false,"frames_captured":12,"source":{"private":"not projected"}})
+}
+#[test]
+fn f340_native_feedback_compact_state_is_exact_and_not_a_visibility_grant() {
+    let v = hidden_capture_state(&f340_state(false), "owned");
+    assert_eq!(v["state"], "suspended");
+    assert_eq!(v["frames_captured"], 12);
+    assert!(v.get("source").is_none() && v.get("host_view_binding").is_none());
+    assert!(v.get("accepted").is_none() && v.get("visible").is_none());
+}
+#[test]
+fn f340_native_feedback_missing_or_changed_identity_is_not_false_completion() {
+    let mut v = f340_state(false);
+    assert_eq!(hidden_capture_state(&v, "other")["state"], "unknown");
+    v.as_object_mut().unwrap().remove("capture_pending");
+    assert_eq!(hidden_capture_state(&v, "owned")["state"], "unknown");
+    v["capture_pending"] = json!("false");
+    assert_eq!(hidden_capture_state(&v, "owned")["state"], "unknown");
+}
+#[tokio::test]
+async fn f340_native_feedback_pending_settles_by_read_only_status_not_republish() {
+    let mut reads = 0;
+    let v = observe_hidden_capture("owned", || {
+        reads += 1;
+        std::future::ready(DeviceResult::value(f340_state(reads == 1)))
+    })
+    .await;
+    assert_eq!(reads, 2);
+    assert_eq!(v["state"], "suspended");
+    assert_eq!(v["status_reads"], 2);
+    assert_eq!(v["read_only"], true);
+}
+#[tokio::test]
+async fn f340_native_feedback_pending_has_finite_read_count() {
+    let mut reads = 0;
+    let v = observe_hidden_capture("owned", || {
+        reads += 1;
+        std::future::ready(DeviceResult::value(f340_state(true)))
+    })
+    .await;
+    assert_eq!(reads, 8);
+    assert_eq!(v["state"], "pending");
+    assert_eq!(v["capture_pending"], true);
+}
+#[tokio::test]
+async fn f340_native_feedback_error_or_replaced_view_stops_without_retry() {
+    for error in [false, true] {
+        let mut reads = 0;
+        let v = observe_hidden_capture("owned", || {
+            reads += 1;
+            let mut v = f340_state(false);
+            v["host_view_binding"] = json!("replacement");
+            std::future::ready(if error {
+                DeviceResult::error("offline", "no status")
+            } else {
+                DeviceResult::value(v)
+            })
+        })
+        .await;
+        assert_eq!(reads, 1);
+        assert_eq!(v["state"], "unknown");
+        assert!(v.get("frames_captured").is_none());
+    }
+}
+#[tokio::test]
+async fn f340_native_feedback_slow_status_is_bounded_and_unknown() {
+    let v = observe_hidden_capture("owned", std::future::pending::<DeviceResult>).await;
+    assert_eq!(v["state"], "unknown");
+    assert_eq!(v["reason"], "observation_timeout");
+    assert_eq!(v["status_reads"], 1);
 }

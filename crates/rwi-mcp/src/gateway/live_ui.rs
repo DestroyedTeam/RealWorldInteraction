@@ -6,15 +6,16 @@ pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v7.html";
-const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v7-fullscreen.html";
-const LEGACY_URIS: [&str; 6] = [
+pub(super) const URI: &str = "ui://real-world-interaction/live/v8.html";
+const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v8-fullscreen.html";
+const LEGACY_URIS: [&str; 7] = [
     "ui://real-world-interaction/live/v1.html",
     "ui://real-world-interaction/live/v2.html",
     "ui://real-world-interaction/live/v3.html",
     "ui://real-world-interaction/live/v4.html",
     "ui://real-world-interaction/live/v5.html",
     "ui://real-world-interaction/live/v6.html",
+    "ui://real-world-interaction/live/v7.html",
 ];
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
@@ -40,6 +41,74 @@ pub(super) fn negotiated(context: &RequestContext<RoleServer>) -> bool {
 }
 fn meta(value: Value) -> Meta {
     Meta(value.as_object().unwrap().clone())
+}
+// Metadata-only observation of the exact already-owned view. This never
+// republishes presence, retries a mutation, or reads pixels. Keep it off the
+// visible heartbeat path and stop on identity change rather than borrowing
+// state from a replacement preview.
+fn hidden_capture_state(data: &Value, view_id: &str) -> Value {
+    if data["host_view_binding"].as_str() != Some(view_id) {
+        return json!({"state":"unknown","reason":"view_binding_changed"});
+    }
+    let known = data["presentation_suspended"].is_boolean()
+        && data["capture_pending"].is_boolean()
+        && data["native_call_pending"].is_boolean();
+    let suspended = known
+        && data["presentation_suspended"] == true
+        && data["capture_pending"] == false
+        && data["native_call_pending"] == false;
+    let mut result =
+        json!({"state":if !known {"unknown"} else if suspended {"suspended"} else {"pending"}});
+    for field in [
+        "session_id",
+        "status",
+        "presentation_suspended",
+        "capture_pending",
+        "native_call_pending",
+        "worker_done",
+        "frames_captured",
+    ] {
+        if let Some(value) = data.get(field) {
+            result[field] = value.clone();
+        }
+    }
+    result
+}
+async fn observe_hidden_capture<F, Fut>(view_id: &str, mut read: F) -> Value
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = DeviceResult>,
+{
+    use std::time::Duration;
+    let started = tokio::time::Instant::now();
+    let deadline = started + Duration::from_millis(500);
+    let mut last = json!({"state":"unknown","reason":"observation_timeout"});
+    let mut reads = 0;
+    for _ in 0..8 {
+        reads += 1;
+        let reply = match tokio::time::timeout_at(deadline, read()).await {
+            Ok(reply) => reply,
+            Err(_) => break,
+        };
+        if reply.is_error {
+            last = json!({"state":"unknown","reason":"status_unavailable"});
+            break;
+        }
+        last = hidden_capture_state(&reply.data, view_id);
+        if last["state"] != "pending" {
+            break;
+        }
+        if tokio::time::timeout_at(deadline, tokio::time::sleep(Duration::from_millis(50)))
+            .await
+            .is_err()
+        {
+            break;
+        }
+    }
+    last["read_only"] = json!(true);
+    last["status_reads"] = json!(reads);
+    last["elapsed_ms"] = json!(started.elapsed().as_millis());
+    last
 }
 #[derive(serde::Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -113,7 +182,13 @@ pub(super) fn resource() -> Resource {
         .with_mime_type(MIME).no_annotation()
 }
 pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
-    if uri == FULLSCREEN_URI || uri == "ui://real-world-interaction/live/v6-fullscreen.html" {
+    if uri == FULLSCREEN_URI
+        || matches!(
+            uri,
+            "ui://real-world-interaction/live/v6-fullscreen.html"
+                | "ui://real-world-interaction/live/v7-fullscreen.html"
+        )
+    {
         let html = include_str!("live_ui.html")
             .replace(
                 "const defaultPresentation = 'automatic';",
@@ -350,7 +425,19 @@ impl Gateway {
             result.data["view_revoked"] = json!(true);
             return result;
         }
-        self.publish_view(&target, update).await
+        let view_id = update.view_id.clone();
+        let mut result = self.publish_view(&target, update).await;
+        if !args.visible && !result.is_error && result.data["accepted"] == true {
+            result.data["native_observation"] = observe_hidden_capture(&view_id, || {
+                self.invoke_device(
+                    "computer.live",
+                    json!({"target":target,"action":"status"}),
+                    None,
+                )
+            })
+            .await;
+        }
+        result
     }
 }
 
