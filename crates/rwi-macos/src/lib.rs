@@ -23,6 +23,8 @@ mod native;
 mod nsevent_probe;
 #[cfg(target_os = "macos")]
 pub mod overlay;
+#[cfg(any(target_os = "macos", test))]
+pub mod receiver_component;
 #[cfg(target_os = "macos")]
 mod recovery;
 #[cfg(target_os = "macos")]
