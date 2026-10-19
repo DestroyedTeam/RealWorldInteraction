@@ -101,10 +101,15 @@ where
         &a.delivery,
         Some(
             rwi_core::ClickDeliveryOptions::BackgroundPublicAppkitExperimental {
-                mouse_subtype: rwi_core::ClickMouseSubtype::Touch
+                mouse_subtype: rwi_core::ClickMouseSubtype::Touch,
+                ..
             }
         )
     );
+    let factory_source_requested = a
+        .delivery
+        .as_ref()
+        .is_some_and(rwi_core::ClickDeliveryOptions::uses_appkit_factory_source);
     let tool = if matches!(&a.at, ClickTarget::Element { .. }) {
         "computer.act_checked"
     } else {
@@ -182,6 +187,9 @@ where
     if let Some(requested_delivery) = requested_delivery {
         result.data["requested_delivery"] = json!(requested_delivery);
         result.data["goal_verified"] = json!(false);
+        if factory_source_requested {
+            result.data["requested_event_source"] = json!("appkit_factory");
+        }
         if touch_requested {
             result.data["requested_mouse_subtype"] = json!("touch");
         }

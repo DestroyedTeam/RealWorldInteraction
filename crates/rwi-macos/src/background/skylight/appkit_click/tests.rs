@@ -211,3 +211,106 @@ fn r98_appkit_capability_is_separate_and_never_claims_inactive_reception() {
         assert_eq!(cap["primer_events"], 0);
     }
 }
+
+#[test]
+fn f360_factory_source_pair_changes_only_declared_source_and_keeps_originals() {
+    let (source, down, up, delivery) = fixture();
+    let before = [Snapshot::read(&down), Snapshot::read(&up)];
+    let (d, u) = construct_pair_with_source(
+        &down,
+        &up,
+        &source,
+        &delivery,
+        [1012.5, 823.25],
+        rwi_core::ClickEventSource::AppkitFactory,
+    )
+    .unwrap();
+    for (actual, mut expected) in [(&d, before[0].clone()), (&u, before[1].clone())] {
+        assert_ne!(actual.as_ptr(), down.as_ptr());
+        assert_ne!(actual.as_ptr(), up.as_ptr());
+        expected.integers[9] = 0;
+        assert_eq!(Snapshot::read(actual), expected);
+        assert_eq!(
+            actual.get_integer_value_field(EventField::MOUSE_EVENT_SUB_TYPE),
+            0
+        );
+    }
+    assert_ne!(d.as_ptr(), u.as_ptr());
+    assert_eq!([Snapshot::read(&down), Snapshot::read(&up)], before);
+    assert_ne!(before[0].integers[9], 0);
+    drop((source, down, up));
+    assert_eq!(Snapshot::read(&d).integers[9], 0);
+}
+#[test]
+fn f360_factory_source_does_not_accept_foreign_templates_or_modifiers() {
+    let (source, down, up, delivery) = fixture();
+    down.set_flags(CGEventFlags::CGEventFlagCommand);
+    assert_eq!(
+        construct_pair_with_source(
+            &down,
+            &up,
+            &source,
+            &delivery,
+            [1012.5, 823.25],
+            rwi_core::ClickEventSource::AppkitFactory
+        )
+        .err()
+        .unwrap()
+        .code,
+        "invalid_pointer_delivery"
+    );
+    down.set_flags(CGEventFlags::empty());
+    let combined = CGEventSource::new(CGEventSourceStateID::CombinedSessionState).unwrap();
+    assert_eq!(
+        construct_pair_with_source(
+            &down,
+            &up,
+            &combined,
+            &delivery,
+            [1012.5, 823.25],
+            rwi_core::ClickEventSource::AppkitFactory
+        )
+        .err()
+        .unwrap()
+        .code,
+        "invalid_pointer_delivery"
+    );
+}
+#[test]
+fn f360_factory_source_preparation_and_capability_do_not_claim_focus_or_post() {
+    let (source, down, up, delivery) = fixture();
+    let policy = rwi_core::ClickDeliveryOptions::parse(Some(
+        r#"{"delivery":"background_public_appkit_experimental","event_source":"appkit_factory"}"#,
+    ))
+    .unwrap()
+    .unwrap();
+    let pair =
+        prepare_selected_click_pair(&down, &up, &source, &delivery, [1012.5, 823.25], &policy);
+    if crate::background::pointer_delivery_available() {
+        drop(pair.unwrap());
+    } else {
+        assert_eq!(pair.err().unwrap().code, "background_delivery_unavailable");
+    }
+    for (enabled, semantic) in [(false, false), (true, true), (true, false)] {
+        let cap = super::super::public_appkit_click::capabilities(enabled, semantic);
+        let factory = &cap["event_sources"]["appkit_factory"];
+        assert_eq!(factory["available"], cap["available"]);
+        assert_eq!(factory["source_state_id"], 0);
+        for k in [
+            "physical_user_input",
+            "focus_preservation_verified",
+            "application_effect_attested",
+            "fallback",
+        ] {
+            assert_eq!(factory[k], false);
+        }
+    }
+    let bad=rwi_core::ClickDeliveryOptions::parse(Some(r#"{"delivery":"background_public_appkit_experimental","mouse_subtype":"touch","event_source":"appkit_factory"}"#)).unwrap().unwrap();
+    assert_eq!(
+        prepare_selected_click_pair(&down, &up, &source, &delivery, [1012.5, 823.25], &bad)
+            .err()
+            .unwrap()
+            .code,
+        "invalid_pointer_delivery"
+    );
+}

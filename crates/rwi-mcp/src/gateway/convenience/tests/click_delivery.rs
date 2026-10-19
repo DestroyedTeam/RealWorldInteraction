@@ -488,3 +488,45 @@ async fn f188_touch_click_schema_and_action_exclusion_remain_strict() {
         assert_eq!(*calls.borrow(), 0);
     }
 }
+
+#[test]
+fn f360_factory_source_schema_is_explicit_not_null_or_hardware() {
+    let schema = input_schema::<ClickArgs>().to_string();
+    assert!(schema.contains("appkit_factory") && schema.contains("invocation_private"));
+    for value in [json!(null), json!("hid")] {
+        let a = json!({"target":"t","request_id":"factory-once","at":element(),"delivery":{"delivery":"background_public_appkit_experimental","event_source":value}});
+        assert!(serde_json::from_value::<ClickArgs>(a).is_err());
+    }
+}
+#[tokio::test]
+async fn f360_factory_source_capability_precedes_one_pair_receipt_stays_unverified() {
+    for available in [false, true] {
+        let args=serde_json::from_value(json!({"target":"t","request_id":"factory-once","at":element(),"delivery":{"delivery":"background_public_appkit_experimental","event_source":"appkit_factory"}})).unwrap();
+        let calls = RefCell::new(Vec::new());
+        let result=click(args,Some("mac-host".into()),|tool,args,cleanup|{
+            calls.borrow_mut().push((tool,args,cleanup));let mut r=reply(tool);
+            if tool=="computer.targets"{r.data["targets"][0]["capabilities"]["pointer_click"]["background_public_appkit_experimental"]=json!({"implemented":true,"available":true,"event_sources":{"appkit_factory":{"implemented":true,"available":available}}});}
+            std::future::ready(r)
+        }).await;
+        assert_eq!(result.is_error, !available);
+        let calls = calls.borrow();
+        if available {
+            let actions: Vec<_> = calls
+                .iter()
+                .filter(|x| x.0 == "computer.act_checked")
+                .collect();
+            assert_eq!(actions.len(), 1);
+            assert_eq!(
+                actions[0].1["value"],
+                r#"{"delivery":"background_public_appkit_experimental","event_source":"appkit_factory"}"#
+            );
+            assert_eq!(result.data["requested_event_source"], "appkit_factory");
+            assert_eq!(result.data["goal_verified"], false);
+            assert_eq!(calls.last().unwrap().0, "computer.release");
+            assert!(calls.last().unwrap().2);
+        } else {
+            assert_eq!(calls.len(), 1);
+            assert_eq!(calls[0].0, "computer.targets");
+        }
+    }
+}

@@ -64,7 +64,7 @@ const FIELDS: [u32; 10] = [
     EventField::EVENT_SOURCE_GROUP_ID,
     EventField::EVENT_SOURCE_STATE_ID,
 ];
-#[derive(Debug, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 struct Snapshot {
     kind: u32,
     point: [f64; 2],
@@ -157,6 +157,7 @@ fn construct_one(
     snapshot: &Snapshot,
     source: &CGEventSource,
     delivery: &Delivery,
+    event_source: rwi_core::ClickEventSource,
 ) -> Result<CGEvent> {
     let class = event_class().ok_or_else(unavailable)?;
     let local = window_local(snapshot.point, delivery.frame);
@@ -190,23 +191,31 @@ fn construct_one(
             "AppKit event aliases the Quartz template; no input.",
         ));
     }
-    // Public factory has no source parameter. Restore the SAME borrowed Private
-    // source, exact Quartz position and exact original nanoseconds (seconds ABI
-    // conversion may round). This preserves the caller clock, not a new clock,
-    // zero timestamp, integer field58 override, or change to global source state.
+    // Public factory has no source parameter. The unchanged default restores
+    // the SAME invocation Private source; the explicit candidate retains the
+    // factory software source. Both restore exact position and nanoseconds
+    // (seconds ABI may round), never a new clock or integer field58 override.
     unsafe {
-        CGEventSetSource(event.as_ptr().cast(), source.as_ptr().cast());
+        if event_source == rwi_core::ClickEventSource::InvocationPrivate {
+            CGEventSetSource(event.as_ptr().cast(), source.as_ptr().cast());
+        }
         ffi::CGEventSetLocation(
             event.as_ptr().cast(),
             CGPoint::new(snapshot.point[0], snapshot.point[1]),
         );
         CGEventSetTimestamp(event.as_ptr().cast(), snapshot.timestamp);
     }
+    let mut expected = snapshot.clone();
+    if event_source == rwi_core::ClickEventSource::AppkitFactory {
+        // This explicit software-event candidate retains factory state 0.
+        // Every other source, clock, point and flag field must still match.
+        expected.integers[9] = 0;
+    }
     let observed = Snapshot::read(&event);
-    if observed != *snapshot {
+    if observed != expected {
         return Err(snapshot_mismatch(
             "Public mouse semantics/source/clock/point changed during AppKit construction; no input.",
-            snapshot,
+            &expected,
             &observed,
         ));
     }
@@ -221,16 +230,33 @@ fn construct_pair(
     delivery: &Delivery,
     point: [f64; 2],
 ) -> Result<(CGEvent, CGEvent)> {
+    construct_pair_with_source(
+        down,
+        up,
+        source,
+        delivery,
+        point,
+        rwi_core::ClickEventSource::InvocationPrivate,
+    )
+}
+fn construct_pair_with_source(
+    down: &CGEvent,
+    up: &CGEvent,
+    source: &CGEventSource,
+    delivery: &Delivery,
+    point: [f64; 2],
+    event_source: rwi_core::ClickEventSource,
+) -> Result<(CGEvent, CGEvent)> {
     let before = validate_templates(down, up, source, delivery, point)?;
     autoreleasepool(|_| {
-        let first = construct_one(down, &before[0], source, delivery)?;
+        let first = construct_one(down, &before[0], source, delivery, event_source)?;
         if [Snapshot::read(down), Snapshot::read(up)] != before {
             return Err(fault(
                 "event_constructor_mismatch",
                 "Original pair changed after first construction; no input.",
             ));
         }
-        let second = construct_one(up, &before[1], source, delivery)?;
+        let second = construct_one(up, &before[1], source, delivery, event_source)?;
         if first.as_ptr() == second.as_ptr() || [Snapshot::read(down), Snapshot::read(up)] != before
         {
             return Err(fault(
@@ -280,7 +306,26 @@ pub(crate) fn prepare_selected_click_pair(
         rwi_core::ClickDeliveryOptions::BackgroundSkylightAppkitExperimental {} => {
             prepare_appkit_click_pair(down, up, source, delivery, point)?
         }
-        rwi_core::ClickDeliveryOptions::BackgroundPublicAppkitExperimental { mouse_subtype } => {
+        rwi_core::ClickDeliveryOptions::BackgroundPublicAppkitExperimental {
+            mouse_subtype,
+            event_source,
+        } => {
+            if *event_source == rwi_core::ClickEventSource::AppkitFactory {
+                if *mouse_subtype != rwi_core::ClickMouseSubtype::Mouse {
+                    return Err(fault(
+                        "invalid_pointer_delivery",
+                        "Factory-source candidate requires ordinary mouse; no input or fallback.",
+                    ));
+                }
+                return prepare_public_appkit_pair_with_source(
+                    down,
+                    up,
+                    source,
+                    delivery,
+                    point,
+                    *event_source,
+                );
+            }
             return touch::prepare_pair(down, up, source, delivery, point, *mouse_subtype);
         }
         rwi_core::ClickDeliveryOptions::BackgroundPublicAppkitZeroNumberExperimental {} => {
@@ -299,9 +344,26 @@ fn prepare_public_appkit_click_pair(
     delivery: &Delivery,
     point: [f64; 2],
 ) -> Result<(PreparedSelectedClickEvent, PreparedSelectedClickEvent)> {
-    // No call to available()/driver(): this explicit public route must not depend
-    // on the private SLEventPostToPid symbol, and is never its fallback.
-    let (down, up) = construct_pair(down, up, source, delivery, point)?;
+    prepare_public_appkit_pair_with_source(
+        down,
+        up,
+        source,
+        delivery,
+        point,
+        rwi_core::ClickEventSource::InvocationPrivate,
+    )
+}
+fn prepare_public_appkit_pair_with_source(
+    down: &CGEvent,
+    up: &CGEvent,
+    source: &CGEventSource,
+    delivery: &Delivery,
+    point: [f64; 2],
+    event_source: rwi_core::ClickEventSource,
+) -> Result<(PreparedSelectedClickEvent, PreparedSelectedClickEvent)> {
+    // Neither variant falls back to a private post. Original Private-template
+    // validation and the same counted Sequence guards remain mandatory.
+    let (down, up) = construct_pair_with_source(down, up, source, delivery, point, event_source)?;
     let before = [Snapshot::read(&down), Snapshot::read(&up)];
     let pair = super::public_appkit_click::prepare_pair(&down, &up, delivery, point)?;
     for (event, expected) in [(&down, &before[0]), (&up, &before[1])] {

@@ -5,7 +5,9 @@ pub use foreground::ForegroundState;
 mod move_pointer_options;
 pub use move_pointer_options::{MovePointerOptions, TrackingPhase};
 mod click_delivery_options;
-pub use click_delivery_options::{ClickDeliveryOptions, ClickMouseSubtype, ExperimentalClickPhase};
+pub use click_delivery_options::{
+    ClickDeliveryOptions, ClickEventSource, ClickMouseSubtype, ExperimentalClickPhase,
+};
 mod key_preparation;
 pub use key_preparation::{KeyChordPayload, KeyPreparation};
 mod checked_action;

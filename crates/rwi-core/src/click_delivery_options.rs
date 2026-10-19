@@ -19,6 +19,21 @@ impl ClickMouseSubtype {
     }
 }
 
+/// Source provenance experiment. Factory events remain software generated;
+/// selecting them is never an implicit fallback or physical-user-input claim.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ClickEventSource {
+    #[default]
+    InvocationPrivate,
+    AppkitFactory,
+}
+impl ClickEventSource {
+    fn is_invocation_private(&self) -> bool {
+        *self == Self::InvocationPrivate
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "delivery", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ClickDeliveryOptions {
@@ -33,6 +48,13 @@ pub enum ClickDeliveryOptions {
         /// Omit for unchanged ordinary mouse. Touch requires separate capability.
         #[serde(default, skip_serializing_if = "ClickMouseSubtype::is_mouse")]
         mouse_subtype: ClickMouseSubtype,
+        /// Omit for the same isolated invocation Private source. Factory is a
+        /// separately negotiated ordinary-mouse candidate, not a focus promise.
+        #[serde(
+            default,
+            skip_serializing_if = "ClickEventSource::is_invocation_private"
+        )]
+        event_source: ClickEventSource,
     },
     /// Explicit macOS zero-event-number experiment, ordinary left pair only.
     /// No modifier, activation, focus restoration, fallback or effect guarantee.
@@ -93,21 +115,45 @@ impl ClickDeliveryOptions {
         let subtype_ready = !matches!(
             self,
             Self::BackgroundPublicAppkitExperimental {
-                mouse_subtype: ClickMouseSubtype::Touch
+                mouse_subtype: ClickMouseSubtype::Touch,
+                ..
             }
         ) || (route["mouse_subtypes"]["touch"]["implemented"] == true
             && route["mouse_subtypes"]["touch"]["available"] == true);
-        if route["implemented"] != true || route["available"] != true || !subtype_ready {
+        let source_ready = !self.uses_appkit_factory_source()
+            || (matches!(
+                self,
+                Self::BackgroundPublicAppkitExperimental {
+                    mouse_subtype: ClickMouseSubtype::Mouse,
+                    ..
+                }
+            ) && route["event_sources"]["appkit_factory"]["implemented"] == true
+                && route["event_sources"]["appkit_factory"]["available"] == true);
+        if route["implemented"] != true
+            || route["available"] != true
+            || !subtype_ready
+            || !source_ready
+        {
             return Err(fault(
                 "capability_unavailable",
                 if matches!(self, Self::BackgroundPublicAppkitExperimental { .. }) {
-                    "Explicit public AppKit click delivery or mouse subtype is unavailable; no fallback."
+                    "Explicit public AppKit click delivery, subtype or event source is unavailable; no fallback."
                 } else {
                     "Experimental macOS SkyLight click delivery is unavailable; no fallback."
                 },
             ));
         }
         Ok(())
+    }
+
+    pub fn uses_appkit_factory_source(&self) -> bool {
+        matches!(
+            self,
+            Self::BackgroundPublicAppkitExperimental {
+                event_source: ClickEventSource::AppkitFactory,
+                ..
+            }
+        )
     }
 
     /// Stable request identity and the exact selected-window capability key.
@@ -525,3 +571,7 @@ mod touch_policy_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "click_delivery_options/factory_source_tests.rs"]
+mod factory_source_tests;

@@ -128,6 +128,9 @@ pub(crate) fn zero_number_capabilities(
     cap.as_object_mut()
         .expect("literal capability object")
         .remove("mouse_subtypes");
+    cap.as_object_mut()
+        .expect("literal capability object")
+        .remove("event_sources");
     cap["value"] =
         serde_json::json!({"delivery":"background_public_appkit_zero_number_experimental"});
     cap["event_number"] = serde_json::json!(0);
@@ -146,6 +149,9 @@ fn capability(
 ) -> serde_json::Value {
     serde_json::json!({"implemented":true,"available":input_enabled&&!semantic_only&&factory&&window_location,
         "opt_in_required":true,"value":{"delivery":"background_public_appkit_experimental"},
+        "event_sources":{"appkit_factory":{"implemented":true,"available":input_enabled&&!semantic_only&&factory&&window_location,
+            "opt_in_required":true,"source_state_id":0,"ordinary_mouse_only":true,
+            "physical_user_input":false,"focus_preservation_verified":false,"application_effect_attested":false,"fallback":false}},
         "mouse_subtypes":{"touch":{"implemented":true,"available":input_enabled&&!semantic_only&&factory&&window_location,
             "opt_in_required":true,"event_subtype":3,"name":"NSEventSubtypeTouch",
             "focus_preservation_verified":false,"application_effect_attested":false,
