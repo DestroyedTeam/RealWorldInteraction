@@ -74,6 +74,26 @@
       const defaultPresentation = 'automatic';
       let hostModes = null, fullscreenOwner = null, fullscreenRequested = false;
       let detachedHostMode = false;
+      let domFingerprint = null;
+      // Observe only our own component. Never inspect the parent/Host DOM or
+      // treat these client measurements as permission, task identity or pixels.
+      function ownDomObservation() {
+        if (typeof panel.getBoundingClientRect !== 'function') return null;
+        const bounds = panel.getBoundingClientRect();
+        const panelSize = [bounds.width, bounds.height].map(Math.ceil);
+        const naturalSize = [preview.naturalWidth, preview.naturalHeight];
+        if (!panelSize.every(n => Number.isSafeInteger(n) && n >= 0 && n <= 4096) ||
+            !naturalSize.every(n => Number.isSafeInteger(n) && n >= 0 && n <= 2048)) return null;
+        const state = {
+          document_visible: document.visibilityState === 'visible', intersecting,
+          image_hidden: preview.hidden, image_src_present: preview.hasAttribute('src'),
+          natural_size: naturalSize, panel_size: panelSize
+        };
+        const fingerprint = JSON.stringify(state);
+        if (fingerprint === domFingerprint) return null;
+        return { fingerprint, value: { ...state, observed_unix_ms: Date.now(),
+          cursor: validCursor(images?.after) ? { ...images.after } : null } };
+      }
       const validDisplayMode = mode => ['inline', 'fullscreen', 'pip'].includes(mode);
       function acceptHostMode(mode) {
         if (!validDisplayMode(mode)) return;
@@ -338,11 +358,14 @@
             queued = null;
             const owner = capability;
             try {
+              const dom = ownDomObservation();
               const reply = await request('tools/call', {
                 name: 'computer.live_panel',
-                arguments: { view_key: owner.view_key, page: owner.page, sequence: ++sequence, visible: event.shown, close: event.stop }
+                arguments: { view_key: owner.view_key, page: owner.page, sequence: ++sequence, visible: event.shown, close: event.stop,
+                  ...(dom ? { dom_observation: dom.value } : {}) }
               });
               if (owner !== capability) continue;
+              if (dom && !reply.isError) domFingerprint = dom.fingerprint;
               const data = reply.structuredContent ?? {};
               // A queued Resume may have cleared attributes before the older
               // Hide reply arrived. Replace observations at reply time too.
@@ -404,6 +427,7 @@
           clearImages('等待已确认的可见连接');
           clearNativeObservation();
           capability = { view_key: next.view_key, page: next.page, adapter_instance: /^[0-9a-f]{32}$/.test(next.adapter_instance) ? next.adapter_instance : null };
+          domFingerprint = null;
           images = { owner: capability, epoch: 0, allowed: false, blocked: false, sequence: 0, after: null };
           sequence = 0;
           // Only a genuinely new Host-issued capability reopens this component.

@@ -55,6 +55,7 @@ impl Views {
                 device_sequence: 0,
                 expires: Instant::now() + Duration::from_millis(options.duration_ms),
                 image: image::State::default(),
+                dom: dom_observation::Log::default(),
             },
         );
         Ok((binding, options))

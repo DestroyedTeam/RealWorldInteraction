@@ -143,6 +143,7 @@ fn component_events_cannot_select_targets_or_replay_old_pages() {
         sequence: 1,
         visible: true,
         close: false,
+        dom_observation: None,
     };
     assert!(valid.valid());
     assert!(views.app_event(&key, page.clone(), 1, true).is_ok());
@@ -159,6 +160,32 @@ fn component_events_cannot_select_targets_or_replay_old_pages() {
         }
         .valid()
     );
+}
+
+#[test]
+fn f376_presence_parser_keeps_old_clients_and_rejects_invalid_dom_before_dispatch() {
+    let old = json!({"view_key":"a".repeat(32),"page":"b".repeat(32),
+        "sequence":1,"visible":false});
+    let parsed: PresenceArgs = serde_json::from_value(old.clone()).unwrap();
+    assert!(parsed.valid());
+    assert!(parsed.dom_observation.is_none());
+    let mut with_dom = old;
+    with_dom["dom_observation"] = json!({"observed_unix_ms":1234,
+        "document_visible":false,"intersecting":true,"image_hidden":true,
+        "image_src_present":false,"natural_size":[0,0],"panel_size":[320,310],"cursor":null});
+    assert!(
+        serde_json::from_value::<PresenceArgs>(with_dom.clone())
+            .unwrap()
+            .valid()
+    );
+    with_dom["dom_observation"]["natural_size"] = json!([2049, 1]);
+    assert!(
+        !serde_json::from_value::<PresenceArgs>(with_dom.clone())
+            .unwrap()
+            .valid()
+    );
+    with_dom["dom_observation"]["target"] = json!("foreign");
+    assert!(serde_json::from_value::<PresenceArgs>(with_dom).is_err());
 }
 #[test]
 fn component_owner_diagnostics_do_not_delegate_foreign_view_authority() {
@@ -218,7 +245,7 @@ fn ui_resource_is_static_closed_network_and_exact_uri() {
         resource["contents"][0]["_meta"]["openai/ui"]["preferredDisplayMode"],
         "inline"
     );
-    assert_eq!(URI, "ui://real-world-interaction/live/v8.html");
+    assert_eq!(URI, "ui://real-world-interaction/live/v9.html");
     for uri in LEGACY_URIS {
         let legacy = serde_json::to_value(read(uri).unwrap()).unwrap();
         assert_eq!(legacy["contents"][0]["uri"], uri);

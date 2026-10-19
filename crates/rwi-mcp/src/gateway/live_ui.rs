@@ -6,9 +6,9 @@ pub(super) use image::METHOD as IMAGE_TOOL;
 
 pub(super) const EXTENSION: &str = "io.modelcontextprotocol/ui";
 pub(super) const MIME: &str = "text/html;profile=mcp-app";
-pub(super) const URI: &str = "ui://real-world-interaction/live/v8.html";
-const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v8-fullscreen.html";
-const LEGACY_URIS: [&str; 7] = [
+pub(super) const URI: &str = "ui://real-world-interaction/live/v9.html";
+const FULLSCREEN_URI: &str = "ui://real-world-interaction/live/v9-fullscreen.html";
+const LEGACY_URIS: [&str; 8] = [
     "ui://real-world-interaction/live/v1.html",
     "ui://real-world-interaction/live/v2.html",
     "ui://real-world-interaction/live/v3.html",
@@ -16,6 +16,7 @@ const LEGACY_URIS: [&str; 7] = [
     "ui://real-world-interaction/live/v5.html",
     "ui://real-world-interaction/live/v6.html",
     "ui://real-world-interaction/live/v7.html",
+    "ui://real-world-interaction/live/v8.html",
 ];
 pub(super) const PRESENCE_TOOL: &str = "computer.live_panel";
 pub(super) const START_TOOL: &str = "computer.show_live";
@@ -187,6 +188,7 @@ pub(super) fn read(uri: &str) -> Result<ReadResourceResult, ErrorData> {
             uri,
             "ui://real-world-interaction/live/v6-fullscreen.html"
                 | "ui://real-world-interaction/live/v7-fullscreen.html"
+                | "ui://real-world-interaction/live/v8-fullscreen.html"
         )
     {
         let html = include_str!("live_ui.html")
@@ -219,6 +221,9 @@ struct PresenceArgs {
     visible: bool,
     #[serde(default)]
     close: bool,
+    /// Untrusted observation of this component's own DOM; never Native authority.
+    #[serde(default)]
+    dom_observation: Option<presence::DomObservation>,
 }
 fn valid_token(token: &str) -> bool {
     token.len() == 32
@@ -233,6 +238,10 @@ impl PresenceArgs {
             && self.sequence > 0
             && self.sequence <= 9_007_199_254_740_991
             && !(self.close && self.visible)
+            && self
+                .dom_observation
+                .as_ref()
+                .is_none_or(|value| value.valid())
     }
 }
 pub(super) fn presence_tool() -> Tool {
@@ -403,6 +412,7 @@ impl Gateway {
                 );
             }
         };
+        let page = args.page.clone();
         let (target, update) =
             match self
                 .presence
@@ -411,6 +421,10 @@ impl Gateway {
                 Ok(value) => value,
                 Err(reason) => return self.rejected_app_event(reason),
             };
+        if let Some(observation) = args.dom_observation {
+            self.presence
+                .observe_dom(&args.view_key, &page, args.sequence, observation);
+        }
         if args.close {
             // Revoke even if remote stop is uncertain. Old views cannot renew
             // capture. Do not replay stop or turn a receipt into proof of closure.

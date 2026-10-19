@@ -2,8 +2,10 @@
 //! are served over HTTP. The authenticated device context remains in Gateway.
 use super::*;
 mod component;
+mod dom_observation;
 mod image;
 pub(super) use component::reserved_arguments;
+pub(super) use dom_observation::DomObservation;
 use std::{
     net::SocketAddr,
     time::{Duration, Instant},
@@ -29,6 +31,7 @@ struct View {
     device_sequence: u64,
     expires: Instant,
     image: image::State,
+    dom: dom_observation::Log,
 }
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -85,6 +88,7 @@ impl Views {
                 device_sequence: 0,
                 expires: Instant::now() + Duration::from_millis(duration_ms),
                 image: image::State::default(),
+                dom: dom_observation::Log::default(),
             },
         );
         Ok((key, binding))
@@ -111,6 +115,7 @@ impl Views {
         v.page = Some(page.clone());
         v.ui_sequence = 0;
         v.image = image::State::default();
+        v.dom = dom_observation::Log::default();
         v.device_sequence = v.device_sequence.checked_add(1)?;
         Some((
             page,
@@ -200,12 +205,16 @@ impl Gateway {
             if a.action == rwi_core::LiveAction::Stop {
                 self.presence.remove_target(&a.target);
             }
-            let result = self.invoke_device("computer.live", args, context).await;
+            let mut result = self.invoke_device("computer.live", args, context).await;
             if !result.is_error
                 && a.action == rwi_core::LiveAction::Resume
                 && let Some(ms) = result.data["expires_in_ms"].as_u64()
             {
                 self.presence.refresh_lifetime(&a.target, ms);
+            }
+            if !result.is_error && a.action == rwi_core::LiveAction::Status {
+                self.presence
+                    .decorate_dom_observation(&a.target, &mut result.data);
             }
             return result;
         }

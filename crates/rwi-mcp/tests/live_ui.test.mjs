@@ -20,6 +20,9 @@ function harness({ fullscreenResource = false, observer = true, resizer = false,
     _disabled: ['toggle', 'close'].includes(id), textContent: '', events: {}, attrs: {}, hidden: id === 'preview', sources: [],
     get src() { return this._src; },
     set src(value) { this._src = value; this.sources.push(value); },
+    get naturalWidth() { return this._src ? decodedSize[0] : 0; },
+    get naturalHeight() { return this._src ? decodedSize[1] : 0; },
+    hasAttribute(name) { return name === 'src' ? typeof this._src === 'string' : Object.hasOwn(this.attrs, name); },
     get disabled() { return this._disabled; },
     set disabled(value) {
       this._disabled = value;
@@ -433,6 +436,61 @@ async function imageHarness(options) {
   const h = harness(options); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
   await h.runTimer(500); assert.equal(h.imageCalls().length, 1); return h;
 }
+
+test('f376 own DOM diagnostic is bounded metadata on the existing presence call', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+  const args = h.calls().at(-1).params.arguments;
+  const dom = JSON.parse(JSON.stringify(args.dom_observation));
+  assert.equal(dom.document_visible, true); assert.equal(dom.intersecting, true);
+  assert.equal(dom.image_hidden, true); assert.equal(dom.image_src_present, false);
+  assert.deepEqual(dom.natural_size, [0, 0]); assert.deepEqual(dom.panel_size, [320, 310]);
+  assert.equal(dom.cursor, null); assert(Number.isSafeInteger(dom.observed_unix_ms));
+  assert.deepEqual(Object.keys(dom).sort(), ['cursor', 'document_visible', 'image_hidden', 'image_src_present', 'intersecting', 'natural_size', 'observed_unix_ms', 'panel_size']);
+  assert.equal(h.imageCalls().length, 0); assert.equal(h.calls().length, 1);
+});
+
+test('f376 decoded and cleared own image transitions preserve the same source cursor', async () => {
+  const h = await imageHarness(); await h.imageAck(image(1)); await h.tick();
+  const rendered = h.calls().at(-1).params.arguments.dom_observation;
+  assert.equal(rendered.image_hidden, false); assert.equal(rendered.image_src_present, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(rendered.natural_size)), [1, 1]);
+  assert.deepEqual(JSON.parse(JSON.stringify(rendered.cursor)), { generation: 1, sequence: 1 });
+  await h.ack(); await h.hidden();
+  const hidden = h.calls().at(-1).params.arguments.dom_observation;
+  assert.equal(hidden.document_visible, false); assert.equal(hidden.image_hidden, true);
+  assert.equal(hidden.image_src_present, false); assert.equal(hidden.cursor, null);
+  assert.equal(h.nodes.get('preview').src, undefined); await h.ack();
+  await h.shown(); await h.ack(); await h.runTimer(500); await h.imageAck(image(2)); await h.tick();
+  const resumed = h.calls().at(-1).params.arguments.dom_observation;
+  assert.equal(resumed.document_visible, true); assert.equal(resumed.image_src_present, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(resumed.cursor)), { generation: 1, sequence: 2 });
+});
+
+test('f376 unchanged DOM adds neither diagnostic payload nor new timers or RPCs', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  const count = h.calls().length, intervals = h.intervals.size;
+  await h.tick(); assert.equal(h.calls().length, count + 1);
+  assert.equal(h.calls().at(-1).params.arguments.dom_observation, undefined);
+  assert.equal(h.intervals.size, intervals); assert.equal(h.imageCalls().length, 0);
+});
+
+test('f376 replacement page resets diagnostic dedupe without borrowing old ownership', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain(); await h.ack();
+  const cap = { view_key: 'c'.repeat(32), page: 'd'.repeat(32) };
+  await h.result(cap); await drain();
+  const args = h.calls().at(-1).params.arguments;
+  assert.equal(args.page, cap.page); assert(args.dom_observation);
+  assert.equal(args.dom_observation.image_src_present, false); assert.equal(args.sequence, 1);
+});
+
+test('f376 rejected presence does not claim its DOM report was retained', async () => {
+  const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
+  const call = h.calls().at(-1);
+  await h.deliver({ id: call.id, result: { isError: true, structuredContent: { code: 'adapter_busy' } } }); await drain();
+  await h.tick(); const next = h.calls().at(-1);
+  assert(next.params.arguments.dom_observation); assert(next.params.arguments.sequence > call.params.arguments.sequence);
+  assert.equal(h.imageCalls().length, 0);
+});
 
 test('f122 cache reads require acknowledged visible presence, not handshake or an unacknowledged event', async () => {
   const h = harness(); await h.init(); await h.intersect(true); await h.result(); await drain();
