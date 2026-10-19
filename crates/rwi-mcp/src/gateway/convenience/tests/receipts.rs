@@ -1,6 +1,40 @@
 use super::*;
 
 #[test]
+fn f368_compact_click_receipt_keeps_explicit_source_and_subtype_without_attestation() {
+    for (key, value) in [
+        ("requested_event_source", json!("appkit_factory")),
+        ("requested_mouse_subtype", json!("touch")),
+        ("requested_event_source", Value::Null),
+    ] {
+        let mut raw = json!({"request_id":"one", "dispatch":"returned",
+            "requested_delivery":"background_public_appkit_experimental",
+            "system_accepted":null, "goal_verified":true, "replay":"forbidden"});
+        raw[key] = value;
+        let original = raw.clone();
+        let projected = compact_action_reply(&raw, Some("original-details".into()));
+        assert_eq!(projected.get(key), raw.get(key));
+        assert_eq!(projected["system_accepted"], Value::Null);
+        assert_eq!(projected["goal_verified"], false);
+        assert_eq!(projected["replay"], "forbidden");
+        assert_eq!(projected["details_ref"], "original-details");
+        assert_eq!(raw, original);
+    }
+}
+
+#[test]
+fn f368_compact_ordinary_receipt_does_not_invent_source_or_grow_default_json() {
+    let raw = json!({"request_id":"one", "dispatch":"returned",
+        "system_accepted":null, "goal_verified":false, "replay":"forbidden"});
+    let mut expected = raw.clone();
+    expected["details_ref"] = json!("original-details");
+    let projected = compact_action_reply(&raw, Some("original-details".into()));
+    assert_eq!(projected, expected);
+    assert!(projected.get("requested_event_source").is_none());
+    assert!(projected.get("requested_mouse_subtype").is_none());
+}
+
+#[test]
 fn f21_text_effect_compact_receipt_preserves_sample_without_goal_promotion() {
     for sample in [
         json!({"state":"value_matches_expected","expected_utf16_units":18,"observed_utf16_units":18}),

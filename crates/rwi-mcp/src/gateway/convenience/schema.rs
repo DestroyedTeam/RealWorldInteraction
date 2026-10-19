@@ -391,6 +391,8 @@ pub(super) fn compact_action_reply(data: &Value, details_ref: Option<String>) ->
         "hover_effect",
         "motion_history",
         "requested_delivery",
+        "requested_event_source",
+        "requested_mouse_subtype",
     ] {
         // Omit an absent field, never an explicit null: a native unknown (such
         // as system_accepted:null) remains distinct from missing evidence.
