@@ -1,5 +1,6 @@
 use super::*;
 
+mod context;
 mod creation;
 fn png(rgb: &[u8], size: [u32; 2]) -> Vec<u8> {
     let mut out = Vec::new();

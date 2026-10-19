@@ -1,6 +1,7 @@
 //! Bounded local visual grounding for a native bitmap canvas with animated
 //! selection chrome. This never substitutes for native window/AX hit checks.
 use std::{collections::VecDeque, io::Cursor};
+mod exact_context;
 mod red_marker;
 pub use red_marker::RedMarkerAnchor;
 
@@ -130,6 +131,7 @@ pub struct PixelAnchor {
     desktop: [f64; 2],
     origin: [u32; 2],
     features: Vec<u8>,
+    context: Option<exact_context::ExactContext>,
 }
 
 impl PixelAnchor {
@@ -168,16 +170,17 @@ impl PixelAnchor {
             pixel[0].floor() as u32 - EDGE / 2,
             pixel[1].floor() as u32 - EDGE / 2,
         ];
-        let features = features_diagnosed(png, image_size, origin)?;
-        // A blank/uniform patch cannot prove that scrolling or an object move
-        // preserved the intended pixel. Keep the original full-frame rule.
+        let (features, context) =
+            features_with_context_diagnosed(png, image_size, origin, Some(pixel))?;
+        // A blank center requires a bounded, textured surrounding context that
+        // will match *exactly*. A wholly uniform surface keeps full-frame equality.
         let (low, high) = features
             .chunks_exact(CHANNELS)
             .fold((255u8, 0u8), |(low, high), rgb| {
                 let luma = ((u16::from(rgb[0]) + u16::from(rgb[1]) + u16::from(rgb[2])) / 3) as u8;
                 (low.min(luma), high.max(luma))
             });
-        if high.saturating_sub(low) < 32 {
+        if high.saturating_sub(low) < 32 && context.is_none() {
             return Err(CreationFailure::LumaSpanBelowMinimum);
         }
         Ok(Self {
@@ -186,6 +189,7 @@ impl PixelAnchor {
             desktop,
             origin,
             features,
+            context,
         })
     }
 
@@ -211,6 +215,10 @@ impl PixelAnchor {
             .expect("finite comparison");
         value["limits"] = serde_json::json!({"patch_edge":EDGE,"grid":GRID,"changed_cell_delta":CHANGED_CELL_DELTA,"max_changed_cells":MAX_CHANGED_CELLS,"ignored_high_delta_context_cells":MAX_CHANGED_CELLS,"hit_region_radius_cells":HIT_REGION_RADIUS_CELLS,"max_hit_region_delta":MAX_HIT_REGION_DELTA,"max_stable_context_delta":MAX_STABLE_CONTEXT_DELTA,"max_central_delta":MAX_CENTRAL_DELTA});
         value["input_authority"] = serde_json::json!(false);
+        if let Some(context) = &self.context {
+            value["anchor_kind"] = serde_json::json!("exact_textured_context");
+            value["context"] = context.diagnostic();
+        }
         value
     }
     fn compare(
@@ -239,6 +247,21 @@ impl PixelAnchor {
             .all(|(x, y)| (x - y).abs() <= 0.25)
         {
             return Comparison::unavailable("transform_changed");
+        }
+        if let Some(expected_context) = &self.context {
+            let Ok((_, current_context)) =
+                features_with_context_diagnosed(png, image_size, self.origin, Some(self.pixel))
+            else {
+                return Comparison::unavailable("patch_decode_unavailable");
+            };
+            let matched = current_context.as_ref() == Some(expected_context);
+            let mut result = Comparison::unavailable("context_patch_changed");
+            if matched {
+                result.matched = true;
+                result.reason = "matched";
+                result.failed_checks.clear();
+            }
+            return result;
         }
         let Some(now) = features(png, image_size, self.origin) else {
             return Comparison::unavailable("patch_decode_unavailable");
@@ -365,6 +388,15 @@ fn features_diagnosed(
     expected: [u32; 2],
     origin: [u32; 2],
 ) -> Result<Vec<u8>, CreationFailure> {
+    features_with_context_diagnosed(png, expected, origin, None).map(|(features, _)| features)
+}
+
+fn features_with_context_diagnosed(
+    png: &[u8],
+    expected: [u32; 2],
+    origin: [u32; 2],
+    pixel: Option<[f64; 2]>,
+) -> Result<(Vec<u8>, Option<exact_context::ExactContext>), CreationFailure> {
     #[cfg(test)]
     FEATURE_DECODE_COUNT.with(|count| count.set(count.get() + 1));
     if png.len() > crate::MAX_FRAME_BYTES {
@@ -444,7 +476,18 @@ fn features_diagnosed(
             }
         }
     }
-    Ok(out)
+    let (low, high) = out
+        .chunks_exact(CHANNELS)
+        .fold((255u8, 0u8), |(low, high), rgb| {
+            let luma = ((u16::from(rgb[0]) + u16::from(rgb[1]) + u16::from(rgb[2])) / 3) as u8;
+            (low.min(luma), high.max(luma))
+        });
+    let context = pixel
+        .filter(|_| high.saturating_sub(low) < 32)
+        .and_then(|pixel| {
+            exact_context::ExactContext::from_decoded(bytes, expected, channels, pixel)
+        });
+    Ok((out, context))
 }
 
 #[cfg(test)]

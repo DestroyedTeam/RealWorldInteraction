@@ -568,4 +568,5 @@ fn unavailable_anchor_diagnostic_keeps_full_frame_rule_and_zero_dispatch() {
     engine.release(&lease).unwrap();
 }
 
+mod context;
 mod creation;
