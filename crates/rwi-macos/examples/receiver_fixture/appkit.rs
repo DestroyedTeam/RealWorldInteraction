@@ -72,7 +72,12 @@ struct UI {
 }
 thread_local! {
     // App-owned, default-off receiving component. Never installs in another app.
-    static EXPLICIT_RECEIVER: RefCell<Option<rwi_macos::receiver_component::Registration>> = const { RefCell::new(None) };
+    static EXPLICIT_RECEIVER: RefCell<Option<std::rc::Rc<rwi_macos::receiver_component::Registration>>> = const { RefCell::new(None) };
+    static LOCAL_RECEIVER_MONITOR: RefCell<Option<rwi_macos::receiver_component::LocalMonitor>> = const { RefCell::new(None) };
+    static LOCAL_MONITOR_MODE: Cell<bool> = const { Cell::new(false) };
+    static LOCAL_MONITOR_STOP: Cell<Option<bool>> = const { Cell::new(None) };
+    static LOCAL_MONITOR_STOP_AGAIN: Cell<Option<bool>> = const { Cell::new(None) };
+    static EXPLICIT_MANUAL_DISPATCH_CALLS: Cell<u64> = const { Cell::new(0) };
     static UI_STATE: RefCell<Option<UI>> = const { RefCell::new(None) };
     // Only the opt-in own canvas writes this after its real drawRect callback.
     static LIVE_FRESHNESS_CANVAS_DRAW_TICK: Cell<Option<u64>> = const { Cell::new(None) };
@@ -520,6 +525,7 @@ impl UI {
             self.state.output_error = Some(error);
             self.state.status = "error";
         }
+        sample_explicit_receiver(&mut self.state);
         if let Err(error) = self.store.persist(&self.state) {
             self.state.output_error = Some(error.to_string());
             self.state.status = "error";
@@ -774,6 +780,41 @@ fn record_dispatch(this: &AnyObject, event: &AnyObject, stage: DispatchStage) ->
     });
     recorded
 }
+fn sample_explicit_receiver(state: &mut State) {
+    EXPLICIT_RECEIVER.with(|slot| {
+        if let Some(component) = slot.borrow().as_ref() {
+            let mut value = serde_json::to_value(component.stats()).unwrap();
+            if LOCAL_MONITOR_MODE.with(Cell::get) {
+                value["hook"] = serde_json::json!("NSEvent.local_monitor");
+                value["installed"] = serde_json::json!(
+                    LOCAL_RECEIVER_MONITOR
+                        .with(|s| s.borrow().as_ref().is_some_and(|m| m.is_installed()))
+                );
+                value["manual_dispatch_calls"] =
+                    serde_json::json!(EXPLICIT_MANUAL_DISPATCH_CALLS.with(Cell::get));
+                value["stop_returned"] = serde_json::json!(LOCAL_MONITOR_STOP.with(Cell::get));
+                value["second_stop_returned"] =
+                    serde_json::json!(LOCAL_MONITOR_STOP_AGAIN.with(Cell::get));
+            }
+            state.explicit_receiver = Some(value);
+        }
+    });
+}
+fn stop_local_receiver_monitor() {
+    if !LOCAL_MONITOR_MODE.with(Cell::get) {
+        return;
+    }
+    LOCAL_RECEIVER_MONITOR.with(|slot| {
+        if let Some(monitor) = slot.borrow_mut().as_mut()
+            && LOCAL_MONITOR_STOP.with(Cell::get).is_none()
+        {
+            let first = monitor.stop().expect("own main-thread monitor stop");
+            LOCAL_MONITOR_STOP.with(|s| s.set(Some(first)));
+            let second = monitor.stop().expect("idempotent own monitor stop");
+            LOCAL_MONITOR_STOP_AGAIN.with(|s| s.set(Some(second)));
+        }
+    });
+}
 fn persist_dispatch_only() {
     callback(|| {
         UI_STATE.with(|cell| {
@@ -786,12 +827,7 @@ fn persist_dispatch_only() {
             };
             ui.state.dispatch_probe.borrow_skips = DISPATCH_BORROW_SKIPS.with(Cell::get);
             ui.state.first_mouse = FIRST_MOUSE.with(Cell::get);
-            EXPLICIT_RECEIVER.with(|slot| {
-                if let Some(component) = slot.borrow().as_ref() {
-                    ui.state.explicit_receiver =
-                        Some(serde_json::to_value(component.stats()).unwrap());
-                }
-            });
+            sample_explicit_receiver(&mut ui.state);
             ui.state.default_responder_mouse.diagnostics =
                 DEFAULT_RESPONDER_DIAGNOSTICS.with(Cell::get);
             // JSON-only after super returns: no environment query, redraw,
@@ -968,8 +1004,14 @@ extern "C" fn application_send_event(this: &AnyObject, _cmd: Sel, event: &AnyObj
     let recorded = record_dispatch(this, event, DispatchStage::Application);
     let consumed = Cell::new(false);
     callback(|| {
+        // This mode deliberately uses normal NSApplication superclass dispatch;
+        // only the public local monitor may consume the event, never this hook.
+        if LOCAL_MONITOR_MODE.with(Cell::get) {
+            return;
+        }
         EXPLICIT_RECEIVER.with(|slot| {
             if let Some(component) = slot.borrow().as_ref() {
+                EXPLICIT_MANUAL_DISPATCH_CALLS.with(|s| s.set(s.get() + 1));
                 // An unexpected Rust panic must not escape the ObjC callback or
                 // route that same uncertain event through superclass as fallback.
                 consumed.set(true);
@@ -1454,6 +1496,9 @@ extern "C" fn font_panel_open(_this: &AnyObject, _cmd: Sel, sender: &AnyObject) 
 }
 extern "C" fn clicked(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
     callback(|| {
+        // Only this explicit own-fixture mode makes the harmless action also
+        // remove its local monitor, for independent post-removal pointer proof.
+        stop_local_receiver_monitor();
         UI_STATE.with(|cell| {
             if let Some(ui) = cell.borrow_mut().as_mut() {
                 ui.sample_environment();
@@ -1465,6 +1510,7 @@ extern "C" fn clicked(_this: &AnyObject, _cmd: Sel, _sender: &AnyObject) {
 }
 extern "C" fn window_closed(_this: &AnyObject, _cmd: Sel, _notification: &AnyObject) {
     callback(|| {
+        stop_local_receiver_monitor();
         with_detached_ui(|ui| {
             ui.sample_environment();
             ui.invalidate_lifetime_timer();
@@ -2193,6 +2239,18 @@ pub fn run(options: Options) -> Result<(), String> {
     {
         return Err("explicit receiver requires regular sampled own test App".into());
     }
+    let monitor_raw = match std::env::var("RWI_EXPERIMENTAL_RECEIVER_LOCAL_MONITOR") {
+        Ok(value) => Some(value),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(_) => return Err("invalid local monitor encoding".into()),
+    };
+    let local_monitor = super::model::receiver_local_monitor(
+        monitor_raw.as_deref(),
+        receiver_source.is_some_and(|p| p > 0 && p <= i32::MAX as u32)
+            && options.regular_app
+            && options.environment_sample_ms.is_some(),
+    )?;
+    LOCAL_MONITOR_MODE.with(|s| s.set(local_monitor));
     let sparse_raw = match std::env::var("RWI_SPARSE_PIXEL_FIXTURE") {
         Ok(value) => Some(value),
         Err(std::env::VarError::NotPresent) => None,
@@ -2656,6 +2714,11 @@ pub fn run(options: Options) -> Result<(), String> {
                         &ui.canvas, &ui.window, pid,
                     )
                 })?;
+                let component = std::rc::Rc::new(component);
+                if local_monitor {
+                    let monitor = std::rc::Rc::clone(&component).install_local_monitor()?;
+                    LOCAL_RECEIVER_MONITOR.with(|s| *s.borrow_mut() = Some(monitor));
+                }
                 EXPLICIT_RECEIVER.with(|slot| *slot.borrow_mut() = Some(component));
                 persist_dispatch_only();
             }
@@ -2900,6 +2963,7 @@ pub fn run(options: Options) -> Result<(), String> {
                 options.ax_focused_window_once_delay_ms,
             );
             let _: () = msg_send![&*app, run];
+            stop_local_receiver_monitor();
             if options.environment_sample_ms.is_some() {
                 FOCUS_NOTIFICATIONS_ARMED.with(|armed| armed.set(false));
                 let _: () = msg_send![&*app, setDelegate:std::ptr::null_mut::<AnyObject>()];

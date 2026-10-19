@@ -58,6 +58,33 @@ mod sparse_fixture_contract {
     }
 }
 
+pub fn receiver_local_monitor(
+    raw: Option<&str>,
+    receiver_ready: bool,
+) -> Result<bool, &'static str> {
+    match raw {
+        None => Ok(false),
+        Some("1") if receiver_ready => Ok(true),
+        _ => Err("local monitor requires explicit1 and regular sampled own receiver"),
+    }
+}
+#[cfg(test)]
+mod f404_fixture_monitor_contract {
+    use super::*;
+    #[test]
+    fn f404_fixture_default_off_and_explicit_receiver_only() {
+        assert!(!receiver_local_monitor(None, false).unwrap());
+        assert!(receiver_local_monitor(Some("1"), true).unwrap());
+        assert!(receiver_local_monitor(Some("1"), false).is_err());
+    }
+    #[test]
+    fn f404_fixture_invalid_values_do_not_enable_monitor() {
+        for raw in ["", "0", "true", "2"] {
+            assert!(receiver_local_monitor(Some(raw), true).is_err());
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Options {
     pub run_id: String,
