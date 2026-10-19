@@ -24,6 +24,40 @@ Default-off --visibility-controls exposes an own Hide button; requires --regular
 const HISTORY_LIMIT: usize = 128;
 const PATH_LIMIT: usize = 128;
 
+/// Own test App only: sparse AX canvas with ordinary mouse callbacks, not an
+/// alternate RWI receiver, permission grant, clipboard actor or production mode.
+pub fn sparse_fixture(raw: Option<&str>, isolated: bool) -> Result<bool, &'static str> {
+    match raw {
+        None => Ok(false),
+        Some("1") if isolated => Ok(true),
+        _ => {
+            Err("sparse pixel fixture requires explicit 1 and an isolated regular sampled own App")
+        }
+    }
+}
+
+#[cfg(test)]
+mod sparse_fixture_contract {
+    use super::*;
+    #[test]
+    fn f401_sparse_fixture_is_default_off_and_explicit() {
+        assert!(!sparse_fixture(None, false).unwrap());
+        assert!(sparse_fixture(Some("1"), true).unwrap());
+        assert!(
+            State::new("sparse-default".into())
+                .sparse_pixel_fixture
+                .is_none()
+        );
+    }
+    #[test]
+    fn f401_sparse_fixture_refuses_invalid_or_nonisolated_modes() {
+        assert!(sparse_fixture(Some("1"), false).is_err());
+        for value in ["", "0", "true", "2"] {
+            assert!(sparse_fixture(Some(value), true).is_err());
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Options {
     pub run_id: String,
@@ -1847,6 +1881,8 @@ pub struct State {
     /// Absent in all existing fixtures; not proof of compositor freshness.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub live_freshness_ticks: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sparse_pixel_fixture: Option<bool>,
     /// Actual own drawRect callback submitted this tick; not a capture/flush receipt.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub live_freshness_last_canvas_draw_tick: Option<u64>,
@@ -1872,6 +1908,8 @@ pub struct State {
     pub legacy_tracking: Option<LegacyTrackingProbe>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cooperative_tracking: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explicit_receiver: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub semantic_alternate_ui: Option<super::semantic_alternate_ui::Oracle>,
     pub drag: Drag,
@@ -1920,6 +1958,7 @@ impl State {
             environment_sampled_unix_ms: None,
             environment_probe_ticks: 0,
             live_freshness_ticks: None,
+            sparse_pixel_fixture: None,
             live_freshness_last_canvas_draw_tick: None,
             environment_history: EnvironmentHistory::default(),
             application_identity: ApplicationIdentity::default(),
@@ -1941,6 +1980,7 @@ impl State {
             hover: Hover::default(),
             legacy_tracking: None,
             cooperative_tracking: None,
+            explicit_receiver: None,
             semantic_alternate_ui: None,
             drag: Drag::default(),
             native_dnd: super::native_dnd::Oracle::default(),

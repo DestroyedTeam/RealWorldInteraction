@@ -71,6 +71,8 @@ struct UI {
     _actions: Retained<AnyObject>,
 }
 thread_local! {
+    // App-owned, default-off receiving component. Never installs in another app.
+    static EXPLICIT_RECEIVER: RefCell<Option<rwi_macos::receiver_component::Registration>> = const { RefCell::new(None) };
     static UI_STATE: RefCell<Option<UI>> = const { RefCell::new(None) };
     // Only the opt-in own canvas writes this after its real drawRect callback.
     static LIVE_FRESHNESS_CANVAS_DRAW_TICK: Cell<Option<u64>> = const { Cell::new(None) };
@@ -784,6 +786,12 @@ fn persist_dispatch_only() {
             };
             ui.state.dispatch_probe.borrow_skips = DISPATCH_BORROW_SKIPS.with(Cell::get);
             ui.state.first_mouse = FIRST_MOUSE.with(Cell::get);
+            EXPLICIT_RECEIVER.with(|slot| {
+                if let Some(component) = slot.borrow().as_ref() {
+                    ui.state.explicit_receiver =
+                        Some(serde_json::to_value(component.stats()).unwrap());
+                }
+            });
             ui.state.default_responder_mouse.diagnostics =
                 DEFAULT_RESPONDER_DIAGNOSTICS.with(Cell::get);
             // JSON-only after super returns: no environment query, redraw,
@@ -958,11 +966,24 @@ extern "C" fn own_focus_notification(this: &AnyObject, cmd: Sel, note: &AnyObjec
 
 extern "C" fn application_send_event(this: &AnyObject, _cmd: Sel, event: &AnyObject) {
     let recorded = record_dispatch(this, event, DispatchStage::Application);
-    // Both base classes are permanent AppKit classes validated before registering
-    // this subclass. Always forward every event once, including ignored key/wake.
-    let superclass = AnyClass::get(c"NSApplication").expect("registered AppKit superclass");
-    unsafe {
-        let _: () = msg_send![super(this, superclass), sendEvent:event];
+    let consumed = Cell::new(false);
+    callback(|| {
+        EXPLICIT_RECEIVER.with(|slot| {
+            if let Some(component) = slot.borrow().as_ref() {
+                // An unexpected Rust panic must not escape the ObjC callback or
+                // route that same uncertain event through superclass as fallback.
+                consumed.set(true);
+                consumed.set(component.dispatch(event));
+            }
+        });
+    });
+    // Default and every unmatched event keep superclass dispatch exactly once.
+    // Opt-in original canvas events must not also traverse NSWindow.sendEvent.
+    if !consumed.get() {
+        let superclass = AnyClass::get(c"NSApplication").expect("registered AppKit superclass");
+        unsafe {
+            let _: () = msg_send![super(this, superclass), sendEvent:event];
+        }
     }
     if recorded {
         persist_dispatch_only();
@@ -1891,6 +1912,28 @@ extern "C" fn draw(this: &AnyObject, _cmd: Sel, _dirty: NSRect) {
                 let _: () = msg_send![color, setFill];
                 let bounds: NSRect = msg_send![this, bounds];
                 let _: () = msg_send![class(c"NSBezierPath").unwrap(), fillRect:bounds];
+                if region == Region::Canvas && ui.state.sparse_pixel_fixture == Some(true) {
+                    // Deliberately opaque own canvas, not fake AX/control evidence.
+                    // Border can anchor a blank near-edge point. Two distant bit
+                    // columns expose actual timer ticks and received click counts;
+                    // neither is under the allocated local test point/context.
+                    let ink: *mut AnyObject = msg_send![class(c"NSColor").unwrap(),
+                        colorWithSRGBRed:0.95f64, green:0.95f64, blue:0.95f64, alpha:1.0f64];
+                    let _: () = msg_send![ink, setStroke];
+                    let _: () = msg_send![class(c"NSBezierPath").unwrap(),
+                        strokeRect:rect(1., 1., bounds.size.width-2., bounds.size.height-2.)];
+                    for (column, number) in [ui.state.environment_probe_ticks,
+                        ui.state.drag.click_without_drag].into_iter().enumerate() {
+                        for bit in 0..8 {
+                            let value = if (number >> bit) & 1 == 0 { 0.08f64 } else { 0.95f64 };
+                            let ink: *mut AnyObject = msg_send![class(c"NSColor").unwrap(),
+                                colorWithSRGBRed:value, green:value, blue:value, alpha:1.0f64];
+                            let _: () = msg_send![ink, setFill];
+                            let _: () = msg_send![class(c"NSBezierPath").unwrap(),
+                                fillRect:rect(306.+column as f64*24., 12.+f64::from(bit)*20., 18., 18.)];
+                        }
+                    }
+                }
                 if region == Region::Canvas && ui.state.live_freshness_ticks == Some(true) {
                     // Eight large black/white bits survive compact Live scaling. The
                     // low byte wraps; use the independently exported full tick too.
@@ -2134,6 +2177,50 @@ pub fn run(options: Options) -> Result<(), String> {
     if unsafe { libc::pthread_main_np() } != 1 {
         return Err("AppKit receiver must run on the main thread".into());
     }
+    // Test-app-only explicit opt-in. Missing means unchanged ordinary AppKit.
+    // PID is a routing filter, not authorization or authenticated peer identity.
+    let receiver_source = match std::env::var("RWI_EXPERIMENTAL_RECEIVER_SOURCE_PID") {
+        Ok(value) => Some(
+            value
+                .parse::<u32>()
+                .map_err(|_| "invalid explicit receiver PID")?,
+        ),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(_) => return Err("invalid explicit receiver PID encoding".into()),
+    };
+    if receiver_source.is_some()
+        && (!options.regular_app || options.environment_sample_ms.is_none())
+    {
+        return Err("explicit receiver requires regular sampled own test App".into());
+    }
+    let sparse_raw = match std::env::var("RWI_SPARSE_PIXEL_FIXTURE") {
+        Ok(value) => Some(value),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(_) => return Err("invalid sparse pixel fixture encoding".into()),
+    };
+    let sparse = super::model::sparse_fixture(
+        sparse_raw.as_deref(),
+        options.regular_app
+            && options.environment_sample_ms.is_some()
+            && receiver_source.is_none()
+            && !options.cover_controls
+            && !options.interactive_sibling_window
+            && !options.modal_controls
+            && !options.system_panel_controls
+            && !options.native_dnd_controls
+            && !options.semantic_alternate_ui
+            && !options.text_client_trace
+            && !options.live_freshness_ticks
+            && !options.hover_first_responder
+            && !options.legacy_tracking_calibration
+            && options.cooperative_owner.is_none()
+            && options.command_tab.is_none()
+            && !options.boundary_right
+            && !options.boundary_canvas_right
+            && !options.visibility_controls
+            && options.self_foreground_after_ms.is_none()
+            && options.self_foreground_on_first_down_after_ms.is_none(),
+    )?;
     let store = Store::create(&options.state_dir).map_err(|e| e.to_string())?;
     let file_panel_directory = if options.system_panel_controls {
         let directory = options.state_dir.join("empty-native-file-panel");
@@ -2154,6 +2241,7 @@ pub fn run(options: Options) -> Result<(), String> {
     state.lifetime_ms = Some(options.lifetime_ms);
     state.environment_sample_ms = options.environment_sample_ms;
     state.live_freshness_ticks = options.live_freshness_ticks.then_some(true);
+    state.sparse_pixel_fixture = sparse.then_some(true);
     state.system_panels.enabled = options.system_panel_controls;
     state.visibility = options
         .visibility_controls
@@ -2464,6 +2552,19 @@ pub fn run(options: Options) -> Result<(), String> {
             let _: () = msg_send![&*content, addSubview:&*scroll];
             let summary = label(&content, &state.summary(), rect(24., 20., 612., 72.))?;
             identify(&summary, "rwi-fixture-state", "RWI receiver state");
+            if sparse {
+                // Keep all ordinary mouse responders; only this explicitly
+                // allocated fixture's AX projection is intentionally sparse.
+                let children: Retained<AnyObject> = msg_send![&*content, subviews];
+                let count: usize = msg_send![&*children, count];
+                for index in 0..count {
+                    let child: *mut AnyObject = msg_send![&*children, objectAtIndex:index];
+                    if !std::ptr::eq(child.cast_const(), &*canvas) {
+                        let _: () = msg_send![child, removeFromSuperview];
+                    }
+                }
+                let _: () = msg_send![&*canvas, setAccessibilityHidden:true];
+            }
             let _: () = msg_send![&*window, setContentView:&*content];
             if options.hover_first_responder {
                 // Explicit fixture setup only. Neither the backend nor a hover
@@ -2546,6 +2647,17 @@ pub fn run(options: Options) -> Result<(), String> {
                 return Err(
                     "fixture window did not match its explicit display/geometry allocation; stopped without fallback".into(),
                 );
+            }
+            if let Some(pid) = receiver_source {
+                let component = UI_STATE.with(|slot| {
+                    let ui = slot.borrow();
+                    let ui = ui.as_ref().ok_or("missing own receiving UI")?;
+                    rwi_macos::receiver_component::Registration::register(
+                        &ui.canvas, &ui.window, pid,
+                    )
+                })?;
+                EXPLICIT_RECEIVER.with(|slot| *slot.borrow_mut() = Some(component));
+                persist_dispatch_only();
             }
             if options.legacy_tracking_calibration {
                 let registered = with_detached_ui(|ui| ui.register_legacy_tracking())
