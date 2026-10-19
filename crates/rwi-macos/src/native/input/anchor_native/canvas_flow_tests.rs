@@ -122,6 +122,7 @@ fn setup() -> (tempfile::TempDir, Engine, Arc<Mutex<State>>) {
             same_pid: true,
             exact_window_number: true,
             children_count: Some(0),
+            system_window_hit: None,
         },
     }));
     let mut engine = Engine::new(root.path().into()).unwrap();

@@ -1,6 +1,8 @@
 //! AX continuation objects stay on the synchronous input worker's stack.
 use super::*;
 use continuation::{Facts, Kind};
+#[path = "anchor_native/system_window_hit.rs"]
+mod system_window_hit;
 
 fn application_hit_geometry(bounds: Rect, point: [f64; 2]) -> bool {
     bounds.valid() && bounds.contains(point)
@@ -139,6 +141,8 @@ struct WindowCanvasProof {
     same_pid: bool,
     exact_window_number: bool,
     children_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system_window_hit: Option<bool>,
 }
 
 fn local_pixel_canvas(role: Option<&str>, proof: WindowCanvasProof) -> bool {
@@ -146,11 +150,11 @@ fn local_pixel_canvas(role: Option<&str>, proof: WindowCanvasProof) -> bool {
     // separate, positively proven case, never a fallback for failed hit testing.
     role == Some("AXScrollArea")
         || (role == Some("AXWindow")
-            && proof.application_hit
             && proof.exact_window_object
             && proof.same_pid
             && proof.exact_window_number
-            && proof.children_count == Some(0))
+            && ((proof.application_hit && proof.children_count == Some(0))
+                || proof.system_window_hit == Some(true)))
 }
 pub(super) struct AxObject(Cf);
 impl AxObject {
@@ -264,8 +268,25 @@ impl NativeMac {
         if target.pixel_anchor_used {
             let role = hit_description.element.role.as_deref();
             let proof = if role == Some("AXWindow") {
+                let children_count = window_element
+                    .attr("AXChildren")
+                    .ok()
+                    .and_then(|value| unsafe { ffi::array(value.0, 64).ok() })
+                    .map(|children| children.len());
                 WindowCanvasProof {
                     application_hit,
+                    // A real, independently owned system-wide hit is a different
+                    // proof, not geometry fallback or an empty-AX inference.
+                    system_window_hit: if application_hit && children_count == Some(0) {
+                        None // Preserve the existing positive fast path, no extra RPC/read.
+                    } else {
+                        system_window_hit::read(
+                            &window_element,
+                            self.pid,
+                            self.window,
+                            target.point,
+                        )
+                    },
                     exact_window_object: unsafe { ffi::CFEqual(hit.0, window_element.0) } != 0,
                     same_pid: hit.pid().ok() == Some(self.pid)
                         && window_element.pid().ok() == Some(self.pid),
@@ -273,11 +294,7 @@ impl NativeMac {
                         == Some(self.window)
                         && ffi::window_number_for_ax_element(&window_element) == Some(self.window),
                     // Unsupported/malformed/timeout is unknown, never an empty tree.
-                    children_count: window_element
-                        .attr("AXChildren")
-                        .ok()
-                        .and_then(|value| unsafe { ffi::array(value.0, 64).ok() })
-                        .map(|children| children.len()),
+                    children_count,
                 }
             } else {
                 WindowCanvasProof::default()
@@ -285,7 +302,7 @@ impl NativeMac {
             if !local_pixel_canvas(role, proof) {
                 let mut error = fault(
                     "local_pixel_surface_changed",
-                    "Local pixel grounding requires AXScrollArea or a positively hit exact AXWindow with an explicitly empty child array; this native surface is unproven. No input dispatched.",
+                    "Local pixel grounding needs AXScrollArea, the existing positive childless application hit, or an independently positive exact system-window hit; missing AX children or geometry alone is not proof. No input dispatched.",
                 );
                 error.diagnostic = Some(Box::new(serde_json::json!({
                     "reason":"local_pixel_canvas_unproven",
@@ -377,6 +394,7 @@ mod canvas_tests {
             same_pid: true,
             exact_window_number: true,
             children_count: Some(0),
+            system_window_hit: None,
         }
     }
 
