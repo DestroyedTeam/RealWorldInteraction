@@ -104,3 +104,28 @@ fn r92_unselected_desktop_cannot_borrow_click_authority_from_pointer_move() {
         true
     );
 }
+
+#[test]
+fn f402_capability_matches_exact_context_and_system_window_hit_without_input_authority() {
+    let cap = crate::desktop::native_capabilities(false, json!({}), None);
+    let local = &cap["local_pixel_grounding"];
+    assert_eq!(
+        local["blank_patch"],
+        "exact_textured_context_or_full_frame_match_required"
+    );
+    assert_eq!(local["exact_context_extents_px"], json!([192, 384]));
+    assert_eq!(local["context_translation_search"], false);
+    assert_eq!(
+        local["window_canvas_requires_exact_pid_object_and_window_number"],
+        true
+    );
+    assert_eq!(local["visual_only_input"], false);
+    assert!(
+        local["native_surfaces"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s == "exact SystemWide-hit AXWindow")
+    );
+    assert_eq!(cap["input_opt_in"], false);
+}
