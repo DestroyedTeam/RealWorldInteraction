@@ -1,0 +1,700 @@
+{
+  "scope": {
+    "source_root": "/Volumes/ChatGPT/Real World Interaction",
+    "target_thread_id": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf",
+    "platform": "macOS only for this release milestone; other platform plans retained separately",
+    "catalog_count_as_time": 49,
+    "matrix": "Versioned finite matrix: current M01–M18/51 subcases. Explicit future user requirements may add/change case IDs in a new reviewed revision; discoveries alone do not create an unlimited cross-product.",
+    "build_rule": "freeze actual BUILD/Agent/Host/resource identities before verification; do not require all old connections to refresh",
+    "approval": "User approved this finite execution contract. No original capability promise is waived; changing supported behavior or excluding a required failure still requires explicit approval.",
+    "catalog_policy": {
+      "freeze_once_per_candidate": true,
+      "expected_count_as_time": 49,
+      "count_is_not_hard_limit": true,
+      "enumeration": "Capture actual loaded catalog once; each literal tool maps to one contract/protocol test, and native effects are covered by the finite families below. App-only tools are tested through their owning component, never invoked as model tools.",
+      "no_cross_product": "Do not generate arbitrary applications × windows × tools combinations."
+    }
+  },
+  "cases": [
+    {
+      "id": "M01",
+      "name": "执行身份和工具目录",
+      "acceptance": "固定一个候选BUILD；实际Host加载的MCP进程/instance/build及Agent身份可复核，冻结49工具原始目录与适用层；安装文件不替代运行映像。",
+      "current_classification": "partial",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "复用F168/F171；最多一个新连接确认，不要求刷新所有旧会话。",
+      "required": true,
+      "case_ids": [
+        "M01.actual_mcp_identity",
+        "M01.agent_identity",
+        "M01.loaded_catalog_snapshot",
+        "M01.configuration_precedence"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M02",
+      "name": "基础设施与架构",
+      "acceptance": "无业务窗口也可启动/发现工具；Host中性MCP无平台FFI/业务oracle依赖；离线架构门通过。",
+      "current_classification": "historical_pass_needs_scope_binding",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "继承适用架构证据，最终候选一次相关回归。",
+      "required": true,
+      "case_ids": [
+        "M02.headless_start_discovery",
+        "M02.neutral_transport_dependency_check"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M03",
+      "name": "身份/守卫/不重放",
+      "acceptance": "目标/前台/旧frame负例在派发前拒绝，独立计数不变；原请求终态、lease释放、禁止重放。",
+      "current_classification": "historical_pass_needs_scope_binding",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "复用F165/F167并绑定依赖指纹，不能放宽守卫。",
+      "required": true,
+      "case_ids": [
+        "M03.stale_frame_reject",
+        "M03.wrong_foreground_reject",
+        "M03.identity_isolation",
+        "M03.uncertain_no_replay_and_release"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M04",
+      "name": "前台基础输入",
+      "acceptance": "自有隔离目标的点击/连续拖拽/快捷键/文本各一个正例，原生效果与坐标一致；ACK不算通过。",
+      "current_classification": "partial",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f147-full-mac-goal-audit-2026-10-16/REPORT.md",
+          "sha256": "11820fc3e3d5cde3a20f36dbaece33fa9bb054ce4cdfacf2e3a223e4be5b1030"
+        }
+      ],
+      "next": "只补有限工具族缺口，不展开全应用笛卡尔积。",
+      "required": true,
+      "case_ids": [
+        "M04.foreground_click",
+        "M04.foreground_continuous_drag",
+        "M04.foreground_hotkey",
+        "M04.foreground_text"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M05",
+      "name": "后台语义操作",
+      "acceptance": "自有AppKit窗口在授权peer前台时，读取/AXPress/整值编辑各验证效果及完整前台元组；明确仅语义路线。",
+      "current_classification": "historical_narrow_pass",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "复用F153/F164语义正例；不外推pointer/所有应用。",
+      "required": true,
+      "case_ids": [
+        "M05.background_read",
+        "M05.background_AXPress",
+        "M05.background_AXValue"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M06",
+      "name": "后台pointer与同PID兄弟窗",
+      "acceptance": "跨PID仍按原固定普通路径验收。同PID兄弟窗口按用户批准的显式应用接入路径验收：正确效果、完整OS前台边界元组与自有key通知保持；不抢后恢复。未接入的普通AppKit保留已知获焦FAIL，不宣称通用第三方后台保焦点。",
+      "current_classification": "explicit_integration_verified_with_ordinary_path_limitation",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/work/f404-own-receiver-local-monitor-2026-10-20/M06_DIRECT_HUMAN_SCOPE_APPROVAL.json",
+          "sha256": "8ac7b1dda9b04b52895ae85beda1ee849b77e852767211fa9924af5a41f8972d"
+        },
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/work/f404-own-receiver-local-monitor-2026-10-20/native/ACCEPTANCE_RESULT.json",
+          "sha256": "80f4b4631c396b126bf542dfccb41731305b3c9d8c529acd59596b94866b69de"
+        }
+      ],
+      "next": "交付显式SDK接入、生命周期及限制；保留普通路径失败，不重放输入。",
+      "required": true,
+      "case_ids": [
+        "M06.cross_pid_addressed_pointer",
+        "M06.same_pid_sibling_pointer_focus"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M07",
+      "name": "后台Unicode与IME",
+      "acceptance": "Chrome155隔离新页面同一载荷后🙂𝄞 é👩‍💻，键盘路径精确13 UTF16；组合/IME另列已实现能力，不用AXValue/剪贴板/激活替代。",
+      "current_classification": "observed_failure",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f147-full-mac-goal-audit-2026-10-16/REPORT.md",
+          "sha256": "11820fc3e3d5cde3a20f36dbaece33fa9bb054ce4cdfacf2e3a223e4be5b1030"
+        },
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "原13→5为真实缺陷；两个不同假设有界实验后归并根因/外部阻塞，不继续扩展诊断夹具。",
+      "required": true,
+      "case_ids": [
+        "M07.chrome_fixed_unicode_keyboard",
+        "M07.declared_IME_contract"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M08",
+      "name": "后台→前台中途切窗",
+      "acceptance": "一次5秒拖拽中途独立合成CmdTab，完整目标身份、down/move/up和终态可核对；明确不是物理人工验收。",
+      "current_classification": "historical_narrow_pass",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "复用F157；仅输入相关依赖变化时补测。",
+      "required": true,
+      "case_ids": [
+        "M08.background_to_foreground_mid_drag"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M09",
+      "name": "前台→后台/前台冲突",
+      "acceptance": "中途切走仍按路线契约完成或安全停止，不误投新前台；全局前台输入在scope变化后拒绝且无输入。",
+      "current_classification": "historical_narrow_pass",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "复用F158/F159/F165，不为纯文档或Live CSS修改重验。",
+      "required": true,
+      "case_ids": [
+        "M09.foreground_to_background_mid_drag",
+        "M09.foreground_scope_conflict"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M10",
+      "name": "普通模态",
+      "acceptance": "独立子窗绑定；弹窗期间父拒绝；关子后父恢复；各一次安全正例，完整清理。",
+      "current_classification": "historical_narrow_pass",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "复用F163；其余第三方模态只在支持矩阵明确列入后增加。",
+      "required": true,
+      "case_ids": [
+        "M10.child_bind_parent_block",
+        "M10.child_close_parent_resume"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M11",
+      "name": "系统面板",
+      "acceptance": "Open/Save/Font/Color四个具体面板逐个列支持及预期；至少Open/Save在自有父窗打开/取消/解阻；不读写用户文档。",
+      "current_classification": "partial",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        },
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f170-file-panel-visibility-diagnostics-2026-10-16/REPORT.md",
+          "sha256": "4afe8d4c35ccd436ebc91cb9aa89827ebf01683229742b9c0027fb47d71a8e2e"
+        }
+      ],
+      "next": "复用F169 Open；补已承诺的Save/Font/Color，不把安全桌面混进普通面板。",
+      "required": true,
+      "case_ids": [
+        "M11.open_panel_cancel",
+        "M11.save_panel_cancel",
+        "M11.font_panel_declared_support",
+        "M11.color_panel_declared_support"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M12",
+      "name": "隐藏/最小化/层叠",
+      "acceptance": "同一自有pair有限三状态：不误输入到遮挡者、不把旧图当实时，缺能力显式失败；窗口截图不是桌面命中真值。",
+      "current_classification": "partial",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        },
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f170-file-panel-visibility-diagnostics-2026-10-16/REPORT.md",
+          "sha256": "4afe8d4c35ccd436ebc91cb9aa89827ebf01683229742b9c0027fb47d71a8e2e"
+        }
+      ],
+      "next": "每状态一个预先定义正/负例；F169信息差异先分类，不默认P0或必修bug。",
+      "required": true,
+      "case_ids": [
+        "M12.hidden",
+        "M12.minimized",
+        "M12.overlapped"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M13",
+      "name": "普通冷悬停",
+      "acceptance": "固定Chrome隔离页面或已承诺第三方目标的一次冷后台hover，独立tooltip/原生变化；合作fixture钩子不作通用证明。",
+      "current_classification": "unverified",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f147-full-mac-goal-audit-2026-10-16/REPORT.md",
+          "sha256": "11820fc3e3d5cde3a20f36dbaece33fa9bb054ce4cdfacf2e3a223e4be5b1030"
+        }
+      ],
+      "next": "冻结一个普通目标、一个结果和一次超时，不扩展到任意应用。",
+      "required": true,
+      "case_ids": [
+        "M13.single_ordinary_cold_hover"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M14",
+      "name": "用户可见独立Live",
+      "acceptance": "优先按用户要求评估独立原生小浮层，不由业务标签页决定可见性；明确授权display/目标、尺寸范围、连续帧、隐藏/恢复/关闭/停止清图和租约。",
+      "current_classification": "partial",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "在原生浮层与Host PiP间明确主交付路线；不伪造presence或用API停止冒充点击X。",
+      "required": true,
+      "case_ids": [
+        "M14.independent_overlay_frames",
+        "M14.native_hide_resume",
+        "M14.native_close_stop_cleanup"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M15",
+      "name": "会话内Live与Host生命周期",
+      "acceptance": "会话内真实PNG/眼睛/X及尺寸分别取证；导航离开时采集/展示行为按批准策略停止或受控；没有Host观察通道记blocked，不记通过。",
+      "current_classification": "observed_failure_or_unobserved",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f146-fresh-host-compact-live-v5-2026-10-16/REPORT.md",
+          "sha256": "b556cbb2e5137b2bc0e368228e5da8ddd1eaf315bceebaefb88be2440c1b3c81"
+        }
+      ],
+      "next": "先查公开Host生命周期/可观测能力；相同缺DOM不再反复开会话。PiP支持需Host确认。",
+      "required": true,
+      "case_ids": [
+        "M15.actual_host_png_layout",
+        "M15.host_eye_resume_X",
+        "M15.host_navigation_lifecycle"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M16",
+      "name": "输出和耗时",
+      "acceptance": "冻结3个代表场景各5样本；分别记录工具墙钟/设备执行/返回大小；保留控件/PNG/错误；无比较基线不宣称CPU或速度胜出。",
+      "current_classification": "partial",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/outputs/validation/f147-full-mac-goal-audit-2026-10-16/REPORT.md",
+          "sha256": "11820fc3e3d5cde3a20f36dbaece33fa9bb054ce4cdfacf2e3a223e4be5b1030"
+        }
+      ],
+      "next": "先冻结阈值与统计范围，再一次采样；不把诊断基建无限升级。",
+      "required": true,
+      "case_ids": [
+        "M16.snapshot_5_samples",
+        "M16.input_receipt_5_samples",
+        "M16.live_read_5_samples"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M17",
+      "name": "最终回归与回滚",
+      "acceptance": "最终相关源码一次fmt、workspace locked tests、all-targets/all-features locked Clippy-Dwarnings；缓存足够用offline，Live变更补Node；四角色/独立副本回滚保持。",
+      "current_classification": "historical_pass_current_candidate_pending",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "继承历史结果不冒称当前；源码候选冻结后跑，不对每段报告重复全套。",
+      "required": true,
+      "case_ids": [
+        "M17.fmt",
+        "M17.workspace_locked_tests",
+        "M17.clippy_all_targets_features",
+        "M17.affected_node_tests",
+        "M17.independent_rollback"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    },
+    {
+      "id": "M18",
+      "name": "公开PR交付",
+      "acceptance": "复用既有公开仓库/PR1与合理拆分commit；最终候选正常push、远程HEAD及对应CI核对、返回地址；不自动merge/tag/release。",
+      "current_classification": "historical_delivered_current_delta_pending",
+      "evidence": [
+        {
+          "path": "/Volumes/ChatGPT/Real World Interaction/docs/product/implementation-status.md",
+          "sha256": "44498b7ac7591761e710d64d8dddab3766d57b06d0b775e3b206501878e36248"
+        }
+      ],
+      "next": "已有d7501e1批次不重做；只提交最终相关增量，排除本机配置/凭据/二进制/原图。",
+      "required": true,
+      "case_ids": [
+        "M18.explicit_logical_commits",
+        "M18.existing_public_PR_push",
+        "M18.remote_head_CI_evidence"
+      ],
+      "pass_rule": "All required subcases satisfy the pre-recorded expected effect and evidence layer. Unknown, blocked, a mere ACK, or historical evidence with changed relevant dependencies does not pass.",
+      "evidence_refresh": "Do not invalidate unrelated passes; record actual dependency changes. Original report/receipt remains immutable."
+    }
+  ],
+  "completion": {
+    "failure_or_unknown_is_pass": false,
+    "required": "all approved required cases passed at applicable dependency fingerprint, no unresolved safety defect or external blocker",
+    "not_applicable": "only by explicit user-approved capability boundary; unsupported success is never inferred",
+    "audit_vs_product": "classifying every case completes an audit, not this product goal",
+    "delivery": "existing public PR, final remote HEAD and CI, no auto merge/tag/release"
+  },
+  "iteration_policy": {
+    "max_fresh_acceptance_chats_per_build": 1,
+    "max_simultaneous_acceptance_chats": 1,
+    "max_distinct_hypotheses_per_issue": 2,
+    "same_blocker_turns_before_blocked": 3,
+    "no_progress_action": "preserve raw evidence and blocker identity; make an actual blocked transition once tool conditions hold; do not end active turns with the same unchanged unknown",
+    "reopen_requirement": "new relevant build, new Host capability, or genuinely new falsifiable hypothesis; new session identity alone is insufficient"
+  },
+  "evidence_policy": {
+    "single_current_record": "one small current JSON with case IDs/state/evidence refs/dependency fingerprints/owner/next action; MD summary generated or reconciled from it; history append-only elsewhere",
+    "reuse": "only invalidate affected cases when their actual input/native/MCP/UI dependencies change; retain unrelated passes",
+    "layers": [
+      "offline contract/regression",
+      "real MCP process/transport",
+      "loaded Host tools",
+      "native effects",
+      "actual Host pixels/lifecycle",
+      "performance per scope"
+    ],
+    "do_not_substitute": "no ACK for effects, installed path for loaded image, component browser screenshot for Host rendering, AXValue for keyboard, synthetic actor for physical user",
+    "safety": "preserve identity/leases/no-replay; no workaround around denied Host observation or unauthorized desktop"
+  },
+  "pending_decisions": [],
+  "schema_version": "rwi.macos.acceptance-contract/v1",
+  "revision": 6,
+  "approved_at": "2026-10-16T16:26:44.179752+08:00",
+  "approval_source": "Current audit chat: user explicitly approved implementing the audit recommendations, goals, acceptance paths/standards and configuration fixes.",
+  "owner_thread_id": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf",
+  "objective": "# Goal｜RWI Mac 集成可交付版本收口\n\n## 一、最终目标与责任\n\n在「Real World Interaction：Mac端」会话中，完成一个功能边界明确、能够实际使用、具有完整验收证据、可回滚，并通过现有公开 PR 交付的 Mac 版本。\n\n本会话独立负责目标推进、实现、配置、验证、状态维护和交付，不依赖其他审计或维护会话在线，也不依赖用户反复提醒“继续”。此前“由其他会话长期维护本目标”的安排作废。\n\n完成目标不等于写完文档、跑通单测、提交代码或推送 PR。只有下述必需功能、验收、回滚和交付条件全部满足，才能标记 Complete。\n\n## 二、范围与不可变约束\n\n1. 唯一产品源码为 `/Volumes/ChatGPT/Real World Interaction` 根 workspace，不在 `work/` 创建新的开发源码副本。\n2. 保持 Rust 生产后端、Host 中性 MCP 和设备 Agent 的架构边界，不引入隐藏的 Python、AppleScript、PowerShell 等生产桥接。\n3. 本次验收限定于已授权的 `mac-host`、当前实际 macOS、自有 AppKit 测试窗口、Chrome 隔离页面，以及测试窗口拥有的普通系统面板。\n4. 开始时记录实际 OS、Chrome、Agent、MCP、UI 资源版本和目标身份。不把一个版本、一个应用或一个窗口的结果推广为所有平台、所有应用均支持。\n5. 保留设备、用户、会话、窗口身份绑定，资源租约、持久去重、不确定输入禁止重放等约束。\n6. 不操作未分配的用户文档、游戏或窗口，不改变无关 Host 配置，不重启或终止其他会话及生产服务。\n7. 本次采用 M01–M18、现有 51 个具体子用例的有限验收集合。核对现有用例 ID，不重新生成一套平行矩阵。\n8. 已有证据按实际依赖复用，不从零重跑。历史 PASS、FAIL、UNVERIFIED 数量只是快照，以当前逐项证据为准。\n9. 新用户要求可以形成有界的新版本；偶然发现的问题不能自动扩成“所有工具 × 所有应用 × 所有窗口”的无限组合。\n10. 不得自行删除失败项、放宽守卫，或把已经承诺的能力改标为 unsupported 来宣布完成。范围缩减必须获得用户明确批准。\n\n## 三、阶段、时间边界与执行顺序\n\n首次采用本目标时记录 T0，时间展示使用 Asia/Shanghai。\n\n累计本目标实际活动轮次的墙钟时间：运行中的工具等待计入；用户暂停、排队和离线时间不计。以下是首轮复核时间盒，不是保证八小时修完，也不是系统 token 预算。\n\n| 阶段            | 首次复核上限 | 工作及必须产出的结果                                                                        |\n| ------------- | ------ | --------------------------------------------------------------------------------- |\n| S0：运行身份与配置    | 30 分钟  | 核对实际加载版本、工具目录和配置来源；处理旧状态游标、RWI 注册 revision、显示模式声明、Mac/Windows 门禁混用。每项给出通过结果或具体缺口。 |\n| S1：Live       | 120 分钟 | 分开验证独立原生预览与会话内预览；取得真实画面、隐藏、恢复、关闭和生命周期证据，明确失败或外部依赖。                                |\n| S2：后台保焦点      | 90 分钟  | 验证跨 PID 和同 PID 兄弟窗口的后台 pointer 效果与完整前台身份；修复已承诺能力的实际缺陷。                            |\n| S3：后台 Unicode | 90 分钟  | 修复并验证 Chrome 后台固定键盘载荷完整输入；保留原丢字负例，完成针对性回归。                                        |\n| S4：其余有限矩阵     | 90 分钟  | 只补前台操作、后台语义、执行中切窗、模态、系统面板、隐藏/层叠、冷悬停及输出采样的剩余缺口。                                    |\n| S5：最终交付       | 60 分钟  | 冻结最终源码，完成相关回归、回滚、合理 commit、现有 PR 正常 push，以及远程 HEAD 和对应 CI 核对。                     |\n\n执行规则：\n\n- 到达阶段时间盒，必须给出该阶段的 PASS、FAIL、UNVERIFIED、BLOCKED 判定、实际证据和耗时。\n- 停止没有新假设的同路线重复，转向能够独立推进的事项。\n- 累计八小时必须给出首轮总判定、剩余工作、阻塞原因和新的有界估时，不能悄悄延长同一实验或扩大范围。\n- 时间耗尽不算完成，也不能仅因困难或超时伪造 blocked、paused。\n- 普通只读或协议探针单次以 30 秒为观测超时；专用 Native 场景以 60 秒为观测超时；单条构建或测试命令以 30 分钟为观测超时。\n- 超时后明确记录未完成或不确定状态。输入超时记为 uncertain，先独立回读，不重发原请求。\n- 必要的清理和资源核对仍须完成，不能丢下运行中的输入，也不能为了结束测试终止生产 Agent 或 Host。\n\n## 四、各板块的验收标准\n\n### M01：运行身份与配置\n\n通过条件：\n\n- 实际 Host 工具声明、MCP 的 PID、instance、可验证 build、Agent 身份和配置来源能够对应。\n- 工具目录按实际协商分别记录模型可见工具和 app-only 工具。\n- 明确区分磁盘安装文件与当前进程实际加载的映像。\n- RWI 注册 revision 与安装版本一致。\n- 当前状态入口不存在仍会派发旧步骤的过时游标。\n- 不要求所有历史聊天都刷新到最新版本，才能交付当前版本。\n\n### M02：架构与独立运行\n\n通过条件：\n\n- 没有业务窗口时也能启动服务并发现工具。\n- Host 中性传输不依赖平台 FFI、应用名称、业务阶段或业务 oracle。\n- 相关架构检查退出码为 0。\n\n### M03：身份、守卫与禁止重放\n\n通过条件：\n\n- 旧 frame、错误前台、错误目标和身份隔离负例在派发前被拒绝。\n- 独立观察确认目标计数或状态没有被错误输入改变。\n- 原请求最终状态明确，资源租约释放。\n- 不确定输入没有被重放，也没有通过换工具或换输入路线间接重试。\n\n### M04：前台基础操作\n\n在隔离目标上分别验证一次：\n\n- 点击；\n- 连续拖拽；\n- 快捷键；\n- 文本输入。\n\n通过条件是独立效果、坐标和目标身份与预期一致，不能只凭工具 ACK 判断成功。\n\n### M05：后台语义操作\n\n分别验证：\n\n- 后台读取；\n- AXPress；\n- 整值编辑。\n\n通过条件是效果正确，且前台完整身份元组不变。语义操作通过不能替代 pointer 或键盘路径通过。\n\n### M06：后台 pointer 与保焦点\n\n分别验证：\n\n- 跨 PID 的后台目标；\n- 同 PID 的兄弟窗口。\n\n通过条件：\n\n- 输入到达正确目标，实际效果正确。\n- 对声明支持“后台保焦点”的路径，OS 前台 PID、process-start、window、epoch 不得变化。\n- 不得先抢走焦点，再切回原窗口，冒充全过程保持前台。\n\n### M07：后台 Unicode 与 IME\n\n固定载荷为：\n\n后🙂𝄞 é👩‍💻\n\n通过条件：\n\n- 经 Chrome 后台键盘路径输入后，逐 UTF16 单元与原载荷一致，共 13 个单元。\n- 原先只有 5 个单元的失败记录必须保留。\n- 不得静默改用 AXValue、剪贴板或前台激活来冒充键盘修复。\n- IME 的能力声明、组合输入、提交和取消单独说明与验证。\n- Unicode 正例不能作为通用 IME 支持的证明。\n\n### M08：后台执行中切到前台\n\n执行一次 5 秒拖拽，在手势进行中由独立 actor 合成 Command+Tab。\n\n通过条件：\n\n- 切换实际发生在手势时间范围内。\n- 目标身份连续。\n- down/up 配对，终态和实际效果一致。\n- 明确标注这是合成切换，不冒充物理人工操作证明。\n\n### M09：前台执行中切走与前台冲突\n\n通过条件：\n\n- 在同类 5 秒手势中切走，不把输入误投到新的前台应用。\n- 原操作按照所选输入路线的合同完成或安全停止。\n- `foreground_system` 的作用域发生变化时，负例在派发前被拒绝。\n- 不根据单纯 ACK 推断切换结果。\n\n### M10：普通模态窗口\n\n通过条件：\n\n- 子窗口可以独立识别和绑定。\n- 模态窗口打开期间，父窗口拒绝不应接受的输入。\n- 子窗口关闭后，父窗口恢复可操作。\n- 正例、负例和清理均有独立证据。\n\n### M11：系统面板\n\n固定验证范围为：\n\n- Open；\n- Save；\n- Font；\n- Color。\n\n通过条件：\n\n- 分别验证已承诺的能力，不将一个面板的成功推广到全部面板。\n- Open/Save 在自有父窗口中完成打开、取消和父窗口恢复。\n- 不读取或写入用户现有文档。\n- 普通系统面板不能作为安全桌面或其他特殊权限环境的证明。\n\n### M12：隐藏、最小化与遮挡\n\n固定验证隐藏、最小化、遮挡三种状态。\n\n通过条件：\n\n- 不把输入误投到遮挡者。\n- 不把旧截图当成实时画面。\n- 不把窗口截图中看得到控件，或 AX 动作成功，等同于桌面鼠标能够命中该控件。\n- 不能执行时准确报告能力限制或状态拒绝。\n\n### M13：普通应用冷悬停\n\n选择一个固定的普通第三方隔离目标，执行一次预先定义的冷后台 hover。\n\n通过条件：\n\n- 观察到预定 tooltip 或其他独立可读效果。\n- 仅有输入 ACK 不算通过。\n- 合作 fixture 注册的专用钩子不能充当普通应用通用能力的证明。\n\n### M14：独立原生 Live\n\n首选明确授权显示器上的非激活原生小浮层，独立于当前业务标签页。\n\n通过条件：\n\n- 宽度不超过 320 pt，高度不超过 360 pt，控件不被裁剪。\n- 保留源图比例和清晰度。\n- 在一次 5 秒手势中显示至少 3 个不同源帧。\n- Hide、Resume、X 关闭分别验证。\n- API stop 成功不能替代用户点击 X 的验证。\n- 独立原生浮层不以切换聊天作为关闭条件，但仍受明确的目标、会话、授权、租约和停止生命周期约束。\n\n### M15：会话内 Live 与 Host 生命周期\n\n通过条件：\n\n- 在真实 Host 中验证 PNG 解码、眼睛按钮、恢复、X 关闭和实际显示容器。\n- 组件内容宽度不超过 320 CSS px。\n- 不要求不可控制的 Host 外框与其他产品 UI 像素级一致。\n- 真实可见性丢失后，按照下面的时间标准停采和清图。\n- Host 不提供必需的身份、事件或观察通道时，准确记录外部依赖，不伪造事件、不反复新建聊天碰运气，也不换通道绕过明确的访问拒绝。\n\nLive 的统一计时标准：\n\n- 本次核对源码的 presence lease 为 1500 ms，采样间隔为 500 ms。\n- 隐藏或会话内真实可见性丢失后，2 秒内清图并停止采集。\n- 此后相隔 1 秒的两次状态中，capture 计数不得继续增长。\n- Resume 后 2 秒内显示同源新帧。\n- X/Stop 后 5 秒内观察到 `stopped`、`worker_done` 和清图。\n- 以上是本次验收标准，不是已经取得的成绩。测试前冻结数值，不得根据结果事后修改阈值。\n\n### M16：性能与输出\n\n固定三个场景：\n\n- snapshot；\n- input receipt；\n- Live read。\n\n每个场景采集 5 个样本。\n\n通过条件：\n\n- 分别报告中位数、最大值、调用数和返回字节数。\n- 工具墙钟时间、Native 执行时间和编排时间分开。\n- 关键控件、错误信息和 PNG 不丢失。\n- 没有公平基线时，不宣称速度或 CPU 使用优于 Computer Use。\n- 不用 5 个样本作可靠 p95 性能承诺。\n\n### M17：最终回归与回滚\n\n在唯一根 workspace 执行：\n```css\nrtk cargo fmt --all -- --check\nrtk cargo test --workspace --locked\nrtk cargo clippy --workspace --all-targets --all-features --locked -- -D warnings\n```\n\n缓存依赖足够时使用 `--offline`。\n\n通过条件：\n\n- 三项命令退出码均为 0。\n- 相关 Live Node 测试和架构检查通过。\n- 忽略测试逐项说明范围和原因。\n- 独立副本回滚后 hash 与原件一致，并能够重新应用修改。\n- 不回滚生产工作树。\n- 不以历史回归或旧 HEAD 的 CI 替代最终候选验证。\n\n### M18：公开 PR 交付\n\n通过条件：\n\n- 使用明确路径暂存。\n- 按职责合理拆分 commit。\n- 正常 push 到现有公开 PR。\n- 远程 HEAD 与最终候选一致。\n- 对应 HEAD 的 CI 成功。\n- 返回仓库、PR、HEAD 和已知限制。\n- 不自动 merge，不创建 tag，不发布 release。\n\n## 五、证据、复验与重试规则\n\n每个用例执行前记录：\n\n- case_id；\n- 前置身份和版本；\n- 输入；\n- 独立预期结果；\n- 证据层；\n- 超时；\n- 清理方式。\n\n执行后记录：\n\n- 实际输出及退出码；\n- PASS、FAIL、UNVERIFIED 或 BLOCKED；\n- 绝对证据路径与 hash；\n- 实际耗时；\n- 缺口和下一动作。\n\n离线测试、真实 MCP 进程、Host 实际加载工具、Native 效果、Host 像素和性能分别判定，不能互相替代。\n\n只有相关输入或代码依赖变化，才使旧通过证据失效。新增门槛只复核受影响项目，不整表清零。\n\n每个问题先最多进行两个不同、可证伪的假设实验。同一 BUILD 最多建立一个新的 Host 验收聊天，并发验收聊天最多一个，优先复用已有合格会话。\n\n遇到外部依赖，先推进其他独立事项。当全部有意义路径都被同一外部条件阻塞，且连续三个目标轮次满足工具规则时，才将目标置为 blocked，并给出具体解锁条件。\n\n如果只是需要更多工程时间，应说明具体下一假设和有界估时，不能伪造外部阻塞。保留失败记录，不重放 uncertain 输入，不自动切换输入路线掩盖失败。\n\n## 六、必须交付的六类产物\n\n### D1：源码与配置\n\n交付最终源码、配置差异、构建身份及适用范围。\n\n只修改 RWI 相关配置，保留配对、证书、权限和其他 Host 服务。不提交秘密、本机设置、二进制或原始截图。\n\n### D2：当前验收表\n\n交付一张覆盖现有 51 个子用例的验收表，至少包含：\n\n- 输入；\n- 预期；\n- 实际；\n- 状态；\n- 证据层；\n- 版本指纹；\n- 耗时；\n- 缺口。\n\n新用户批准的用例可以在新版本中明确增减，但不能偷偷改变分母。\n\n### D3：中文验收报告\n\n简明中文说明，按真实时间排列步骤和原始截图链接。\n\n每一步明确结果或问题，已验证与未验证分开，不能使用重绘或替代画面冒充原始验收截图。\n\n### D4：运行与清理证据\n\n交付配置、部署文件和实际加载身份的对照，以及清理、租约释放、禁止重放证据和已知限制。\n\n### D5：可逆修改产物\n\n沿用已有四角色：\n\n- `MODIFIED_FILE`\n- `DIFF_FILE`\n- `VERIFICATION.txt`\n- 可执行的 `ROLLBACK.sh`\n\n在独立副本验证基线、修改、回滚、重应用及原 hash 恢复。\n\n### D6：Git 与 CI 交付\n\n交付现有公开仓库和 PR 地址、合理 commit 列表、远程最终 HEAD，以及该 HEAD 的 CI 结果。\n\n## 七、完成判定与汇报格式\n\n只有同时满足以下条件，才能标记 Complete：\n\n1. 所有必需用例 PASS；不适用项目具有用户明确批准和理由。\n2. 没有未解决的核心功能缺陷、安全缺陷或外部阻塞。\n3. 最终相关回归、清理和回滚通过。\n4. D1–D6 全部存在、可打开，内容与实际证据一致。\n5. 最终源码、部署范围、远程 HEAD 和 CI 的对应关系清楚。\n\n文档写完、用例分类完成、push 完成或时间耗尽，都不能代替上述条件。\n\n每个阶段仅汇报：\n\n- 当前阶段与已用时间；\n- 新增 PASS、FAIL、UNVERIFIED、BLOCKED 数量；\n- 实际变更和证据；\n- 剩余必需项；\n- 下一可执行动作或外部解锁条件。\n\n首轮八小时报告额外给出交付判定和剩余工作的有界估时。不要高频复述没有变化的状态。\n\n## 八、新增需求与目标演进\n\n后续收到用户新要求，由原 Mac 执行会话将其整合为本 Goal 的新有限版本，同时更新验收标准、交付条件和受影响用例，不依赖其他审计会话持续维护。\n\n保留未被明确替代的旧要求，消除重复和冲突。只有真正受影响的用例需要重新验证，其他有效证据继续沿用。\n\nGoal 是目标和完成条件的权威。项目 JSON、Markdown 是执行记录、证据索引和镜像，不能反过来凭文件内容生成新的用户任务。\n\n如果持久 Goal 编辑接口不可用，必须准确区分“新的执行指令已采用”和“App 内 Goal 原文已更新”，不能冒称更新成功，不能绕过安全拒绝、直接写数据库，或虚假完成旧 Goal 后另建一个重复目标。",
+  "status": "approved_execution_contract",
+  "authoritative_state_path": "/Volumes/ChatGPT/Real World Interaction/docs/product/macos-current-state.json",
+  "live_delivery": {
+    "primary": "explicitly authorized independent native non-activating overlay",
+    "secondary": "conversation-only component; Host PiP only when advertised and observable",
+    "lifecycle": "Independent overlay is bound to explicit target/session/lease/stop, not inferred from active chat visibility. Conversation-only behavior uses genuine observable Host lifecycle. Any necessary decoupling is an implementation change with guards and tests, not forged presence.",
+    "visual_acceptance": "Preserve original image fidelity/aspect ratio. Reuse measured native compact layout and 320px component layout; actual native/Host geometry must be measured separately. No pixel-perfect proprietary UI equivalence claim.",
+    "unsupported_host": "Record exact missing capability as external dependency; retain core native work; do not relaunch identical sessions to hunt for a different result."
+  },
+  "threshold_policy": {
+    "safety": "0 unauthorized target effects; 0 uncertain-input replays; no silent input-route substitution; independent final resource cleanup evidence required.",
+    "text": "M07 fixed payload 后🙂𝄞 é👩‍💻 must equal all 13 UTF16 code units on the keyboard path; AXValue is a distinct case.",
+    "input_transition": "M08/M09 one 5-second gesture per approved test, independent mid-gesture switch timestamp, balanced down/up and exact owner evidence.",
+    "live": "See objective section 3 and measurable_live_criteria; new numeric gates require only affected evidence review.",
+    "performance": "3 fixed scenarios × 5 samples; median/max/bytes/calls by layer, no unsupported p95 or speed-superiority claim.",
+    "freeze_before_run": "Record exact timeout/expected effect/fixture identity/dependency fingerprints before each case; do not revise expectations after seeing results."
+  },
+  "configuration_work": [
+    {
+      "id": "CFG01",
+      "change": "Reconcile stale Source21 JSON cursor with current actual result; this state file becomes the only current machine cursor. Preserve old file as explicitly historical and link summary from implementation-status.md.",
+      "owner": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf"
+    },
+    {
+      "id": "CFG02",
+      "change": "Record actual MCP pid/instance/package version plus verifiable build/resource identity; keep installed file identity separate from loaded process.",
+      "owner": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf"
+    },
+    {
+      "id": "CFG03",
+      "change": "Make Rust resource and HTML initialization display-mode advertisements consistent with actual supported presentation; no assumption that Host accepts PiP.",
+      "owner": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf"
+    },
+    {
+      "id": "CFG04",
+      "change": "Separate Windows Pointer UIOS contract from Mac UI acceptance; establish correct Mac target only when relevant, never bypass applicable gates.",
+      "owner": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf"
+    },
+    {
+      "id": "CFG05",
+      "change": "Check RWI config precedence and deployment paths without copying secrets into evidence; modify only relevant RWI settings, preserve other Host services and credentials.",
+      "owner": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf"
+    }
+  ],
+  "execution_order": [
+    "CFG01 / M01",
+    "M15 / M14 lifecycle and user-visible Live",
+    "M06 / M07 real focus and Unicode failures",
+    "remaining frozen required cases",
+    "M17 final candidate regression",
+    "M18 existing PR incremental delivery"
+  ],
+  "updated_at": "2026-10-20T01:28:33.312078+08:00",
+  "goal_maintenance": {
+    "maintenance_thread_id": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf",
+    "execution_thread_id": "01a0b8fc-631c-7cc0-bbeb-c8681babfabf",
+    "target_goal_id": "e40c135d-3142-40d4-8b49-8c182b0056dc",
+    "authority": "Original Mac Goal owns objective, evolution and completion; this audit chat is a one-time editor, not an ongoing dependency.",
+    "audit_session_dependency": false,
+    "source_of_truth": "Original execution thread user-approved Goal; files are mirrors, evidence and indexes. Existing app-stored text is not falsely claimed changed.",
+    "new_input_policy": "Original execution session integrates explicit user changes into a new bounded Goal revision, preserving prior requirements/evidence except explicitly superseded scope.",
+    "no_duplicate_goal": true
+  },
+  "change_log": [
+    {
+      "revision": 2,
+      "source": "User clarification in maintenance chat",
+      "summary": "This session owns continuing full Goal consolidation, including future additions and acceptance/delivery/configuration boundaries.",
+      "changed_case_ids": [],
+      "functional_case_reexecution_required": false
+    },
+    {
+      "revision": 3,
+      "source": "User correction: original Goal must own execution, not audit chat; make format/time/boards/acceptance/delivery concrete.",
+      "supersedes": "revision2 audit-chat maintenance ownership",
+      "case_ids_added_or_removed": [],
+      "evidence_to_review_for_new_numeric_bounds": [
+        "M14",
+        "M15"
+      ],
+      "other_evidence_preserved": true
+    },
+    {
+      "revision": 4,
+      "source": "User edited active Goal to the attached complete objective",
+      "changed_case_ids": [],
+      "functional_reexecution_required": false,
+      "summary": "Adopt authoritative user attachment, supersede obsolete unchanged-old-objective statements; retain finite cases/time bounds/current evidence."
+    },
+    {
+      "revision": 5,
+      "source": "direct human reply call_ddd310fbefd9404fad163a31a6a1510c",
+      "summary": "Permit necessary related RWI Agent/adapter/Codex restarts; preserve existing keys/permissions and all51 criteria. Attachment and App Goal text not rewritten.",
+      "changed_case_ids": [],
+      "functional_case_reexecution_required": false
+    },
+    {
+      "revision": 6,
+      "source": "[\"request_user_input_async\",\"call_adda1d7cc4f24f54b7428112981b2d52\",0]",
+      "summary": "直接用户批准M06显式接入路径交付；未接入普通AppKit仍会获焦，保留FAIL历史和限制；其余50子项与门槛不变。",
+      "changed_case_ids": [
+        "M06.same_pid_sibling_pointer_focus"
+      ],
+      "case_ids_added_or_removed": [],
+      "approval": {
+        "path": "/Volumes/ChatGPT/Real World Interaction/work/f404-own-receiver-local-monitor-2026-10-20/M06_DIRECT_HUMAN_SCOPE_APPROVAL.json",
+        "sha256": "8ac7b1dda9b04b52895ae85beda1ee849b77e852767211fa9924af5a41f8972d"
+      },
+      "App_Goal_text_edited": false
+    }
+  ],
+  "time_policy": {
+    "stages": [
+      {
+        "id": "S0",
+        "name": "identity_configuration",
+        "review_minutes": 30,
+        "required_groups": [
+          "M01",
+          "M02"
+        ]
+      },
+      {
+        "id": "S1",
+        "name": "live",
+        "review_minutes": 120,
+        "required_groups": [
+          "M14",
+          "M15"
+        ]
+      },
+      {
+        "id": "S2",
+        "name": "background_focus",
+        "review_minutes": 90,
+        "required_groups": [
+          "M06"
+        ]
+      },
+      {
+        "id": "S3",
+        "name": "unicode",
+        "review_minutes": 90,
+        "required_groups": [
+          "M07"
+        ]
+      },
+      {
+        "id": "S4",
+        "name": "remaining_finite_matrix",
+        "review_minutes": 90,
+        "required_groups": [
+          "M03",
+          "M04",
+          "M05",
+          "M08",
+          "M09",
+          "M10",
+          "M11",
+          "M12",
+          "M13",
+          "M16"
+        ]
+      },
+      {
+        "id": "S5",
+        "name": "final_delivery",
+        "review_minutes": 60,
+        "required_groups": [
+          "M17",
+          "M18"
+        ]
+      }
+    ],
+    "first_review_window_minutes": 480,
+    "clock": "active-turn wall time, actual running tools included; record T0 in Asia/Shanghai; user pauses/queue/offline excluded",
+    "timebox_not_delivery_guarantee": true,
+    "not_a_system_token_budget": true,
+    "at_timebox": "Produce actual phase outcome and remaining work; stop unchanged hypothesis repetition; move to independent work. Never infer complete/paused/blocked from time alone.",
+    "read_probe_timeout_s": 30,
+    "native_scenario_timeout_s": 60,
+    "build_command_observation_timeout_s": 1800
+  },
+  "measurable_live_criteria": {
+    "source_lease_ms_observed": 1500,
+    "source_interval_ms": 500,
+    "hide_clear_stop_capture_ms": 2000,
+    "post_hide_two_sample_spacing_ms": 1000,
+    "resume_fresh_frame_ms": 2000,
+    "stop_worker_done_ms": 5000,
+    "native_max_width_pt": 320,
+    "native_max_height_pt": 360,
+    "component_content_max_width_css_px": 320,
+    "source_fresh_frames_within_5s": 3,
+    "status": "acceptance criteria, not observed passes",
+    "affected_evidence_review": [
+      "M14",
+      "M15"
+    ]
+  },
+  "delivery_standard": {
+    "required": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6"
+    ],
+    "authoritative_text_in_goal": true,
+    "no_completion_by_document_or_budget": true
+  },
+  "authoritative_goal_source": {
+    "kind": "user_edited_app_goal_attachment",
+    "path": "/Users/vincentadamnemessis/.codex/attachments/e22fe91d-8d3b-48f6-bc39-50c8b1fe2c13/goal-objective.md",
+    "sha256": "0b2bc8d8fe82dceeef1531da21741b20cf269c0615906ae669d5787109ff7253",
+    "app_stored_objective": "Read the Codex goal objective file at /Users/vincentadamnemessis/.codex/attachments/e22fe91d-8d3b-48f6-bc39-50c8b1fe2c13/goal-objective.md before continuing.",
+    "app_stored_reference_independently_read": true,
+    "assistant_did_not_edit_goal_database": true
+  },
+  "execution_authorization_override": {
+    "source": "direct user reply to call_ddd310fbefd9404fad163a31a6a1510c",
+    "literal_user_answer": "你的意思是，就要目标禁止重启这样服务吗？我这边是允许的，好吧？如果说阿特白镜头或者Codex啥的需要重启，可以进行重启，OK？",
+    "adopted_at": "2026-10-16T19:26:24.628877+08:00",
+    "permits": "necessary related RWI Agent/adapter/Codex restarts for deployment and acceptance",
+    "not_permitted": "unrelated services, forced input replay, unrelated windows or private key export",
+    "supersedes": "old Goal attachment section II.6 only insofar as related services need restart",
+    "goal_attachment_text_not_rewritten": true,
+    "all51_cases_and_thresholds_unchanged": true
+  },
+  "M06_scope_override": {
+    "source": {
+      "path": "/Volumes/ChatGPT/Real World Interaction/work/f404-own-receiver-local-monitor-2026-10-20/M06_DIRECT_HUMAN_SCOPE_APPROVAL.json",
+      "sha256": "8ac7b1dda9b04b52895ae85beda1ee849b77e852767211fa9924af5a41f8972d"
+    },
+    "literal_user_answer": "同意调整 M06，交付显式接入路径并保留普通路径限制",
+    "questionItemId": "[\"request_user_input_async\",\"call_adda1d7cc4f24f54b7428112981b2d52\",0]",
+    "adopted_at": "2026-10-20T01:28:33.312078+08:00",
+    "affected_case_ids": [
+      "M06.same_pid_sibling_pointer_focus"
+    ],
+    "target_app_must_explicitly_integrate": true,
+    "accepted_path": "Own-app Registration with original-event responder dispatch; public AppKit LocalMonitor with explicit lifecycle is the delivered integration option.",
+    "ordinary_unintegrated_AppKit": "FAIL",
+    "ordinary_failure_evidence_retained": true,
+    "no_third_party_injection": true,
+    "not_generic_third_party_background_support": true,
+    "foreground_evidence": "full OS tuples at boundaries plus calibrated own key/active notifications; not continuous global OS or physical-human attestation",
+    "matrix_denominator_before": 51,
+    "matrix_denominator_after": 51,
+    "goal_attachment_and_App_Goal_text_edited": false,
+    "authority": "Direct human scope change under Goal II.10 and VIII; only this M06 expectation is superseded."
+  }
+}
