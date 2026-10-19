@@ -348,6 +348,11 @@ mod native {
 }
 #[cfg(target_os = "macos")]
 pub use native::Registration;
+#[cfg(target_os = "macos")]
+#[path = "receiver_component/local_monitor.rs"]
+mod local_monitor;
+#[cfg(target_os = "macos")]
+pub use local_monitor::LocalMonitor;
 
 #[cfg(test)]
 mod tests {
