@@ -46,6 +46,7 @@ pub mod operation;
 pub mod operation_journal;
 #[cfg(test)]
 mod pixel_anchor_tests;
+pub mod pointer_dispatch;
 pub mod semantic_focus;
 mod semantic_focus_route;
 pub mod set_text;
@@ -442,6 +443,9 @@ pub struct Receipt {
     /// Bounded, read-only plain-field sample; never a dispatch or goal oracle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_effect: Option<text_effect::TextEffect>,
+    /// Bounded producer post transcript; no receiver acknowledgement or goal claim.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointer_dispatch: Option<pointer_dispatch::PointerDispatch>,
     pub goal_verified: bool,
     pub replay: String,
     pub deduplicated: bool,

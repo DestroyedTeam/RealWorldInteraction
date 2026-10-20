@@ -65,6 +65,7 @@ pub struct NativeMac {
     objects: std::sync::Mutex<objects::Objects<objects::Ax>>,
     pub(crate) last_observation: std::sync::Mutex<serde_json::Value>,
     text_effect: Option<rwi_core::text_effect::TextEffect>,
+    pointer_dispatch: Option<rwi_core::pointer_dispatch::PointerDispatch>,
 }
 #[derive(Clone)]
 struct AxElement {
@@ -747,7 +748,15 @@ fn scoped_visibility(
     if blocked.is_none() {
         return (None, None);
     }
-    (exact_hit, exact_hit.map(|hit| !hit))
+    // A different AX object can be a passive descendant or a provider's
+    // container. Object inequality alone is not proof of visual occlusion.
+    // Unknown still cannot authorize pointer/text input: admission requires a
+    // positively matched native hit, independently revalidated at dispatch.
+    if exact_hit == Some(true) {
+        (Some(true), Some(false))
+    } else {
+        (None, None)
+    }
 }
 
 fn observed_element(

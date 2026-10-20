@@ -400,6 +400,19 @@ pub(super) fn compact_action_reply(data: &Value, details_ref: Option<String>) ->
             reply.insert(key.into(), value.clone());
         }
     }
+    if let Some(trace) = data.get("pointer_dispatch") {
+        // Full bounded event fields remain in the original details_ref. Keep the
+        // default reply compact, and do not turn a void post into app receipt.
+        reply.insert(
+            "pointer_dispatch".into(),
+            json!({
+                "route": trace.get("route"), "api": trace.get("api"),
+                "post_calls_returned": trace.get("events").and_then(Value::as_array).map(Vec::len),
+                "receiver_effect": trace.get("receiver_effect"),
+                "truncated": trace.get("truncated").unwrap_or(&Value::Bool(false)),
+            }),
+        );
+    }
     if let Some(observation) = data.get("focus_observation") {
         reply.insert(
             "focus_observation".into(),

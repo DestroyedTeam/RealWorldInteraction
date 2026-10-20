@@ -51,7 +51,7 @@ pub(crate) fn activate_background_window(pid: u32, window: u32) -> bool {
     event.post_to_pid(pid as libc::pid_t);
     true
 }
-const TARGET_WINDOW_NUMBER_FIELD: u32 = 51;
+pub(crate) const TARGET_WINDOW_NUMBER_FIELD: u32 = 51;
 #[derive(Clone, Copy)]
 pub(crate) struct Delivery {
     pub pid: u32,

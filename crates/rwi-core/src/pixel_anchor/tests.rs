@@ -2,6 +2,7 @@ use super::*;
 
 mod context;
 mod creation;
+mod edge;
 fn png(rgb: &[u8], size: [u32; 2]) -> Vec<u8> {
     let mut out = Vec::new();
     {
@@ -250,7 +251,7 @@ fn blank_or_invalid_source_does_not_weaken_full_content_guard() {
     );
     assert!(PixelAnchor::from_png(b"not-png", size, [80., 80.], [80., 80.]).is_none());
     let (textured, size) = fixture();
-    assert!(PixelAnchor::from_png(&png(&textured, size), size, [51., 51.], [51., 51.]).is_none());
+    assert!(PixelAnchor::from_png(&png(&textured, size), size, [47., 47.], [47., 47.]).is_none());
 }
 #[test]
 fn diagnostic_reports_central_and_outer_change_without_changing_admission() {

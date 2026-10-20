@@ -15,6 +15,11 @@ fn apply_selected_click_capabilities(
 }
 
 impl Backend for NativeMacDesktop {
+    fn take_pointer_dispatch(&mut self) -> Option<rwi_core::pointer_dispatch::PointerDispatch> {
+        self.selected
+            .as_mut()
+            .and_then(Backend::take_pointer_dispatch)
+    }
     fn take_text_effect(&mut self) -> Option<rwi_core::text_effect::TextEffect> {
         // Attachments retain their own selected backend. Drain memory only;
         // no identity refresh, AX call, target search or input is authorized here.

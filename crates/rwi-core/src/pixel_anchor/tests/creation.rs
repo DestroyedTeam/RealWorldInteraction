@@ -36,7 +36,7 @@ fn creation_preconditions_preserve_option_admission_without_decode() {
         CreationFailure::PixelNotFinite,
         0,
     );
-    for pixel in [[63.99, 80.], [80., 63.99], [96., 80.], [80., 96.]] {
+    for pixel in [[47.99, 80.], [80., 47.99], [112., 80.], [80., 112.]] {
         assert_creation_failure(
             &encoded,
             size,

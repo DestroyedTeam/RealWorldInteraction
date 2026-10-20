@@ -1,4 +1,5 @@
 use super::*;
+mod pointer_dispatch;
 mod text_effect;
 use std::sync::{
     Arc,

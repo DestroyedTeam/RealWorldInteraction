@@ -108,6 +108,7 @@ impl Engine {
             dispatch_error: None,
             system_accepted: None,
             text_effect: None,
+            pointer_dispatch: None,
             goal_verified: false,
             replay: "forbidden".into(),
             deduplicated: false,
