@@ -1,0 +1,69 @@
+{
+  "schema": "rcu.architecture.ratchet.v1",
+  "source_status": "root workspace; debt ratchet, not full architecture acceptance",
+  "new_file_line_limit": 600,
+  "allowed_production_dependencies": {
+    "rwi-core": [],
+    "rwi-mcp": [
+      "rwi-core",
+      "rwi-imaging",
+      "rwi-macos",
+      "rwi-native-link",
+      "rwi-windows",
+      "rwi-link-trust",
+      "rwi-js"
+    ],
+    "rwi-imaging": [
+      "rwi-core"
+    ],
+    "rwi-macos": [
+      "rwi-core",
+      "rwi-pointer"
+    ],
+    "rwi-native-link": [
+      "rwi-core",
+      "rwi-link-trust",
+      "rwi-windows"
+    ],
+    "rwi-link-trust": [],
+    "rwi-js": [],
+    "rwi-windows": [
+      "rwi-core",
+      "rwi-imaging",
+      "rwi-pointer"
+    ],
+    "rwi-agent": [
+      "rwi-core",
+      "rwi-imaging",
+      "rwi-link-trust",
+      "rwi-macos",
+      "rwi-native-link",
+      "rwi-windows"
+    ],
+    "rwi-pointer": []
+  },
+  "existing_hotspot_ceilings": {
+    "crates/rwi-core/src/lib.rs": 1026,
+    "crates/rwi-core/src/tests.rs": 658,
+    "crates/rwi-core/src/lifecycle_tests.rs": 961,
+    "crates/rwi-core/src/lifecycle_controller.rs": 838,
+    "crates/rwi-windows/src/native.rs": 700,
+    "crates/rwi-windows/src/package_policy.rs": 1004,
+    "crates/rwi-windows/src/uia.rs": 698,
+    "crates/rwi-windows/src/application_package.rs": 819,
+    "crates/rwi-windows/src/application.rs": 1627,
+    "crates/rwi-windows/src/agent_contract.rs": 801,
+    "crates/rwi-windows/src/agent_binding.rs": 1596,
+    "crates/rwi-macos/src/native.rs": 1020,
+    "crates/rwi-native-link/src/transport/net.rs": 721,
+    "crates/rwi-native-link/src/orchestration/control.rs": 1257,
+    "crates/rwi-native-link/src/orchestration/worker.rs": 773
+  },
+  "presentation_only_packages": {
+    "rwi-pointer": {
+      "external_dependencies": [
+        "serde"
+      ]
+    }
+  }
+}

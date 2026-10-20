@@ -1,0 +1,29 @@
+{
+  "at": "2026-09-19T08:57:48.986711+00:00",
+  "server": {
+    "name": "real-world-interaction",
+    "version": "0.4.0-m3a.7"
+  },
+  "tools": 26,
+  "js": [
+    {
+      "name": "RwiClient",
+      "same": true
+    }
+  ],
+  "devices": [
+    {
+      "id": "mac-host",
+      "available": true,
+      "state": "available"
+    },
+    {
+      "id": "win11-vm",
+      "available": false,
+      "state": "device_connection_failed"
+    }
+  ],
+  "binary_sha256": "659cae35e2ddf1bd2cb7ea19fdd26ee5339cd31ba70d65162b02b3c779029eda",
+  "gui_input_sent": false,
+  "screenshots_taken": false
+}

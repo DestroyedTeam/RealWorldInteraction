@@ -1,0 +1,175 @@
+{
+  "thread": "01a09390-6394-7d13-8119-460e93c6b804",
+  "observed_turn_ms": [
+    77896,
+    38374
+  ],
+  "host_mcp_call_ms": {
+    "targets": 21,
+    "operation": 35
+  },
+  "output_measurements": [
+    {
+      "call_id": "call_tjF3Z3mgPaqVEgTx1I7LZo3z",
+      "kind": "catalog",
+      "model_visible_text_chars": 20556,
+      "model_visible_text_utf8_bytes": 20556,
+      "output_at": "2026-09-12T03:02:00.939Z"
+    },
+    {
+      "call_id": "call_VxwHoISZunSR0YlDvfquInBe",
+      "kind": "targets",
+      "model_visible_text_chars": 17237,
+      "model_visible_text_utf8_bytes": 17237,
+      "output_at": "2026-09-12T03:02:11.638Z"
+    },
+    {
+      "call_id": "call_cjEOJenz02KYbwCl0Xe74ERa",
+      "kind": "operation",
+      "model_visible_text_chars": 1446,
+      "model_visible_text_utf8_bytes": 1446,
+      "output_at": "2026-09-12T03:02:16.295Z"
+    },
+    {
+      "call_id": "call_XUDZoPcFQcxdkW3cKUDLk7K1",
+      "kind": "config_checks",
+      "model_visible_text_chars": 803,
+      "model_visible_text_utf8_bytes": 803,
+      "output_at": "2026-09-12T03:02:38.378Z"
+    },
+    {
+      "call_id": "call_VEsmxzazdtrCKACqlAa9vk4U",
+      "kind": "config_checks",
+      "model_visible_text_chars": 763,
+      "model_visible_text_utf8_bytes": 763,
+      "output_at": "2026-09-12T03:03:49.078Z"
+    }
+  ],
+  "directory": {
+    "rcu_tools": 20,
+    "description_utf8_bytes": 18424,
+    "common_prefix_utf8_bytes": 349,
+    "common_prefix_copies": 20
+  },
+  "targets": {
+    "full_mcp_result_utf8_bytes": 17190,
+    "structured_content_utf8_bytes": 8241,
+    "text_and_structured_data_equal": true,
+    "top_level_targets_equal_nested": true,
+    "top_level_targets_utf8_bytes": 2624
+  },
+  "measurement_limit": "UTF-8 bytes/chars, not token counts; two read RPCs, not native UI operation latency. Other wall time not attributed to model-only time.",
+  "result_to_next_step_intervals": [
+    {
+      "from": "catalog_result",
+      "to": "targets",
+      "start": "2026-09-12T03:02:00.939Z",
+      "end": "2026-09-12T03:02:11.576Z",
+      "host_recorded_gap_ms": 10637,
+      "next_response_reported_usage": {
+        "input_tokens": 34727,
+        "cached_input_tokens": 29696,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 230,
+        "reasoning_output_tokens": 187,
+        "total_tokens": 34957
+      },
+      "includes_commentary_before_next_tool": false
+    },
+    {
+      "from": "targets_result",
+      "to": "operation",
+      "start": "2026-09-12T03:02:11.638Z",
+      "end": "2026-09-12T03:02:16.236Z",
+      "host_recorded_gap_ms": 4598,
+      "next_response_reported_usage": {
+        "input_tokens": 38977,
+        "cached_input_tokens": 34560,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 96,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 39073
+      },
+      "includes_commentary_before_next_tool": false
+    },
+    {
+      "from": "operation_result",
+      "to": "config_checks",
+      "start": "2026-09-12T03:02:16.295Z",
+      "end": "2026-09-12T03:02:38.160Z",
+      "host_recorded_gap_ms": 21865,
+      "next_response_reported_usage": {
+        "input_tokens": 39532,
+        "cached_input_tokens": 38784,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 652,
+        "reasoning_output_tokens": 405,
+        "total_tokens": 40184
+      },
+      "includes_commentary_before_next_tool": true
+    },
+    {
+      "from": "config_checks_result",
+      "to": "final_report",
+      "start": "2026-09-12T03:02:38.378Z",
+      "end": "2026-09-12T03:03:06.597Z",
+      "host_recorded_gap_ms": 28219,
+      "next_response_reported_usage": {
+        "input_tokens": 40431,
+        "cached_input_tokens": 39296,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 885,
+        "reasoning_output_tokens": 516,
+        "total_tokens": 41316
+      },
+      "includes_commentary_before_next_tool": false
+    },
+    {
+      "from": "bundled_cli_followup_result",
+      "to": "final_report",
+      "start": "2026-09-12T03:03:49.078Z",
+      "end": "2026-09-12T03:04:18.528Z",
+      "host_recorded_gap_ms": 29450,
+      "next_response_reported_usage": {
+        "input_tokens": 41916,
+        "cached_input_tokens": 41344,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 880,
+        "reasoning_output_tokens": 516,
+        "total_tokens": 42796
+      },
+      "includes_commentary_before_next_tool": false
+    }
+  ],
+  "task_events": [
+    {
+      "timestamp": "2026-09-12T03:01:48.992Z",
+      "kind": "task_started",
+      "turn_id": "01a09390-64e4-7373-9990-343021d9dad5"
+    },
+    {
+      "timestamp": "2026-09-12T03:03:06.824Z",
+      "kind": "task_complete",
+      "turn_id": "01a09390-64e4-7373-9990-343021d9dad5",
+      "duration_ms": 77896,
+      "time_to_first_token_ms": 5236
+    },
+    {
+      "timestamp": "2026-09-12T03:03:40.244Z",
+      "kind": "task_started",
+      "turn_id": "01a09392-17cc-7d30-b3e0-cff1a1e9beca"
+    },
+    {
+      "timestamp": "2026-09-12T03:04:18.618Z",
+      "kind": "task_complete",
+      "turn_id": "01a09392-17cc-7d30-b3e0-cff1a1e9beca",
+      "duration_ms": 38374,
+      "time_to_first_token_ms": 5305
+    }
+  ],
+  "timing_caveat": "Gap starts at recorded tool output and ends at recorded next tool call or final message. Includes Host scheduling, inference/understanding/planning, commentary and call generation; no pure reasoning wall-clock span is exposed. Reported reasoning token counts are not durations.",
+  "first_turn_result_to_next_step_total_ms": 65319,
+  "two_turn_host_duration_total_ms": 116270,
+  "between_turn_coordination_gap_ms": 33420,
+  "log_start_to_final_complete_ms": 149626
+}

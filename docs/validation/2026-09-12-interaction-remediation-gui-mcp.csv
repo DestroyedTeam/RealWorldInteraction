@@ -1,0 +1,16 @@
+index,tool,batch_index,duration_ms,status,is_error,code,image_count,text_utf8_bytes,next_mcp_gap_ms
+1,computer.js,3,15.732,completed,False,,0,6385,21354
+2,computer.js,4,40.580084,completed,False,,0,5326,23579
+3,computer.js,5,37.727416,completed,False,,0,1595,12588
+4,computer.js,6,1036.441834,completed,False,,0,18833,23565
+5,computer.result,7,1.803209,completed,False,,0,8378,4
+6,computer.image,7,70.435292,completed,False,,1,1384,29436
+7,computer.js,8,4412.1287919999995,completed,False,,0,6132,18258
+8,computer.js,9,4640.5689999999995,completed,False,,0,5064,13789
+9,computer.js,10,1010.431542,completed,False,,1,10311,17418
+10,computer.js,11,3688.0254999999997,completed,False,,1,5584,29678
+11,computer.js,12,57.169042,completed,False,,0,1463,32879
+12,computer.js,13,1044.639375,completed,False,,1,1844,27790
+13,computer.js,14,9.604084,completed,False,,0,2138,43099
+14,computer.js,15,967.020959,failed,True,,0,2495,15569
+15,computer.image,16,70.617416,completed,False,,1,1389,

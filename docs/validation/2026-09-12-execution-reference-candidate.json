@@ -1,0 +1,152 @@
+{
+  "schema": "rcu.execution-reference-candidate.v2",
+  "source_commit": "839e81b4a2a124b94cbc2026fddedb51ac5a5ca3",
+  "created_utc": "2026-09-11T18:38:42.387765+00:00",
+  "architecture_complete": false,
+  "independent_review": "pending",
+  "offline": {
+    "default": {
+      "passed": 215,
+      "ignored": 1
+    },
+    "all_features": {
+      "passed": 302,
+      "ignored": 2
+    },
+    "windows_fixture_executables": {
+      "passed": 20,
+      "failed": 0,
+      "suites": 3
+    },
+    "fmt": true,
+    "clippy": true,
+    "windows_clippy": true,
+    "architecture_ratchet": true
+  },
+  "live": {
+    "scope": "actual Codex Host + authenticated RPC + Windows native readonly; no model inference, no new GUI input",
+    "tool_count": 20,
+    "stable_entry": true,
+    "skill_discovered": true,
+    "global_plugin_install": false,
+    "wire": 2,
+    "adapter_sha256": "c4eeca222858f6c5dfedd59ae11654fc58a4792dba01f204d842218388c4a0ae",
+    "agent_sha256": "5a65046efda53511df1d26ec645b21bfa8a78252462f58f68c9f74ab03e8332b",
+    "agent_pid": 10908,
+    "agent_instance": "2f392e85-e399-4538-a71d-8477092e08c6",
+    "agent_main_window_handle": 0,
+    "firewall_scope": "same agent executable; TCP 10.211.55.2 -> 10.211.55.3:45128; no firewall mutation this validation",
+    "native_capture": {
+      "size": [
+        1538,
+        1169
+      ],
+      "sha256": "174e6f9c6f6600a41e00badeb64dff3c5ffa97bb4b40b4ee4ceed7984bba083d",
+      "terminal": true,
+      "resources_released": true
+    },
+    "fresh_host_query_live_ref": true,
+    "host_process_exit_did_not_prove_context_closed": true,
+    "agent_restart_old_query_and_cancel": "execution_ref_expired",
+    "bare_monitor_query": "invalid_arguments",
+    "legacy_request_response_identical": true,
+    "legacy_ledger_files_preserved": 4,
+    "legacy_ledger_hashes": [
+      "39A1FFFB0870982FBBECAAE1F55137FD99C4A3BF09771C03881D250E2AD9F5A1",
+      "B084AECB107248AC0FE84188CBBF40E556C05265C41E8A079340E0FE30335CBF",
+      "B2A0886CA9697C9C0683E1C7E7DDE56D9F555F71F5F1602B6CCA7B2869A834C1",
+      "D8BAF0F8CE7A855ECBA939740C58431C929CA4B6B1C9694448BEC1DE8E1C7A6F"
+    ],
+    "user_applications_untouched": true
+  },
+  "limits": [
+    "A01 owned-process native worker isolation not implemented",
+    "R01 final closure depends on independent review",
+    "No new native input mutation/cancellation-during-blocked-native proof in this live run; those lifecycle windows tested using fixture/transport tests",
+    "Codex app-server exit did not immediately close the agent context; live ref remained valid. Explicit context-close stale proof is offline, real restart stale proof is live.",
+    "Two initial operator calls used an invalid bind field and later expired discovery; both rejected without native input, retained in raw evidence.",
+    "Output compactness/extra RTT profiling unfinished; evidence-file mtime intervals are coarse single samples, not comparative performance acceptance."
+  ],
+  "evidence": {
+    "work/execution-ref-v2-20260912/default-tests.raw.log": {
+      "bytes": 26160,
+      "sha256": "8647256a6af00e502f7adbadd97fb47ce1370ff2fa7b3e6bbb30e7b8cec83bb6"
+    },
+    "work/execution-ref-v2-20260912/all-features-tests.raw.log": {
+      "bytes": 35161,
+      "sha256": "aea37bc121f116a87f0962e33329b05cd443eafd717d3f6e2c9c887d58ff3b53"
+    },
+    "work/execution-ref-v2-20260912/clippy.raw.log": {
+      "bytes": 72,
+      "sha256": "fecede7c2157efe2f16c8c8b9dce94b0fb4dd384dca8207046c8bf7636eb0ffe"
+    },
+    "work/execution-ref-v2-20260912/windows-clippy.log": {
+      "bytes": 658,
+      "sha256": "54af716416ac6b876f7e9c80322f53418f1344c4fc08ec22354efc161214adc9"
+    },
+    "work/execution-ref-v2-20260912/windows-test-run.stdout": {
+      "bytes": 2230,
+      "sha256": "b45056692784c5b79289d764a97dd299a1c40c7d1ef77ca0aeb5236dbb12e2ee"
+    },
+    "work/execution-ref-v2-20260912/adapter-install.json": {
+      "bytes": 250,
+      "sha256": "d5d103e49e4ae1ae17339de0ffd95e1f91b20cb8c72aceb672e2397fa8ddefe0"
+    },
+    "work/execution-ref-v2-20260912/verify-owned-update.stdout": {
+      "bytes": 2619,
+      "sha256": "e14f36d6f80782dce7291184a9d73f1b32dae9f8399caac64a36ae7aafe8d20b"
+    },
+    "work/execution-ref-v2-20260912/verify-owned-restart.stdout": {
+      "bytes": 2621,
+      "sha256": "809eb59321ebb7f4de27d61922e195c514e6e38a881c179a9f209277646f5a51"
+    },
+    "work/execution-ref-v2-20260912/firewall-readonly.stdout": {
+      "bytes": 882,
+      "sha256": "e9f4c6160bf9d8a68a1733e367f4934f1af9e0560a186c81bf4d4d701a193a9a"
+    },
+    "work/execution-ref-v2-20260912/host-a/response-0005.json": {
+      "bytes": 541668,
+      "sha256": "feae310b271774a161e871ad4e161c701b22ab78ed4ec1df1f1143538d70ec73"
+    },
+    "work/execution-ref-v2-20260912/host-a/response-0006.json": {
+      "bytes": 2977,
+      "sha256": "bd9718bcc94b1678920fec02405b0c693f3fe467a4aa88af0806930c375cb89d"
+    },
+    "work/execution-ref-v2-20260912/host-a/response-0016.json": {
+      "bytes": 229654,
+      "sha256": "d3452c79ab259bcc697b837d9ca95a4a83dc4d81e4af70da2d473aa365e70311"
+    },
+    "work/execution-ref-v2-20260912/host-a/response-0017.json": {
+      "bytes": 618,
+      "sha256": "1be8e6a6b0d068fae8aaba356b54545446a81aec82de641eaf46d5c6e284886c"
+    },
+    "work/execution-ref-v2-20260912/host-b/response-0005.json": {
+      "bytes": 1177,
+      "sha256": "00637120e89d027b8cb9762f0a9f94cd7a758836d7b238b497c07792885450d3"
+    },
+    "work/execution-ref-v2-20260912/host-b/response-0006.json": {
+      "bytes": 1177,
+      "sha256": "3472355b026e2c99be3b8f3dbffb55e768fb0d9b87947cfd2a558364644a269c"
+    },
+    "work/execution-ref-v2-20260912/host-b/response-0008.json": {
+      "bytes": 328,
+      "sha256": "f53d4c6b3c12a0cb0013dcdd25cb83f13a9437339462499bdf179d5cfafc4947"
+    },
+    "work/execution-ref-v2-20260912/host-c/response-0005.json": {
+      "bytes": 552,
+      "sha256": "55b530abc7c1460458130d22c1db17919ee8bc1b04f78b956106378bcffac1ce"
+    },
+    "work/execution-ref-v2-20260912/host-c/response-0006.json": {
+      "bytes": 552,
+      "sha256": "f0ed575ff7b9ecfaa8df13b8282ab4e784ae567cf7ff2d7ecf09de54bef895eb"
+    },
+    "work/execution-ref-v2-20260912/host-c/response-0007.json": {
+      "bytes": 2977,
+      "sha256": "d086d0fbf5a8534451eabd97bdb4db95f818a5b602bf592f594b79500f6e7217"
+    },
+    "work/execution-ref-v2-20260912/host-c/response-0008.json": {
+      "bytes": 17209,
+      "sha256": "2518cfe5b441e0fbf218bb6faa0b849409adb9c41e435cdab6fc996e32489919"
+    }
+  }
+}

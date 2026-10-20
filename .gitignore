@@ -4,6 +4,7 @@
 /.codegraph/
 /outputs/
 /reference/
+/plugins/
 /.env
 /.env.*
 *.pem
@@ -24,3 +25,8 @@
 /outputs/m2-task-loop/package/
 /outputs/m2-task-loop/source.tar.gz
 **/*.exe
+
+/.rcu/
+
+# Current product bundle names; legacy exclusions above remain compatible.
+/plugins/real-world-interaction/bin/

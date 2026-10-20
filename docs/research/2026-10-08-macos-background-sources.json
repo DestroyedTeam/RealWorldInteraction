@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "retrieved_at": "2026-10-08T05:24:28.087364+00:00",
+  "scope": "macOS background input second research; Rust device agent only",
+  "live_execution_performed": false,
+  "sources": [
+    {
+      "id": "apple_mouse_factory",
+      "title": "NSEvent mouseEvent",
+      "url": "https://developer.apple.com/documentation/appkit/nsevent/mouseevent(with:location:modifierflags:timestamp:windownumber:context:eventnumber:clickcount:pressure:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_cgevent",
+      "title": "NSEvent.cgEvent",
+      "url": "https://developer.apple.com/documentation/appkit/nsevent/cgevent",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_pid_post",
+      "title": "CGEvent.postToPid",
+      "url": "https://developer.apple.com/documentation/coregraphics/cgevent/posttopid(_:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_local_post",
+      "title": "NSApplication.postEvent",
+      "url": "https://developer.apple.com/documentation/appkit/nsapplication/postevent(_:atstart:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_app_send",
+      "title": "NSApplication.sendEvent",
+      "url": "https://developer.apple.com/documentation/appkit/nsapplication/sendevent(_:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_window_send",
+      "title": "NSWindow.sendEvent",
+      "url": "https://developer.apple.com/documentation/appkit/nswindow/sendevent(_:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_mouse_moved",
+      "title": "acceptsMouseMovedEvents",
+      "url": "https://developer.apple.com/documentation/appkit/nswindow/acceptsmousemovedevents",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_tracking",
+      "title": "NSTrackingArea",
+      "url": "https://developer.apple.com/documentation/appkit/nstrackingarea",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_inactive_tooltip",
+      "title": "allowsToolTipsWhenApplicationIsInactive",
+      "url": "https://developer.apple.com/documentation/appkit/nswindow/allowstooltipswhenapplicationisinactive",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_enter_exit",
+      "title": "NSEvent enterExitEvent",
+      "url": "https://developer.apple.com/documentation/appkit/nsevent/enterexitevent(with:location:modifierflags:timestamp:windownumber:context:eventnumber:trackingnumber:userdata:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_button_state",
+      "title": "pressedMouseButtons",
+      "url": "https://developer.apple.com/documentation/appkit/nsevent/pressedmousebuttons",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_source_state",
+      "title": "CGEventSourceStateID",
+      "url": "https://developer.apple.com/documentation/coregraphics/cgeventsourcestateid",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_drag_session",
+      "title": "beginDraggingSession",
+      "url": "https://developer.apple.com/documentation/appkit/nsview/begindraggingsession(with:event:source:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_drag_destination",
+      "title": "draggingUpdated",
+      "url": "https://developer.apple.com/documentation/appkit/nsdraggingdestination/draggingupdated(_:)",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_occlusion",
+      "title": "NSWindow occlusionState",
+      "url": "https://developer.apple.com/documentation/appkit/nswindow/occlusionstate-swift.property",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_event_arch",
+      "title": "Cocoa Event Architecture",
+      "url": "https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/EventArchitecture/EventArchitecture.html",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "apple_work_visible",
+      "title": "Work When Visible",
+      "url": "https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/WorkWhenVisible.html",
+      "kind": "official_documentation",
+      "verified_on": "2026-10-08"
+    },
+    {
+      "id": "bgclick_doc",
+      "title": "Background-click reverse-engineering note",
+      "url": "https://github.com/Lakr233/bgclick-rev-skill/blob/85dc2c49ce1bf3413654430df99d91c15687a51f/bgclick-rev-skill.md",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "85dc2c49ce1bf3413654430df99d91c15687a51f",
+      "commit_date": "2026-04-18T03:28:45Z",
+      "license_declared": false
+    },
+    {
+      "id": "bgclick_issues",
+      "title": "bgclick all-state issues",
+      "url": "https://github.com/Lakr233/bgclick-rev-skill/issues",
+      "kind": "repository_api",
+      "verified_on": "2026-10-08",
+      "all_state_count": 0
+    },
+    {
+      "id": "bgclick_prs",
+      "title": "bgclick all-state pulls",
+      "url": "https://github.com/Lakr233/bgclick-rev-skill/pulls",
+      "kind": "repository_api",
+      "verified_on": "2026-10-08",
+      "all_state_count": 0
+    },
+    {
+      "id": "hammerspoon_post",
+      "title": "Hammerspoon eventtap implementation",
+      "url": "https://github.com/Hammerspoon/hammerspoon/blob/844aa09856b84ca3b419f8b214f0361819b231b0/extensions/eventtap/libeventtap_event.m",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "844aa09856b84ca3b419f8b214f0361819b231b0",
+      "commit_date": "2024-11-12T13:19:05Z"
+    },
+    {
+      "id": "wine_mouse",
+      "title": "Wine mac driver",
+      "url": "https://github.com/wine-mirror/wine/blob/85ad031e9c788a466d27fd3a06fa43e7c53c2af9/dlls/winemac.drv/cocoa_app.m#L1328-L1353",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "85ad031e9c788a466d27fd3a06fa43e7c53c2af9",
+      "commit_date": "2026-10-07T21:01:46Z",
+      "not_confirmed_local_gamehub_version": true
+    },
+    {
+      "id": "sdl_window",
+      "title": "SDL Cocoa window listener",
+      "url": "https://github.com/libsdl-org/SDL/blob/bfd81a0da4c0a07e59e5622dee9c3b4badfe9bd5/src/video/cocoa/SDL_cocoawindow.m#L1870-L1966",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "bfd81a0da4c0a07e59e5622dee9c3b4badfe9bd5",
+      "commit_date": "2026-09-10T21:42:14Z"
+    },
+    {
+      "id": "sdl_mouse",
+      "title": "SDL Cocoa mouse input",
+      "url": "https://github.com/libsdl-org/SDL/blob/6b178ba756e65ddf8fc2420726b3e3d7d73b5ae3/src/video/cocoa/SDL_cocoamouse.m#L779-L911",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "6b178ba756e65ddf8fc2420726b3e3d7d73b5ae3",
+      "commit_date": "2026-09-20T17:34:26Z"
+    },
+    {
+      "id": "glfw_mouse",
+      "title": "GLFW Cocoa move/tracking",
+      "url": "https://github.com/glfw/glfw/blob/92dcf4ce74f2e2554a98fea09be7c705c17daa5a/src/cocoa_window.m#L397-L560",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "92dcf4ce74f2e2554a98fea09be7c705c17daa5a",
+      "commit_date": "2026-08-03T17:04:50Z"
+    },
+    {
+      "id": "glfw_hover_query",
+      "title": "GLFW hovered query",
+      "url": "https://github.com/glfw/glfw/blob/92dcf4ce74f2e2554a98fea09be7c705c17daa5a/src/cocoa_window.m#L1432-L1447",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "92dcf4ce74f2e2554a98fea09be7c705c17daa5a"
+    },
+    {
+      "id": "robotjs_mouse",
+      "title": "RobotJS mouse implementation",
+      "url": "https://github.com/octalmage/robotjs/blob/9d5bc18d7d684a45cf669d03b3307f449f12737a/src/mouse.c#L100-L229",
+      "kind": "primary_source_code",
+      "verified_on": "2026-10-08",
+      "commit": "9d5bc18d7d684a45cf669d03b3307f449f12737a",
+      "commit_date": "2026-07-26T14:22:36Z",
+      "route": "global_session_not_background"
+    },
+    {
+      "id": "hammerspoon_2883",
+      "title": "Directed mouse post Chrome report",
+      "url": "https://github.com/Hammerspoon/hammerspoon/issues/2883",
+      "kind": "issue",
+      "verified_on": "2026-10-08",
+      "state": "open",
+      "created_at": "2021-05-25T05:09:15Z",
+      "updated_at": "2023-11-29T16:10:03Z",
+      "closed_at": null
+    },
+    {
+      "id": "hammerspoon_2144",
+      "title": "Allow mouseMoved factory",
+      "url": "https://github.com/Hammerspoon/hammerspoon/pull/2144",
+      "kind": "pull_request",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "created_at": "2019-08-22T21:09:05Z",
+      "updated_at": "2019-09-22T15:34:24Z",
+      "closed_at": "2019-09-22T15:34:24Z",
+      "merged_at": "2019-09-22T15:34:24Z",
+      "merge_commit_sha": "126644122dc35d7673c5333994b1df47eda1c80f"
+    },
+    {
+      "id": "hammerspoon_2140",
+      "title": "Fix mouse modifier constructor",
+      "url": "https://github.com/Hammerspoon/hammerspoon/pull/2140",
+      "kind": "pull_request",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "created_at": "2019-08-21T17:40:45Z",
+      "updated_at": "2019-08-23T01:48:46Z",
+      "closed_at": "2019-08-23T01:32:48Z",
+      "merged_at": "2019-08-23T01:32:48Z",
+      "merge_commit_sha": "6ccbc40cbc68841c4308ccac09af3448c1a583b7"
+    },
+    {
+      "id": "hammerspoon_drag_3710",
+      "title": "Continuous drag knob discussion",
+      "url": "https://github.com/Hammerspoon/hammerspoon/discussions/3710",
+      "kind": "discussion",
+      "verified_on": "2026-10-08",
+      "state": "open",
+      "created_at": "2024-11-04T15:00:48Z",
+      "updated_at": "2024-11-05T15:33:05Z",
+      "closed_at": null
+    },
+    {
+      "id": "sdl_15967",
+      "title": "macOS26 stale mouse position",
+      "url": "https://github.com/libsdl-org/SDL/issues/15967",
+      "kind": "issue",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "created_at": "2026-07-10T19:43:32Z",
+      "updated_at": "2026-09-14T20:48:03Z",
+      "closed_at": "2026-09-14T20:48:03Z"
+    },
+    {
+      "id": "sdl_16153",
+      "title": "Popup-coordinate proposal not merged",
+      "url": "https://github.com/libsdl-org/SDL/pull/16153",
+      "kind": "pull_request",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "created_at": "2026-08-15T01:10:28Z",
+      "updated_at": "2026-08-31T15:59:01Z",
+      "closed_at": "2026-08-31T15:59:01Z",
+      "merged_at": null,
+      "merge_commit_sha": "7bbf6ca051ad57667e801260269430072a7987d9"
+    },
+    {
+      "id": "sdl_16223",
+      "title": "Adopted popup-coordinate correction",
+      "url": "https://github.com/libsdl-org/SDL/pull/16223",
+      "kind": "pull_request",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "created_at": "2026-08-31T15:51:03Z",
+      "updated_at": "2026-08-31T16:43:52Z",
+      "closed_at": "2026-08-31T15:59:00Z",
+      "merged_at": "2026-08-31T15:59:00Z",
+      "merge_commit_sha": "013844b003d67e055aada3338df41dd7f09836ef"
+    },
+    {
+      "id": "glfw_2690",
+      "title": "Disabled cursor titlebar interaction",
+      "url": "https://github.com/glfw/glfw/issues/2690",
+      "kind": "issue",
+      "verified_on": "2026-10-08",
+      "state": "open",
+      "created_at": "2025-02-18T14:10:49Z",
+      "updated_at": "2025-02-24T16:55:29Z",
+      "closed_at": null
+    },
+    {
+      "id": "glfw_2523",
+      "title": "Disabled cursor large delta",
+      "url": "https://github.com/glfw/glfw/issues/2523",
+      "kind": "issue",
+      "verified_on": "2026-10-08",
+      "state": "open",
+      "created_at": "2024-03-29T10:16:52Z",
+      "updated_at": "2025-02-28T00:57:21Z",
+      "closed_at": null
+    },
+    {
+      "id": "robotjs_177",
+      "title": "macOS delta workaround",
+      "url": "https://github.com/octalmage/robotjs/pull/177",
+      "kind": "pull_request",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "created_at": "2016-04-10T22:21:43Z",
+      "updated_at": "2016-04-30T15:02:10Z",
+      "closed_at": "2016-04-16T19:37:03Z",
+      "merged_at": "2016-04-16T19:37:02Z",
+      "merge_commit_sha": "c7ffb1622c53fa4b7365aedf4bcabc699bc5210b"
+    },
+    {
+      "id": "hammerspoon_3213",
+      "title": "Complete drag order/timing report",
+      "url": "https://github.com/Hammerspoon/hammerspoon/issues/3213",
+      "kind": "issue",
+      "verified_on": "2026-10-08",
+      "state": "closed",
+      "updated_at": "2022-05-17T00:49:57Z",
+      "foreground_example": true
+    },
+    {
+      "id": "sdl_all_window_workaround",
+      "title": "Expand macOS26 workaround to all windows",
+      "url": "https://github.com/libsdl-org/SDL/commit/958c4cbf0d77182254101670e01afd3b09207b7e",
+      "kind": "commit",
+      "verified_on": "2026-10-08",
+      "commit": "958c4cbf0d77182254101670e01afd3b09207b7e",
+      "commit_date": "2026-08-03T06:19:24Z",
+      "associated_pull_request_unconfirmed": true
+    }
+  ],
+  "repo_metadata": {
+    "bgclick": {
+      "full_name": "Lakr233/bgclick-rev-skill",
+      "default_branch": "main",
+      "created_at": "2026-04-18T03:24:03Z",
+      "updated_at": "2026-10-08T02:59:29Z",
+      "pushed_at": "2026-04-18T03:28:48Z",
+      "archived": false,
+      "license": null
+    },
+    "hammerspoon": {
+      "full_name": "Hammerspoon/hammerspoon",
+      "default_branch": "master",
+      "created_at": "2014-10-08T19:24:44Z",
+      "updated_at": "2026-10-08T00:49:47Z",
+      "pushed_at": "2026-07-08T21:13:24Z",
+      "archived": false,
+      "license": "MIT"
+    },
+    "wine": {
+      "full_name": "wine-mirror/wine",
+      "default_branch": "master",
+      "created_at": "2014-08-07T07:02:05Z",
+      "updated_at": "2026-10-07T23:52:50Z",
+      "pushed_at": "2026-10-07T21:39:53Z",
+      "archived": false,
+      "license": "NOASSERTION"
+    }
+  },
+  "code_pins": {
+    "bgclick": "85dc2c49ce1bf3413654430df99d91c15687a51f",
+    "hammerspoon": "844aa09856b84ca3b419f8b214f0361819b231b0",
+    "wine": "85ad031e9c788a466d27fd3a06fa43e7c53c2af9",
+    "sdl_window": "bfd81a0da4c0a07e59e5622dee9c3b4badfe9bd5",
+    "sdl_mouse": "6b178ba756e65ddf8fc2420726b3e3d7d73b5ae3",
+    "glfw": "92dcf4ce74f2e2554a98fea09be7c705c17daa5a",
+    "robotjs": "9d5bc18d7d684a45cf669d03b3307f449f12737a"
+  },
+  "warnings": [
+    "repo updated_at is not code update date",
+    "upstream version is not confirmed installed GameHub/CrossOver version",
+    "issue report is not independent reproduction",
+    "private SPI is not Apple public API stability guarantee",
+    "bgclick note is research not a generic hover/drag engine"
+  ]
+}

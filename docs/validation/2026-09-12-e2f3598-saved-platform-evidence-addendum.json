@@ -1,0 +1,248 @@
+{
+  "recorded_utc": "2026-09-11T19:14:00.402609+00:00",
+  "source_commit": "e2f35980f641337b32fc65fc3ca9f594e0863c4e",
+  "index_sha256": "7555d57c1e16f305bc81f958d97b09c9d1d6daff17805b721b2d19df8b6e7ac2",
+  "files": [
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/start-commit.txt",
+      "sha256": "0524f78373d40d20cc97f148d7b3a1ef4c79af878658a35373e2da7e0aa99085",
+      "bytes": 41,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/end-commit.txt",
+      "sha256": "0524f78373d40d20cc97f148d7b3a1ef4c79af878658a35373e2da7e0aa99085",
+      "bytes": 41,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/default-tests.raw.log",
+      "sha256": "e3a13a969cc8ccf82826b6a58874cce5bbc6fb809b4154fbc7f1df76f3344b64",
+      "bytes": 27164,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/all-features-tests.raw.log",
+      "sha256": "0f835502ebd3de0fe041bd4e3116d26daebd58f7ac1edea2d8add9766713681f",
+      "bytes": 36165,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/clippy.raw.log",
+      "sha256": "a3b0fb800011146df9c92d76921fb305ccc49fc548325791864603b6de852789",
+      "bytes": 292,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/windows-clippy.raw.log",
+      "sha256": "4357880d20dc0bb7cf34ef6be94becfd5071467d02b99198d908167a09db7dd7",
+      "bytes": 184,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/windows-test-run.stdout",
+      "sha256": "f0c7b34c8d11042e346cf6cad54a64dc7e2caed12f9807ff3c77830ec736bd41",
+      "bytes": 2953,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/cli-repair.stdout",
+      "sha256": "533e2c830a180288a02dec761180f61652d263ece99c91bec4a7cb80402c8b6c",
+      "bytes": 392,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/verify-update.stdout",
+      "sha256": "10d48330c72a488bc76fbc1f4e8af0ee058b6f0655231a71a5450f49185943a5",
+      "bytes": 3089,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/deployment.json",
+      "sha256": "75480e3327e1a3b59754e651eebbbe65ad0c718f90165bb22a5f98df1fc3183d",
+      "bytes": 199,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/architecture.json",
+      "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924",
+      "bytes": 1923,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/owner-final/source-hygiene.json",
+      "sha256": "fa8ce783911a7db1c8c2047532efb293f7bcd0d17197d14fd68449d87399b181",
+      "bytes": 57,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/review-final/all-features-tests.raw.log",
+      "sha256": "2b94c9377058a8aa3a2acd0f6c7b799e851ce665711c9314eb543d732e3ded24",
+      "bytes": 2380,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/running-cancel-final.raw.log",
+      "sha256": "d63023ca8695f56eb90c222af50a427d96e9bdfd3661a47cc77d45527a5e9ac4",
+      "bytes": 602,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/host-e/response-0005.json",
+      "sha256": "7d69ba2b2b35d92850075a2ffeaaafb44215a61cf7e4d6f76b1fc07cd8625eb0",
+      "bytes": 539004,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/host-e/response-0006.json",
+      "sha256": "bd9718bcc94b1678920fec02405b0c693f3fe467a4aa88af0806930c375cb89d",
+      "bytes": 2977,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/host-e/response-0007.json",
+      "sha256": "b62410f6e5e41242174eafbc6c1e55163f34714e6812370d07c1091d84839199",
+      "bytes": 552,
+      "sha_matches": true,
+      "size_matches": true
+    },
+    {
+      "path": "work/execution-ref-v2-20260912/host-e/response-0008.json",
+      "sha256": "bed6a8e08eb0d8e5f0af011c45023c2e89828d03c16a950ecb638e0e7c36cdf8",
+      "bytes": 17209,
+      "sha_matches": true,
+      "size_matches": true
+    }
+  ],
+  "windows_executable_records": [
+    {
+      "record": {
+        "name": "execution_refs",
+        "exit": 0,
+        "output": "\nrunning 6 tests\ntest acceptance_is_resource_free_and_forged_or_foreign_references_do_not_cancel ... ok\ntest closed_context_and_restarted_agent_refs_never_alias_reused_labels ... ok\ntest durable_requests_survive_epochs_labels_and_restart_without_changing_old_bytes ... ok\ntest namespace_repair_requires_offline_state_owner_and_does_not_reset_ledger ... ok\ntest public_selectors_are_strictly_tagged_not_heuristic ... ok\ntest state_root_cannot_be_reused_under_another_device_identity ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s\n\n",
+        "error": ""
+      },
+      "counts": {
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0
+      },
+      "result_blocks": 1
+    },
+    {
+      "record": {
+        "name": "service",
+        "exit": 0,
+        "output": "\nrunning 5 tests\ntest cancellation_after_acceptance_never_dispatches_and_recovery_is_independent ... ok\ntest lease_is_shared_and_repeated_operation_does_not_dispatch ... ok\ntest principal_receipts_are_isolated_but_desktop_leases_are_shared ... ok\ntest separate_contexts_foreign_handles_bad_actions_and_new_sessions ... ok\ntest service_health_has_no_business_manifest_or_platform_readiness_dependency ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s\n\n",
+        "error": ""
+      },
+      "counts": {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0
+      },
+      "result_blocks": 1
+    },
+    {
+      "record": {
+        "name": "rcu_agent",
+        "exit": 0,
+        "output": "\nrunning 14 tests\ntest ledger::recovery::tests::crash_child ... ok\ntest ledger::recovery::tests::malformed_legacy_records_can_be_superseded_but_not_overwritten ... ok\ntest ledger::recovery::tests::process_crash_at_each_commit_boundary_can_recover_without_replaying ... ok\ntest ledger::tests::corrupt_reservation_or_recovery_never_unfences ... ok\ntest ledger::tests::legacy_monitor_labels_are_not_request_lookup_keys ... ok\ntest ledger::tests::reconciliation_is_per_domain_durable_and_never_erases_old_reservations ... ok\ntest ledger::tests::restart_and_changed_payload_never_dispatch_again ... ok\ntest runtime::dispatch::panic_fences_the_domain_before_owned_permits_are_dropped ... ok\ntest runtime::dispatch_tests::request_identity_does_not_reset_dispatch_count_at_context_or_agent_epoch ... ok\ntest runtime::execution::tests::pending_native_ownership_survives_quota_cancel_and_context_close ... ok\ntest runtime::namespace::tests::corrupt_legacy_authority_requires_exact_backup_and_preserves_damaged_bytes ... ok\ntest runtime::namespace::tests::crash_child ... ok\ntest runtime::namespace::tests::initialization_crashes_leave_only_uncommitted_evidence_or_complete_binding ... ok\ntest runtime::recovery::tests::corrupt_commit_requires_new_authorized_idle_resource_check_and_remains_evidence ... ok\n\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s\n\n",
+        "error": "\nthread 'runtime::dispatch::panic_fences_the_domain_before_owned_permits_are_dropped' (4604) panicked at crates/rcu-agent/src/runtime/dispatch.rs:45:9:\nsynthetic worker panic\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+      },
+      "counts": {
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0
+      },
+      "result_blocks": 1
+    }
+  ],
+  "offline_cli_saved_result": {
+    "device_id": "synthetic-repair",
+    "input_sent": false,
+    "ledger_modified": false,
+    "namespace_repaired": true,
+    "quarantined": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/execution-ref-v2-20260912/owner-final/cli-repair-fixture/state/namespace-damaged-1bda2d30-dcf6-4db2-bdaa-48cf2e7844aa.evidence",
+    "restored_sha256": "2147c4c1fb75ebf75de44515e3fa6b30a66972c0da638b40e2abbbcb7bd65aa0"
+  },
+  "saved_update_record": {
+    "result": {
+      "old_pid": 10908,
+      "new_pid": 2024,
+      "new_sha256": "338647877fc47d8c232c718cc2d8eea1e9a839d7694a4317f80bc1188c9a4353",
+      "preserved_state_files": 5,
+      "state_before": {
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\bb1909d2aedcabf023173936efae863cdeb2f8ce04b3475bdbbcba31ee3b0fc1.json": "B2A0886CA9697C9C0683E1C7E7DDE56D9F555F71F5F1602B6CCA7B2869A834C1",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\results\\bb1909d2aedcabf023173936efae863cdeb2f8ce04b3475bdbbcba31ee3b0fc1.json": "D8BAF0F8CE7A855ECBA939740C58431C929CA4B6B1C9694448BEC1DE8E1C7A6F",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\results\\dd920dcf2053f8cdb3b6eec6d706decb67f34b118bd51dcdf8c061c832cd0959.json": "39A1FFFB0870982FBBECAAE1F55137FD99C4A3BF09771C03881D250E2AD9F5A1",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\dd920dcf2053f8cdb3b6eec6d706decb67f34b118bd51dcdf8c061c832cd0959.json": "B084AECB107248AC0FE84188CBBF40E556C05265C41E8A079340E0FE30335CBF",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\device-namespace.json": "B82B81A3B99AAACDDA025BD781B8C14051545141304090A7E545F39A8608EF6B"
+      },
+      "state_after": {
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\bb1909d2aedcabf023173936efae863cdeb2f8ce04b3475bdbbcba31ee3b0fc1.json": "B2A0886CA9697C9C0683E1C7E7DDE56D9F555F71F5F1602B6CCA7B2869A834C1",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\results\\bb1909d2aedcabf023173936efae863cdeb2f8ce04b3475bdbbcba31ee3b0fc1.json": "D8BAF0F8CE7A855ECBA939740C58431C929CA4B6B1C9694448BEC1DE8E1C7A6F",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\results\\dd920dcf2053f8cdb3b6eec6d706decb67f34b118bd51dcdf8c061c832cd0959.json": "39A1FFFB0870982FBBECAAE1F55137FD99C4A3BF09771C03881D250E2AD9F5A1",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\operations\\dd920dcf2053f8cdb3b6eec6d706decb67f34b118bd51dcdf8c061c832cd0959.json": "B084AECB107248AC0FE84188CBBF40E556C05265C41E8A079340E0FE30335CBF",
+        "C:\\Users\\vincentadamnemessis\\AppData\\Local\\RealComputerUse\\agent-v1\\state\\device-namespace.json": "B82B81A3B99AAACDDA025BD781B8C14051545141304090A7E545F39A8608EF6B"
+      },
+      "config_unchanged": true,
+      "user_applications_untouched": true
+    },
+    "error": null,
+    "stdout": {
+      "device_id": "win11-vm",
+      "instance": "079a5177-6192-4b1f-8d78-aa05047b5320",
+      "listening": "10.211.55.3:45128",
+      "service": "healthy",
+      "workflow_required": false
+    },
+    "stderr": "",
+    "namespace_sha256": "B82B81A3B99AAACDDA025BD781B8C14051545141304090A7E545F39A8608EF6B",
+    "processes": [
+      {
+        "Id": 2024,
+        "SessionId": 1,
+        "MainWindowHandle": 0
+      }
+    ]
+  },
+  "host_saved_evidence": {
+    "tool_count": 20,
+    "same_legacy_reservation": true,
+    "same_legacy_result": true,
+    "replay_allowed": false,
+    "old_ref_error": "execution_ref_expired",
+    "metadata_service": "healthy",
+    "devices": [
+      {
+        "device_id": "win11-vm",
+        "is_error": false,
+        "instance": "079a5177-6192-4b1f-8d78-aa05047b5320"
+      }
+    ]
+  },
+  "scope": "Read saved artifacts only; no new Host, native, VM, CLI repair or screenshots; does not update frozen primary review.",
+  "state_preservation_check": {
+    "count_before": 5,
+    "count_after": 5,
+    "maps_equal": true,
+    "new_pid_in_saved_record": 2024
+  }
+}

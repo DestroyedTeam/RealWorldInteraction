@@ -22,13 +22,13 @@
 所有 backend/MCP/pipe 代码为 Rust。Mac 上交叉链接：
 
 ```sh
-rtk proxy cargo xwin build -p rcu-mcp --bins --target aarch64-pc-windows-msvc --release --offline --locked
+rtk proxy cargo xwin build -p rwi-mcp --bins --target aarch64-pc-windows-msvc --release --offline --locked
 ```
 
-不是 x64 仿真，不把 macOS test/check 当 Windows 原生执行。默认 `rcu-mcp --state-dir <absolute-path>` 注册 0 targets，不查询/控制桌面。Windows 必须在新鲜分配的交互 session 中明确启动：
+不是 x64 仿真，不把 macOS test/check 当 Windows 原生执行。默认 `rwi-mcp --state-dir <absolute-path>` 注册 0 targets，不查询/控制桌面。Windows 必须在新鲜分配的交互 session 中明确启动：
 
 ```text
-rcu-mcp.exe --state-dir C:\Temp\RealComputerUse-M1-<run-id>\state --windows-desktop --pipe-server <run-id>
+rwi-mcp.exe --state-dir C:\Temp\RealComputerUse-M1-<run-id>\state --windows-desktop --pipe-server <run-id>
 ```
 
 pipe 只接受本机；等待首个客户端 120 秒。Mac 侧可用 Parallels Guest Tools 承载 Rust guest client 的 stdio，Parallels 只是 setup/字节通道，不能用它的 screenshot/input 替代被测操作。候选不改旧 CrossMacro、VM launcher、共享剪贴板/文件夹、全局 Codex config 或系统权限。

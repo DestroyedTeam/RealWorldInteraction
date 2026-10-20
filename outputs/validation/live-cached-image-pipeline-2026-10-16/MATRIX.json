@@ -1,0 +1,332 @@
+{
+  "event": "LIVE_CACHED_PNG_PIPELINE_SOURCE_AND_SYNTHETIC_PROTOCOL_VERIFIED_NOT_A_HOST_PLAYER",
+  "Root": "/Volumes/ChatGPT/Real World Interaction",
+  "stages": [
+    {
+      "stage": "F30",
+      "scope": "Core + Native",
+      "matching_command": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "rwi-macos",
+        "--lib",
+        "--locked",
+        "--offline",
+        "f30_live_image",
+        "--",
+        "--nocapture"
+      ],
+      "matching_counts": {
+        "BASELINE": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        },
+        "MODIFIED": {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        },
+        "ROLLBACK": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        },
+        "REAPPLIED": {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        }
+      },
+      "matching_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_manifest_files": 464,
+      "source_manifest_sha256": "10563c4757cccdeaff2948b7387311e5203a6b02943e8d7816480c6ce8c0df07",
+      "full_regression": {
+        "passed": 1251,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 44
+      },
+      "full_gate_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "role_result": "/Volumes/ChatGPT/Real World Interaction/work/f30-live-image-backend-2026-10-16/same-four-roles366/ROLE_RESULT.json",
+      "role_result_sha256": "f24dfe099bf4e3aaa25c281645c4f48a5ae3eab228029aae2bfd3e9bd34a115c",
+      "native_GUI_or_Host_render": false
+    },
+    {
+      "stage": "F31",
+      "scope": "Agent",
+      "matching_command": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "rwi-agent",
+        "--lib",
+        "--features",
+        "fixture",
+        "--locked",
+        "--offline",
+        "f31_live_image",
+        "--",
+        "--nocapture"
+      ],
+      "matching_counts": {
+        "BASELINE": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        },
+        "MODIFIED": {
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        },
+        "ROLLBACK": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        },
+        "REAPPLIED": {
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 1
+        }
+      },
+      "matching_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_manifest_files": 465,
+      "source_manifest_sha256": "3a189f792057c7fd38aff628315e088eeaa1d0753fa72aca5a2da498d9c17459",
+      "full_regression": {
+        "passed": 1262,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 44
+      },
+      "full_gate_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "role_result": "/Volumes/ChatGPT/Real World Interaction/work/f31-live-image-agent-2026-10-16/same-four-roles367/ROLE_RESULT.json",
+      "role_result_sha256": "6688c327192001b03fcd1e65cfda5753ba15884d89041ea808fb19731e0381ab",
+      "native_GUI_or_Host_render": false
+    },
+    {
+      "stage": "F32",
+      "scope": "MCP envelope",
+      "matching_command": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "rwi-mcp",
+        "--locked",
+        "--offline",
+        "f32_live_image",
+        "--",
+        "--nocapture"
+      ],
+      "matching_counts": {
+        "BASELINE": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 9
+        },
+        "MODIFIED": {
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 9
+        },
+        "ROLLBACK": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 9
+        },
+        "REAPPLIED": {
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 9
+        }
+      },
+      "matching_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_manifest_files": 469,
+      "source_manifest_sha256": "013fe4c12404e9e84e78046e8837ba66b25a29020b9302ba5f1fa0c08f33a439",
+      "full_regression": {
+        "passed": 1275,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 44
+      },
+      "full_gate_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "role_result": "/Volumes/ChatGPT/Real World Interaction/work/f32-live-image-mcp-2026-10-16/same-four-roles371/ROLE_RESULT.json",
+      "role_result_sha256": "ea72bd38c41a79eeb26dccc09e549d1f6b17f6fa0e58d2e6181b63021f519b9d",
+      "native_GUI_or_Host_render": false
+    },
+    {
+      "stage": "F33",
+      "scope": "actual MCP process + TLS synthetic",
+      "matching_command": [
+        "rtk",
+        "proxy",
+        "cargo",
+        "test",
+        "-p",
+        "rwi-mcp",
+        "--locked",
+        "--offline",
+        "f33_live_image",
+        "--",
+        "--nocapture"
+      ],
+      "matching_counts": {
+        "BASELINE": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 9
+        },
+        "MODIFIED": {
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 10
+        },
+        "ROLLBACK": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 9
+        },
+        "REAPPLIED": {
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "suites": 10
+        }
+      },
+      "matching_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_manifest_files": 470,
+      "source_manifest_sha256": "686ea28adc8365b81d60bb4dd1da5ec6f490048067b8784790f57e5619f3cbbe",
+      "full_regression": {
+        "passed": 1280,
+        "failed": 0,
+        "ignored": 11,
+        "suites": 45
+      },
+      "full_gate_exit_statuses": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "role_result": "/Volumes/ChatGPT/Real World Interaction/work/f33-live-image-transport-2026-10-16/same-four-roles372/ROLE_RESULT.json",
+      "role_result_sha256": "4b42c79d9fce67cc928e1712c2041df21e15c6de7cecc2155148bea4e8e24a60",
+      "native_GUI_or_Host_render": false
+    }
+  ],
+  "Core_F30_matching_tests_B_M_R_reapplied": [
+    0,
+    3,
+    0,
+    3
+  ],
+  "Native_F30_matching_tests_B_M_R_reapplied": [
+    0,
+    8,
+    0,
+    8
+  ],
+  "Agent_F31_matching_tests_B_M_R_reapplied": [
+    0,
+    11,
+    0,
+    11
+  ],
+  "MCP_F32_matching_tests_B_M_R_reapplied": [
+    0,
+    13,
+    0,
+    13
+  ],
+  "real_MCP_TLS_synthetic_F33_matching_tests_B_M_R_reapplied": [
+    0,
+    5,
+    0,
+    5
+  ],
+  "final_full_gate_exits": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "final_full_tests": {
+    "passed": 1280,
+    "failed": 0,
+    "ignored": 11,
+    "suites": 45
+  },
+  "existing_architecture_debts": 12,
+  "architecture_complete": false,
+  "PNG_max_bytes": 4194304,
+  "acceptance_age_max_ms": 2000,
+  "presence_TTL_ms": 1500,
+  "reader_budget": 2,
+  "min_request_interval_ms": 250,
+  "synthetic_transport_sample": {
+    "png_bytes": 70,
+    "model_content_structured_JSON_bytes": 252,
+    "rounded_elapsed_ms": 0,
+    "scope": "one loopback sample; not native/Host latency, throughput, token count or language comparison"
+  },
+  "installed_runtime_unchanged_this_phase": true,
+  "Host_image_player_strict_chat_binding_and_UI_acceptance": false,
+  "full_goal_complete": false
+}

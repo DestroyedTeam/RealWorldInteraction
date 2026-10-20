@@ -1,0 +1,82 @@
+{
+  "behavior_change_intended": false,
+  "public_facade_retained": true,
+  "mcp_main_before_lines": 1635,
+  "mcp_main_after_lines": 13,
+  "mcp_modules": [
+    "bootstrap",
+    "server",
+    "server::parameters",
+    "server::tests"
+  ],
+  "native_link_moves": [
+    {
+      "from": "crates/rcu-native-link/src/frame.rs",
+      "to": "crates/rcu-native-link/src/protocol/frame.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/types.rs",
+      "to": "crates/rcu-native-link/src/protocol/types.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/client.rs",
+      "to": "crates/rcu-native-link/src/transport/client.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/net.rs",
+      "to": "crates/rcu-native-link/src/transport/net.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/server.rs",
+      "to": "crates/rcu-native-link/src/transport/server.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/budget.rs",
+      "to": "crates/rcu-native-link/src/orchestration/budget.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/control.rs",
+      "to": "crates/rcu-native-link/src/orchestration/control.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/mcp.rs",
+      "to": "crates/rcu-native-link/src/orchestration/mcp.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/model.rs",
+      "to": "crates/rcu-native-link/src/orchestration/model.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/runtime.rs",
+      "to": "crates/rcu-native-link/src/orchestration/runtime.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/store.rs",
+      "to": "crates/rcu-native-link/src/orchestration/store.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/worker.rs",
+      "to": "crates/rcu-native-link/src/orchestration/worker.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/entry.rs",
+      "to": "crates/rcu-native-link/src/deployment/entry.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/install.rs",
+      "to": "crates/rcu-native-link/src/deployment/install.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/installation.rs",
+      "to": "crates/rcu-native-link/src/deployment/installation.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/plan.rs",
+      "to": "crates/rcu-native-link/src/deployment/plan.rs"
+    },
+    {
+      "from": "crates/rcu-native-link/src/private.rs",
+      "to": "crates/rcu-native-link/src/deployment/private.rs"
+    }
+  ]
+}

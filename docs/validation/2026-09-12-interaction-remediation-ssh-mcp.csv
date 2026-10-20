@@ -1,0 +1,5 @@
+index,tool,batch_index,duration_ms,status,is_error,code,image_count,text_utf8_bytes,next_mcp_gap_ms
+1,computer.js,2,33.314459,completed,False,,0,1780,62771
+2,computer.js,3,1019.28225,completed,False,,1,2582,70625
+3,computer.js,4,992.691041,completed,False,,1,2574,166756
+4,computer.js,8,935.686417,completed,False,,1,1222,

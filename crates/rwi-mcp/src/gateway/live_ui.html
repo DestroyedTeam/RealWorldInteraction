@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RWI Live · 会话内预览</title>
+  <style>
+    :root { color-scheme: light dark; font-family: var(--font-sans, system-ui, sans-serif); }
+    body { margin: 0; color: var(--color-text-primary, light-dark(#182b24, #e7eeea)); }
+    main { box-sizing: border-box; width: min(100%, 320px); padding: 8px; border: 1px solid light-dark(#d6e1da, #3b5145); border-radius: 10px; background: var(--color-background-primary, light-dark(#fff, #1b2821)); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .identity { min-width: 0; }
+    header strong { display: block; font-size: 11px; letter-spacing: .07em; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    h1 { font-size: 12px; line-height: 1.5; margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+    p { font-size: 11px; line-height: 1.5; margin: 6px 0 0; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    nav { display: flex; flex: none; gap: 2px; }
+    figure { margin: 6px 0 0; }
+    #preview { display: block; max-width: 100%; max-height: 240px; width: auto; height: auto; object-fit: contain; border-radius: 7px; }
+    #preview[hidden] { display: none; }
+    figcaption { margin-top: 5px; font-size: 11px; line-height: 1.5; color: var(--color-text-secondary, light-dark(#4c6358, #a9bcb1)); }
+    button { position: relative; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
+    button::before { position: absolute; inset: 4px; border-radius: 7px; background: light-dark(#edf4ef, #23392d); content: ''; }
+    button:hover:not(:disabled)::before { background: light-dark(#dce9e0, #344d3d); }
+    button svg { position: relative; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    #toggle .eye-on, #toggle[aria-pressed="true"] .eye-off { display: none; }
+    #toggle[aria-pressed="true"] .eye-on { display: block; }
+    button:focus-visible { outline: 2px solid #739c86; outline-offset: 2px; }
+    button:disabled { opacity: .5; cursor: default; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    @media (forced-colors: active) { main, button { border: 1px solid CanvasText; } button::before { background: Canvas; } }
+  </style>
+</head>
+<body>
+  <main id="panel" aria-describedby="location">
+    <header>
+      <div class="identity">
+        <strong>RWI · LIVE</strong>
+        <h1 id="state" role="status" aria-live="polite" tabindex="-1">等待会话内视图连接</h1>
+      </div>
+      <nav aria-label="Live 预览控制">
+        <button id="toggle" type="button" aria-label="隐藏预览" title="隐藏预览（可在本轮恢复）" aria-pressed="false" disabled>
+          <svg class="eye-off" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3l14 14M8 4.5a9 9 0 0 1 9.5 5.5 12 12 0 0 1-2.3 3.2M5.3 5.5A12 12 0 0 0 2.5 10s2.5 5.5 7.5 5.5a9 9 0 0 0 3.4-.7M8 8a2.8 2.8 0 0 0 4 4"/></svg>
+          <svg class="eye-on" viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10s2.5-5.5 7.5-5.5 7.5 5.5 7.5 5.5-2.5 5.5-7.5 5.5S2.5 10 2.5 10Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+          <span id="toggle-label" class="sr-only">隐藏预览</span>
+        </button>
+        <button id="close" type="button" aria-label="关闭预览" title="关闭预览（结束本轮，不关闭源窗口）" disabled>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg>
+          <span class="sr-only">关闭预览</span>
+        </button>
+      </nav>
+    </header>
+    <figure aria-label="已选窗口的只读 Live 画面">
+      <img id="preview" alt="已选窗口的 Live 预览，不接收键鼠输入" hidden>
+      <figcaption id="image-state" aria-live="off">等待已确认的可见连接</figcaption>
+    </figure>
+    <p id="location" title="会话内只读预览；不读取对话，不发送键鼠。隐藏可恢复；关闭会结束本轮。实际任务切换行为仍取决于 Host。">只读 · 不发送键鼠 · 任务切换隐藏未验</p>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const status = document.getElementById('state');
+      const toggle = document.getElementById('toggle');
+      const toggleLabel = document.getElementById('toggle-label');
+      const close = document.getElementById('close');
+      const panel = document.getElementById('panel');
+      const location = document.getElementById('location');
+      const preview = document.getElementById('preview');
+      const imageStatus = document.getElementById('image-state');
+      const pending = new Map();
+      let id = 0, ready = false, capability = null, sequence = 0;
+      let enabled = true, intersecting = false, ended = false, closing = false;
+      let queued = null, flight = null;
+      let displayRequested = false, displayEpoch = 0, lastSize = null;
+      const defaultPresentation = 'automatic';
+      let hostModes = null, fullscreenOwner = null, fullscreenRequested = false;
+      let detachedHostMode = false;
+      let domFingerprint = null;
+      // Observe only our own component. Never inspect the parent/Host DOM or
+      // treat these client measurements as permission, task identity or pixels.
+      function ownDomObservation() {
+        if (typeof panel.getBoundingClientRect !== 'function') return null;
+        const bounds = panel.getBoundingClientRect();
+        const panelSize = [bounds.width, bounds.height].map(Math.ceil);
+        const naturalSize = [preview.naturalWidth, preview.naturalHeight];
+        if (!panelSize.every(n => Number.isSafeInteger(n) && n >= 0 && n <= 4096) ||
+            !naturalSize.every(n => Number.isSafeInteger(n) && n >= 0 && n <= 2048)) return null;
+        const state = {
+          document_visible: document.visibilityState === 'visible', intersecting,
+          image_hidden: preview.hidden, image_src_present: preview.hasAttribute('src'),
+          natural_size: naturalSize, panel_size: panelSize
+        };
+        const fingerprint = JSON.stringify(state);
+        if (fingerprint === domFingerprint) return null;
+        return { fingerprint, value: { ...state, observed_unix_ms: Date.now(),
+          cursor: validCursor(images?.after) ? { ...images.after } : null } };
+      }
+      const validDisplayMode = mode => ['inline', 'fullscreen', 'pip'].includes(mode);
+      function acceptHostMode(mode) {
+        if (!validDisplayMode(mode)) return;
+        panel.setAttribute('data-display-mode', mode);
+        const detached = mode === 'pip';
+        if (detachedHostMode === detached) return;
+        detachedHostMode = detached;
+        // A Host-owned detached mode is not a task visibility signal. Clear and
+        // publish hidden through the existing owned bridge, never fake a mode.
+        report(visible());
+      }
+      function updateToggle() {
+        const label = enabled ? '隐藏预览' : '恢复预览';
+        toggleLabel.textContent = label;
+        toggle.setAttribute('aria-label', label);
+        toggle.setAttribute('title', enabled ? '隐藏预览（可在本轮恢复）' : '恢复本轮预览');
+        toggle.setAttribute('aria-pressed', String(!enabled));
+      }
+      function notifySize() {
+        if (!ready || ended || closing || typeof panel.getBoundingClientRect !== 'function') return;
+        const bounds = panel.getBoundingClientRect();
+        if (![bounds.width, bounds.height].every(value => Number.isFinite(value) && value > 0 && value <= 4096)) return;
+        const size = { width: Math.ceil(bounds.width), height: Math.ceil(bounds.height) };
+        if (size.width === lastSize?.width && size.height === lastSize?.height) return;
+        lastSize = size;
+        // A size hint, not proof that the Host resized or displayed this view.
+        send({ method: 'ui/notifications/size-changed', params: size });
+      }
+      const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(notifySize) : null;
+      function requestFullscreen(owner) {
+        if (!ready || ended || closing || owner !== capability || fullscreenRequested) return;
+        if (!hostModes) { panel.setAttribute('data-display-request-status', 'awaiting_host_modes'); return; }
+        fullscreenRequested = true;
+        displayRequested = true;
+        const epoch = ++displayEpoch;
+        panel.setAttribute('data-display-request', 'fullscreen');
+        if (!hostModes.includes('fullscreen')) {
+          panel.setAttribute('data-display-request-status', 'unsupported'); return;
+        }
+        // An explicit request, never an intersection/presence grant or Native fallback.
+        request('ui/request-display-mode', { mode: 'fullscreen' }).then(reply => {
+          if (ended || closing || owner !== capability || epoch !== displayEpoch) return;
+          if (validDisplayMode(reply?.mode)) {
+            acceptHostMode(reply.mode);
+            panel.setAttribute('data-display-request-status', reply.mode === 'fullscreen' ? 'returned' : 'mode_differs');
+          } else panel.setAttribute('data-display-request-status', 'unconfirmed');
+        }).catch(() => {
+          if (!ended && !closing && owner === capability && epoch === displayEpoch) panel.setAttribute('data-display-request-status', 'unconfirmed');
+        });
+      }
+      function hostContext(context) {
+        if (!ready || ended || closing || !context || typeof context !== 'object') return;
+        acceptHostMode(context.displayMode);
+        if (Array.isArray(context.availableDisplayModes)) hostModes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
+        if (fullscreenOwner) { requestFullscreen(fullscreenOwner); return; }
+        if (defaultPresentation === 'fullscreen' && !capability) return;
+        if (displayRequested || !Array.isArray(context.availableDisplayModes)) return;
+        const modes = context.availableDisplayModes.slice(0, 8).filter(validDisplayMode);
+        const preferred = modes.includes('inline') ? 'inline' : modes.includes('fullscreen') ? 'fullscreen' : null;
+        if (!preferred) return;
+        displayRequested = true;
+        if (context.displayMode === preferred) return;
+        const epoch = displayEpoch;
+        panel.setAttribute('data-display-request', preferred);
+        // One bounded default-size preference; no retries, native fallback or
+        // visibility grant. The actual returned mode may differ from our request.
+        request('ui/request-display-mode', { mode: preferred }).then(reply => {
+          if (ended || closing || epoch !== displayEpoch) return;
+          if (validDisplayMode(reply?.mode)) acceptHostMode(reply.mode);
+        }).catch(() => {
+          if (!ended && !closing && epoch === displayEpoch) panel.setAttribute('data-display-request-status', 'unconfirmed');
+        });
+      }
+      // Pixels have a separate cursor/sequence. Reads never publish presence or input.
+      let images = null, imageFlight = null, imageTimer = null, staleTimer = null, imageSource = null;
+      const send = message => window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*');
+      function request(method, params) {
+        const requestId = `rwi-live-${++id}`;
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => { pending.delete(requestId); reject(Object.assign(new Error('Host response timeout'), { imageCode: 'host_timeout' })); }, 3000);
+          pending.set(requestId, { resolve, reject, timer });
+          send({ id: requestId, method, params });
+        });
+      }
+      const visible = () => !detachedHostMode && enabled && !closing && intersecting && document.visibilityState === 'visible';
+      function clearImages(message) {
+        imageStatus.removeAttribute('data-error-stage');
+        imageStatus.removeAttribute('data-error-code');
+        clearTimeout(imageTimer); imageTimer = null;
+        clearTimeout(staleTimer); staleTimer = null;
+        if (images) { images.epoch++; images.allowed = false; images.after = null; }
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        imageSource = null;
+        if (imageFlight) {
+          imageFlight.decoder?.removeAttribute('src');
+          imageFlight.source = null;
+        }
+        imageStatus.textContent = message;
+      }
+      const canRead = state => state === images && state?.allowed && !state.blocked && !ended && visible();
+      function queueImage() {
+        if (!canRead(images) || imageFlight || imageTimer !== null) return;
+        imageTimer = setTimeout(() => { imageTimer = null; readImage(); }, 500);
+      }
+      function allowImages() {
+        if (!images || images.blocked || !visible() || ended) return;
+        images.allowed = true;
+        queueImage();
+      }
+      const sameCursor = (a, b) => a && b && a.generation === b.generation && a.sequence === b.sequence;
+      const validCursor = c => c && Number.isSafeInteger(c.generation) && c.generation > 0 &&
+        Number.isSafeInteger(c.sequence) && c.sequence > 0;
+      function decodeEnvelope(value, sequence, after) {
+        if (!value || value.request_sequence !== sequence || !validCursor(value.cursor)) throw new Error('invalid envelope');
+        if (value.state === 'unchanged') {
+          if (!sameCursor(value.cursor, after) || value.base64 !== undefined) throw new Error('invalid unchanged cursor');
+          return null;
+        }
+        const size = value.image_size;
+        if (value.state !== 'ready' || value.mime !== 'image/png' || !Array.isArray(size) || size.length !== 2 ||
+            !size.every(n => Number.isSafeInteger(n) && n > 0 && n <= 2048) ||
+            !Number.isSafeInteger(value.png_bytes) || value.png_bytes < 24 || value.png_bytes > 4194304 ||
+            typeof value.png_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.png_sha256) ||
+            typeof value.base64 !== 'string' || value.base64.length > 5592408 ||
+            value.base64.length !== Math.ceil(value.png_bytes / 3) * 4 ||
+            !/^[A-Za-z0-9+/]*={0,2}$/.test(value.base64) ||
+            (after && (value.cursor.generation < after.generation ||
+              (value.cursor.generation === after.generation && value.cursor.sequence <= after.sequence)))) throw new Error('invalid PNG metadata');
+        const bytes = Uint8Array.from(atob(value.base64), c => c.charCodeAt(0));
+        const view = new DataView(bytes.buffer);
+        if (bytes.length !== value.png_bytes || view.getUint32(0) !== 0x89504e47 || view.getUint32(4) !== 0x0d0a1a0a ||
+            view.getUint32(8) !== 13 || view.getUint32(12) !== 0x49484452 ||
+            view.getUint32(16) !== size[0] || view.getUint32(20) !== size[1]) throw new Error('invalid PNG header');
+        return bytes;
+      }
+      async function readImage() {
+        const state = images;
+        if (!canRead(state) || imageFlight) return;
+        const task = { state, epoch: state.epoch, source: null, decoder: null };
+        // A newly discovered unsupported endpoint must still clear its frame;
+        // blocked prevents future reads, not cleanup of this owned response.
+        const current = () => state === images && state.allowed && !ended && visible() && task.epoch === state.epoch;
+        imageFlight = task;
+        const sequence = ++state.sequence, after = state.after;
+        let stage = 'cache_rpc';
+        try {
+          const reply = await request('tools/call', {
+            name: 'computer.live_panel_image',
+            arguments: { view_key: state.owner.view_key, page: state.owner.page, sequence, after }
+          });
+          if (!current()) return;
+          if (reply.isError) {
+            const code = reply.structuredContent?.code;
+            if (['capability_unavailable', 'unknown_tool', 'method_not_found', 'live_ui_not_negotiated'].includes(code)) state.blocked = true;
+            // Reflect a bounded protocol code only, never backend messages,
+            // capabilities, pixels, target IDs or arbitrary exception text.
+            throw Object.assign(new Error('image unavailable'), {
+              imageCode: typeof code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(code) ? code : 'image_tool_error'
+            });
+          }
+          stage = 'validate_envelope';
+          const value = reply._meta?.['rwi/live_image'];
+          if (!value) throw Object.assign(new Error('missing image envelope'), { imageCode: 'image_meta_missing' });
+          const bytes = decodeEnvelope(value, sequence, after);
+          if (!bytes) return;
+          // Rust checked the SHA before this component-only envelope. Decode is
+          // still bounded and must agree with the PNG header before publication.
+          // MCP Apps' restrictive default permits data: images, not blob:.
+          // Keep exactly the verified bounded PNG; no extra CSP origins,
+          // object-URL registry, conversion, capture or runtime fallback.
+          stage = 'set_png_source';
+          task.source = `data:image/png;base64,${value.base64}`;
+          task.decoder = new Image(); task.decoder.src = task.source;
+          stage = 'decode_png';
+          let deadline;
+          try {
+            await Promise.race([task.decoder.decode(), new Promise((_, reject) => {
+              deadline = setTimeout(() => reject(Object.assign(new Error('image decode timeout'), { imageCode: 'decode_timeout' })), 1500);
+            })]);
+          } finally { clearTimeout(deadline); }
+          if (!current()) return;
+          if (task.decoder.naturalWidth !== value.image_size[0] || task.decoder.naturalHeight !== value.image_size[1]) throw new Error('decoded bounds differ');
+          imageSource = task.source; task.source = null;
+          preview.src = imageSource; preview.hidden = false;
+          state.after = { generation: value.cursor.generation, sequence: value.cursor.sequence };
+          imageStatus.removeAttribute('data-error-stage'); imageStatus.removeAttribute('data-error-code');
+          imageStatus.textContent = `只读 Live · ${value.image_size[0]} × ${value.image_size[1]} px`;
+          clearTimeout(staleTimer);
+          staleTimer = setTimeout(() => {
+            if (!current()) return;
+            clearImages('画面已过期 · 等待新的缓存画面');
+            allowImages();
+          }, 2000);
+        } catch (error) {
+          if (!current()) return;
+          if (error?.code === -32601) state.blocked = true;
+          // DOMException.code (e.g. EncodingError/0) is not a JSON-RPC code.
+          const code = error?.imageCode ?? (stage === 'cache_rpc' && Number.isSafeInteger(error?.code) ? `rpc_${error.code}` : {
+            cache_rpc: 'bridge_error', validate_envelope: 'invalid_image_envelope',
+            set_png_source: 'png_source_unavailable', decode_png: 'decode_failed'
+          }[stage]);
+          clearImages((state.blocked ? '当前 Host 不支持会话内画面 · 原生浮层仍可使用' : '画面暂不可用 · 已清除旧画面') + `（${stage}/${code}）`);
+          imageStatus.setAttribute('data-error-stage', stage);
+          imageStatus.setAttribute('data-error-code', code);
+          allowImages();
+        } finally {
+          task.decoder?.removeAttribute('src');
+          task.source = null;
+          if (imageFlight === task) imageFlight = null;
+          queueImage();
+        }
+      }
+      function disableControls() {
+        // Capture ownership before disabling the focused button blurs it.
+        // Late responses and hidden/unfocused components must not steal focus.
+        const ownsFocus = document.visibilityState === 'visible' &&
+          typeof document.hasFocus === 'function' && document.hasFocus() &&
+          (document.activeElement === toggle || document.activeElement === close);
+        toggle.disabled = close.disabled = true;
+        if (ownsFocus && typeof status.focus === 'function') {
+          try { status.focus({ preventScroll: true }); } catch { /* Closing must still be sent. */ }
+        }
+      }
+      function finish(message) {
+        ended = true;
+        displayEpoch++;
+        sizeObserver?.disconnect();
+        clearImages('本轮画面已清除');
+        clearInterval(heartbeat);
+        status.textContent = message;
+        disableControls();
+      }
+      function clearNativeObservation() {
+        for (const field of ['status', 'worker-done', 'capture-pending', 'frames-captured', 'session', 'observed-at']) panel.removeAttribute(`data-native-${field}`);
+      }
+      function showNativeObservation(data) {
+        clearNativeObservation();
+        for (const [field, key] of [['status', 'status'], ['worker-done', 'worker_done'], ['capture-pending', 'capture_pending'], ['frames-captured', 'frames_captured'], ['session', 'session_id']]) {
+          if (typeof data?.[key] === 'boolean' || typeof data?.[key] === 'string' || Number.isSafeInteger(data?.[key])) panel.setAttribute(`data-native-${field}`, String(data[key]));
+        }
+        panel.setAttribute('data-native-observed-at', String(Date.now()));
+      }
+      function suspendedCapture(data) {
+        return data?.state === 'suspended' && data.read_only === true && data.presentation_suspended === true && data.capture_pending === false && data.native_call_pending === false;
+      }
+      function stoppedWorker(data) {
+        return data.status === 'stopped' && data.worker_done === true &&
+          ['capture_pending', 'native_call_pending', 'presenter_visible', 'presenter_image_present'].every(field => data[field] === false);
+      }
+      function report(shown, stop = false) {
+        clearNativeObservation();
+        if (!shown || stop) clearImages(stop ? '本轮画面已关闭' : '画面已隐藏');
+        if (!ready || !capability || ended) return Promise.resolve();
+        // One request in flight; later state supersedes a queued heartbeat.
+        // Never retry close or a timed-out event. Native presence has its own TTL.
+        queued = { shown: stop ? false : shown, stop: stop || Boolean(queued?.stop) };
+        if (flight) return flight;
+        flight = (async () => {
+          while (queued && !ended) {
+            const event = queued;
+            queued = null;
+            const owner = capability;
+            try {
+              const dom = ownDomObservation();
+              const reply = await request('tools/call', {
+                name: 'computer.live_panel',
+                arguments: { view_key: owner.view_key, page: owner.page, sequence: ++sequence, visible: event.shown, close: event.stop,
+                  ...(dom ? { dom_observation: dom.value } : {}) }
+              });
+              if (owner !== capability) continue;
+              if (dom && !reply.isError) domFingerprint = dom.fingerprint;
+              const data = reply.structuredContent ?? {};
+              // A queued Resume may have cleared attributes before the older
+              // Hide reply arrived. Replace observations at reply time too.
+              clearNativeObservation();
+              if (event.stop) {
+                if (!reply.isError) showNativeObservation(data);
+                finish(reply.isError ? '关闭未确认 · 不重试，请核对原始状态' : stoppedWorker(data) ? '采集已停止 · 工作线程已结束' : '关闭请求已返回 · 停止状态尚未确认');
+              } else if (data.accepted === false && data.reason === 'preview_stopped') {
+                finish('本轮预览已结束 · 恢复不会重开，需新建观察');
+              } else if (data.code === 'live_ui_event_rejected') {
+                const differentAdapter = owner.adapter_instance && /^[0-9a-f]{32}$/.test(data.adapter_instance) && owner.adapter_instance !== data.adapter_instance;
+                const reason = differentAdapter ? '观察所属 MCP 实例不一致（adapter_mismatch）' : {
+                  view_ended: '视图已结束、被替换或过期（view_ended）',
+                  stale_event: '事件序号过时（stale_event）',
+                  view_unavailable: '可见性登记暂不可用（view_unavailable）'
+                }[data.message] ?? '视图事件被拒绝（unknown_reason）';
+                finish(reason);
+              } else {
+                if (!event.shown && !reply.isError && data.accepted === true && data.native_observation) showNativeObservation(data.native_observation);
+                if (!reply.isError && data.accepted === true && event.shown && visible()) allowImages();
+                else clearImages('等待已确认的可见连接');
+                status.textContent = !reply.isError && data.accepted === true
+                  ? (event.shown ? '组件可见 · 预览连接已确认' : suspendedCapture(data.native_observation) ? '隐藏已确认 · 采集已暂停' : '隐藏已确认 · 停采尚未确认')
+                  : '连接未确认 · 预览将自动隐藏';
+              }
+            } catch {
+              if (owner !== capability) continue;
+              clearNativeObservation();
+              clearImages('连接未确认 · 已清除旧画面');
+              if (event.stop) finish('关闭未确认 · 不重试，请核对原始状态');
+              else status.textContent = '连接未确认 · 预览将自动隐藏';
+            }
+          }
+        })().finally(() => { flight = null; });
+        return flight;
+      }
+      window.addEventListener('message', async event => {
+        if (event.source !== window.parent || !event.data || event.data.jsonrpc !== '2.0') return;
+        const message = event.data;
+        if (pending.has(message.id)) {
+          const waiter = pending.get(message.id);
+          pending.delete(message.id);
+          clearTimeout(waiter.timer);
+          if (message.error) waiter.reject(Object.assign(new Error('Host bridge error'), { code: message.error.code }));
+          else waiter.resolve(message.result);
+          return;
+        }
+        if (!ready) return;
+        if (message.method === 'ui/notifications/tool-result') {
+          const next = message.params?._meta?.['rwi/live_panel'];
+          if (!next || !/^[0-9a-f]{32}$/.test(next.view_key) || !/^[0-9a-f]{32}$/.test(next.page)) return;
+          const display = message.params?.structuredContent?.requested_preview_display;
+          if (display?.built_in === true) {
+            location.textContent = '只读 · 内建屏原生浮层 · 任务切换隐藏未验';
+          } else if (Number.isSafeInteger(display?.id)) {
+            location.textContent = `只读 · 显示器 ${display.id} 原生浮层 · 任务切换隐藏未验`;
+          }
+          if (next.view_key === capability?.view_key && next.page === capability?.page) return;
+          clearImages('等待已确认的可见连接');
+          clearNativeObservation();
+          capability = { view_key: next.view_key, page: next.page, adapter_instance: /^[0-9a-f]{32}$/.test(next.adapter_instance) ? next.adapter_instance : null };
+          domFingerprint = null;
+          images = { owner: capability, epoch: 0, allowed: false, blocked: false, sequence: 0, after: null };
+          sequence = 0;
+          // Only a genuinely new Host-issued capability reopens this component.
+          // Old ended views and late responses must not revive stopped capture.
+          ended = false;
+          closing = false;
+          enabled = true;
+          queued = null;
+          fullscreenOwner = next.presentation === 'fullscreen' ? capability : null;
+          fullscreenRequested = false;
+          if (fullscreenOwner) requestFullscreen(fullscreenOwner);
+          updateToggle();
+          sizeObserver?.observe(panel);
+          notifySize();
+          clearInterval(heartbeat);
+          heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
+          toggle.disabled = close.disabled = false;
+          report(visible());
+        } else if (message.method === 'ui/notifications/host-context-changed') {
+          hostContext(message.params);
+        } else if (message.method === 'ui/resource-teardown') {
+          const owner = capability;
+          closing = true;
+          clearInterval(heartbeat);
+          await report(false);
+          if (owner === capability) finish('组件已关闭 · 预览将自动隐藏');
+          send({ id: message.id, result: {} });
+        } else if (message.method === 'ui/notifications/tool-cancelled') {
+          const owner = capability;
+          closing = true;
+          await report(false);
+          if (owner === capability) finish('此观察已取消 · 预览将自动隐藏');
+        } else if (message.method === 'ping' && message.id != null) {
+          send({ id: message.id, result: {} });
+        }
+      });
+      document.addEventListener('visibilitychange', () => report(visible()));
+      window.addEventListener('pagehide', () => report(false));
+      window.addEventListener('pageshow', () => report(visible()));
+      if (typeof IntersectionObserver === 'function') {
+        new IntersectionObserver(entries => {
+          intersecting = entries.some(entry => entry.isIntersecting && entry.intersectionRatio > 0);
+          report(visible());
+        }).observe(panel);
+      }
+      toggle.addEventListener('click', () => {
+        if (closing || ended) return;
+        enabled = !enabled;
+        updateToggle();
+        report(visible());
+      });
+      close.addEventListener('click', () => {
+        if (closing || ended) return;
+        closing = true;
+        clearInterval(heartbeat);
+        disableControls();
+        report(false, true);
+      });
+      let heartbeat = setInterval(() => { if (visible()) report(true); }, 500);
+      request('ui/initialize', {
+        protocolVersion: '2026-01-26', appInfo: { name: 'RWI Live', version: '1' },
+        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] }
+      }).then(result => {
+        if (result?.protocolVersion !== '2026-01-26') { finish('Host UI 协议未确认 · 不发布可见性'); return; }
+        ready = true;
+        send({ method: 'ui/notifications/initialized' });
+        sizeObserver?.observe(panel);
+        notifySize();
+        hostContext(result.hostContext);
+      }).catch(() => finish('Host 不支持此组件 · 预览保持隐藏'));
+    })();
+  </script>
+</body>
+</html>

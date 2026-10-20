@@ -1,5 +1,10 @@
 # Native validation window policy
 
+> Historical slot-policy snapshot. Current user authorization has no theoretical
+> VM time limit, and the repository root is the only editable source. Do not use
+> this old 60-minute/frozen-worktree runbook to block current development or ask
+> for another slot. See `product/implementation-status.md` and `AGENTS.md`.
+
 Status: preparation policy only; no VM, screen, window or input permission is allocated by this document.
 
 ## Separation of work

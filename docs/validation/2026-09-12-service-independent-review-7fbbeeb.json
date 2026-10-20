@@ -1,0 +1,614 @@
+{
+  "schema": "rcu.independent_service_review.v2",
+  "recorded_utc": "2026-09-11T16:47:55.625039+00:00",
+  "candidate_commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+  "architecture_baseline_commit": "98dc3aec1d8d262df4b2492e2bdf196afa87977f",
+  "baseline_is_ancestor": true,
+  "decision": "local_migration_progress_confirmed_full_architecture_not_accepted",
+  "architecture_complete": false,
+  "original_findings": [
+    {
+      "id": "S01",
+      "status": "original_defect_closed",
+      "scope": "typed multi-device handle candidates and ambiguity rejection",
+      "evidence": [
+        "gateway_transport::multi_device_collision_cancellation_and_bounded_eof"
+      ],
+      "remaining": [
+        "R01",
+        "transient operation generation tests"
+      ]
+    },
+    {
+      "id": "S02",
+      "status": "partially_closed",
+      "scope": "MCP token/drop/EOF cancellation propagation and pre-registration tombstones",
+      "remaining": [
+        "R03",
+        "native multi-batch cancellation/resource proof",
+        "A01"
+      ]
+    },
+    {
+      "id": "S03",
+      "status": "partially_closed",
+      "scope": "native resource domain fencing, exclusive state owner and explicit recovery",
+      "remaining": [
+        "R02",
+        "A01",
+        "native crash/recovery matrix"
+      ]
+    },
+    {
+      "id": "S04",
+      "status": "original_defect_closed",
+      "scope": "principal receipt roots retain shared desktop leases",
+      "evidence": [
+        "principal_receipts_are_isolated_but_desktop_leases_are_shared"
+      ],
+      "remaining": [
+        "R01 as distinct durable query alias bug"
+      ]
+    },
+    {
+      "id": "S05",
+      "status": "original_defect_closed",
+      "scope": "readonly claim authority and explicit unsupported/prerequisite states",
+      "remaining": [
+        "complete dynamic capability descriptor acceptance"
+      ]
+    },
+    {
+      "id": "S06",
+      "status": "original_defect_closed",
+      "scope": "bounded parallel close budget",
+      "evidence": [
+        "multi_device_collision_cancellation_and_bounded_eof (<6s assertion)"
+      ],
+      "remaining": [
+        "no claim of strong native termination"
+      ]
+    }
+  ],
+  "open_findings": [
+    {
+      "id": "R01",
+      "priority": "P1",
+      "title": "Durable query returns another action when request_id and monitor_id overlap",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/ledger.rs",
+          "start": 124,
+          "end": 130,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "69d4a38a791006ed941e66479519fd6fdc4416148680f0994daa6f7c44eee3b4"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 480,
+          "end": 507,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "377cecd0fc7af82ee066f4b097bd9a3efaaf697e3fea6cd3189a06678d93b1e7"
+        }
+      ],
+      "counterexample": [
+        {
+          "action": "A",
+          "request_id": "req-a",
+          "operation_id": "op-b"
+        },
+        {
+          "action": "B",
+          "request_id": "op-b",
+          "operation_id": "op-c"
+        }
+      ],
+      "expected": "Query op-b consistently resolves A or returns explicit ambiguity before and after reconnect.",
+      "static_actual": "Current context registry returns A; empty/new context durable fallback first looks up request key op-b and returns B.",
+      "tests_required": [
+        "U ID-type overlap",
+        "P fresh Host/context receipt identity",
+        "cross-device/principal/instance references"
+      ],
+      "proof": "fixed_source_static_derivation",
+      "reproduced_by_reviewer": false,
+      "status": "open_at_7fbbeeb"
+    },
+    {
+      "id": "R02",
+      "priority": "P1",
+      "title": "Partially written recovery file prevents future authorized reconciliation",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/ledger.rs",
+          "start": 179,
+          "end": 200,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "69d4a38a791006ed941e66479519fd6fdc4416148680f0994daa6f7c44eee3b4"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/ledger.rs",
+          "start": 284,
+          "end": 301,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "69d4a38a791006ed941e66479519fd6fdc4416148680f0994daa6f7c44eee3b4"
+        }
+      ],
+      "counterexample": [
+        "Reserve uncertain operation",
+        "Crash after creating snapshot recovery file but before complete durable proof",
+        "Restart fenced",
+        "Re-check native resources and call recover again"
+      ],
+      "static_actual": "Same snapshot file path create_new fails AlreadyExists; API cannot publish fresh proof.",
+      "tests_required": [
+        "Crash at create/write/sync/commit boundary",
+        "Repeat checked reconciliation without deleting reservations",
+        "Other domains unaffected and old IDs never replayed"
+      ],
+      "proof": "fixed_source_static_derivation",
+      "reproduced_by_reviewer": false,
+      "status": "open_at_7fbbeeb"
+    },
+    {
+      "id": "R03",
+      "priority": "P1",
+      "title": "Host EOF is not latched when watch channel has no subscriber",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 65,
+          "end": 65,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "160fb576f141b6b3cefe18635cf3881243f04309575830c58d3c3f96671c7232"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 256,
+          "end": 267,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "160fb576f141b6b3cefe18635cf3881243f04309575830c58d3c3f96671c7232"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-mcp/src/gateway.rs",
+          "start": 534,
+          "end": 540,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "160fb576f141b6b3cefe18635cf3881243f04309575830c58d3c3f96671c7232"
+        }
+      ],
+      "dependency": "Locked Tokio 1.50.0 watch.rs:1046-1072, saved local excerpt",
+      "static_actual": "send(true) fails with zero receivers and does not persist true; later subscriber sees false.",
+      "claim_limit": "No live post-EOF input reproduced; missing latch and possible forwarding scheduling gap are static findings.",
+      "tests_required": [
+        "Deterministic EOF-before-subscribe/forward barrier",
+        "Assert zero original Invoke forwards after EOF",
+        "Keep current in-flight cancellation/EOF coverage"
+      ],
+      "proof": "fixed_source_static_derivation",
+      "reproduced_by_reviewer": false,
+      "status": "open_at_7fbbeeb"
+    }
+  ],
+  "architecture_gaps": [
+    {
+      "id": "A01",
+      "title": "Owned native worker hang/crash isolation is not yet implemented, not merely missing tests",
+      "locations": [
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime.rs",
+          "start": 400,
+          "end": 461,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "377cecd0fc7af82ee066f4b097bd9a3efaaf697e3fea6cd3189a06678d93b1e7"
+        },
+        {
+          "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/crates/rcu-agent/src/runtime/recovery.rs",
+          "start": 71,
+          "end": 103,
+          "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59",
+          "sha256": "3d93961100a3eb252fea328cc21a375c6f7a3c1ef6949c452fc747ce48dbb23a"
+        }
+      ],
+      "baseline": "ADR 0002 sections 6.2 and 10; V05/V09/V22"
+    },
+    {
+      "id": "A02",
+      "title": "Compact, semantic-only/on-demand capture and full evidence MCP retrieval"
+    },
+    {
+      "id": "A03",
+      "title": "Generic native application launch policy"
+    },
+    {
+      "id": "A04",
+      "title": "Physical migration of remaining legacy harness"
+    },
+    {
+      "id": "A05",
+      "title": "Native permission/interruption/window/desktop/display and multiplatform matrix"
+    },
+    {
+      "id": "A06",
+      "title": "Global plugin installation and autonomous model M-layer acceptance"
+    }
+  ],
+  "evidence_verdict": {
+    "referenced_response_hashes_and_sizes": "20/20 matched at read",
+    "existing_default_test_log": {
+      "passed": 192,
+      "failed": 0,
+      "ignored": 1
+    },
+    "existing_all_feature_test_log": {
+      "passed": 283,
+      "failed": 0,
+      "ignored": 2
+    },
+    "host_tool_count": 20,
+    "diagnostic_only": false,
+    "local_existing_png_review": "Processes → Performance/CPU → Processes; rcu search preserved; three decoded original PNG hashes matched",
+    "native_scope": "historical limited N via real Host, not a new reviewer native run",
+    "new_host_receipt": "the recorded non-colliding operation query succeeded with replay_allowed=false; does not close R01",
+    "model_inference": false,
+    "performance_or_memory_leak_claim": false
+  },
+  "source_files": [
+    {
+      "path": "crates/rcu-mcp/src/gateway.rs",
+      "sha256": "160fb576f141b6b3cefe18635cf3881243f04309575830c58d3c3f96671c7232",
+      "lines": 568,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-mcp/src/gateway/cancellation.rs",
+      "sha256": "cc9478061091453e036b78ce6e77292fba1c362248c93d5a5790ef4764e2258e",
+      "lines": 96,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-core/src/device.rs",
+      "sha256": "4b68030874a9d529d988932d78ebe3bf781197f337618968d0e7975a8f61a2de",
+      "lines": 97,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime.rs",
+      "sha256": "377cecd0fc7af82ee066f4b097bd9a3efaaf697e3fea6cd3189a06678d93b1e7",
+      "lines": 514,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/recovery.rs",
+      "sha256": "3d93961100a3eb252fea328cc21a375c6f7a3c1ef6949c452fc747ce48dbb23a",
+      "lines": 112,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/src/runtime/capabilities.rs",
+      "sha256": "e5137f532d03edc649ca313d785b33d39a5437539e7315c77dac69a1c5a99d93",
+      "lines": 103,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/src/ledger.rs",
+      "sha256": "69d4a38a791006ed941e66479519fd6fdc4416148680f0994daa6f7c44eee3b4",
+      "lines": 336,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/src/platform.rs",
+      "sha256": "3caeed1ef066c7995ed87e4220d7dee3e00adad689ba9a54612abdbccea3186e",
+      "lines": 54,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-windows/src/recovery.rs",
+      "sha256": "2c529a6033b8632f1d7fa3f64cb23885beca9acae0dd19ad1a81766c379ebcc1",
+      "lines": 22,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/tests/service.rs",
+      "sha256": "034122a8ffe1274f888c0de8e9700c5e876e60b001f64b1f6e659f3091ccb117",
+      "lines": 375,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-mcp/tests/gateway_transport.rs",
+      "sha256": "ce94694f55ff9b30411f7c00cf931def33f13c9d82a335c4c5a961af050968df",
+      "lines": 289,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-core/src/lib.rs",
+      "sha256": "7f82f19939cca38e82b11c4ca8f8f31c04893e0d387801b0ebb761344e029621",
+      "lines": 965,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-mcp/tests/gateway_stdio.rs",
+      "sha256": "bd8651ff66f1695ee2d6b535a114afaf5da766b3040bac49832032fe948b6c1d",
+      "lines": 72,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-windows/src/agent_binding.rs",
+      "sha256": "4c4207de72b2dea9400969d86c6a6f1812e4e0adfad21f9b1d399be84f7140d3",
+      "lines": 1596,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-windows/src/agent_contract.rs",
+      "sha256": "636298ae5592f14f0d117240fc46d85f5b6811d5bc2ba8d84298014af64db039",
+      "lines": 801,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-core/src/checked_action.rs",
+      "sha256": "4a258f3b46d0dcb55ed5e6d608ac3b2ec0f9aa2f6eba92aa4d5a352997bb215a",
+      "lines": 418,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/src/main.rs",
+      "sha256": "6d902d4b68f55320fe152b424b0d2e1b7bf4626d8731c1aac0c3d94e8e3b0e39",
+      "lines": 91,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-native-link/src/device.rs",
+      "sha256": "5e3d5f1f58ff0d1c8f14c689289f70d7f78c83b11adc528fbb40a10b5cd4431b",
+      "lines": 167,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-core/src/device/api.rs",
+      "sha256": "249a5df95b09b4ddcae9fc78f4cc7635e810253a56208fdd6e38301151623223",
+      "lines": 187,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-native-link/Cargo.toml",
+      "sha256": "2b306d42d3ee28b974a8798b30437b088e9989a80b893ed077e3380b5f3e051a",
+      "lines": 57,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-native-link/src/lib.rs",
+      "sha256": "759384866458774f324da9113e5f8ed553ca2b04d4d16bc05f125eaa7608cb43",
+      "lines": 33,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-mcp/Cargo.toml",
+      "sha256": "ef55a385b9c09264b8b984a6789e9577d8895f195b590269cfb57f7380c75fac",
+      "lines": 36,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-agent/Cargo.toml",
+      "sha256": "b1751fa5561fe8c09245efba9ec3bed48901c47d328660b73a8b53ced73e681a",
+      "lines": 26,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-core/src/device/catalog.rs",
+      "sha256": "0a75d658d441a4bf9a18f24c2cbec5b5b8805ef0a1104f9cf72233d29099a7e5",
+      "lines": 223,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-windows/src/native.rs",
+      "sha256": "d372132235b062c716a878c1cedb4a9647049c45a99db04a7a7a8ec289594c02",
+      "lines": 662,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "crates/rcu-windows/src/uia.rs",
+      "sha256": "e50a23ad59f91329c253113d704195a4f3d724fab2820dba85396117ed188dbd",
+      "lines": 675,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    },
+    {
+      "path": "docs/adr/0002-headless-control-infrastructure-review.md",
+      "sha256": "171220c30d250e2054475df005990a08527cd0ac10aaeb55de1b386441072fc9",
+      "lines": 267,
+      "commit": "7fbbeeb714dd0f5274c8d3fab16f614bcc240d59"
+    }
+  ],
+  "source_read_records": 32,
+  "implementation_index_sha256": "d2a5ebb241ef784131b1fc8a03ad86a4ea219f0f27777a60b8448aa6cf75d5a4",
+  "evidence_integrity": {
+    "evidence_files": [
+      {
+        "path": "work/architecture-migration-20260911/codex-host-stable-entry/response-0005.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-stable-entry/response-0006.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-connected/response-0005.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-connected/response-0006.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0005.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0006.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0007.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0008.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0009.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0010.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0011.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0012.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0013.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0014.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0015.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0016.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0017.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-observe/response-0018.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-reconnect/response-0005.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      },
+      {
+        "path": "work/architecture-migration-20260911/codex-host-native-reconnect/response-0006.json",
+        "sha256_matches": true,
+        "bytes_match": true
+      }
+    ],
+    "test_logs": [
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/default-regression-current.log",
+        "sha256_matches": true,
+        "summed_passed": 192,
+        "summed_failed": 0,
+        "summed_ignored": 1,
+        "result_blocks": 30,
+        "reviewer_ran_tests": false
+      },
+      {
+        "path": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/all-feature-regression-current.log",
+        "sha256_matches": true,
+        "summed_passed": 283,
+        "summed_failed": 0,
+        "summed_ignored": 2,
+        "result_blocks": 34,
+        "reviewer_ran_tests": false
+      }
+    ],
+    "test_execution": "existing implementation logs reviewed, no product execution by reviewer"
+  },
+  "log_preservation": [
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/default-regression-current.log",
+      "current_sha256": "759dacaea6b869609f9b26c8605cb0e4f5cc25e14709e4ba9494e3a33a1fc3d2",
+      "expected_sha256": "759dacaea6b869609f9b26c8605cb0e4f5cc25e14709e4ba9494e3a33a1fc3d2",
+      "still_matches_original_review": true,
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-default-regression-current.log"
+    },
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/all-feature-regression-current.log",
+      "current_sha256": "be68cd9eb76a43e341452715b3cb37f509ccd6f94c6cee54af8a26e6467ffda1",
+      "expected_sha256": "be68cd9eb76a43e341452715b3cb37f509ccd6f94c6cee54af8a26e6467ffda1",
+      "still_matches_original_review": true,
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-all-feature-regression-current.log"
+    }
+  ],
+  "other_existing_log_copies": [
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/transport-production-tree.txt",
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-transport-production-tree.txt",
+      "sha256": "4f61517f9ab8a47c811f5b1f07866261bfd09a4b4c52382b4b19ec4fd1310f21",
+      "bytes": 4947
+    },
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/adapter-production-tree.txt",
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-adapter-production-tree.txt",
+      "sha256": "6d381c01c036fafe515de32e7cfe531c2049b5253368afe7a2b3bc9a69e30fc5",
+      "bytes": 10266
+    },
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/clippy-current.log",
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-clippy-current.log",
+      "sha256": "98a9b87b05c42020c67849fdc96106c60765a4e150f2cc09c70355c31339c5f5",
+      "bytes": 424
+    },
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/windows-clippy-current.log",
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-windows-clippy-current.log",
+      "sha256": "34cb5f9fbe8f7ccc7edf155948913aff2e9b00b594fa20cea245fb4f1a39a900",
+      "bytes": 300
+    },
+    {
+      "source": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/architecture-migration-20260911/architecture-ratchet-current.json",
+      "audit_copy": "/Users/vincentadamnemessis/AI Projects/Real Computer Use/work/parent-service-static-review-20260912-7fbbeeb/reviewed-architecture-ratchet-current.json",
+      "sha256": "a1f54f669573ca76e64312c4ab89ea1b6b9987bf6aebb756250b43d3b3f51924",
+      "bytes": 1923
+    }
+  ],
+  "reviewer_actions": {
+    "git_object_reads": true,
+    "existing_logs_and_png_read": true,
+    "audit_documents_and_copies_written": true,
+    "product_source_edits": false,
+    "cargo_or_product_tests_run": false,
+    "host_process_started": false,
+    "product_mcp_calls": false,
+    "vm_connections_or_new_captures": false,
+    "input_sent": false,
+    "installation_or_config_edits": false,
+    "codegraph_initialized": false,
+    "commit_or_push": false
+  },
+  "limits": [
+    "Fixed candidate only; later implementation changes require a new review.",
+    "Existing test logs are verified records, not independently rerun tests.",
+    "No full ADR, cross-platform, native cancellation/crash or M-layer acceptance."
+  ]
+}

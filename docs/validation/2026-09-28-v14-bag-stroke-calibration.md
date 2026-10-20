@@ -1,0 +1,19 @@
+# Paint S V14 侧栏斜顶图标：笔画校准（2026-09-28）
+
+接续[163对象初版](2026-09-28-gamehub-background-and-v14-outline.md)。仅在已分配 BetterDisplay 虚拟屏 Paint S 正式文档操作；GameHub/Wine 游戏保持内建主屏前台，RWI 未向游戏输入。本记录的“实际”均为 RWI 对精确 Paint CGWindow 的原像素 tile；参考为同尺寸的用户截图映射。**局部误差改善不代表整幅 V14 已完成。**
+
+## 按时间顺序的 GUI 操作、读回与取舍
+
+1. **基线与可编辑性。**工作 `.paint` 起始163对象、SHA‑256 `254161a76dd7fc8759186f9cbe78bd18bc23f78b9747b460e7d745ef492356a4`。[原生基线](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/01-before-168-objects.png)对应稍后的168对象平滑线阶段；更早163对象原图见[上阶段](../../outputs/validation/2026-09-28-v14-sidebar-icon/04-final-native-sidebar-420x680.png)。Paint 原生 Select and Move 点击细图标时，实际选中的是下方64×627侧栏底色 Rectangle（大控制柄），不是1px Line；RWI截图确认后改选 Line 清除控制柄，未改变图层。不能凭点击回执认定选中目标线。
+2. **过粗笔画试验被回滚。**通过 RWI 聚焦 Line 厚度文本框、`cmd+a → type_text("2") → AXConfirm`，AX独立回读宽2。先后沿左右屋顶加两条宽2 Line；深色像素增加到149（参考122）、轮廓显得过重，虽阈值80局部 IoU 从0.373到0.449仍不宜保留。[过粗截图](../../outputs/validation/2026-09-28-v14-bag-smoothing/02-too-thick-trial-before-undo-420x680.png)。按各自新请求 Undo 两次，原像素恢复基线。厚度输入 `1.5` 后 AX仍回读 `2`，不能假设支持半档；之后重置为1。没有保存这两条试笔。
+3. **抗锯齿阶段。**RWI `Smooth` AXCheckBox 从0切到1，以宽1沿两条屋顶、左侧浅斜壁、内侧两条 V 线各加一条**独立可编辑 Line**，每笔拖拽后用 AX确认 Select and Move，再重选 Line 清除编辑覆盖层。每笔原生局部 RGB均方误差（固定 x27..52/y295..325）相对参考依次下降：5706.7 → 5352.0 → 5046.4 → 4902.6 → 4833.6 → **4756.4**；深色 `<80` 的84px面积不变，但灰阶边缘更接近参考。RWI `cmd+s`、磁盘只读解析得到[168对象阶段源](../../outputs/paint-v14-source/paint-v14-20260928-sidebar-bag-smoothed.paint)，SHA‑256 `3fc38458117e11963f130f85e74e0c65e5bfd0ef863c6da7f2ac2ccfe8fcdab9`，12 Image/28 Rectangle/94 Line/23 Ellipse/8 RoundRectangle/3 Text。关掉 Smooth 默认后，同尺寸原生像素完全不变，确认新增线自身保留渲染效果。
+4. **上传图标负向试验。**上传方框原有箭头斜线宽2；一条宽1 Smooth 叠线只改了2个RGB像素，上传图标局部均方误差 **7486.1 → 7499.3（变差）**。RWI Undo并关掉 Smooth；420×680整幅截图与168对象已保存阶段逐像素相同，工作磁盘哈希不变。没有把这次失败试笔留在交付源中。
+5. **内横线与底边。**在斜顶图标上用宽2+Smooth 分别绘制独立内横线、底边。每步重选 Line 清掉控制柄，并对比原生截图：[横线](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/02-bar-trial.png) → [底边](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/03-bottom-trial.png)。图标局部RGB均方误差4756.4 → 4675.4 → **4581.7**；暗像素84 →93 →112、IoU0.373 →0.387 →0.410。
+6. **右壁保留、左壁撤销。**宽2+Smooth右侧竖壁使局部均方误差降至 **4094.7**、暗像素120（参考122）、IoU **0.458**，截图见[右壁](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/04-right-wall-trial.png)。同样加粗左壁反而让误差升至4116.0、IoU降至0.442，[试笔](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/05-rejected-left-wall-trial.png)已RWI Undo；原像素与右壁阶段局部完全相同。恢复工具默认宽1/Smooth off后，最终图标原像素不变。
+7. **保存与层数独立验证。**起初从 AXScrollArea 和宽度字段发 `cmd+s` 都被 `keyboard_target_not_focused` **在派发前拒绝**；没有重放同一请求。RWI切到 Select and Move，在虚拟屏画布空白处单击，仅获得画布键盘焦点，重新对精确 AXScrollArea发 `cmd+s` 返回；磁盘源实际更新。最后重选 Line 清除选择控制柄，RWI原生[最终420×680截图](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/06-final-saved-171-objects.png)与右壁保留阶段整幅逐像素一致。正式工作源与[171对象阶段快照](../../outputs/paint-v14-source/paint-v14-20260928-sidebar-bag-stroke-calibrated.paint)同为487871 bytes、SHA‑256 `ad33cd5357ffec92ad18bbc8358eb57391e22814739a7c9cffd21146d0b45339`；只读内嵌 NSKeyedArchiver得12 Image/28 Rectangle/**97 Line**/23 Ellipse/8 RoundRectangle/3 Text，净增3条保留的可编辑线，无整图贴片。
+
+## 当前误差与后续
+
+- 固定区域 x27..52/y295..325 的 RGB均方误差：**163对象初版5706.7 → 168对象4756.4 → 171对象4094.7**，比初版降低约28.2%。RGB三通道均 `<80` 的深色mask：参考122px、初版84px、现120px；现暗区 bbox `(30,299)..(49,321)` 与参考相同，但 IoU仍仅 **0.458**。[放大对照：左参考、右实际](../../outputs/validation/2026-09-28-v14-bag-stroke-calibration/reference-left-actual-right-zoom.png)清楚显示实际底边仍过平直、内横线/侧壁较方、参考抗锯齿与笔形未复刻，**绝非1:1**。
+- 其他图标、搜索加号、选中行酒红占位轮廓、文字重叠仍是更大的差异；后续不应无限叠加本图标试笔，而应处理这些高影响区域。所有 PID、CGWindowID、显示器UUID和frame重新发现后才可继续GUI操作；已有171对象源需先校验哈希。
+- 为避免下轮误以为列表文字可直接移动，已**只读**解析当前 `.paint` 内嵌归档：底层第0个 `DrawImage2` 是2000×679整幅栅格，画面中可见联系人列表文字及旧酒红占位轮廓；全源仅3个 `DrawText`，内容分别是“拉电线了诶嘿 (756)”“搜索”“1条新消息”，不包括列表各行文本。故大部分列表文字/旧轮廓并非独立文字或形状层，后续需按局部背景遮盖并重新建立可编辑文字/形状，不能简单选中旧文本移动，也不能整图贴片冒充复刻。本轮没有改动底层图像。

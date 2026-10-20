@@ -1,0 +1,95 @@
+{
+  "thread_id": "01a09395-5b92-7812-ba25-878aceb09466",
+  "title": "清理 Windows 虚拟机进程",
+  "turn_id": "01a09396-3d3a-7b83-b373-0a72279189a0",
+  "start_local": "2026-09-12T11:08:12.066+08:00",
+  "complete_local": "2026-09-12T11:17:29.282+08:00",
+  "host_turn_ms": 557308,
+  "logged_elapsed_ms": 557216,
+  "native_calls": 126,
+  "host_tool_batches": 30,
+  "mcp_duration_sum_ms": 108145.765669,
+  "mcp_interval_union_ms": 108186,
+  "batch_interval_union_ms": 119901,
+  "result_to_next_step_sum_ms": 426820,
+  "result_to_next_step_p50_ms": 10926,
+  "result_to_next_step_p95_ms": 42136,
+  "initial_dispatch_ms": 10392,
+  "last_message_to_turn_end_ms": 103,
+  "output_text_utf8_bytes": 219890,
+  "output_images": 4,
+  "groups": {
+    "computer.targets": {
+      "count": 1,
+      "duration_sum_ms": 11.296792,
+      "failures": 0,
+      "p50_ms": 11.296792,
+      "p95_ms": 11.296792
+    },
+    "computer.discover": {
+      "count": 3,
+      "duration_sum_ms": 106.034667,
+      "failures": 0,
+      "p50_ms": 32.333792,
+      "p95_ms": 48.384833
+    },
+    "computer.bind_window": {
+      "count": 1,
+      "duration_sum_ms": 21.627708,
+      "failures": 0,
+      "p50_ms": 21.627708,
+      "p95_ms": 21.627708
+    },
+    "computer.observe": {
+      "count": 46,
+      "duration_sum_ms": 35783.259584,
+      "failures": 0,
+      "p50_ms": 864.193667,
+      "p95_ms": 1106.537166
+    },
+    "computer.image": {
+      "count": 4,
+      "duration_sum_ms": 202.35804100000001,
+      "failures": 0,
+      "p50_ms": 46.370167,
+      "p95_ms": 74.917167
+    },
+    "computer.claim": {
+      "count": 15,
+      "duration_sum_ms": 173.528166,
+      "failures": 0,
+      "p50_ms": 13.122834,
+      "p95_ms": 20.657166
+    },
+    "computer.act_checked": {
+      "count": 29,
+      "duration_sum_ms": 61745.047418999995,
+      "failures": 1,
+      "p50_ms": 2518.194125,
+      "p95_ms": 2803.842417
+    },
+    "computer.release": {
+      "count": 15,
+      "duration_sum_ms": 94.255374,
+      "failures": 1,
+      "p50_ms": 5.346333,
+      "p95_ms": 9.648458
+    },
+    "computer.verify": {
+      "count": 11,
+      "duration_sum_ms": 10000.281543,
+      "failures": 0,
+      "p50_ms": 932.998125,
+      "p95_ms": 1801.444334
+    },
+    "computer.operation": {
+      "count": 1,
+      "duration_sum_ms": 8.076375,
+      "failures": 0,
+      "p50_ms": 8.076375,
+      "p95_ms": 8.076375
+    }
+  },
+  "scope_note": "Correct user-specified full cleanup task. Supersedes use of the separate installation task to explain the nine-minute experience.",
+  "metric_boundary": "Host tool durations are end-to-end MCP, not pure transport. Inter-batch gaps include model/Host processing and generated code. Same-batch native gaps are not model deliberation."
+}

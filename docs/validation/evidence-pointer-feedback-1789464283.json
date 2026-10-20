@@ -1,0 +1,90 @@
+{
+  "stages": {
+    "targets": {
+      "ok": true,
+      "detail": {
+        "target": "mac-host:d1bec3e4-c4f6-49ab-b993-f2354be991b5:094bb7cd-ffed-4fb1-a676-2ce0057aaea4"
+      }
+    },
+    "feedback.show_receipt": {
+      "ok": true,
+      "detail": {
+        "status": {
+          "installed": true,
+          "created": true,
+          "visible": true,
+          "point": [
+            400.0,
+            1300.0
+          ],
+          "last_error": null
+        }
+      }
+    },
+    "feedback.native_window_readback": {
+      "ok": true,
+      "detail": {
+        "row": {
+          "window": "cgwindow:17906",
+          "bounds": [
+            320.0,
+            1220.0,
+            160.0,
+            160.0
+          ],
+          "display": {
+            "bounds": [
+              282.0,
+              1152.0,
+              1800.0,
+              1169.0
+            ],
+            "built_in": true,
+            "id": 1
+          }
+        },
+        "expected": [
+          320.0,
+          1220.0,
+          160.0,
+          160.0
+        ]
+      }
+    },
+    "feedback.pixel_evidence": {
+      "ok": true,
+      "detail": {
+        "png": true,
+        "bytes": 55285,
+        "note": "screencapture -l of the overlay window; a fully transparent frame compresses far below this"
+      }
+    },
+    "feedback.hide_receipt": {
+      "ok": true,
+      "detail": {
+        "status": false
+      }
+    },
+    "feedback.hidden_native_readback": {
+      "ok": true,
+      "detail": {
+        "overlay_windows": 0
+      }
+    },
+    "feedback.auto_show_on_act": {
+      "ok": true,
+      "detail": {
+        "attempts": [
+          "returned"
+        ],
+        "overlay": [
+          1508.0,
+          1444.0,
+          160.0,
+          160.0
+        ]
+      }
+    }
+  },
+  "failures": []
+}
