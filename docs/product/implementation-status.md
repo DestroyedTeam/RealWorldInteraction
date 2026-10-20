@@ -1,3 +1,600 @@
+<!-- F404_FINAL_CONTRACT6_STATE75 -->
+## 最终有限验收与交付（2026-10-20）
+
+当前contract6/state75：原51子项全部PASS（18组），没有缩分母。M06依用户直接批准交付显式接入组件，普通未接入AppKit获焦FAIL永久保留，不称通用后台修复。其余旧PASS按实际依赖复用，当前身份/目录、三场景各5性能样本、最终回归/回滚和HEAD CI均重新核对。App Goal原文未改；本地条件已满足，完成工具只有在最终四角色封存与完整审计成功后才调用。
+
+最终Source514/2文档516个Git blob等于远程HEAD e7753b3f920c06a13dc37a88e39bf14bb3d7df85；SDK/fixture/文档3职责commit、6明确路径、一次正常push到公开PR1，同HEAD CI39295152133双OSsuccess。Root1528/11ignored/fixture189/Node68、fmt/Clippy/架构0，源0/1/0/1与fixture0/2/0/2及原hash恢复完整；没有回滚Root、部署/重启生产、改密钥/TCC或提交原图/秘密/二进制/本机设置。
+
+当前加载MCP99825仍Source508/UI9、Agent54364仍签名Source513；Source514为显式应用侧SDK/fixture交付。15个新性能样本场景完整5.308s，快照200/240ms、回执197/221ms、Live17/21ms（中位/最大），不是CPU/纯FFI或ComputerUse优势。初次测试编排错误、旧引用正确拒绝、超时场景全部保留；新有界场景Safe0→5、Live停止清图、6原请求终态释放/禁重放、进程退出0且无PID、绑定退休、12保护项不变。
+
+完整D1–D6及逐项版本/输入/预期/实际/证据层/时间/边界见：`outputs/validation/macos-contract6-final-2026-10-20/REPORT.zh-CN.md`、`CURRENT51.json`。下一只运行complete-audit.py封存并审计，不再派发旧Native输入、commit、push或CI；后面的旧“当前”均为历史。
+
+<!-- F404_CONTRACT6_STATE74 -->
+## F404：用户批准显式接入边界，原生 local monitor 实测通过（2026-10-20）
+
+当前 contract6/state74：48 PASS、0 FAIL、3 UNVERIFIED，仍为原51子项。用户明确同意“交付显式接入路径并保留普通路径限制”；只有M06同PID子项的交付边界改变，App内Goal原文及附件未改。普通未接入AppKit的获焦负例继续保留，不称通用后台修复。
+
+F404在自有虚拟屏窗口实测：local monitor后click1/1/1、拖拽新增1/16/1，完整兄弟窗前台边界元组及自有key通知保持；手工派发钩子0。显式stop依次true/false；移除后新单击恢复普通AppKit获焦5499→5498。五个原操作终态释放，自有进程正常退出0、两绑定退休，12项保护文件及Agent/MCP未变，无重放。
+
+最终Root回归1528通过/11忽略/48 suites、fixture189、Node68，fmt/全targets全features Clippy/架构均0；初次Clippy101修复且原错保留。仍需最终四角色回滚、完整D1–D6收口及新HEAD/CI，旧c9abbb5f CI不能代替。接入指南、逐项矩阵和最终报告随交付补齐；历史记录如下，后面的旧“当前”不是新游标。
+
+<!-- F402_F403_STATE73 -->
+当前contract5/state73：原51项47 PASS／1 FAIL／3 UNVERIFIED不变。F402 actualAgent54364/96fcff43/24b5509e／inode140844597已加载，工具实际返回精确192/384上下文、无平移搜索及SystemWide正命中说明，原MCP99825/7e05f4d3／四权限和其他11保护文件不变，无新GUI输入。新增测试移入已有click capability测试模块，保留架构626超600的exit1及Node报告解析exit1，最终workspace1527／fixture187／Node68，fmt/Clippy/架构均0；源码独立副本0/1/0/1均0、原hash恢复及严格426重建。15明确源码路径分5责任commit、一次正常push，HEADc9abbb5f全513原始blob对应，CI39289319631 macOS/Windows均success；只增量交付，不冒充M18最终冻结。F403真实Rust编译／自身AppKit API签名回读0，local monitor安装／移除方法存在；原RTK空格路径exit1已留并用env修正，无monitor/窗口/输入，不当M06焦点修复。下一F404仅专用App接收组件第二种public-local-monitor hook源码事务，已有明确实验批准，不注入用户应用，不改51分母，普通M06仍FAIL。Goal active未完成。
+
+<!-- F401_NATIVE_STATE72 -->
+当前contract5/state72：原51项47 PASS／1 FAIL／3 UNVERIFIED；本轮新Agent实际加载身份由UV变PASS，原M06 FAIL与M18最终交付3UV保留。Source513受控Agent-only部署实际53910→43394，同DR、原四权限true，MCP99825/7e05f4d3及其余11保护文件未变，不重启Codex。虚拟屏自有普通AppKit稀疏AX窗口（3可操作装饰按钮、原Native children4，无SDK）旧纹理点拒绝canvas_unproven、旧空白点拒绝stale_reference，计数0；新版两条独立新请求分别收down/up/click1/1/1与总2/2/2，300/289ms仅此样本，实际图像96纯色、192纹理上下文逐RGB相同且整图变化；AXClose/退出0/绑定全退休。不是微信成功或通用性能优越证明。原角色脚本预检1、嵌入基线遗漏1及工具分析错误保留，修正后Native源码0/4/0/4、fixture0/2/0/2均0，原hash/新absence恢复及严格426重建已验。发现Describe能力文案仍旧，下一F402仅修正该元数据并测试；不重放GUI。Goal实际active，未完成。
+
+<!-- F401_STATE71 -->
+当前contract5/state71：原51项46 PASS、1 FAIL、4 UNVERIFIED不变，新Agent身份仍UV。唯一Root增加SystemWide独立正命中，精确PID/对象/窗口号/点几何/显示器必须全部成立，false/缺失拒绝，旧空子窗口正路不额外查询，不改全局超时；4测试通过。自有稀疏AX窗口显式模式默认关闭，普通鼠标回调不改计数，2配置测试通过。Source513全workspace1526/fixture187/Node68，fmt/Clippy/架构全部0，旧F400 Core13按不变依赖保留。尚未部署或实机，不宣称微信或原M06修复；正沿原证书签名Agent-only，不动MCP/Host/配对。下一验证原构建及四角色封存，再仅虚拟屏自有窗口做新身份/新请求验收，不重放旧点击、无剪贴板/社交/游戏操作。Goal active未完成。
+
+<!-- F400_STATE70 -->
+当前contract5/state70：原51项46 PASS、1 FAIL、4 UNVERIFIED；只把新生产Core候选的Agent实际加载身份重开，旧PASS存历史，不清空其他证据。F399四负例与0/4/0/4及严格419已完成。F400唯一Root PixelAnchor.context 固定192/384纹理上下文逐规范化像素严格匹配，纯空白/局部改变/身份几何模态和未opt-in仍拒绝，PNG各阶段解码1次。13新测试、workspace1522/fixture185/Node68及fmt/Clippy/架构0，前两次101测试夹具错误保留；uncertain/replayforbidden仍真实保留。原微信两拒绝层分开，Native application_hitfalse/children3仍未修好；无GUI/剪贴板/旧输入重放/部署，不称微信可用。Goal工具本轮实际active，旧授权阻塞已关闭，审计从0。本轮真实源码/回归进展，下一F401自动执行有界SystemWide精确命中Native源码事务，不关闭保护、不改全局超时；原M06 FAIL及最终交付未完成。
+
+<!-- F399_STATE69 -->
+当前contract5/state69：原51项仍47 PASS、1 FAIL、3 UNVERIFIED。F399唯一Root提取route_matches及4项来源/窗口负例，来源仍不认证；最终workspace1509/fixture185/Node68及fmt/Clippy/架构全部0。无GUI/部署/重放，F398实机记录仅按当时版本保留。上一目标轮次属源码/实机证据进展，本轮继续新源码负例和回滚，不沿用旧授权3轮阻塞。已只读核对NemessixPaste实际用户反馈的空白坐标stale_reference，保存原回执，未修复/未部署、不操作当前微信；下一F400执行真正Rust基线并修复有界局部上下文，不用无条件绕过。Goal未完成。
+
+<!-- F398_STATE68 -->
+当前contract5/state68：原51项仍47 PASS、1 FAIL、3 UNVERIFIED。用户已直接批准仅专用App接收组件实验；旧授权阻塞关闭、审计从0重新开始，Goal工具仍返回旧blocked且无assistant resume接口，不篡改为active。唯一Root实现 receiver_component::Registration::dispatch 与默认关闭的 RWI_EXPERIMENTAL_RECEIVER_SOURCE_PID；不注入现有App、不关闭系统安全、不变更Agent/MCP。首版134/CGEventRef ABI及Clippy101均保留并修复，最终V3真实typed点击down/up/click1/1/1、拖拽1/16/1与蓝线，同PID兄弟5255完整前台元组采样一致且无自身获焦通知，真实AXClose/退出0/绑定退休。来源PID/birth仅filter、source_authenticated=false；自有组件正例单列，不替换普通M06 FAIL。最终workspace1505/fixture185/Node68及fmt/Clippy/架构均0；同四角色实际回滚/重应用见F398封存帧。下一F399只新源码负例事务，不重放旧GUI，不再等待已授予的许可；完整目标未完成。
+
+<!-- F397_STATE67 -->
+当前contract5/state67：47 PASS、1 FAIL、3 UNVERIFIED不变。原FOLLOWUP_3真实授权门禁仍exit78，与INITIAL/FOLLOWUP_2连续3轮同一条件；旧普通同PID点击仍无已验证保焦点修复，新的进程内接收组件实验没有直接批准。不是缺重启许可、OS/TCC/FS错误或活进程等待；不发新输入、不重启、不加载新组件，不用更窄成功掩盖FAIL。本轮及上轮均无产品进展，不把状态/回滚记录算修复。剩3项M18最终交付依赖M06，无独立可完成的剩余功能动作；阻塞审计已达3轮，将请求update_goal(blocked)，实际应用状态以Goal工具返回为准，本文件不冒称已应用。原目标、51项、既有证据/源码/证书配对保护保持，未complete/paused。若用户后来resume，NEXT仅新的RESUME_1授权预检并从第一轮重新审计，绝不沿用已关闭3轮直接再blocked，也不重跑旧输入或CI。
+
+<!-- F396_STATE66 -->
+当前contract5/state66：47 PASS、1 FAIL、3 UNVERIFIED不变。原FOLLOWUP_2授权门禁实际exit78/M06_RECEIVER_COMPONENT_AUTHORIZATION_MISSING；无新直接答复、无组件/GUI输入/部署/重启，不把请求受理当批准。本轮无功能进展，不把文档/状态/回滚记录算产品进展，不称verified wait；上轮实际完成F391原生验证属于进展。同一实现缺口及新接收组件实验授权条件已连续核对2轮，未达3轮，Goal保留active；剩3项M18最终交付依赖M06，增量push/CI不能冒充收口。下一仅原门禁FOLLOWUP_3；若同阻塞第三轮仍在且无可执行的对齐动作，按规则blocked，而非无限保持active复述状态。原目标、51子项、失败、源码和证书/配对保护项全部保留，不自动扩张到新接收端方式。
+
+<!-- F391_F394_STATE65 -->
+当前contract5/state65：47 PASS、1 FAIL、3 UNVERIFIED（原51子项不变）。原绑定F391实际编译/自身读取/反汇编均0：公开canBecomeKeyWindow读取128字节、函数124字节，末尾相邻4字节排除；receiver/parent派发尾stub未解码，不宣称全平台不可能。两假设回合关闭为无已建立可部署修复，不继续无界读方法；M06原Touch/普通/factory-source负例保留，不用Command/抢后恢复/fixture策略改写充PASS。已单独询问仅自有专用App的显式进程内接收组件实验；请求受理不是批准，不扩张既有相关服务重启授权，不向现有应用/游戏/Chrome注入、不关闭安全保护、不覆盖旧FAIL。F394真实门禁exit78/M06_RECEIVER_COMPONENT_AUTHORIZATION_MISSING，未执行实验、输入、部署或重启；这是缺少新实验直接决策，不是OS/TCC/FS错误。首次记录该阻塞，Goal仍active，未提前blocked/complete。下一只做原门禁FOLLOWUP_2并复核直接用户答复；无答复则同一条件计第二轮，不伪造verified wait，不重跑CI/Native输入。上轮有实质CI/原生证据进展；Source508/Node/12保护项与47项PASS按未变依赖复用，最终M18仍待M06，完整目标未完成。
+
+<!-- F385_F390_STATE64 -->
+当前contract5/state64：47 PASS、1 FAIL、3 UNVERIFIED（原51子项、剩4）。已推送Source508/Node对应HEAD594aa956的原CI39252479526：macOS、Windows均success，未rerun；只属增量CI，不冒认最终M18。F388自身AppKit实测event:wouldActivateWindow:为void/首指令ret，不是可操纵的布尔predicate；F389对真实F252栈定位receiver key设置+600/通知+624；F390可见/可key资格读取receiver本地flags并tail-call公开canBecomeKeyWindow。均编译/自身读取/反汇编exit0，无GUI输入、外进程读取、接收端改写、部署或重启；相邻方法不归给目标函数。Touch/F367普通factory-source负例保留，M06仍FAIL，不靠Command/抢后恢复/静态分析充PASS。下一F391仅第二假设最后128字节公开资格读取，随后关闭本轮两假设，不无界递归；只有观察到新外部控制条件才构建新候选。F383真实默认Live已PASS，清除旧Hostinline当前blocker但保留历史。Source5081492/fixture185/Node68及源码0/8/0/8、Node63/68/63/68既有回归/回滚按未变依赖复用，不宣称本轮重跑全量；证书、配对、12保护文件、已加载版本不变。Goal active、未完成。
+
+<!-- F382_F384_STATE63 -->
+当前contract5/state63：47 PASS、1 FAIL、3 UNVERIFIED，原51子项不变、剩4。F380原Host67125→95706实际完成不重放；F382真实MCP99825/7aeb75e3/7e05f4d3、52工具、UI9资源30567bytes/a60b628c逐字节匹配Root，Agent53910和四权限不变。F383同一个真实默认组件、省略presentation/display：第二次连续单cell受控切出/返回，DOM清图接收上界343ms、Native停采无pending校准上界911ms，capture267连续稳定至少3064ms；返回1483ms内同源1320×1104解码，cursor8/269，内容320×344CSS；不是Native计数代Host，非安全/硬件attest，无父Host DOM、NativeCodex UI访问、模型app-only调用或伪造可见性。首个分cell试验返回actor归因不确定保留，不作受控返回成绩。Live原180s先到期，cleanupStop只回读原duration_expired/worker_done，不能冒充新Stop/X；自有fixture真实AXClose、closed/exit0/PID缺席、绑定退休及原操作terminal/resourcesreleased。Live当前5样本外层13/13ms、执行器1329/3190us、完整JSON11686/11686bytes、calls5；非CPU/纯FFI/p95/ComputerUse优势。F384按职责3个明确路径commit，未提交凭据/设置/二进制/原图/无关旧dirty；Source508+Node与GitHEAD594aa956逐字节相同，正常push现有PR1，真实CI39252479526运行中，未rerun。下一观察原CI，随后继续M06核心焦点缺陷；最终M18三项仍UV，不用增量交付/旧CI冒充最终完成。Source5081492/fixture185/Node68和独立回滚完整保留。
+
+<!-- F377_F379_STATE62 -->
+当前contract5/state62：44 PASS、1 FAIL、6 UNVERIFIED（原51子项）。F377唯一Source508/UI9 MCP release构建和严格签名0；F379只原子替换MCP为7e05f4d3/inode140679107，其他11受保护文件、Agent53910/a6d、四权限、证书/配对/设置不变。Root70776仍是旧bef12757/inode140653998；磁盘安装不等于实际加载或Host验收。Source5081492/fixture185/Node68、source0/8/0/8与Node63/68/63/68完整复用，无新GUI输入或伪造app-only事件。下一F380只启动一次当前Host67125受控刷新或观察原supervisor，之后实际UI9资源/身份和真实默认组件DOM清图/恢复；不再重启Agent。M06同PID焦点FAIL、M15真实生命周期、最终交付仍未完成，Goal active。
+
+<!-- F374_F376_STATE61 -->
+当前contract5/state61：44 PASS、1 FAIL、6 UNVERIFIED（原51子项；新UI候选只重开受影响M01身份/目录，不清零其他证据）。F372原Host61344→67125实际完成，无重放；F374真实加载MCP70776/9ffacf79/bef12757/inode140653998，Agent53910与四权限不变。F375全新自有虚拟屏目标74594/4587原本前台，唯一新请求compact明确保留appkit_factory、goal_verifiedfalse/system_acceptednull/replayforbidden，独立down/up/click1/1/1，随后真实AXClose、closed/exit0/PID缺席、binding退休；不是F367保焦点重试。F376补M15缺失测量通道：UIv9只报告自身DOM隐藏/src/解码尺寸/容器尺寸/同源cursor，经原app-only工具与exactpage序号保存，最多8条，不读取Host DOM、不赋予Native权限、观测记录/读取不额外续TTL、heartbeat仍500ms且无新RPC。默认旧client状态逐字节不变。Source508完整1492/11ignored/48suites、fixture185、Node68、新Rust8/Node5；fmt/全target全features Clippy/架构0，独立副本source0/8/0/8、Node63/68/63/68、实际嵌入组件VM同输入null/own-cleared-DOM/null/own-cleared-DOM全0，Source506原hash及absences恢复、strict416重建、Root回滚拒绝。此为离线组件/注册表证据，不冒充实际Host切任务验收。F376尚未构建部署，下一F377只构建MCP；M06焦点FAIL、M15默认inline生命周期、最终PR交付继续未完成。
+
+<!-- F369_F371_STATE60 -->
+当前contract5/state60：45 PASS、1 FAIL、5 UNVERIFIED（原51子项不变）。F369仅MCP release67.80s/严格签名0；F371只原子替换MCP为bef12757/inode140653998，其他11受保护文件不变，Agent53910/a6d与四权限true。当前RootMCP41862仍映射6e6b257c/inode140342453，磁盘不等于加载。F368源码1484/fixture185/Node63和0/2/0/2完整保留；M06同PID实际负例不抹掉、不重放。清理当前身份字段的旧别名：旧对象完整存证，当前aliases统一Host61344、MCP41862、Agent53910，避免派发旧动作。下一F372复用原成功受控Host控制器，只启动或观察一个原supervisor；重启后验实际加载和输出，不额外重启Agent、不改证书/配对/权限。M15默认inline生命周期、M06焦点和最终交付仍未完成，Goal active。
+
+<!-- F366_F368_STATE59 -->
+当前contract5/state59：45 PASS、1 FAIL、5 UNVERIFIED（原51子项、剩6）。F364原Host90472→61344实际核对，无重启重放；F366实际MCP41862/52091b6f映射6e6b257c/inode140342453、52模型工具click已含event_source，Agent53910/a6与四权限true。F367唯一typed普通factory-source画布点击实际到45808/4463，down/up1/1、event6、flags0、clickcounter1，但全前台窗口4464→4463且epoch变，own-key-notification4，M06仍FAIL；无Command/Touch/恢复或输入重放。前后真实PNG已保存；120s自有计时正常关闭exit0，后续cleanup snapshot来晚按process_identity_unknown派发前拒绝，没有发AXClose；进程缺席、两binding退休、原操作terminal/resourcesreleased。实测简短回执漏requested_event_source，完整原metadata仍含appkit_factory；F368唯一Root2路径修复保留显式source/subtype或null，不发明默认、不改goal_verifiedfalse、不改原metadata。最终1484/11ignored/48suites、fixture185、Node63、focused2，fmt/Clippy/架构0，源码0/2/0/2，实际生产函数组件同输入missing/preserved/missing/preserved全0，原hash恢复及strict414。仅新输出候选MCP身份待刷新；输入schema/52目录、Agent和v8UI代码未变，旧证据按依赖保留。下一F369只构建MCP，不再重启Agent或重发F367；输出补丁未部署，M15默认inline HostDOM和最终PR交付仍未完成。Goal未完成。
+
+<!-- F363_ACTUAL_DEPLOY_STATE58 -->
+当前contract5/state58：44 PASS、1 FAIL、6 UNVERIFIED（51子项、剩7）。F363在同一dispatcher先取实际加载RWI新鲜状态，再受控Agent54901→53910/instancea6d117bf；新Agent inode140342451/hash0111932a已实际映射，RWI工具回读四权限仍true、healthy且无fence，无需重新授权。仅替换签名Agent及MCP两文件，原DR/配对/其余10保护配置证书不变；新MCP磁盘6e6b257c/inode140342453，但Root实际90466/9aab3ca6仍映射旧inode140240416，52目录的click schema无event_source，不以磁盘安装冒充加载。新Agent身份一项恢复PASS，MCP身份/目录仍待验；M06同PID保焦点仍FAIL，默认inlineHostDOM仍UNVERIFIED。源码Source506+Node未改，复用1482/fixture185/Node63/focused9、源码0/9/0/9与原hash/absence恢复、strict414。下一F364沿已成功控制器精确刷新当前Host90472，若原supervisor已启动只观察原事件；不再次重启Agent或更换密钥，不发用户窗口输入，不要求人工配合。Host换PID仍不代表MCP新schema或M06效果，后续须实际RWI与自有窗口验收。Goal未完成。
+
+<!-- F360_FACTORY_SOURCE_CANDIDATE_STATE57 -->
+当前contract5/state57：43 PASS、1 FAIL、7 UNVERIFIED（51子项；剩8）。F358自身record转发函数436字节读取0后停止追符号；F360唯一Root实现ClickDeliveryOptions.event_source：默认invocation_private字节与原语义不变，显式appkit_factory仅普通公开鼠标、精确独立capability，仍验证原Private模板、目标/lease/去重/flags0/纳秒/配对，不加Touch、修饰键、激活、恢复或fallback，receipt不证明效果。7既有路径+1新测试模块，Source506；新增9项离线正负例。架构最初665行超过600门禁exit1保留，只把新测试拆分到专用模块，未放宽上限；最终全量1482/11ignored/48suites、fixture185、Node63、focused9，fmt/Clippy所有targets/features/架构全部0。固定输入实际Core解析：BASELINE拒绝invalid_input_value；MODIFIED拒绝缺失cap而允许已声明cap的memory-only准备；ROLLBACK恢复拒绝；重应用恢复准备，均exit0且无post。独立副本Source505+新增文件absence原hash恢复，0/9/0/9与完整414严格重建；生产Root从未回滚。F361已构建并沿原证书签名，designated requirement与原安装精确一致、12保护项未变；新候选未部署或实机，仅3项新Agent/MCP身份目录依赖转UNVERIFIED，旧PASS保留；M06同PID仍FAIL，默认inline Host DOM仍UNVERIFIED，旧7f843899对应CI不是新候选CI。v8 UI源码未变，先前167/691/151ms和默认Native954/1022ms证据按依赖复用。下一F363先在同一dispatcher读取实际RWI新鲜状态，受控重启Agent并原子部署两项签名候选，再刷新Host并以真实自有窗口验收一次普通source候选；受控重启授权仍有效，不再要求人工切窗。Goal未完成。
+
+## F354–F357：区分事件序列化与实际源记录，保留未修复项（2026-10-18）
+
+<!-- F354_F357_SOURCE_RECORD_BOUNDARY -->
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state56，仍为46 PASS、1 FAIL、4 UNVERIFIED（51子项，不改门槛）。本轮没有改生产输入代码或重启服务：F354自身_postDelayed首函数80字节是内部分发，未调用；F355对自身公开NSEvent down/up各做一次源替换，SourceStateID由0到503615949，原件不变，两相序列化均260字节且零差异。随后F356自身映像确认当前macOS公开CGEventPostToPid与SLEventPostToPid同址，首函数88字节经272字节PSN函数转发record；3次最初严格别名/句柄守卫exit101均保留，改用实际SkyLight句柄、精确符号/同址验证后读取/反汇编0。F357公开CGEventSetSource的实际SLEventSetSource首函数104字节，正常路径明确改写record+0x48..0x6f共40字节：因此不能把F355的序列化相同解释为整个事件或派发源不变，也没有证据支持直接去掉Private隔离。全部仅自身内存，无新窗口、目标输入、私有函数调用或外进程读取；M06同PID保焦点仍FAIL，不冒称修复。下一F358只限一个已定位record转发函数1024字节，随后据实决定是否构建显式factory-source候选，不进行无界递归查符号。既有v8实机167/691/151ms、默认Native954/1022ms、Source505+Node、部署12项、7f843899及对应CI成绩沿用；默认inline Host DOM与最终总交付仍未完成。受控重启授权继续有效。
+
+<!-- RWI_F345_F353_V8_HOST_CONTROLS_ACCEPTED -->
+## F345–F353：v8真实Host控件严格验收通过，源码批次已推送且对应CI成功（2026-10-18）
+
+- 当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state55：46 PASS、1 FAIL、4 UNVERIFIED，剩余5。F344原重启已核对56648→90472，不重放；F345当前MCP90466/9aab3ca6加载2fd4160f/inode140240416、52工具/v8，Agent54901/证书/配对/四权限保持。F346实际普通show_live显式full：PNG1320×1104、内容320×344CSS；隐藏167ms清图并Native停采/41稳定2130ms，隐藏中唯一Safe AXPress独立计数1，恢复691ms同源Host图Safe0→1。首Live硬到期前未执行X，不冒充关闭；F347新活动live10唯一UIX151ms实际stopped/worker_done/清图禁用，API独立requested确认，无APIstop替代，严格门槛未改。F350已验证v7/v8两组行为5路径分2commit一次正常push，HEAD7f843899原始Source505+Node一致，CI39136239958 macOS/Windows都success；总目标最终交付冻结待M06/Hostinline缺口完成，不冒认完整交付。F352当前v8默认Native切走954ms/3计数稳定2508ms/返回1022ms同源新帧；inline未提供mcpapps DOM，Host清图/恢复仍UNVERIFIED，不绕过拒绝。F349自身公开sendEvent硬传delayed=false，F353自身NSEvent元数据无输入/私有调用，M06仍FAIL；下一F354有界自身_postDelayed512读取，区分内部派发与可序列化标志，不猜ABI或发新输入。唯一Root源及Node不变，复用最终1473/fixture185/Node63/focused6、fmt/Clippy/架构0和源码BMR0/6/0/6、Node58/63/58/63、原hash恢复/strict413；三个自有进程退出0、Live停止且detach，最新仅原desktop、无fence。Goal未完成。
+- 原始时序截图、首场到期未执行X、第二场活动X、同源Safe0→1、Git/CI及未完成边界：`outputs/validation/f345-f353-v8-host-controls-and-delivery-2026-10-18/REPORT.zh-CN.md`。只恢复受影响3项PASS并新增控件严格PASS，不整表重跑；旧失败和旧v7结果保留。
+
+<!-- RWI_F338_F343_NATIVE_LIVE_FEEDBACK -->
+## F338–F343：Live原生状态反馈实现、回归、回滚并安装（2026-10-18）
+
+- 当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state54：42 PASS、1 FAIL、8 UNVERIFIED（仅3项新MCP/UI依赖刷新，旧PASS保留）。F338自身已知连接查找读取/编译/反汇编0，无private/foreign/GUI，M06仍FAIL；原项目文档的借焦点再恢复/Command语义不冒充全过程同PID保焦点。F340唯一Root5既有路径实现：隐藏接收后同一view绑定的原生只读状态回读，最多8次/500ms、可见心跳无额外RPC；组件区分ACK/实际停采/工作线程结束，DOM小元数据及换视图/恢复/错误清除；v8兼容旧读。queued-resume负例exit1发现旧状态残留，修复回复时失效后最终全套重跑1473/fixture185/Node63/Rust6、fmt/Clippy/架构0。源码BMR0/6/0/6、Node58/63/58/63、固定输入VM行为均exit0且基线=回滚，原505+Node hash恢复/strict413重建；封存补充文件缺失只续尾部记录，未重放验证或输入。F342release/签名0，F343仅安装MCP2fd4160f/inode140240416，其余11/Agent54901/四权限不变；实际当前57898/7a58f6c1仍旧v7/992a752c。下一F344精确Host56648受控刷新或只观察原supervisor，再实际loaded52/新映像/v8自有窗口Host控件与严格时限。不重启Agent、不要求人工切窗；v8未实机通过，旧CI不代表新候选，M06/M15/最终PRCI未完成。
+- 详见 `outputs/validation/f338-f340-native-live-feedback-2026-10-18/REPORT.zh-CN.md`。没有新的GUI截图/键鼠；v8实机效果待验，不以旧图、Node或磁盘安装替代。
+
+<!-- RWI_F332_F337_LOADED_LIVE_DEFAULT_NAVIGATION -->
+## F332–F337：新 MCP 已实际加载，默认任务导航停采通过 Native 实测（2026-10-18）
+
+- 当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state53：45 PASS、1 FAIL、5 UNVERIFIED，剩余6。F330原受控刷新已观察成功，不重放；F332当前MCP57898/7a58f6c1加载992a752c/inode140204180、52模型工具/v7，Agent54901/证书/配对/四权限不变。F333普通show_live显式fullscreen实际PNG1320×1104、内容320×344CSS，隐藏56ms清图/恢复773ms可见/UIX清图并Native stopped+worker_done，但隐藏首Native样7649ms、X5803ms偏晚，严格2s/5s仍UNVERIFIED。F334默认省略模式实际导航Native切走1332ms停采、46计数稳定2198ms、返回1455ms同源新帧；旧默认Native反例已获新构建正例，inline Host DOM未暴露，清图/恢复像素仍待验，旧FAIL保留。F336自身CGSConnectionByID有界指令读取/编译/反汇编0，观察已知连接/TLS路径，无private/foreign/GUI；M06仍FAIL。Source505d3未变，复用Root全1467/fixture185/Node58、fmt/Clippy/架构0及源码BMR0/3/0/3、Node55/58/55/58与原hash恢复。下一F338只读已知连接表新假设，不重启或重放旧输入；M15严格证据、M06实现、最终PRCI仍未完。
+- 原始时序截图、采样偏晚、清理和证据分层见 `outputs/validation/f332-f336-loaded-live-navigation-2026-10-18/REPORT.zh-CN.md`；只恢复受影响3项PASS，导航由旧FAIL经新Native正例转UNVERIFIED，Host像素缺口不冒认通过。
+
+<!-- RWI_F326_F331_DEFAULT_NO_PIP_IMPLEMENTED -->
+## F326–F331：默认会话PiP策略已实现、回归、回滚和安装，待Host加载（2026-10-18）
+
+- contract5/state52：42 PASS、2 FAIL、7 UNVERIFIED（只刷新3项新MCP/UI依赖，旧PASS保留）。F326根5路径实现默认会话不声明/请求PiP、真实PiP清图发布隐藏，URIv7兼容旧读，独立原生/输入不变。实际全量1467/fixture185/Node58/focused3、fmt/Clippy/架构全0；原workspace101旧PiP黄金断言修正后完整重跑保留原错误。源码0/3/0/3、Node55/58/55/58退出全0，原Source505 hash恢复/strict413重建；同不可变输入VM行为pip/true→inline/false→pip/true→inline/false全0，非Host证据。F328release/签名0，F329仅原子安装MCP992a752c/inode140204180，其余11/Agent54901/证书/配对不变，实际四权限true。当前5684/39b65db6仍旧cf2e6156，不冒称已加载。下一F330已授权精确Host94907刷新（或观察原supervisor，绝不重放），后实际52工具/新映像/v7/自有窗口Host验收；不重启Agent。旧22c479c CI成功不代表当前新5路径；M06/Host控制生命周期/最终PRCI仍待完成。
+- outputs/validation/f326-f331-default-policy-implemented-2026-10-18/REPORT.zh-CN.md 包含11项忽略说明、同输入字面行为及安装/实际加载区分；没有新v7 Host截图，不以旧图/Node代替。
+
+<!-- RWI_F322_F327_NAV_CI_DEFAULT_POLICY -->
+## F322–F327：全屏入口导航Native正例与CI成功，默认PiP策略修正候选待应用（2026-10-18）
+
+- contract5/state51：45 PASS、2 FAIL、4 UNVERIFIED。远程22c479c对应CI39114229357 macOS/Windows均success。F322自身函数dlsym guard101保留，F323经已验证自身BL解析内部CGSGetConnectionPortById，编译/自读/otool0、private/foreign/GUI均0；连接对象查找不当作外部权限或M06修复。F324活动组件仍观察超时，无确认点击/重放，源95帧不冒充Host像素。F325静态fullscreen-only真实Host导航：切走598ms Native停采/7样本20稳定/后段1114ms，返回282ms同源新帧；Host清图/PNG仍缺，旧默认PiP失败保留。F326已冻结5路径no-new候选，修默认show_live不声明/请求独立PiP、实际PiP清图发布隐藏；独立原生持久预览不变，v7兼容旧读URI。实际baseline Rust0/Node55及dry-run0，--lib101纠正为--bin0，新增Rust3/Node58仅预期；Root未应用。下一真实Root patch+focused，再全回归/同四回滚/部署/default Host验收。Source505未变，复用1464/185/55/5、fmt/Clippy/架构0、源码0/5/0/5和UI55/48/55；总目标未完。
+- 详见 outputs/validation/f322-f327-navigation-ci-policy-2026-10-18/REPORT.zh-CN.md。F324/F325自有进程正常退出0/PID消失/Live stopped+worker_done+detach；没有新增Host截图，不以重绘或旧图替代。
+
+<!-- RWI_F319_F321_SOURCE_DELIVERY_ORDERING -->
+## F319–F321：已验证源码分责提交推送，后台排序约束继续定位（2026-10-18）
+
+- contract5/state50：45 PASS、2 FAIL、4 UNVERIFIED。F319已按测试接收器/原生实现/MCP输出/Live行为/测试提取完成5提交，正常push至现有PR1，远程HEAD22c479c独立读回且Source505+Node逐字节匹配；当前CI39114229357仍运行，不冒称最终交付。结构补丁格式失配1和两项续跑守卫错误保留，修正后沿同index继续、不重做既有提交；根源码未改。Live离线25通过，Host清单可读但DOM30秒超时，无新增GUI输入/重启。F320自有SkyLight导出1024字节只读/编译/otool全0，首函数460字节与邻近函数区分；连接参数/消息/布尔返回为静态观察，private调用/foreign读/GUI均0，M06未修复。下一F322自身连接查找函数有界验证，不猜ABI或伪造fixture正例。复用精确1464/185/55/5、fmt/Clippy/架构0及源码0/5/0/5、UI55/48/55。保焦点/Host生命周期/最终文档PRCI未完成。
+- 见 outputs/validation/f319-f321-source-delivery-and-ordering-2026-10-18/REPORT.zh-CN.md；未推送本机设置、凭据、二进制、原始截图或未完成文档，未merge/tag/release。
+
+<!-- RWI_F313_F318_ACTUAL_HOST_RENDER -->
+## F313–F318：实际新版52工具与Host图像已验，控制生命周期仍待补齐（2026-10-18）
+
+- contract5/state49：45 PASS、2 FAIL、4 UNVERIFIED，剩余6。F312受控Host重启已实际成功，F313当前MCP5684/39b65db6映射安装cf2e6156/inode140158803，52模型工具；Agent54901及证书/配对/四权限保持。F315真实Host源PNG解码1024×856、内容320×344、眼睛/X可见；截图API实际JPEG，正确.jpg原字节另存。F316隐藏50ms内DOM清图，Native30/30/30稳定；首样5138ms晚于2秒，时限不算PASS。恢复/X和F317观察超时、不重发不确定点击；任务导航旧FAIL保留。自有4进程生命周期退出0、PID消失、Live stopped/worker_done/detach。Source505未变，复用F307最终1464/185/55/5、fmt/Clippy/架构0、源码0/5/0/5与UI55/48/55。下一先隔离Host隐藏观察通道，不盲目新场景或重启；M06/Host控制生命周期/PRCI仍待完成。
+- 真实时序画面与错误：outputs/validation/f313-f318-actual-host-live-2026-10-18/REPORT.zh-CN.md。没有把工具截图超时算成功，也没有因此终止生产服务。
+
+<!-- RWI_F307_F311_EXPANDED_LIVE_IMPLEMENTED -->
+## F307–F311：Live显式全屏入口已实现/回归/回滚/安装，实际Host待刷新（2026-10-18）
+
+- contract5/state48：42 PASS、2 FAIL、7 UNVERIFIED，剩余9（仅两项新MCP依赖暂待刷新，旧PASS保留）。F307已实现6路径/new1：show_live.presentation与静态show_live_expanded/full-only v6资源，默认小组件尺寸/行为保留；schema/owned capability/Host-offered一次请求，无可见性或Native输入授权。新静态入口不依赖结果模板覆盖支持。全量1464/fixture185/Node55/focused5，fmt/Clippy全targets/features/架构0；原URI断言101与lint101修正但保留，未放宽标准；测试拆分有独立review补丁。源码B/M/R/reapply0/5/0/5全0、原Source504 hash/new1缺失恢复、413严格重建；组件55/48/55全0。F309 release和签名校验0，F310仅原子安装MCP cf2e6156/inode140158803，其余11/Agent/证书/配对/权限不变。实际当前MCP48438仍映射旧139856211/51工具；不能以安装当加载或Host画面通过。F312对当前46355/CLI46459已确认链进行已授权受控刷新，open-n修正原F299实测-609，不重启Agent；下一只观察原supervisor终态后实际52工具/映像及自有App验收，不重放终止。M06/实际Host Live/PRCI仍未完成。
+- 该轮没有新的GUI截图或键鼠，不把Node/独立stdio当Host；实际可见性、眼睛/X、任务切换仍须下一实机验证。
+
+<!-- RWI_F304_F308_ORDERING_HOST_PRESENTATION -->
+## F304–F308：make-key路径与自身SkyLight导入已核清，显式Host展开候选待执行（2026-10-18）
+
+- contract5/state47：44 PASS、2 FAIL、5 UNVERIFIED，剩余7。F304/F306实际Rust构建/自身只读/otool均0；已定位旧普通点击栈2828紧随changeKeyAndMain2824，mouseDown4028在后；自身认证import实际解析SLSBlockWindowOrdering，但不冒认稳定ABI或外部调用权限，private调用/foreign读/GUI/input均0，M06仍FAIL。支持的MCPApps浏览器当前展开tabs=[]，无Native Host绕过、无新Host渲染通过。F307已冻结3路径/no-new候选：show_live.presentation显式fullscreen、挂载前独立full-only资源/一致初始化及结果URI、owned capability的一次已提供模式请求，默认compact/PiP不改；若Host忽略结果URI或不挂载仍需保留失败。Rust4/Node新增7(total55)只是待验预期，尚未应用/编译/部署。下一真实baseline0/strict patch/focused/Node后，再全回归/同412回滚/MCP-only部署/当前Host验收。Source504与精确1459/185/16、fmt/Clippy/架构0及源码B/M/R/reapply0/16/0/16明确复用，未伪称本轮重跑，旧Native失败和实际Host缺口不清零。
+- 详见outputs/validation/f304-f308-ordering-and-live-presentation-2026-10-18/REPORT.zh-CN.md。新模式不是可见性或任务绑定授权；不通过修改合作fixture/Command/touch/zero-count/restore伪造M06修复，也不以独立网页代替实际Host。
+
+<!-- RWI_F301_F305_LOADED_BACKGROUND_IME -->
+## F301–F305：实际新MCP及后台IME有限实机验收通过（2026-10-18）
+
+- contract5/state46：44 PASS、2 FAIL、5 UNVERIFIED，剩余7。F301真实Host46355/CLI46459/MCP48438已加载签名e7b2e47c/inode139856211、51模型工具及preparation；Agent54901/1f982784/ed3fc76c实际映像匹配，四权限有效。F299自动open -609/exit1保留，当前Host启动来源不推断，不重放重启；外部Codex配置漂移保留、未覆盖。F302后台真实marked[0,1]，控制器误读外层trace已按原始事件纠正；F303独立新场景n→space→n→Escape实际呢/保留呢、2marked/4键/Anchor0键、前台完整tuple5样本相同、9.14s，正常close/exit0/0/PID消失/detach/original terminal released。有限当前AppKit/Doubao experimental路线PASS，不推广所有应用/私有ABI。原失败保留。Source504未变，复用精确最终1459/185/16、fmt/Clippy/架构0及源码B/M/R/reapply0/16/0/16，不伪报重跑。下一F304有界自身AppKit新1024tail控制流读取；M06/Host Live/PRCI缺口未关闭。
+- 实际截图按时序见 outputs/validation/f301-f303-loaded-background-ime-2026-10-18/REPORT.zh-CN.md。两项controller读取/断言错误及原输入收据保留，未重发键盘或隐式换路。
+
+<!-- RWI_F298_F300_KEY_RECORD_DEPLOYED -->
+## F298–F300：受控部署已完成，等待实际 Host 刷新（2026-10-17）
+
+- contract5/state45：40 PASS、3 FAIL、8 UNVERIFIED，剩余11。F298新版已受控部署：Agent57773→54901，实际映射安装inode139856209；Agent/MCP签名及原designated requirement校验0，仅两二进制受保护hash变化，其余10项/配对配置保持。旧root MCP49587已正常停止；当前实际Host调用返回Transport closed，不能把磁盘安装当新MCP加载。下一F299复用成功supervisor对已核对Codex Host48148进行一次已授权重启，后用实际会话targets/目录/加载映像验收。Source504最终workspace1459/fixture185/focused16、fmt/Clippy/架构0与源码B/M/R/reapply0/16/0/16保持，Node48因UI不变复用。后台IME/同PID保焦点/Host Live/PR缺口未宣告通过，不重放旧输入。
+- 原始部署与传输错误：work/f298-key-record-controlled-deploy-2026-10-17/deployment/RESULT.json、ACTUAL_HOST_AFTER_DEPLOY.json。无私钥导出、配置迁移或权限重置，不等待用户重复授权。
+
+<!-- RWI_F293_F296_KEY_RECORD_IMPLEMENTED -->
+## F293–F296：显式接收端准备实现及签名候选已通过，待受控部署（2026-10-17）
+
+- contract5/state44：40 PASS、3 FAIL、8 UNVERIFIED，剩余11。F293 Source504已实现12路径/new3：computer.press_key.preparation 可选 target_key_window_record248_experimental，原租约/去重/精确窗口owner守卫；默认旧键字节不变，不做全局前台切换或恢复。最终workspace1459、fixture185、focused16，fmt/Clippy/架构0；源码B/M/R/reapply0/16/0/16全0，原Source501 hash与new3缺失恢复、412严格重建；UI未改Node48复用，初始真实失败保留。F296候选已用原证书签名且DR一致，尚未部署。仅M01三项新构建依赖转UNVERIFIED，旧PASS保留；Native ABI长度unknown、后台IME/M06/Host Live/PR缺口不掩盖。下一F298按已授权受控部署，同一dispatcher先真实targets/mac-host回读，后执行原command；实际Host加载与Native效果另验。
+- 原证书/配对/权限/生产服务均未改变；相关RWI/必要Codex受控重启已获用户授权，不再等待人工重复许可。完整报告：outputs/validation/f293-f296-key-record-implementation-2026-10-17/REPORT.zh-CN.md。
+
+<!-- RWI_F292_F294_KEY_RECORD_ROUTE -->
+## F292–F294：兼容性探针已执行，显式接收端准备候选已冻结（2026-10-17）
+
+- rustc/probe均0：私有投递/owner符号可见，_SLSEventRecordLength未导出，length unknown；private calls0、window/PSN lookup0、input/GUI0。不能从符号存在宣告兼容、IME或保焦点。
+- F293已生成11路径/new2候选与可执行baseline/patch/focused16 runner：core typed envelope默认key字节保持，press_key可选prep（可省略不可null），MAC精确window owner connection/PSN/PID，不做PID fallback；原lease/durable fingerprint/Native focus/geometry/session guards，配对记录status和前台变化检查后才键输入，无恢复/重放。
+- 候选显式legacy248_unattested，Native ABI仍unknown，未应用/编译/部署/验收。无全局SetFrontProcess，无previous-app defocus，不运行外部Python参考实现。生产实现保持Rust。
+- Source501/F288保持，复用1443/185、fmt/Clippy/架构0和源码0/6/0/6。51仍43/3/5，M06/M07/M15/M18缺口保留。下一实际执行候选，再完整回归/同411回滚/签名部署和当前Host Native验收，不再盲发旧n/i。
+
+<!-- RWI_F288_F290_CURRENT_ACTIVATED_CONTEXT -->
+## F288–F290：当前激活上下文差异已实机定位（2026-10-17）
+
+- current_input_context默认opt-in、仅3phase、nil/unknown/mismatch/own分开，先于旧lazy source getter，不调用activate/新inputContext getter，不读其他client属性或输出地址。
+- 本轮真实全回归1443/185，fmt/Clippy all targets/features/架构0；源码匹配0/6/0/6全exit0，原Source501 hash恢复/严格409重建；UI未改Node48复用。早启动seal的Clippy-pending exit1保留，等待原回归终态后新wrapper检查通过，不重跑输入。
+- F289 foreground current context/client=true且marked阳性，Escape取消后空；后台同来源/同editor但interpret enter/exit/keyDown exit均current=nil，0marked/AX空。Anchor OS完整tuple前后保持，12.382s，三个键各一次，正常清理并detach。诊断PASS不是后台修复或唯一因果。
+- 仍43/3/5、8项未过；M06/M07/M15/M18缺口保留。当前Source501以F288 manifest区别旧F271，不以数量充版本；生产MCP/Agent未部署/重启。
+- 下一F292只读Rust兼容性probe未构建/未运行，不发记录/不查window或PSN/不调用私有函数；参考代码中的全局SetFrontProcess、previous-app defocus与opaque pointer scan不可隐式照搬。之后须显式target-only守卫与真实验收。
+
+<!-- RWI_F284_F287_IME_COMMIT_CANCEL -->
+## F284–F287：前台真实组合/提交/取消已验，后台失败不掩盖（2026-10-17）
+
+- F284局部focus ready但app_active/key=false，source waiting，0键停止并正常清理，42.350s；不当成键盘失败。
+- F286明确自有前台setup后OS完整tuple/源/client/key成立；n→space实际提交呢，再n→Escape后仍呢；Native marked/insert、AX与原PNG一致，4键各1次、7.926s。receipt goal_verified=false原文保留，效果由独立证据判断。
+- 原请求全部terminal/released/no replay；normal Close/exit0/PID消失/detach，来源原本豆包setter0，不能虚称restore写入。
+- 51项仍43/3/5、8项未过。后台F280 FAIL与F282 local-key提供者拒绝保留，不标unsupported、不缩范围。
+- Source501未变，复用F2711443/179、fmt/Clippy/架构0、源码0/6/0/6；无部署或重启。下一F288两路径只读currentInputContext/client身份候选未应用，先baseline/patch/focused6、完整回归/同409回滚，再冻结新Native比较。
+
+<!-- RWI_F274_F283_IME_NATIVE -->
+## F274–F283：来源校准与前台组合通过，后台 IME 负例明确（2026-10-17）
+
+- 当前 state40、51项43/3/5，8项未过；M07后台组合真实负例，未标unsupported，也不冒称修复。
+- F274 setter1/restore1，TIS豆包→ABC→豆包一致、key0；F276预键上下文后真实setMarkedText/range[0,1]，只证明前台组件。
+- F280后台n到达但字段空/0marked，Anchor0keys、OS前台tuple前后相同；AppKit active与OS前台分轴。F282 local-key provider拒绝，setter0/key0。
+- F278准备脚本exit1/Anchor native exit unknown；F279硬60s过期、0键、两个wrapper0。错误保留，不算新的输入效果失败。连续编排后F2807.245s/F2825.004s，均正常清理/两PID消失/detach，无重放。
+- Source501未改，复用F2711443/179、fmt/Clippy/架构0、源码B/M/R/reapply0/6/0/6全0；本轮仅三项当前执行文档同步。
+- 下一F284前台真实组合/提交/取消，仅在marked阳性后发提交或取消；后台FAIL保留。相关服务必要时受控重启已获授权，本轮无需重启或更换签名。
+
+<!-- RWI_F271_F273_CONTEXT_CATALOG -->
+## F271–F273：实际目录已核清，纠正 mode-enabled 误述（2026-10-17）
+
+- 两路径诊断已实现：nil/partial/complete区分、client未采样null、目录独立时刻与client证明。Root1443/fixture179、fmt/Clippy/架构0，Source5010/6/0/6全0、原hash恢复、409全量严格重建；UI未改Node48复用，忽略11原文留存。
+- F272先背景AX focus ready但app未active，明确一次own foreground setup返回uncertain/foreground_identity_unknown，AXRaise/AXFrontmost各1；未重发，原operation terminal/released。后续只读未证明OS前台目标，其他PID未操作；own appactive/key的目录样本只描述该时刻本进程状态。
+- 目录complete3=ABC/豆包模式/豆包父项，与includeAllInstalled=false TIS keyboard3一致。原allInstalled Apple子模式IsEnabledtrue不等于父项启用/可用：Apple父项false且当前目录不含。纠正旧“Apple已启用”过宽表述，原数据保留。无Source setter/键盘，source前后不变，正常close/exit0/PID消失/detach。
+- 当前51仍43/2/6，CJK/IME未过。下一F274选择真正可用ABC只验组件选择/恢复，不替代CJK任务/不缩范围，不强开全局输入法。
+- Native场景298.86s超过60s复核，包含模型编排空档而非单次Native耗时；已停止，不重放。下一hard60s自动生命周期，绑定/读取/close在分析之前完成。
+
+<!-- RWI_F267_F270_SOURCE_CALIBRATION -->
+## F267–F270：输入源校准代码已验，原生前提未ready（2026-10-17）
+
+- F267已真正应用4路径/新2模块，自有fixture显式opt-in而非生产backend。Root1443/11忽略、fixture173、fmt/Clippy/架构0；source501 B/M/R/reapply0/6/0/6全0，原499和新文件缺失恢复，409全量严格patch重建。
+- F269新构建pin500b72af…自有71397/1395在虚拟屏，AX focus原生ready；sourcegate unavailable，setter0/key0。独立TIS前/中/后均Doubao，字段空；没有以全局已启用当context可用，没有放宽gate/换ID/发旧n-i。正常close/exit0/PID消失/detach，durable原Close terminal/released。
+- Native准备/切换/变更后恢复未通过，M07仍UNVERIFIED，不解释为不支持。实际上下文目录nil/count/budget/IDs未保留，current-client false是未采样默认而非已证实不匹配；下一F271修三态/有界目录/独立采样时刻与client证据，保持正例才允许setter。
+- 51保持43/2/6。生产MCP/Agent未改不重启；新2-path诊断候选未应用/编译。依次跑baseline/patch/focused6、完整Source501回归与同409回滚，再开新有界Native读场景，不重放F269。
+
+<!-- RWI_F266_F268_IME_READINESS -->
+## F266–F268：输入源前提实测完成，准备受控 provider 校准（2026-10-17）
+
+- 公开Rust只读进程编译0；初次RTK把带空格执行路径误拆，dispatch退出1，没有原生API失败结论。增加显式只读参数后实际运行0，错误与修正保留。
+- 首次128/335输出有207遗漏，未据此推断不存在；新512有界读取取得完整335/0遗漏。ApplePinyin com.apple.inputmethod.SCIM.ITABC已安装启用；当前Doubao，公开getter/setter类型@16@0:8/v24@0:8@16实际存在。不调用setter/全局enable/select，不建context/window，不发送输入；IME仍UNVERIFIED。
+- 新候选F267只为自有fixture加默认关闭--own-input-source：精确active field editor、可用来源正例、单次选择、真实采样无重选，退出时仅恢复仍属于本次选择的已知原来源。未应用/编译/验收，不冒称通用第三方输入法支持，也不重放旧n/i。
+- 下一真正运行baseline、strict patch和focused6，再Source501全回归/同四409回滚及原生来源准备/恢复/组合提交取消。Source499及当前生产MCP/Agent未改；51项保持43/2/6，复用1443/167和0/6/0/6，不伪报本轮重跑或功能通过。
+
+<!-- RWI_F260_F265_LOADED_FEEDBACK -->
+## F260–F265：真实加载与焦点反馈通过，保焦点缺陷保留（2026-10-17）
+
+- 重启62015→48148已实际核实，未重放；当前RWI MCP49587/ff5a6a31映射新版inode139745081/d68a9fcb，51模型工具、Agent57773及四权限保持。M01恢复PASS，51当前43/2/6，剩余8。
+- F263自有53715兄弟1318→主1317，普通public-AppKit单击down/up/click各1，focus_observation准确报告different_at_samples；完整Native样本一致，但焦点确实改变，M06仍FAIL。408ms是一次adapter墙钟，不是Native CPU或5样本性能结论。两个样本不证明连续保焦点/因果，无恢复/重放。
+- F262启动副本与新构建hash不匹配，背景实验未执行；用精确AX Close正常清理，再启动当前构建F263。两个自有进程都正常退出0/statusclosed/PID消失、targets detach；过期execution_ref负例保留，独立明确request查询保留terminal/released原收据，不当作新输入或自动fallback。
+- F264精确F256补丁仅5路径，本地commit b8b532bb0bef515d05629f3e173123d2ea190fc1，索引复空，Root Source499字节不变；无push/Actions，非最终交付HEAD。复用F2561443/167和Source0/6/0/6，未伪报本轮全回归重跑。
+- 下一M07新有界假设：先公开只读核实实际安装/启用输入源与NSTextInputContext方法元数据，再考虑自有client的来源控制；不改全局输入源、不继续盲发n/i或提交取消。M07/Host Live/M06/PR与CI缺口保留。
+
+<!-- RWI_F258_F261_MCP_INSTALL -->
+## F258–F261：MCP-only 部署，真实加载待刷新（2026-10-17）
+
+- Source499 release构建退出0，候选hash d68a9fcb…；签名校验退出0。仅原子替换MCP，安装inode139745081，旧PID78848仍映射139575236，不把安装当成加载。
+- Agent PID57773、证书、配对、权限与其余11保护项hash不变；不重签/重启Agent，不更改Host配置。已有用户授权允许相关RWI和Codex必要重启，不再请求人工。
+- 唯一受影响的M01新版MCP身份暂转UNVERIFIED，当前51为42 PASS/2 FAIL/7 UNVERIFIED，旧PASS保留；其他有效成果不清零。Source499不变，1443/167与0/6/0/6回滚明确复用，非本轮重跑。
+- 当前Codex Host62015精确身份已记录，准备一次受控重启；下一核原supervisor终态、新Host实际RWI映像和工具输出，再做自有窗口验收。M06/IME/Host Live/最终PR与CI仍待推进，不宣布目标完成。
+
+<!-- RWI_F254_F257_FOCUS_FEEDBACK -->
+## F254–F257：派发条件已核实，焦点反馈已实现（2026-10-17）
+
+- 实际自身AppKit代码读取：public sendEvent把isDelayedEvent设0，private dispatcher继续传入left-down；只读诊断，不是新输入路径/私有调用或保焦点修复。
+- 新增focus_observation三态和简明窗口摘要，完整四元组/时间/读错在details_ref；默认点击、跨PID、同窗口无额外RPC；去重、错误、fence和资源未释放不追加读；不把样本相同算作连续保焦点，不自动恢复/重放。
+- 最终Root1443、fixture167通过；11项忽略及理由写入FULL_REGRESSION_RESULT，Live UI未改，Node48明确复用。6项新测试B/M/R/reapply0/6/0/6全0，Source499/managed407已严格恢复与重建。无本轮生产部署或实机输入结果。
+- 51项仍43 PASS/2 FAIL/6 UNVERIFIED，剩余8；M06同PID、M07 IME、M15 Host、M18 PR/CI缺口保留。下一F258 MCP-only构建；不无故重签/重启Agent，不杀其他任务MCP。必要RWI/current Host部署重启已经用户授权，无需再问。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state33：43 PASS、2 FAIL、6 UNVERIFIED，剩余8。F250默认关闭的自有调用栈诊断已实现，Root1437/fixture167、fmt/Clippy/架构0，Source0/2/0/2退出全0及原hash/405严格重建。F252实机栈确认NSWindow left-down→_changeKeyAndMainLimitedOK→becomeKeyWindow，保焦点仍FAIL；lifecycle-15、PID消失、晚到Close在派发前拒绝，不称正常关闭。F253只读自身AppKit前缀及102 selector targets，非他进程访问/私有调用/输入修复。下一F254普通与延迟派发条件的有界自进程只读验证，不再盲改鼠标字段。
+
+<!-- RWI_F250_F253_KEY_CALLERS -->
+## F250–F253：实际夺key调用链与本机只读代码证据（2026-10-17）
+
+- F250 source2仅自有fixture，默认关闭focus-stack-trace、限regular/sampled普通测试、最多2次key/24帧×192字符；无attach、foreign task、输入策略/修饰位变化。新2测试、Root1437/11忽略、fixture167、fmt/Clippy/架构0，UI48复用；生产Agent/MCP无部署/重启。
+- B/M/R/reapply0/2/0/2退出全0，原Source497 hash恢复、同405全局85存在/320缺失严格重建。F249跨PID证据底层输入路径未改可复用；不重复已通过场景。
+- F252唯一新同PID诊断，24170/window1195→1194，flags0/event15/down+up各1，真实24帧栈显示_handleLeftMouseDownEvent:isDelayedEvent:+2828→_changeKeyAndMainLimitedOK:+628→becomeKeyWindow:+864；0missing/budget/skip/drop，核心FAIL保留。整理时lifecycle已退出-15，PID独立确认消失，晚到Close被process_identity_unknown派发前拒绝，原/关闭拒绝操作均终态释放、targets detach；最终状态文件running/ended空，不能声称正常Close成功或当实时画面。
+- F253独立可丢弃Rust终端分析harness，只读自身AppKit代码/自身Mach映射；未执行私有selector/修改tag/输入或权限。先保留编译括号exit1与method table无值exit101；改以实机PC/offset精确dladdr符号/映像/代码范围验证。当前cache叶RX及ADRP+ADD+B实测后解码102个objc_msgSend selector，key调用offset2824与栈吻合。外层READ1不是权限拒绝，旧header不是当前ABI；不凭掩码猜新事件字段。
+- 15分钟阶段复核已在22.28分钟明确承认超时；新增必需PASS0/FAIL0，43/2/6未变。停止GUI输入，下一F254只读公共/私有派发BOOL入口条件，再决定有依据的修复；不从诊断或文档宣称完成。
+- 中文时序原图、11忽略测试原始行、清理负例：../../outputs/validation/f250-f253-appkit-key-callers-2026-10-17/REPORT.zh-CN.md。
+
+
+<!-- RWI_F247_F249_NATIVE_NOTIFICATIONS -->
+## F247–F249：通知证据实现，跨PID有限场景通过（2026-10-17）
+
+- Root只改自有fixture source2：公开app/window delegate通知，精确actions/sender、128事件有界history、skip/drop/unmatched、armed/end时刻；不改接收策略，不恢复焦点，不替换非空delegate。新3纯测、workspace1437/11忽略、fixture165、fmt/Clippy/架构0，UI48明确复用；生产Agent/MCP无重部署、四权限/保护12 hash未变。
+- Source BASELINE/MODIFIED/ROLLBACK/reapply0/3/0/3，退出全0；独立冻结副本恢复原Source497 hash，再严格重应用，原四角色405全局85存在/320缺失恢复重建。纠正两条旧retained计数标签，不改旧字面事件证据。
+- F249两新自有PID14267/14287，先Front→Target→Front真实校准4类失焦返回通知；再一条普通public-AppKit后台canvas click，flags0/event12/down+up各1/click+1。Front完整OS tuple边界相同，通知6→6，0skip/drop/unmatched，key/active true。固定自有前台title/geometry与epoch源码复核，M06跨PID子例升PASS；不是全应用/全路由/全OS hook保证，也不把timer轮询说成连续事件。M06同PID仍FAIL。
+- 原请求及两次Close AXPress cleanup均terminal/released，状态closed和observer ended，两PID消失/targets detach，包装器exit0，Native精确退出码不猜测。全51当前43/2/6，剩余8；IME/Host Live/最终PR与CI仍须完成。
+- 下一F250默认关闭自有NSThread调用者栈候选，最多两key转换/24帧×192字符，无attach/外部进程内存/新投递修饰位；尚未应用/编译。先真正patch+focused/full regression+rollback，再一次自有同PID诊断，stack不是修复。准备时rustfmt锚点错误和F233路径错误均保留后修正。
+- 中文时序原图报告：../../outputs/validation/f247-f249-focus-notifications-2026-10-17/REPORT.zh-CN.md。
+
+
+<!-- RWI_F244_F247_COMPARISON -->
+## F244–F247：完成原编号对照，停止无效字段试探（2026-10-17）
+
+- 新自有PID7784兄弟1008→主1007，event number9/flags0/down+up各1、画布click+1。Application与Window down入口false，canvas mouseDown时true，和F243零number相同；M06保焦点继续FAIL，无修饰键/恢复焦点/重放。原操作terminal/released、两个target detach、自有PID消失；包装器-15不冒充Native退出码。
+- 当前MCP Apps展开清单[]，不伪造presence、不新建验收聊天、不绕过Native Codex拒绝。F246只将F241精确诊断hunk暂存2路径，本地commit e0c13b2861fc6304f3b615058f97f6292e648119，索引复空，Root Source497字节不变；未夹带Save/Hide/零number等未完成修改，无push/CI，最终M18仍待验。
+- 资料复核区分inactive应用与active应用非key窗口；不把Command-click或合作接收器策略当通用普通click修复。F247已准备经静态适用检查的source2补丁，公开自有窗口/应用delegate通知、对象核对、有界历史、显式skip/drop/coverage开始结束。明确未应用/编译/Native验收，下一真正派发patch+focused tests，再全回归/回滚及自有失焦返回校准；不能仅凭通知或采样判全OS连续通过。
+- 本窗口阶段复核：新增必需PASS0/FAIL0，已有核心FAIL和7待验保留；下一15分钟有界通知证据工作。相关旧回归1437/162/UI48明确复用，不伪报本轮重跑。
+- 中文时序原图与结果：../../outputs/validation/f244-f247-positive-comparison-2026-10-17/REPORT.zh-CN.md。
+
+
+<!-- RWI_F237_F243_ENTRY_LOCALIZATION -->
+## F237–F243：真实加载通过，后台夺key区间已定位（2026-10-17）
+
+- M01三项新构建身份恢复PASS；已成功的F236 Host重启不重复。M06仍FAIL，不把点击效果或诊断PASS改算保焦点PASS。
+- 原接收器F237零number仍夺key；F243自有同PID5562兄弟945→主944：Application/Window down入口均key=false，canvas mouseDown回调key=true；4条记录0invalid/drop/borrow-skip，flags0/down/up各1。只定位superclass派发区间，未识别内部具体selector。
+- F242 snapshot到输入前前台漂移，app已inactive，因此不作同PID结论；旧请求不重放。F238路径空格错误exit1、F239/F240 attach未就绪均保留，没有观察到权限拒绝；自有调试/fixture完成清理，未操作另一用户应用。
+- F241新增被动入口两个nullable字段，无激活/焦点恢复/改接收策略；先前字段补丁误配编译101已保留修正。workspace1437/11忽略、fixture162、fmt/Clippy/架构0，UI48明确复用。0/2/0/2退出全0、Source497原hash恢复、全405严格重建；生产无需因fixture诊断重部署。
+- Apple公开的delay/preventWindowOrdering是接收应用自身策略，不能改合作fixture伪装普通第三方支持。下一仅1个原正编号路径对照，15分钟阶段复核；IME/Host组件/最终PR/CI缺口仍在，不宣布目标完成。
+- 原图、字面证据及中文报告：../../outputs/validation/f237-f243-focus-entry-2026-10-17/REPORT.zh-CN.md。
+
+
+<!-- RWI_F236_HOST_REFRESH -->
+## F236：部署通过，真实Host刷新待验（2026-10-17）
+
+- 实际部署命令退出0，Agent新PID57773/inode139575234，MCP安装hash ab12c242…；同证书DR及保护10项hash保持，仅Agent/MCP二进制变化。
+- 旧Root MCP23942已停，真实工具读取Transport closed；官方控制socket本机不存在。已核实宿主/Applications/ChatGPT.app、bundle com.openai.codex、PID882，准备按已有授权受控重启，不请求人工配合。
+- 没有发送新模式Native点击，不把安装文件或启动当作M01/保焦点通过。先核新Host真实加载，再验自有兄弟窗口。Source497未改，复用本轮1437/160及Source0/6/0/6，不重复相同Native输入。
+
+<!-- RWI_F235_ZERO_EVENT_NUMBER -->
+## F235：显式零事件编号候选（2026-10-17）
+
+- 新独立delivery/能力门禁：仅将独立AppKit factory副本event number改0，原Private正数模板、source、时间戳、point、压力、flags0、clickCount1不变；仍用原counted Sequence::pair。无激活/Command/窗口tag修改/恢复焦点/fallback，默认与Touch不改，旧peer/Windows缺cap拒绝。
+- 6项新内存/协议测试；完整Root workspace1437/11忽略、fixture160、fmt/Clippy/架构0，Node48明确复用未改资源。Source BASELINE/MODIFIED/ROLLBACK/重应用0/6/0/6，退出均0；冻结副本恢复Source495及2文件缺失，再严格重应用Source497；全405原件85/缺失320重建，Root/M回滚均拒绝。
+- release候选已沿原本地证书签名且DR相同，生产未部署；M06效果/保焦点仍未验。只暂停3项新构建身份成绩，F230旧身份PASS及M13通过证据保留。
+- 下一同次dispatcher通过已加载computer.targets(mac-host)保存新鲜PREDEPLOY_RUNTIME，再运行deploy.py。不导出/换证书密钥，不改配对、权限或无关Host配置；不把ACK、候选文件或单测当Native成功。没有新增commit/push/Actions。
+- 中文记录：../../outputs/validation/f235-zero-number-candidate-2026-10-17/REPORT.zh-CN.md。
+
+<!-- RWI_F230_F234_LOADED_HOVER -->
+## F230–F234：真实新版本与显式冷悬停通过（2026-10-17）
+
+- M01当前Host三项身份/目录恢复PASS；不是只看磁盘文件。Agent/MCP实际inode与F228签名部署相同，当前PID1725/23942，系统已进入新boot/session；没有复用旧绑定。
+- M13显式visible_desktop_system：普通Chrome155按钮后台首次进入/移动各1次、hover=true、绿底黄边原图核对；前后OS全tuple相等、Chrome inactive，禁止重放，原操作terminal/released、进程与附件清理。默认后台旧FAIL保留，physical cursor确实移动。
+- F230证据序列化失败发生于hover前，已保留error/exit1；修正并做长JSON预检后，F231使用新场景、不是重放旧输入。
+- F232新的会话内Live侧栏观察清单仍空、0capture/suspended；已stop/worker_done/清图/cleanup，不请求人工、不越过Native Codex观察拒绝。M15不升PASS。
+- F233只读SLSGetWindowTags可用、当前自有window返回0/未置prevents_activation；不调用setter、不输入，不将tag读取当保焦点。F234已验证hover的11文件本地commit e944c4f，排除无关snapshot说明hunk；不push，不触发CI。
+- Source495未变，旧workspace1431、fixture160、fmt/Clippy/架构0与Source0/8/0/8复用，不声称重跑。详细中文报告与两张按时序原图：../../outputs/validation/f230-f234-loaded-hover-2026-10-17/REPORT.zh-CN.md。
+- 下一M06新线索：macOS27激活与mouse event number相关，先核当前正数配对/路由内存基线，然后独立显式零number候选；不得加Command、改默认、恢复焦点或重放旧click。IME、Host Live与最终PR/CI仍必须完成。
+
+<!-- RWI_F229_DEPLOYED_ROOT_RECONNECT -->
+## F229：受控部署通过，真实 Host 连接待恢复（2026-10-17）
+
+- 实际部署命令退出0；新Agent PID36721/inode139448969，MCP安装SHA8df0bcd5…，签名DR一致。仅Agent/MCP二进制变化，其他10项保护hash不变。
+- 旧Root MCP75647已停，三次当前工具读取均Transport closed；不能用磁盘新文件、Agent启动或独立stdio冒充Host加载成功。M01三项继续待验，旧成绩保留。
+- 官方config/mcpServer/reload已核对，但本机daemon控制socket不存在；实际宿主为/Applications/ChatGPT.app、bundle com.openai.codex、PID74988。按用户已给授权进行一次精确进程受控重启，不重复请求人工配合。
+- 重启后先查实际加载computer.targets，再验唯一授权虚拟屏隔离Chrome的显式可见桌面hover。默认后台旧FAIL、IME和Host Live未验证项保留，不扩大通过范围。
+- 源码495未改，不重复cargo或Native输入；保留F228 workspace1431/fixture160和Source0/8/0/8回滚证据。部署证据：../../work/f228-visible-desktop-hover-2026-10-17/deployment/RESULT.json。
+
+<!-- RWI_F226_F228_ASYNC_IME_VISIBLE_DESKTOP -->
+## F226–F228：有界异步读回与显式可见桌面悬停候选（2026-10-17）
+
+- F2268项只读门控测试通过。F227原n/i请求各固定2秒、各66次读回仍未知无组合；不发Return/Escape、不改源/模式，停止本构建键盘场景。13.843秒含清理，原操作terminal/released、自有PID143且消失、窗口/附件0，无重放。
+- F164/F189零修饰click含Touch确实夺key，保留M06 FAIL；参考Command标志不是普通click，不偷换修饰键或恢复焦点。
+- F228新增visible_desktop_system显式物理MouseMoved：精确system-wide AX暴露命中、原前台全tuple、映射/TCC/HID/无按住输入/lease。默认后台与原foreground_system selected-window守卫不改；不激活、不按键鼠按钮、旧peer缺cap拒绝、不fallback。不能宣称不可见后台等价或冷hover已修复。
+- Source495/新2模块、8测试；workspace1431/11忽略、fixture160、fmt/Clippy/架构0，Node48复用。0/8/0/8、Source493原hash/新文件缺失恢复和495/403严格重建；Root/M回滚均拒绝。
+- Agent/MCP release候选已冻结，Agent原本地证书签名并验证DR相同；生产未部署。M01仅3个受新构建影响子项改待复验，旧通过保留，总51不变。未新增commit/push/CI。
+- 下一由同次dispatcher调用当前加载computer.targets(mac-host)写新鲜PREDEPLOY_RUNTIME，再运行deploy.py；仅相关Agent/本任务MCP受控重启，保持配对与证书。新Host加载/冷hover必须后续实测，不用独立stdio代替。
+- 中文原图与版本报告：../../outputs/validation/f226-f228-async-ime-visible-hover-2026-10-17/REPORT.zh-CN.md。
+
+<!-- RWI_F223_F225_INPUT_CONTEXT_NATIVE -->
+## F223–F225：精确输入上下文与有界前后台诊断（2026-10-17）
+
+- 默认关闭的现有trace新增InputContextSource，仅keyDown super后采样自身client/source；128UTF16上限，nil/超限/无效/错client均unknown。getter可能创建context，不冒称后续行为未受影响。
+- 新增6测试，同命令B/M/R/reapply10/16/10/16，原hash恢复、401严格重建；workspace1423/11忽略、fixture160、fmt/Clippy/架构0，Node48复用。单独build并冻结新fixture202ddb，未部署生产Agent或MCP。
+- F224一次后台n，8实际回调，AX/原图n，未组合；实际自身source与TIS都为Doubao Pinyin，否定source不同，不证明内部英文模式。6.230秒含清理。
+- F225同一client后台n后显式前台i，i进入keydown/interpret/keyup，但紧邻AX/原图仍n。未给异步组合等待窗口，不据此声称IME不支持或输入未投递；H2仍未决。9.314秒含清理，不用前台诊断充作后台PASS。
+- 两场原操作terminal/released，无重放；自有PID143并消失，匹配窗口/附件0，无fence。官方MCP Apps本任务专用tabs当前为空，不操作Native Codex UI，不要求用户睡觉时配合。
+- 仅两观测源码文件本地commit089c183，未push/触发CI。下一F226先验证只读新鲜度/identity/sequence/固定deadline，pending不当无效果，不盲换输入路由。中文原图报告：../../outputs/validation/f223-f225-input-context-native-2026-10-17/REPORT.zh-CN.md。
+
+<!-- RWI_F219_F222_IME_NATIVE -->
+## F219–F222：实际组合态观察与当前输入法验收（2026-10-17）
+
+- 既有opt-in trace新增Context.marked_text，未知范围/采样变化不伪造零；默认关闭，没有观察器输入或文本替换。Source493两fixture文件变化，生产Agent/MCP无需部署。
+- B/M/R/reapply为5/10/5/10，退出全0、原hash恢复；workspace1423、example154、fmt/Clippy/架构通过，未受影响Node48复用。
+- F220首个环境数组空导致验收脚本错误，focus/key0；F222只读READY门控5测试通过，新Native一次n一次i，AX/PNG为ni，16实际回调无marked态，不发Return/Escape，IME仍未通过。目标AppKit active与OS前台不同，不冒称全程inactive或连续完整tuple。
+- 原请求已结束释放、两PID143并消失、匹配窗口/attachments0、无fence；41.728秒含清理，无重放。当前Root Host MCP75647/inode139192828/1273f4，51模型工具，Agent7294/35aee7；非磁盘版本推断加载。
+- 必要RWI/adapter/Codex受控重启已授权；不再次索要同许可，不因fixture更新无谓重启。完整报告：../../outputs/validation/f219-f222-native-ime-observer-2026-10-17/REPORT.zh-CN.md。
+- 下一20分钟只补目标自身InputContext source观测，不能以系统TIS推断内部中文模式，物理chord没有Unicode override；不盲换构造器、不改用户输入源。
+
+<!-- RWI_F216_SAVE_F218_PREPARED_UNICODE -->
+## F216–F218：Save恢复与显式后台键盘准备（2026-10-17）
+
+- Save一次原生开窗原返回uncertain/-25204不升级；原operation安全终结后，先Native再新state确认同一NSSavePanel，Cancel一次response0、sheet离开，父Safe+1且目录空；4.462秒含清理。
+- F217复核原F192探针：Window.AXFocused只读，不代表两个AXTextField不可写。同版本源码AX节点focus与native view/renderer焦点链提供新准备假设，未宣称已观测内部实现分支。
+- F218预先冻结omnibox→页面空字段两次focus；两个原setter均ready且无键盘热身。独立AX/DOM确认准备后一次固定13units后台键盘，最终Native AX+DOM+PNG13。即时text_effect与早期Swift AX11保持原样；不重发文本，接收异步差异未确诊。
+- 前后台完整tuple七次采样保持Anchor；产品focus跨PID只有公共app级custody，不冒称连续完整tuple或硬件人工证明。Chrome默认未准备路径和普通hover仍不据此改判。
+- F219不重造已有text-client trace；计划只补public NSTextView实际marked-state/range观测，随后分开验证组合/提交/取消；Unicode成功不是IME成功。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state21：39 PASS、4 FAIL、8 UNVERIFIED，剩余12。F211 Live5与F212固定目标身份负例通过，计时模块本地提交9111848，未push/触发CI。F213 Save仍UNVERIFIED（目录准备与旧state门控错误，Cancel0/父Safe0）；F215已用原失败记录验证8项只读新state等待，待F216一次实机。F214同版本Chromium源码追到renderer IME焦点门控，不冒称运行时根因或键盘已修复。Source493、Agent/MCP未更换。
+
+<!-- RWI_F211_F212_ACCEPTED_F213_RETAINED -->
+## F211–F215：Live计时、目标隔离与Save读回修正（2026-10-17）
+
+- Live正式5样本，工具墙钟8/13ms、设备controller1605/4345us（中位/最大）；Stop清图worker_done，capture2/2间隔1008ms。原F210未重做。
+- 两个独立窗口A/B混配真实frame/target唯一请求unknown_frame，原操作已结束释放，两fixture计数均0；不把同host负例泛化成跨主机/用户隔离。
+- Save原请求uncertain保留、独立实际开窗；旧state取自原生观察之前造成假门控失败，Cancel尚未执行。只读等待helper核验PID/window/run_id和时间，pending不当无效果，8离线测试通过，不授权输入。
+- 本地commit9111848仅4个计时源码/测试文件，源字节不变；未push。F214同155.0.8059.84源码发现null-target IME commit会经过主frame焦点门控，F105的非BMP丢失与其相容，但尚未观测实际分支；不换AXValue/DOM路线冒充键盘修复。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state20：37 PASS、4 FAIL、10 UNVERIFIED，剩余14。F209计时实现、1423工作区回归、同四角色0/8/0/8及同证书Agent部署已验证。F210快照/输入各5样本完成，工具墙钟中位235/198ms，设备执行器墙钟中位187.233/170.197ms；非CPU/纯FFI/速度优势。Live因脚本interval150低于250被拒绝，正式0/5；下一F211仅用合同500ms补Live，不重做前两组。
+
+<!-- RWI_F210_TIMING_NATIVE -->
+## F210：原请求性能读回（2026-10-16）
+
+- 原10个请求的哈希、原图和紧凑JSON UTF8字节数独立复算；输入Safe计数1→5，终态释放。设备executor计时明确包含Rust守卫和Native调用；不将Host往返、纯FFI或CPU混为一谈。
+- Native场景含清理6.397秒；自有PID退出143且已消失，attachment/lease清理。
+- Live启动参数150ms错误保留，最低允许250，原合同500；未启动有效采样，cleanup回读不充作样本。只对这项补正参数，既有快照/输入不重放。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state19：35 PASS、4 FAIL、12 UNVERIFIED，剩余16。F208后台Chrome AXMain已true，按条件停止，setter/hover均0次，原F206 FAIL不变。F209新增device_call_wall整数微秒（设备执行器/Live控制器墙钟，非纯Native API/CPU），8新测试、1423工作区回归通过，独立副本0/8/0/8与原hash恢复通过。已用同证书仅重启Agent99807→7294，四权限/配对保持。F210三组各5样本已在原合格Host启动，尚未宣称M16通过。
+
+<!-- RWI_F209_DEVICE_WALL_TIMING -->
+## F209：设备调用计时与受控部署（2026-10-16）
+
+- 字段仅在实际executor/controller调用后添加，派发前拒绝不伪造0；原错误、图像、诊断和已持久化样本保留，不改变重放规则。
+- 单位改为整数微秒，修正浮点JSON回读末位漂移；测试曾错误假设去重返回结构，保留失败记录并按实际结构修正。新测试拆到两个小模块，未放宽600行架构上限。
+- fmt、workspace1423/0/11、Clippy、架构通过；无关Node48/example149依赖未变复用。Agent35aee7签名DR相同，11保护文件不变；MCP1273f4不动。
+- 历史核心FAIL和51例分母保持；F210未结束，当前只确认实现、部署及离线/回滚证据，不宣称性能改善或新Native效果。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state18：35 PASS、4 FAIL、12 UNVERIFIED，剩余16。F206固定Chrome普通后台hover9.561s内明确FAIL：returned不等于效果，24条新读回事件0/hoverfalse/CSS未变，原PNG相同；无重放。已清理。F207取得155.0.8059.84公开tag接收源码并复核F29，发现main/key接收条件线索，不宣称运行时根因。Source491与部署未变，保留F204 1415工作区/149example/0-4-0-4回滚。下一项F208有界local-main条件诊断，准备后结果不能冒充原cold路径已修复。
+
+<!-- RWI_F206_F207_NATIVE_RESULTS -->
+## F206–F207：普通冷hover负例与版本匹配接收端线索（2026-10-16）
+
+- 一次默认background_window hover，无warmup/click/cooperative/fallback。精确AXButton点位位于被动DOM矩形内；请求returned但24新读回零事件、CSS不变，原PNG SHA相同，前台完整元组前后相同。Chrome真实映像/Framework155.0.8059.84核对，非用户profile。
+- Chrome退出码null（不是supervisor child），anchor143；精确PID/profile进程不存在、绑定与租约及HTTP服务清理。不把ACK当成功，不宣称所有Chrome/系统不可能。
+- 对应tag Cocoa shouldIgnoreMouseEvent条件检查main/key或appactive；runtime分支未实测，embedder可改默认。Unicode多UTF16走ImeCommitText，keyboard事件中widget identity已固定；Host ImeCommitText此函数没有IsFocused早退。F29八个keydown默认已完整，不应凭8/16摘要盲换constructor；override提升是BMP keyup。
+- 下一诊断只读AXMain等轴及settable，明确不是进程内NSWindow getter。只有Main确实false可写且OS前台属于anchor才可显式local-main一次，再有条件hover；Prepared效果不替代原cold负例。生产源码无修改。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state17：35 PASS、3 FAIL、13 UNVERIFIED，剩余16。F204默认关闭visibility_controls与原生app_hidden读回已实现；F205 hidden2.997s、overlapped3.588s窄范围PASS，M12三项齐全。不是隐藏/遮挡pointer成功或通用能力保证。工作区1415/11忽略、example149通过；同四角色源码0/4/0/4和原hash恢复已验证。没有Agent/MCP部署重启。下一项M13普通Chrome冷后台hover，51分母/旧失败/T0保持。
+
+<!-- RWI_F204_F205_NATIVE_RESULTS -->
+## F204–F205：自有隐藏控件及有界遮挡复验（2026-10-16）
+
+- Options.visibility_controls默认false，要求regular app+环境采样且拒绝共用modal/system按钮行。按钮只对自身NSApplication hide:，不跨RefCell借用执行可重入框架调用；State.visibility.app_hidden来自isHidden，hide_requests不是效果。新增4项离线测试，原默认UI/状态字段保持。
+- F205目标后台一次显式Hide AXPress；独立NSRunningApplication.isHidden与fixture为true，snapshot拒绝但未声称销毁/授予输入；专用原图tick100在91..110内。2.997秒。
+- 遮挡独立CG相同bounds/cover在前；语义仅Target Safe+1；pointer动态content漂移stale_reference零派发，不重试，不声称occlusion特定guard或成功pointer投递。3.588秒。原F202前置失败/81.633秒结果保持，批处理是新有界复验的差异。
+- 四个自有实例精确身份SIGTERM退出143，PID不存在、lease与attachments清理；没有热身或第三次盲激活。
+- Source491变更仅fixture3；全量1415/0/11、example149/0/0、fmt/Clippy/架构0。独立副本源码0/4/0/4、原hash恢复和399严格重建；CLI旧版拒绝新flag，新版check-only通过且不创建目录/GUI。补丁作者首次匹配2处断言失败未写源码，修正唯一State锚点后继续，错误保留。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state16：33 PASS、3 FAIL、15 UNVERIFIED，剩余18。F202最小化窄范围PASS；隐藏两次前置失败、遮挡整场超60s保留UNVERIFIED。F203快照计时UNVERIFIED，原生分阶段/工具墙钟/编排分开，不声称CPU或速度优势。Source491无修改，16项缓存诊断回归通过；M17复用匹配源码的1415工作区/145example及F198回滚0/3/0/3。S4已完成90分钟首次复核但整体未完成；下一步F204有界夹具修正，不做第三次盲激活。
+
+<!-- RWI_F202_F203_NATIVE_RESULTS -->
+## F202–F203：有限状态与分层耗时（2026-10-16）
+
+- M12 minimized：AX和原生miniaturized一致；普通snapshot拒绝且保留对象仍在/未证明销毁，独立只读PNG动态tick2053在2048..2059内，无input frame/authority。
+- hidden首次lease_required确认零派发；新准备因前台变化在claim前终止，没有重放或第三次激活。overlapped语义Target+1/Cover0、pointer零派发但整场81.633s超过60s，保持UNVERIFIED，不能只拿1.37秒末尾区间冒充整场。
+- 清理5个自有PID独立确认不存在；hidden/minimized/preparation2精确身份SIGTERM退出143，overlap两实例AXClose退出0；不写成全部正常退出0。
+- 性能：原生metadata/capture阶段来自对应原始缓存，不能把adapter RPC或Live last_capture_ms叫Native CPU。16项保留原始诊断/错误/未知字段测试通过，Native读回结果单列。减少逐条人工转抄大JSON/PNG的编排开销，不改变权限/租约/无重放规则。
+- S4 90分钟复核已报告；剩余核心失败未解决，不标Complete/blocked。下一步默认关闭的自有Hide控件建立真实隐藏前置，估25分钟实现/验收，原失败保留。
+
+当前证据：[macos-current-state.json](macos-current-state.json)。contract5/state15：32 PASS、3 FAIL、16 UNVERIFIED，剩余19。F197 Font、F199普通前台Color通过；F200 Save uncertain/-25204保留，超时后Cancel清理不冒称主体PASS；F201 AXValue PASS。F198仅自有Save夹具扩展，1415工作区/145example通过，新增3测试与同四角色0/3/0/3实际回滚通过。未部署重启，生产证书/配对不变。下一项同Host有限M12，51例/T0不变。
+
+<!-- RWI_F197_F201_NATIVE_RESULTS -->
+## F197–F201：系统面板与后台整值编辑（2026-10-16）
+
+- 字体/颜色仅已声明打开、精确发现绑定、虚拟屏位置、读取/关闭和父窗恢复；不外推字体应用、所有控件或隐藏后台。F197失焦Color仍保留UNVERIFIED。
+- Save实际原生子类NSKVONotifying_NSSavePanel；原AXPress uncertain/-25204未重放，必要清理一次Cancel响应0、父Safe+1、目录空；不能把131.589秒清理当60秒完整验收。AXPress已有独立500ms预算，不等同F195焦点setter预算缺陷。
+- F198默认关闭--save-panel、真实native_class读回，原Open默认保持；仅example3文件，无Agent/MCP部署。回归1415/0/11和example145/0/0分开，独立副本匹配0/3/0/3、hash恢复、全局399严格重建已观察。
+- F201结果与限制见work/f198-save-panel-fixture-2026-10-16/VERIFIED_F201.json；不将AXValue当键盘/IME修复。M06/M07/M15原核心缺陷保留。
+
+<!-- RWI_CANONICAL_MAC_CURRENT_STATE -->
+# 当前入口（以下历史不再是可执行游标）
+- 唯一机器状态：[macos-current-state.json](macos-current-state.json)
+- 执行摘要：[macos-goal-execution.md](macos-goal-execution.md)
+- 批准合同：[macos-acceptance-contract.json](macos-acceptance-contract.json)
+- contract 5：本版本18组／51例，当前29通过、3失败、19未证、剩余22；精确状态以JSON为准。
+- 以下按时历史保留，不从旧标题或Source21派发。
+
+<!-- RWI_F191_F196_S3_S4 -->
+## F191–F196：后台Unicode复核、前台三项与focus写入预算（2026-10-16）
+
+- S3：H1只确认Chrome窗口AXFocused不可写，不等于证明真实NSWindow不key；H2新后台pointer点击未让plain field聚焦，两个实验都未发新文字。旧Chrome13→5失败与完整清理记录保留，无AXValue/剪贴板替代、无H3。F196还观察到自有NSWindow key=true但AXWindow AXFocused=false，必须分清轴。
+- S4：F194实际前台点击/5秒拖拽通过，文字准备setter -25204 uncertain；未重放或继续输入。修正dispatch_semantic_focus：确切对象一次setter显式250ms等待，读仍50ms；配置失败零setter，setter失败不重试，已focused无配置/写入。4项新增测试，全量1415通过/11忽略，fmt/Clippy/架构通过。
+- 受控只重启Agent62194→99807，同一签名/配对，其他11保护文件不变，MCP/Codex不重启。F196新fixture单次focus ACK/ready和一次keyboard13/13由独立AX、9次Native文字回调、原图确认；旧错误未改。这不是timeout单变量因果、可靠性统计或Chrome修复。
+- 所有自有实例/lease/attach已清理；Chrome无法收集原退出码时保持null，精确PID/独立profile进程已不存在，SIGTERM仅清理自有Chrome。Source491/F195回滚及重新应用已实际通过：匹配0/4/0/4、退出均0，旧hash恢复、全局85/314和严格补丁重建；M17恢复PASS。下一步同Host两项Font/Color面板。
+
+<!-- RWI_F189_F190_NATIVE_RESULTS -->
+## F189–F190：真实新Host与两类pointer实机结果（2026-10-16）
+
+- MCP63029/1273f4/实际inode与Agent62194/55a913对应；不把主会话旧连接冒充刷新。Touch显式候选只投递一次，subtype3/down-up/零修饰键都原生确认，但同PID兄弟窗口5824的焦点被primary5823夺走，FAIL，未切回或重试。
+- 复用同一Host，普通默认跨PID后台点击原生1down/1up、anchor未收到误投输入；前后完整OS元组一致，25ms环境采样与事件回调未见夺焦。采样范围PASS不等于连续window/epoch证明，原M06跨PID完整验收仍UNVERIFIED。两次自有fixture均退出、租约释放、绑定解除。
+- Source491保持，1411回归通过/11忽略；同四角色匹配测试0/6/0/6和Touch协议false/true/false/true，恢复Source489原hash。独立副本首次缺两个include_str JSON造成编译101，补入原文件后同命令0；错误保留，未改生产代码。
+- S2保留FAIL和UNVERIFIED，停止第三个无新依据的同PIDcarrier；接续S3检查Chrome key-window/input-context假设，旧13→5和AppKit13→13都保留，不用AXValue替代键盘。
+
+<!-- RWI_F188_EXPLICIT_TOUCH_DEPLOYMENT -->
+## F188：显式Touch候选与受控部署（2026-10-16）
+
+- 新字段mouse_subtype默认Mouse，显式Touch才写subtype3；能力必须单独实现且可用，拒绝旧端/非法字段，不加Command、不换路线。测试模块先纯移动再做行为变更，保留独立checkpoint。
+- 1411通过/0失败/11忽略/48组；fmt、Clippy、架构与release构建通过。相同无设备输入：旧版invalid_arguments，新版resource_unknown；这是解析门禁变化，不是Native效果。
+- 人工明确批准必要RWI/adapter/Codex重启。沿用原签名要求和密钥，实际只重启RWI Agent47164→62194；MCP1273f4部署，四权限仍有效。bootout/bootstrap均异步，首次立即检查分别仍见旧PID/xpcproxy，保留错误后改为等待后只读核对，无重复重启。其余9个保护文件hash不变。
+- F189新BUILD唯一Host只验同PID兄弟窗口Touch点击；原F164失焦负例与51例分母保留。Source491及同四角色的回滚/重应用以ledger为准，未验收即不判通过。
+
+<!-- RWI_F187_SUBTYPE_MEMORY -->
+## F187：S2 Touch候选的原生内存前置验证（2026-10-16）
+
+- 本机SDK明确NSEventSubtypeTouch=NX_SUBTYPE_MOUSE_TOUCH=3；不是禁止激活标志。新增3项cfg(test)实验，对独立NSEvent factory→CGEvent副本分别写0/3并由NSEvent解码；down/up保持type1/2、flags0、eventNumber73、clickCount1以及不同非零nanosecond时间戳，原件未变。只在内存准备地址，不调用post、不建窗口、不访问真实目标。
+- 生产函数前缀逐字相同，仅测试fixture可见性与测试模块增加；没有部署或重启Agent/Host。M06同PID失焦仍FAIL。下一步将Touch做显式默认关闭的候选参数并要求独立能力，不能静默加Command、替换普通点击或用内存PASS冒充目标效果。
+- 实际回归1405通过/0失败/11忽略/48组，fmt、Clippy-Dwarnings、架构均0；HTML未变复用Node48。首次编译101来自EventField常量拼写，按依赖实际MOUSE_EVENT_SUB_TYPE修正，原错误保留。沿用同四角色；回滚方式为独立验证副本恢复Source488原hash；实际结果以同四角色ledger为准，绝不回滚生产树。
+
+<!-- RWI_F186_PREARMED_LIVE_PIXELS -->
+## F185–F186：独立Live连续画面闭合；分层性能保留缺口（2026-10-16）
+
+- 复用唯一合格Host3886，不新增聊天/部署/生产服务重启。先让独立观察器存活且READY，再发新fixture、新ID、反向路径的一次5秒拖拽；并非重放F183。原生1/79/1，手势内10个canvas像素hash，主会话重算并查看3张原PNG，均完整落在保守手势时间窗内。
+- 同一个观察器在Hide握手后继续采样；Resume后460ms内取得同源新渲染PNG。合并同BUILD F183小浮层、原生Hide/X和清理，M14三子例现在PASS。会话内M15仍受实际Host可观察性/导航继续采集问题影响，未外推通过。
+- 固定5+5+5样本：snapshot外层墙钟中位210ms/最大457ms，input receipt173/207ms，Live read8/11ms；JSON返回字节中位175426/1808/6780。5次Safe AXPress各+1且完整前台元组不变；PNG和控制元数据保留。adapter墙钟和RPC阶段不叫Native CPU；snapshot Native计时缓存迟读已过期，input/Live没有独立Native计时，所以M16仍UNVERIFIED，不做p95或优于CUA的承诺。
+- 无产品源码变化，沿用Source488/1402测试/Node48/同四角色。主会话Pillow验证最初因系统Python缺PIL退出1，改用已配置bundled Python后实际退出0，原错误保留。下一项回到M06同PID焦点缺陷：先验证显式subtype3内存/解码假设，不默加Command、不改守卫、不把内存通过当Native效果。
+
+<!-- RWI_F183_INDEPENDENT_NATIVE_LIVE_OBSERVED -->
+## F182–F183：新Host和原生小浮层实机结果（2026-10-16）
+
+- 仅中性MCP、RWI注册revision和匹配Skill部署为bd7e35；Agent、证书、配对、Host未重启，原其余10保护项未变。唯一新验收聊天实际MCP3886/inode139122632已与安装对应，模型目录51；未要求旧主会话刷新。
+- 实机198×200pt浮层、隐藏/X控件完整。真实Hide在433ms内清图，capture177保持13.6秒；真实X在342ms内停止/worker_done/清图，没有用API stop冒充。自有fixture exit0并detach，生产Agent/MCP存活。
+- 仍有两项观察缺口：5秒拖拽1/79/1已完成，但像素观察晚649ms开始；Resume原生新图109ms，独立像素晚于2秒。不会把计数当像素，也不要求用户重测。后续应先准备独立观察器，再按既有授权执行不同的新场景，不是重放原输入；无需新增人工许可。
+- 当前51例24通过/3失败/24未证，剩27；M14原Host gate失败归档，当前帧率用例未证。Source488的1402测试、Clippy、架构、Node48和同四角色回滚已验证，不代表完整Goal结束。
+
+<!-- RWI_F181_INDEPENDENT_NATIVE_LIVE -->
+## F181：独立原生 Live 与会话内预览分离（2026-10-16）
+
+- 新增显式 `computer.show_native_live`：要求选定目标和预览显示器；不写入、伪造Host可见性，不随聊天切换自动隐藏。保留有界期限、会话、授权与原生停止生命周期。已有预览不自动重配或重放。
+- `computer.show_live`仍为会话内模式；资源和HTML统一声明inline/fullscreen/pip，实际只请求Host声称支持的模式。不是Host画中画能力证明。
+- 新增7项测试；当前工作区1402通过、11忽略、48组，fmt、Clippy-Dwarnings、架构ratchet均0；Node48另计。Clippy两项错误与gateway602行超过600门禁均保留，采用词法锁作用域、布尔简化和Live目录职责归并修复，未放宽门禁。
+- 已保留旧Host身份、原生Live失败与实际像素缺口；源窗口/权限/Agent不变。当前仅候选构建，部署与实机帧、隐藏/恢复/X仍待验。继续同四角色，原始源码只在独立验证副本回滚。
+
+<!-- RWI_F177_FOCUS_RECEIPT_ERROR_PRESENTATION -->
+## 当前进展：切窗不确定结果不再包装成成功；已部署中性 MCP 修正（2026-10-16）
+
+- **实机负例没有抹除**：F176 自有 Peer 的一次置前请求实际发出 AXFrontmost=1／AXRaise=1，原生返回 uncertain／foreground_identity_unknown，却由旧 MCP 报 isError=false。Peer 曾短暂前台，后独立读回已非前台；因此没有发送预定 pointer。系统面板仅用语义 Cancel 清理，两窗口已关闭／PID 消失，5 原请求终态释放禁重放。不是“置前无作用”或 pointer 通过。
+- **最小修正**：当前 computer.focus_window 与已有 hotkey 同样显式呈现 receipt.dispatch_error；将 isError 置 true，并在缺失时补 code／message。原始 receipt、原生已进入、不确定性、请求计数和 operation_ref 保留；不改原生输入／焦点守卫，不自动重试，也不把 computer.operation 的历史错误变成本次查询失败。computer.bring_to_front 与 JS 路径继承同一处理。
+- **真实协议及回归**：固定 TLS 数据 peer＋实际 Rust MCP stdio 的旧／新对照，direct、JS、bring_to_front 的错误标志 false→true，错误码 foreground_identity_unknown 可直接读；历史查询及无错控制仍 false。每轮 Prepare／Execute 各7，无新增 Native OS 输入。新增5项测试通过，workspace1395通过／11忽略／48组；fmt、workspace、全目标全特性 Clippy-Dwarnings、架构 ratchet 均0，Node48另计。测试 peer 误把 claim/release 当缓存的101、架构命令路径错误2及各自修正均保留，不改生产合同迎合错误测试。
+- **部署范围**：仅安装 MCP 原子替换为 3be8bc02c432fe75513ee972088f6553b7ab4b802c4323c658bb25e3d654b1e7；候选与安装签名验证0，旧 c07476 完整备份，新进程 PID／instance／加载 inode 已核对。其余11保护项未变，Agent／Host／其他 MCP 未重启；当前会话旧连接未证刷新，不冒称加载新输出。F176期间另一个 config.toml hash 变化仅观察记录，未解析、改写或恢复该配置。
+- **Live 与完整余项保留**：再次核对官方画中画说明及既有实测；组件320×344、眼睛／X和36px命中区、原图1320×1104不降质的证据仍有效，但不等同当前 Host 的实际容器或任务隐藏通过。官方页面未给出可直接照抄的精确尺寸／按钮绘制规范。本轮不要求人工切窗、展开或重启；继续新的系统面板后台 pointer、焦点冲突、普通冷悬停、层叠／跨进程面板、Chrome155后台Unicode和全工具／分范围性能。
+- **可逆性与交付**：继续原四角色390项，F177仅两份Rust源码＋本状态文档；回滚／重应用只在标记验证副本，原始命令／stdout／stderr／exit与功能结果以 same-four390 事件为准。已公开仓库和现有PR1沿用，完整验收前不把旧CI冒充新代码验收，不逐步commit/push或发版；全目标仍 active。
+
+证据：[F177协议与回归](../../outputs/validation/f177-focus-receipt-error-presentation-2026-10-16/REPORT.md)、[F176原生未发送pointer及清理](../../outputs/validation/f176-system-panel-background-pointer-2026-10-16/REPORT.md)，work/f178-focus-receipt-neutral-mcp-deploy-2026-10-16 的实际部署／新进程事件。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F174_NATIVE_DETAILS_AND_F172_HIT_EVIDENCE -->
+## 当前进展：系统面板命中数据已保留；明确原生／包装层引用并部署快捷诊断入口（2026-10-16）
+
+- **F172已自主完成并清理**：虚拟4自有PID19531／父4486／NSOpenPanel4512。Files/AXPress仅一次，初回-25204 uncertain，后只读确认打开一次，没有重试。一次fresh语义Cancel令Native completion_response=0/visible=false，父fresh解阻且Safe仍0；Close一次、两target解绑，命令0／Native PID消失，3原请求终态释放禁重放。空目录仍空，无用户文件／游戏操作，无全局键鼠或激活actor，无人工配合；初始前台未知、最后67746/window540，不声称恢复。
+- **原始命中范围明确**：三次独立computer.observe均报告Cancel节点PID19531、node_window4513，同点hit PID19531／window4512／role AXSheet，非AXButton。原生报告scope为last_metadata_read，不冒称逐请求原子carrier trace或全桌面无遮挡，也不给内部4513擅自推定XPC宿主／可信窗口别名；未改Native可见性和输入守卫。
+- **不是诊断数据丢失**：snapshot.details_ref保存包装层，observation_ref本来保留原始observe；此前查包装层拿不到adapter_status是引用层级误用。F174新增computer.snapshot.native_details={result_ref: observation_ref, pointer: /adapter_status}，可直接传computer.result；工具说明同时区分两层ref。沿用已有缓存，不复制原生状态、不增Native调用、截图、输入或延长引用寿命；只是历史缓存，不是当前状态或权限。
+- **大小与未知值不被掩盖**：本次真实adapter_status为21,788字节；大对象仍返回既有有界children索引，再按返回子键读取，不强迫输出大段JSON。空／未知Native值保持原样，缺少缓存或状态不捏造ref；原字段／哈希／frame／坐标／守卫均保留。首个新增测试误要求UTF8分页而失败101，复核reader后改为验证原有紧凑索引合同，而非改生产API迎合测试；失败与patch匹配错误均保留。
+- **真实MCP进程协议验证**：旧69944c7无native_details，新c07476d返回可直接调用引用；使用实际Rust stdio与临时固定TLS数据peer，大状态与子键读取通过，observe仍2次、无额外observe。默认文本实测新增95字节（增加一个有用引用），未虚构token／耗时降幅。此为组件／协议范围，非OS GUI或最新Host界面验收。
+- **已部署且不扰动授权**：仅Host中性MCP原子替换为c07476de4691a6cf2afd0a632bb726255715aabfd130f249eb9e12ca96956dfc；候选／安装签名严格验证0，69944c7已备份。保护12项仅MCP变，其余11项、Agent47164/8c、四权限、签名／CA／密钥／配对／Host配置未变，无Agent／Codex／其他MCP重启。最终仅测试增强，release字节与已部署相同；当前会话旧MCP尚未刷新，不冒称模型已加载新字段，仍可用已有observation_ref读原生信息。
+- **最终回归**：Source487数量不变，新增过滤器BASELINE0→MODIFIED5，workspace1390通过／11忽略／48组，fmt／workspace／all-targets-all-features Clippy-Dwarnings／架构ratchet全0，Node48另计。旧Native例142、双向拖拽、全局CmdTab及所有焦点／Unicode正负例保持各自范围；并非全工具／全应用通过。
+- **完整计划继续**：下一项预设独立系统面板view坐标pointer取消与前台影响，不拿语义成功当pointer成功；继续普通冷悬停、前后台冲突、隐藏／层叠、颜色／字体／跨进程面板、Chrome155后台UTF16原13→5、完整工具和分范围耗时。Live组件320px／眼睛与X及Node48保留，真实新Host像素／容器／模式和严格任务隐藏仍未验明，不以偏好inline、旧卡或协议成功替代。
+- **同四角色／交付**：沿用390项及全局82存在／308缺席，回滚只在标记副本，保留137/142/137/142与runtime字段无/有/无/有等原结果；本次0/5/0与功能级ref回滚以same-four390结果为准。仍用现有公开仓库／PR1，HEAD d7501e1的旧CI成功不覆盖本轮新代码；本轮不逐步commit/push、不触发新Action、tag或release，全目标active。
+
+证据：[F172原图与原始命中](../../outputs/validation/f172-file-panel-hit-provider-native-2026-10-16/REPORT.md)，work/f174-snapshot-native-details-ref-2026-10-16与work/f175-native-details-neutral-mcp-deploy-2026-10-16的逐命令stdout/stderr/exit、Source487清单、实际MCP协议和保护项。新PNG仅本地、不入Git。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F170_VISIBILITY_SCOPE_BOUNDARY -->
+## 当前补充：先核对命中／遮挡事实，不由窗口截图或语义动作推定可见性错误（2026-10-16）
+
+- **收窄F169的“缺陷／矛盾”措辞**：Cancel标visible=false/occluded=true、窗口PNG显示该按钮、AXPress取消成功三项都是真实记录，但窗口截图不证明桌面无遮挡，语义动作成功也不证明鼠标命中。当前尚未证明Native可见性标签错误，不把“画面里看得到”直接当输入／遮挡真值；不降低守卫、不改Native源码／Agent。
+- **下一步**：新分配独立虚拟屏专用case，开系统面板后立即保存原始hit-provider/owner/window/geometry，再独立核对遮挡、取消／清理；不预设是异步provider或真实覆盖。旧details_ref已过期且原生操作不重放，旧PNG／响应／计数／失败均保留。
+- **已完成保持**：F165真实全局CmdTab与Native拒绝、F169一次打开／取消／父窗解阻及清理、F168的adapter_runtime.pid/instance/version、F171安装69944c7及独立实际进程核验。Source487回归1385/11忽略、Node48、同四角色390的新增过滤器B/M/R/reapply 0/1/0/1及exit全0、原hash恢复、全局82/308严格重建均已实际通过。当前Host旧MCP仍未刷新；Live紧凑组件的320px不冒称本会话实际容器验收。
+- **无需人工参与**：不要求用户切窗／展开／重启；继续完整Native／多窗口／面板／后台／Unicode／Live及性能计划，而非以单项或文档纠偏收尾。Agent／权限／签名／配对／Host设置不变；本轮不新commit/push。
+
+证据：[可见性范围纠正](../../outputs/validation/f170-file-panel-visibility-diagnostics-2026-10-16/REPORT.md)，原F169证据完整保留。下方F168说明及其“待修”措辞按当时记录阅读，以本补充的证据范围为准。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F168_RUNTIME_PROVENANCE_AND_F169_SYSTEM_PANEL -->
+## 当前进展：区分已部署／实际运行的 MCP；系统文件面板自主取消通过，可见性标记待修（2026-10-16）
+
+- **本轮无需人工配合**：只操作虚拟4上的专用Rust窗口；未操作游戏／文档，未请求切窗、展开、重启、密码或权限。源仍为本仓库，Agent8c2d9f8f／PID47164及四权限、签名／CA／密钥／配对／Host设置不变。仅Host中性MCP原子替换为69944c7，旧安装9eb完整备份；不杀其他会话，也没有重启Agent或Codex。
+- **F165全局切窗实机已验**：真正加载的typed computer.hotkey(cmd+tab)只发一次4个平衡事件，独立前台Peer98498/4366→Target98506/4368；即时ACK未冒称切换成功。旧frame被unknown_frame拒绝；旧前台被Native foreground_changed拒绝，均未进入输入，随后独立新语义正例计数1。两窗关闭/PID消失，8原请求终态／释放／禁重放，前后台完整元组恢复原样。仍保留旧MCP把后者错误藏在receipt且isError=false的负例。
+- **F166/F167版本误判纠正**：唯一0-Native-call诊断worker2226的父78256绑定到本会话实际MCP；父加载inode138372082，部署文件inode138895599，不因路径相同就算相同映像，父旧SHA仍未知。worker已reset并独立确认消失。隔离新9eb进程4623实际加载部署inode，对已关闭自有Peer身份的预定负例返回isError=true/foreground_changed/native_dispatch_entered=false，0输入、lease释放、原请求终态禁重放、进程0；这不等于刷新当前Host连接。
+- **F168/F171最小输出补齐并已部署**：computer.targets新增adapter_runtime.pid/instance/version，表示实际服务适配器进程／连接，不是设备Agent，不是当前路径文件的hash、代码版本证明或权限授予。默认无设备可启动；克隆保持instance，新连接不同，computer.result保留完整字段。release69944c7的候选及安装新进程都独立用ps/lsof核对PID/父链/加载inode；49工具、v5资源和v1–v4别名保持，0 Native RPC／presence／截图／输入。当前加载Host读回尚无新字段，故未宣称它已刷新；不绕过Native Codex UI拒绝，也不在睡眠期间要求用户重启。
+- **F169真实系统文件面板**：新自有PID7858／父4409，NSOpenPanel4423是同PID、own-parent sheet，Native CG owner与虚拟屏4均独立确认。一次Files/AXPress先返回-25204 uncertain，后续只读确认实际打开1次，没有重试／换路线。父blocked=true/ready=false；精确独立绑定面板后只点一次Cancel，Native completion_response=0/visible=false，发现仅父窗。fresh父解阻，独立Safe正例1；关闭/解绑/PID消失，4原请求终态释放禁重放，空测试目录仍空，没有打开或保存用户文件。系统文件框架曾令本测试应用成为前台，最终与初始前台不同，不冒充后台保焦点或自动恢复。
+- **F169新缺陷不抹除**：原PNG里Cancel清晰可见，但snapshot把它标成visible=false/occluded=true；同控件fresh AXPress实际取消成功。下一项先取得原生hit-provider诊断，再修正“hit不匹配即遮挡”的信息表达，不能凭截图放松输入身份／焦点守卫。事后原details_ref已过期，未重放输入来重建。普通冷悬停、颜色／字体／跨进程面板、隐藏／层叠、Chrome155后台UTF16原13→5、完整工具／分范围耗时仍继续。
+- **Live小窗沿用、不过度声称**：已有320px紧凑容器、眼睛隐藏／恢复和X关闭、36×36命中区、名称／提示／键盘焦点及原PNG质量；隔离浏览器320×344与Node48通过。公开资料没有给出可据以声称1:1的Codex浮层像素规范；新版实际Host像素／容器／模式仍未知，F146另一个新任务v5的导航后仍采集负例不因本任务旧MCP发现而改写。没有把声明inline或独立组件截图当真实Host验收。
+- **当前回归**：Source487数量不变，仅MCP源／测试3文件改动；新增过滤器BASELINE0→MODIFIED1，实际编译stdio进程PID字段核对通过。最终fmt/workspace/all-targets-all-features-Clippy-Dwarnings/架构ratchet均0，workspace1385通过/11忽略/48组；Node48单独0，既有Native例142为独立保留范围。架构首版636>600错误及错误--lib命令101均保留；测试移入已有result_tests后600行门禁恢复，不抬高上限。
+- **同四角色与交付边界**：仍390项（全局82存在／308缺席），夹具B/M/R/reapply 137/142/137/142、新开关1/0/1/0等已观测历史保留；本轮代码和说明的独立副本回滚、严格patch复建与重新应用详见同目录ROLE_RESULT，不回滚Root／MODIFIED_FILE。已有4条合理提交、公开仓库／PR1和HEAD d7501e1的macOS+Windows非桌面CI成功保留；本轮不逐步commit/push，不拿旧CI替代新源码的本机验证。UIOS旧Windows合同仍未就绪，全目标active。
+
+证据：[全局切窗](../../outputs/validation/f165-current-loaded-global-commandtab-2026-10-16/REPORT.md)、[运行映像溯源](../../outputs/validation/f166-loaded-mcp-provenance-audit-2026-10-16/REPORT.md)、[独立新版拒绝](../../outputs/validation/f167-fresh-mcp-stale-foreground-negative-2026-10-16/REPORT.md)、[系统文件面板原图与结果](../../outputs/validation/f169-current-system-file-panel-2026-10-16/REPORT.md)。work/f168-adapter-runtime-identity-2026-10-16与work/f171-adapter-runtime-mcp-deploy-2026-10-16保留每命令stdout/stderr/exit、Source487、同四角色及实际进程协议证据。新PNG仅本地验收不入Git。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F164_CURRENT_MODAL_AND_FOCUS_CONTRAST -->
+## 当前进展：普通模态窗通过；AX语义正例与三组pointer保焦点反证已完成（2026-10-16）
+
+- **当前组合**：Agent8c2d9f8f／PID47164、安装MCP9ebfc1；Source487代码未改。4条合理拆分提交及一次正常push、[公开仓库](https://github.com/DestroyedTeam/RealWorldInteraction)／[PR1](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)、HEAD d7501e1的macOS+Windows非桌面CI成功保留；本轮验收说明本地续写，不每步commit/push，无tag／release／自动合并。
+- **F163普通模态窗当前实机通过**：虚拟屏4自有PID85844，父窗4284／sheet4296；一次Open、精确独立绑定、sheet safe1、Close1。弹窗期间旧父控件checked_precondition_changed，native_dispatch_entered=false／native_input_dispatched=false，父safe保持0；fresh父blocked=true／mutation_ready=false。关sheet后发现仅父窗、解绑sheet，fresh父恢复ready，另一个新Safe请求令父count1；全程只用typed AXPress，无全局键鼠／前台激活或Live start。
+- **F163错误／边界不抹除**：初次attach的catalog_expired实际保留，新的只读discovery紧接attach成功，未重放输入；初次AXWindows -25204与exact AXFocusedWindow别名恢复仍可见。AX覆盖partial。这仅证明普通同PID自有文档sheet，不是全部OS／跨进程／secure desktop。开始完整前台未知、末尾11924/window421，不声称恢复；父窗关闭、包装命令0、Native PID不存在／发现空／解绑，6原请求含负例均终态／释放／禁重放。
+- **F164四项预设比较均实际执行**：新自有PID89257，主窗4328／普通兄弟窗4329，虚拟屏4；每lane单独显式准备兄弟前台、独立完整元组、fresh主snapshot、一次新请求，再Native state／新snapshot／targets读回。先落盘再判断，修正F160编排丢原返回的问题；F160原4lane=0、request_unknown及未知原因仍保留，不回写通过。
+- **语义正例**：主窗按钮AXPress使Safe+1、无mouse callback，前后OS完整元组均兄弟4329，主Key=false／兄弟true。只是这个provider的语义动作和采样前后结果，非通用canvas替代或连续原子保焦点证明。
+- **pointer反证**：请求public NSEvent+PID、NSEvent+SkyLight、Quartz+SkyLight三个显式lane，每项精确主窗收到一对down/up、flags全0、无orphan；每项OS window4329→4328、主Key false→true、兄弟true→false。没有自动加Command、activate／defocus／restore或换路线重放。requested_delivery／capability不是Native carrier trace，最终post-API没有逐请求独立记录，故称“请求路线与实际接收／焦点结果”，不作跨API或所有应用性能结论；单换NSEvent尚无保焦点正例。
+- **自主结束**：F164两窗各Close一次，包装命令0、Native PID不存在／发现空／解绑；10原请求终态／释放／禁重放，原前台完整元组67746/window540恢复。两轮均不触碰游戏／用户文档，不要求人工配合；Agent、安装MCP、四权限、签名／CA／配对／Host设置及保护12项不变，Native raw waitpid仍未单独取得。
+- **完整余项继续**：下一项是loaded computer.hotkey的真实全局CmdTab及过期前台／旧frame防护，随后当前系统面板／隐藏／层叠、普通冷悬停、Chrome155后台13→5、完整工具及分范围性能。Live紧凑组件320×344、原PNG与Node48可逆性保留，但v5实际Host像素／模式／容器尺寸未知、自动随任务隐藏负例未通过；不以CI、旧组合或fixture正例替代，全目标active。
+- **同四角色／回滚**：Source487、390项（82原存在／308原缺席）；保留workspace1384／11忽略、example142、Node48各自范围及fmt/workspace/all-features-all-targets clippy-Dwarnings/架构0、F161 offscreen12只内存构造。夹具B/M/R/reapply 137/142/137/142、新开关1/0/1/0；本次仅当前说明与原始证据，独立副本原hash恢复并严格patch重建。UIOS旧Windows合同仍未就绪，末尾实跑release-check/report，不冒称正式UI release通过。
+
+证据：[F163原图与普通模态路由](../../outputs/validation/f163-current-owned-modal-routing-2026-10-16/REPORT.md)、[F164四项比较与边界](../../outputs/validation/f164-current-same-pid-delivery-comparison-2026-10-16/REPORT.md)；两work目录的NATIVE_RESULT、MCP_EVIDENCE、逐阶段Native state、IMAGE_MANIFEST和逐命令stdout/stderr/exit。所有新PNG均原始响应，仅本地验收不入Git。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F162_BIDIRECTIONAL_CURRENT_AND_SAME_PID_FOCUS_NEGATIVE -->
+## 当前进展：新版双向执行中切窗通过；同PID后台保焦点反证保留（2026-10-16）
+
+- **已交付**：4条合理拆分提交一次正常push，公开[仓库](https://github.com/DestroyedTeam/RealWorldInteraction)／[PR1](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)仍沿用；新HEAD `d7501e1` 的[macOS+Windows非桌面CI](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38854781484)completed/success。本轮后续验收说明留在本地，不每个步骤再commit／push；无tag、release或自动合并。
+- **当前组合双向实机**：Agent8c2d9f8f／安装MCP9ebfc1；F157后台→前台、F158前台→后台，各全新虚拟屏4自有pair，各一次5秒typed RWI addressed drag、独立Rust合成CmdTab。均down1/move78/up1/completed1，无orphan，真实view映射与received windowPoint起终点一致；F158在down后1643ms／序号25变后台，up仍收到，Peer未收到drag。
+- **事件边界**：不是物理用户或loaded computer.hotkey工具验收。F158 outer5251ms、received发送时戳跨度4990.178ms／最大gap123.674ms；80条mouse接收无丢弃，但dispatch_probe丢34，不能推断全生产采样或CPU/速度优越。两pair分别关闭／PID不存在／发现空／解绑，原完整前台元组恢复；每项原durable请求终态／释放／禁重放。
+- **F159同PID多窗混合结果**：独立固定绑定4232/4233（PID80071）；foreground_system给非前台主窗，虽PID相同仍foreground_scope_mismatch，rejected_before_dispatch、native_dispatch_entered=false、夹具计数未变，防护通过。另一个预设后台500ms drag确实1/8/1/1、无orphan，但OS前台window4233→4232，主key false→true、兄弟true→false；**保焦点未通过**，不以PID未变冒充前台不变，未自动恢复或重放。
+- **F160未伪造结果**：新pair82058/4265/4266已启动；首个前台准备便捷工具isError，编排先抛错丢原始返回，错误单列；原request查询request_unknown，不据此推断无影响。独立当前前台随后为null，确切原因未证；4预设比较lane实际0项，未绕过守卫。只关闭自有两窗并核对进程0／PID不存在／解绑；最终前台null，**不声称已恢复**。用户无需配合，无新授权／唤醒／全局输入。
+- **安全继续与既有研究**：复核旧50仓库／150正文中的相关原文及SHA、Apple官方mousedown/key-window契约；现有公开NSEvent＋PID与显式SkyLight click均不承诺target-state不变，不能盲加Command改变普通输入语义。F161实际12项offscreen构造／路由测试0；仅内存构造，不是4路线Native保焦点比较。编排pending-event stdout KeyError的退出1和改用get的退出0均保留，未重跑测试或Native输入。
+- **Live与完整余项**：紧凑组件浏览器320×344／PNG1320×1104、Node48及v5可逆性保留；实际v5 Host像素／模式／容器大小未知，任务导航后仍采集的负例未修好。还要新的保焦点路线比较、当前modal/system/hidden/stack、普通冷悬停、Chrome155后台13→5、完整工具／分范围性能；不以CI／旧组合／NSView13/13替代，全目标active。
+- **同四角色与范围**：Source487代码未变；保留workspace1384／11忽略、example142、Node48各自范围及fmt/workspace/all-targets-all-features clippy-Dwarnings/架构全0。夹具B/M/R/reapply为137/142/137/142，新开关1/0/1/0，独立副本原hash恢复；390项（82存在／308缺席）rollback及严格patch重建。Agent47164、安装MCP、四权限、签名／CA／配对／Host设置不变；没有Live start。UIOS旧Windows合同release-check/report各1，direction/package/handoff/implementation绑定、parity/fidelity/human未就绪，不作UIOS release通过。
+
+证据：[F158原图](../../outputs/validation/f158-current-foreground-to-background-commandtab-2026-10-16/REPORT.md)、[F159焦点反证](../../outputs/validation/f159-current-same-pid-sibling-foreground-guard-2026-10-16/REPORT.md)、[F160未执行边界](../../outputs/validation/f160-current-same-pid-delivery-comparison-2026-10-16/REPORT.md)；各work同名NATIVE_RESULT、MCP_EVIDENCE、逐命令stdout/stderr/status与F161 RESULT。原图仅本地验收，不随Git发布。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
+<!-- RWI_F157_CURRENT_COMBINATION_BG_DRAG_ACCEPTED -->
+## 当前进展：新版后台→前台拖拽实机通过；四条提交已推送且新HEAD的CI成功（2026-10-16）
+
+- **本批交付**：API私有Host绑定 `5c6d2c2`、紧凑Live `fea014c`、原生文字诊断 `a98060a`、证据文档 `d7501e1`，一次正常push到[既有公开PR1](https://github.com/DestroyedTeam/RealWorldInteraction/pull/1)，远程HEAD独立核对一致；[新HEAD的Root workspace checks](https://github.com/DestroyedTeam/RealWorldInteraction/actions/runs/38854781484)实际completed/success。不是tag／release／自动合并，也不是全Native目标完成。
+- **当前组合的新实机**：Agent8c2d9f8f／安装MCP9ebfc1，虚拟屏4全新Peer71998/window4162与Target72008/window4166；typed RWI一次请求5秒后台拖拽。独立Rust actor在第一实际down后1501ms只发一次合成Command+Tab，记录序号25／1641ms时目标转前台，后续仍收到move/up；down1/move78/up1/completed1，无orphan，完整蓝线及Native windowPoint与真实view映射的起终点一致。
+- **边界与耗时**：这是独立合成actor，不是物理用户或loaded computer.hotkey工具的验收。80条已接收mouse记录无丢弃、pointer flags全0；dispatch_probe另丢34条，生产端计数／全采样保真仍未证。外层await5232ms，NSEvent发送时间戳跨度4984.887ms、最大间隔127.924ms，不是CPU或与旧77move样本的性能优劣证明。
+- **自主清理**：两窗口各一次AXPress关闭，两个包装命令0、Native PID均不存在、发现空、解绑；5原请求终态／释放／禁重放，原OS前台完整元组恢复PID67746/window540。未操作原用户应用／文档，未重启Agent或改安装、四权限、签名／CA／配对／Host设置；没有Live start。Native raw waitpid未单独观察，包装PID不等于Native PID。
+- **旧证据不消失**：F156从实际旧RWI响应确认F71/F75/F54/F55使用dc4e9c72及旧MCP／二进制；旧双向拖拽、modal guard和系统面板正／负例保留，但不自动等同当前8c/9eb组合通过。F153自有NSTextView文字13/13、72回调保留，不是Chrome修复。
+- **范围与可逆性**：Root Source487；workspace1384通过／11忽略、显式receiver example142、Node48分别统计，fmt／workspace／all-targets/all-features clippy-Dwarnings／架构均0。同四角色390项（82原存在／308原缺席），夹具137→142→137→142与新开关1→0→1→0、独立副本原hash恢复／严格重建保持；本次只追加验收及当前说明，不重复发布每个步骤。
+- **下一步仍是完整计划**：当前组合的前台→后台反向与前台冲突／同PID多窗、模态／系统／隐藏／层叠；普通冷悬停、Chrome155后台13→5、完整工具／分范围性能继续。Live v5实际Host像素／模式未知、任务导航后仍采集仍未通过，不能拿紧凑浏览器或CI代替。用户无需配合，全目标active。
+
+证据：[F157按时间原图与结果](../../outputs/validation/f157-current-background-to-foreground-commandtab-2026-10-16/REPORT.md)、`work/f157-current-background-to-foreground-commandtab-2026-10-16/NATIVE_RESULT.json`、`ENDPOINT_GEOMETRY_CHECK.json`；[F153文字链](../../outputs/validation/f153-native-text-client-trace-acceptance-2026-10-16/REPORT.md)；Git/CI原事件在`work/f155-verified-feature-batch-pr-2026-10-16/`。原图仅本地验收，不随Git发布。
+
+--- 以下历史按当时状态保留；旧“当前”标题不代表本轮结果 ---
+
 <!-- RWI_F154_NATIVE_TEXT_CLIENT_CHAIN_CURRENT -->
 ## 当前进展：后台原生文字回调链已实测；Chrome 与 Live 余项未冒称通过（2026-10-16）
 
@@ -3846,3 +4443,29 @@ source374、Agent61970/e523/a542、MCPc778及12保护项保持；旧Host新typed
 - 下一项稳定本地证书合并Source8＋9一次build/sign/deploy→新allocated own fixtures的真正loadedRWI Native／Caption有限验收，无人工或Host重启；Chrome inactive🙂／F14、有限状态／分层performance和合理拆commit／PR／push继续。
 
 [实际报告](/Volumes/ChatGPT/Real World Interaction/outputs/validation/live-header-caption-source9-2026-10-15/REPORT.md) · [独立四相](/Volumes/ChatGPT/Real World Interaction/work/live-header-caption-small-candidate-2026-10-15/INDEPENDENT_ROLLBACK_REAPPLY/transaction/PROOF_RESULT.json)
+
+
+## F405 · 2026-10-20 · 独立坐标反馈离线修复
+
+- 原contract6/51项完成结果保留；本轮不以旧完成状态替代新反馈。
+- 微信pixel_edge_clearance：完整96px普通锚点边距64→48，离线复现和负例回归通过；实际新请求未验收。
+- 飞书搜索层：非精确AX命中不再冒称已遮挡，回报unknown/unknown；正向输入门槛不变。实际命中对象/父子/窗口关系及控件可操作性仍PENDING。
+- Compose双击：新增可选Receipt.pointer_dispatch默认生产端逐事件记录，MCP简回执只保留路由/API/返回数/receiver_effect=unobserved，明细留在details_ref。业务未动作的归因仍UNVERIFIED，不转experimental、不重放旧输入。
+- fmt/workspace test/all-target all-feature clippy/架构与负例均exit0。源码候选未部署，用户应用无键鼠/激活/新截图。
+- 报告：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f405-coordinate-feedback-2026-10-20/REPORT.zh-CN.md`；四角色框架：`/Volumes/ChatGPT/Real World Interaction/work/f405-delegated-coordinate-feedback-2026-10-20/LATEST_ROLE_FRAME.json`。
+
+
+## F405 · 2026-10-20 · 运行时部署（Host刷新前快照）
+
+- Agent与MCP已实际安装；Agent93133、SHA77547636…经实际加载及只读重连核对，四项权限true；签名DR与TLS身份沿用。
+- 当前Host旧MCP98551仍加载旧inode；磁盘新MCP747b639d…已安装。按原授权执行精确Host刷新，是否完成只读后续回执，不把已安装当已加载。
+- 部署快照与后续刷新回执：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f405-coordinate-feedback-2026-10-20/DEPLOYMENT.json`、`/Volumes/ChatGPT/Real World Interaction/work/f405-delegated-coordinate-feedback-2026-10-20/deployment/host-refresh/HOST_RESTART_RESULT.json`、`/Volumes/ChatGPT/Real World Interaction/work/f405-delegated-coordinate-feedback-2026-10-20/deployment/host-refresh/HOST_RESTART_VERIFIED.json`。
+- 原三项实机失败/unknown均保留；无用户应用输入或盲重放。精确修复包在`/Volumes/ChatGPT/Real World Interaction/outputs/runtime/f405-2026-10-20`。
+
+
+## F405 · 2026-10-20 · 本会话新版运行时实载验证完成
+
+- Codex已受控重启：95706→1269。本会话实际computer.targets已回读MCP3929/实例98649d027b76408680a2ecc82c69304b；lsof和父进程链确认它属于新Host，并加载新inode141103153/SHA747b639d…，不再仅是磁盘已安装或独立stdio测试。
+- Agent93133/实例b388f19d-449e-4066-896d-a14b99005bf7，加载inode141103151/SHA77547636…；四项权限实际均true，context_valid=true、fenced=false。本会话模型实际暴露52个RWI工具。无需再重启或重新授权。
+- 精确包及SHA：`/Volumes/ChatGPT/Real World Interaction/outputs/runtime/f405-2026-10-20/PACKAGE.json`；最新运行时证明：`/Volumes/ChatGPT/Real World Interaction/work/f405-delegated-coordinate-feedback-2026-10-20/deployment/host-refresh/ACTUAL_CURRENT_HOST_VERIFIED.json`。
+- 新的微信、飞书、Compose业务输入均未执行；三条原失败/unknown保留。后续须新targets/discover/attach及新frame/lease/request，绝不复用原失败输入。源代码本轮未提交/推送。
