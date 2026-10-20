@@ -1,6 +1,8 @@
 //! AX continuation objects stay on the synchronous input worker's stack.
 use super::*;
 use continuation::{Facts, Kind};
+#[path = "anchor_native/hit_evidence.rs"]
+mod hit_evidence;
 #[path = "anchor_native/system_window_hit.rs"]
 mod system_window_hit;
 
@@ -63,12 +65,18 @@ pub(super) fn require_foreground_pointer_hit(native: &NativeMac, point: [f64; 2]
 /// Grounding stays in the pinned application; otherwise walk the exact window.
 /// Never set a timeout on AXUIElementCreateSystemWide: that changes the global
 /// timeout for every AX object in this agent, including later action callbacks.
-fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<(Cf, bool)> {
+fn point_element(
+    window: &Cf,
+    pid: u32,
+    point: [f64; 2],
+    evidence: &mut hit_evidence::PointHitEvidence,
+) -> Result<(Cf, bool)> {
     // Application hit testing consumes screen coordinates. A point in the
     // offdisplay part of a positively mapped partial window has no physical
     // screen receiver. Resolve its metadata from the exact window's native
     // children instead; do not clamp or borrow an application/menu-bar object.
     if window_local_offdisplay_point(&displays()?, ax_rect(window)?, point) {
+        evidence.application_probe = "not_applicable_offdisplay";
         let hit = element_at_point(window, point)?.ok_or_else(|| {
             fault(
                 "window_local_hit_unproven",
@@ -81,15 +89,18 @@ fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<(Cf, bool)> {
                 "The exact-window descendant owner or geometry is unproven; no input dispatched.",
             ));
         }
+        evidence.selection = "exact_window_tree_candidate";
         return Ok((hit, false));
     }
     let application = unsafe { Cf::owned(ffi::AXUIElementCreateApplication(pid as i32))? };
     unsafe {
         ffi::AXUIElementSetMessagingTimeout(application.0, 0.05);
     }
-    if let Ok(hit) = hit_test(&application, point)
+    let probe = evidence.record_probe(hit_test(&application, point));
+    if let Ok(hit) = probe
         && hit.pid().ok() == Some(pid)
     {
+        evidence.application_probe = "same_pid_inexact_window_or_geometry";
         let bounds = ax_rect(&hit)?;
         let same_window = unsafe { ffi::CFEqual(hit.0, window.0) != 0 }
             || hit
@@ -97,6 +108,7 @@ fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<(Cf, bool)> {
                 .ok()
                 .is_some_and(|owner| unsafe { ffi::CFEqual(owner.0, window.0) != 0 });
         if same_window && application_hit_geometry(bounds, point) {
+            evidence.exact_application_hit();
             return Ok((hit, true));
         }
         // Background events address the already selected native window, not
@@ -111,6 +123,7 @@ fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<(Cf, bool)> {
         {
             // A tree-selected window must not inherit the positive application
             // hit proof needed by the childless-window canvas path.
+            evidence.selection = "exact_window_tree_candidate";
             return Ok((candidate, false));
         }
         let mut error = fault(
@@ -128,10 +141,7 @@ fn point_element(window: &Cf, pid: u32, point: [f64; 2]) -> Result<(Cf, bool)> {
         })));
         return Err(error);
     }
-    Ok((
-        element_at_point(window, point)?.unwrap_or_else(|| window.retained()),
-        false,
-    ))
+    Ok(evidence.tree_candidate(element_at_point(window, point)?, window))
 }
 
 #[derive(Clone, Copy, Debug, Default, serde::Serialize)]
@@ -216,7 +226,9 @@ impl NativeMac {
                 "The exact AX window no longer matches the pinned native bounds.",
             ));
         }
+        let mut point_hit_evidence = hit_evidence::PointHitEvidence::default();
         let (mut hit, application_hit) = if target.native_action.is_some() {
+            point_hit_evidence.selection = "exact_advertised_native_action";
             (
                 super::super::objects::exact(
                     &window_element,
@@ -229,7 +241,12 @@ impl NativeMac {
                 false,
             )
         } else {
-            point_element(&window_element, self.pid, target.point)?
+            point_element(
+                &window_element,
+                self.pid,
+                target.point,
+                &mut point_hit_evidence,
+            )?
         };
         // Preserve an already referenced button when its passive text label is
         // the actual native hit. Never search by attributes or apply this to a
@@ -267,6 +284,7 @@ impl NativeMac {
             super::super::objects::describe(&hit, &window_element, &self.objects)?;
         if target.pixel_anchor_used {
             let role = hit_description.element.role.as_deref();
+            let mut system_hit_evidence = None;
             let proof = if role == Some("AXWindow") {
                 let children_count = window_element
                     .attr("AXChildren")
@@ -280,12 +298,15 @@ impl NativeMac {
                     system_window_hit: if application_hit && children_count == Some(0) {
                         None // Preserve the existing positive fast path, no extra RPC/read.
                     } else {
-                        system_window_hit::read(
+                        let evidence = system_window_hit::read(
                             &window_element,
                             self.pid,
                             self.window,
                             target.point,
-                        )
+                        );
+                        let matched = evidence.matched;
+                        system_hit_evidence = Some(evidence);
+                        matched
                     },
                     exact_window_object: unsafe { ffi::CFEqual(hit.0, window_element.0) } != 0,
                     same_pid: hit.pid().ok() == Some(self.pid)
@@ -299,20 +320,13 @@ impl NativeMac {
             } else {
                 WindowCanvasProof::default()
             };
-            if !local_pixel_canvas(role, proof) {
-                let mut error = fault(
-                    "local_pixel_surface_changed",
-                    "Local pixel grounding needs AXScrollArea, the existing positive childless application hit, or an independently positive exact system-window hit; missing AX children or geometry alone is not proof. No input dispatched.",
-                );
-                error.diagnostic = Some(Box::new(serde_json::json!({
-                    "reason":"local_pixel_canvas_unproven",
-                    "actual_role":role,
-                    "window_canvas_proof":proof,
-                    "native_input_dispatched":false,
-                    "replay_allowed":false,
-                })));
-                return Err(error);
-            }
+            hit_evidence::require_canvas(
+                role,
+                proof,
+                target.point,
+                point_hit_evidence,
+                system_hit_evidence,
+            )?;
         }
         require_nonsecure_input(&hit_description)?;
         if matches!(kind, Kind::Text | Kind::Keyboard) {

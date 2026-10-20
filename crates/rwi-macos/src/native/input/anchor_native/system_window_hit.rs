@@ -5,33 +5,101 @@ use super::{Cf, application_hit_geometry, ax_rect, displays, ffi, hit_test};
 fn matches(owner: bool, object: bool, number: bool, geometry: bool, display: bool) -> bool {
     owner && object && number && geometry && display
 }
-pub(super) fn read(window: &Cf, pid: u32, number: u32, point: [f64; 2]) -> Option<bool> {
-    let screens = displays().ok()?;
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub(super) struct Evidence {
+    pub matched: Option<bool>,
+    stage: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ax_error: Option<i64>,
+    predicates: Option<Predicates>,
+}
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+struct Predicates {
+    owner: bool,
+    exact_object: bool,
+    exact_number: bool,
+    point_geometry: bool,
+    display_mapping: bool,
+}
+impl Evidence {
+    fn unavailable(stage: &'static str) -> Self {
+        Self {
+            matched: None,
+            stage,
+            ax_error: None,
+            predicates: None,
+        }
+    }
+}
+pub(super) fn read(window: &Cf, pid: u32, number: u32, point: [f64; 2]) -> Evidence {
+    let Ok(screens) = displays() else {
+        return Evidence::unavailable("display_inventory_unavailable");
+    };
     let containing = screens
         .iter()
         .filter(|d| d.rect.contains(point))
         .collect::<Vec<_>>();
     if containing.len() != 1 || containing[0].rotation != 0. {
-        return Some(false);
+        return Evidence {
+            matched: Some(false),
+            ..Evidence::unavailable("display_mapping_unsupported")
+        };
     }
-    let system = unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()).ok()? };
+    let Ok(system) = (unsafe { Cf::owned(ffi::AXUIElementCreateSystemWide()) }) else {
+        return Evidence::unavailable("system_object_unavailable");
+    };
     // NEVER AXUIElementSetMessagingTimeout on SystemWide: it changes all objects.
-    let hit = hit_test(&system, point).ok()?;
-    let bounds = ax_rect(&hit).ok()?;
-    Some(matches(
-        hit.pid().ok() == Some(pid) && window.pid().ok() == Some(pid),
-        unsafe { ffi::CFEqual(hit.0, window.0) != 0 },
-        ffi::window_number_for_ax_element(&hit) == Some(number)
+    let hit = match hit_test(&system, point) {
+        Ok(hit) => hit,
+        Err(error) => {
+            return Evidence {
+                ax_error: error
+                    .diagnostic
+                    .as_deref()
+                    .and_then(|v| v.get("ax_error"))
+                    .and_then(serde_json::Value::as_i64),
+                ..Evidence::unavailable("system_hit_unavailable")
+            };
+        }
+    };
+    let Ok(bounds) = ax_rect(&hit) else {
+        return Evidence::unavailable("system_hit_geometry_unavailable");
+    };
+    // Identical native reads and conjunction as the original admission check.
+    let predicates = Predicates {
+        owner: hit.pid().ok() == Some(pid) && window.pid().ok() == Some(pid),
+        exact_object: unsafe { ffi::CFEqual(hit.0, window.0) != 0 },
+        exact_number: ffi::window_number_for_ax_element(&hit) == Some(number)
             && ffi::window_number_for_ax_element(window) == Some(number),
-        application_hit_geometry(bounds, point),
-        true,
-    ))
+        point_geometry: application_hit_geometry(bounds, point),
+        display_mapping: true,
+    };
+    Evidence {
+        matched: Some(matches(
+            predicates.owner,
+            predicates.exact_object,
+            predicates.exact_number,
+            predicates.point_geometry,
+            predicates.display_mapping,
+        )),
+        stage: "system_hit_predicates_observed",
+        ax_error: None,
+        predicates: Some(predicates),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::{WindowCanvasProof, local_pixel_canvas};
     use super::*;
+    #[test]
+    fn f406_system_unknown_diagnostics_do_not_become_false_or_positive_proof() {
+        let value = serde_json::to_value(Evidence::unavailable("system_hit_unavailable")).unwrap();
+        assert!(value["matched"].is_null());
+        assert!(value["predicates"].is_null());
+        assert!(value.get("ax_error").is_none());
+        assert!(value.get("occluded").is_none());
+    }
     fn sparse() -> WindowCanvasProof {
         WindowCanvasProof {
             application_hit: false,

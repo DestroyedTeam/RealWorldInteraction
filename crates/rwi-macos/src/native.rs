@@ -2,6 +2,7 @@ pub(crate) mod activation;
 mod backend;
 mod coverage;
 mod delegation;
+mod hit_diagnostics;
 mod hit_settle;
 pub(crate) mod hotkey;
 mod input;
@@ -727,10 +728,12 @@ fn hit_test(system: &Cf, point: [f64; 2]) -> Result<Cf> {
         ffi::AXUIElementCopyElementAtPosition(system.0, point[0] as f32, point[1] as f32, &mut out)
     };
     if error != 0 {
-        return Err(fault(
-            "hit_test_unknown",
-            "Native AX hit test is unavailable.",
-        ));
+        let mut failure = fault("hit_test_unknown", "Native AX hit test is unavailable.");
+        failure.diagnostic = Some(Box::new(serde_json::json!({
+            "api":"AXUIElementCopyElementAtPosition", "ax_error":error,
+            "input_authority":false, "probe_sent_input":false,
+        })));
+        return Err(failure);
     }
     unsafe { Cf::owned(out) }
 }
@@ -772,7 +775,15 @@ fn observed_element(
     let point = e.element.point;
     let inside = bounds.contains(point);
     let matches = if inside && blocked == Some(false) {
-        let hit = hit_test(application, point).ok();
+        let probe = hit_test(application, point);
+        let hit_ax_error = probe.as_ref().err().and_then(|error| {
+            error
+                .diagnostic
+                .as_deref()
+                .and_then(|v| v.get("ax_error"))
+                .and_then(serde_json::Value::as_i64)
+        });
+        let hit = probe.ok();
         let exact = hit
             .as_ref()
             .map(|h| unsafe { ffi::CFEqual(h.0, node.0) } != 0);
@@ -787,9 +798,13 @@ fn observed_element(
             )
             .ok()
         });
-        if matches != Some(true) && !e.element.actions.is_empty() && diagnostics.len() < 8 {
+        if matches != Some(true)
+            && !e.element.actions.is_empty()
+            && hit_diagnostics::can_record(diagnostics, e.text_class)
+        {
             let rect_json = |v: &Cf| ax_rect(v).ok().map(|r| [r.x, r.y, r.w, r.h]);
             diagnostics.push(serde_json::json!({
+                "diagnostic_class": hit_diagnostics::class(e.text_class),
                 "element": e.element.id, "role": e.element.role, "point": point,
                 "node_pid": node.pid().ok(), "node_rect": rect_json(node),
                 "node_window": ffi::window_number_for_ax_element(node),
@@ -797,6 +812,7 @@ fn observed_element(
                 "hit_rect": hit.as_ref().and_then(rect_json),
                 "hit_role": hit.as_ref().and_then(|h| h.attr("AXRole").ok()).and_then(|r| r.string().ok()),
                 "hit_window": hit.as_ref().and_then(ffi::window_number_for_ax_element),
+                "hit_ax_error": hit_ax_error,
                 "equal": exact, "equivalent": matches
             }));
         }

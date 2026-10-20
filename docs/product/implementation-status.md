@@ -4469,3 +4469,14 @@ source374、Agent61970/e523/a542、MCPc778及12保护项保持；旧Host新typed
 - Agent93133/实例b388f19d-449e-4066-896d-a14b99005bf7，加载inode141103151/SHA77547636…；四项权限实际均true，context_valid=true、fenced=false。本会话模型实际暴露52个RWI工具。无需再重启或重新授权。
 - 精确包及SHA：`/Volumes/ChatGPT/Real World Interaction/outputs/runtime/f405-2026-10-20/PACKAGE.json`；最新运行时证明：`/Volumes/ChatGPT/Real World Interaction/work/f405-delegated-coordinate-feedback-2026-10-20/deployment/host-refresh/ACTUAL_CURRENT_HOST_VERIFIED.json`。
 - 新的微信、飞书、Compose业务输入均未执行；三条原失败/unknown保留。后续须新targets/discover/attach及新frame/lease/request，绝不复用原失败输入。源代码本轮未提交/推送。
+
+
+## F406 · 2026-10-20 · 回执透传及有界命中诊断离线修复
+
+- F405 原待提交源码与既有状态文档已分别保存为 25a46b1/a5cf04a，并推送到 fix/rwi-macos-followups；PR #2 保持 Draft/Open，不合并或删除分支。
+- Observed::take_pointer_dispatch 新增内存透传；visibility_unknown 用观测三态解释未知而非笼统遮挡，保留正向准入、native-action 宣告及 disabled 条件。
+- 命中诊断仍限八行（四普通、四已分类 plain），保留原 AX 错误/点路径与 system hit 独立谓词；没有增加原生查询或放宽 root/childless/scroll 判据。
+- 十项新离线回归、全 workspace 1545 passed/0 failed/11 ignored、fmt/Clippy/架构及负例检查通过；实际四相和重建以新帧及 VERIFICATION.json 为准。
+- 本轮未部署、未重启、未新建用户应用输入或截图；微信 local_canvas 与飞书 TextArea 原未投递结果仍待独立实机正证，新自有接收器成功不追认旧失败。
+- mixed 来源及旧双击未动作根因仍未定；产品载荷去重、Handoff、DoubaoIme URL 均不替代/抵消已证实的 RWI 缺陷。没有打开私有恢复文件或改剪贴板。
+- 报告：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f406-native-hit-diagnostics-2026-10-20/REPORT.zh-CN.md`；同四角色帧：`/Volumes/ChatGPT/Real World Interaction/work/f406-native-hit-diagnostics-2026-10-20/LATEST_ROLE_FRAME.json`。
