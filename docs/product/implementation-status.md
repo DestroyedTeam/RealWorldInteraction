@@ -4480,3 +4480,13 @@ source374、Agent61970/e523/a542、MCPc778及12保护项保持；旧Host新typed
 - 本轮未部署、未重启、未新建用户应用输入或截图；微信 local_canvas 与飞书 TextArea 原未投递结果仍待独立实机正证，新自有接收器成功不追认旧失败。
 - mixed 来源及旧双击未动作根因仍未定；产品载荷去重、Handoff、DoubaoIme URL 均不替代/抵消已证实的 RWI 缺陷。没有打开私有恢复文件或改剪贴板。
 - 报告：`/Volumes/ChatGPT/Real World Interaction/outputs/validation/f406-native-hit-diagnostics-2026-10-20/REPORT.zh-CN.md`；同四角色帧：`/Volumes/ChatGPT/Real World Interaction/work/f406-native-hit-diagnostics-2026-10-20/LATEST_ROLE_FRAME.json`。
+
+
+## 2026-10-21 · F408 本机 Agent-only 已部署：资源拒绝可观测性，不改输入判据
+
+- 已独立核验 NemessixPaste「Mac端」原始人类授权 userMessage 01a15e23-66d5-7081-ac27-7c0a943b885b；仅精确 Agent 更新与无输入诊断，不含 Host/MCP、权限或输入策略变更。
+- F408 已验两文件源码集成到 canonical Root，按同一522项候选指纹构建/原证书签名；生产只替换 Contents/MacOS/rwi-agent，CodeResources/Info.plist/图标未变。旧映像 f1c36aa4… → 新映像 6fbb61749d9ac11e91c1b638db8b4d34eb9dc976782f72979bfd35e546990901。
+- 先核对20条当前资源域请求终态释放、无已命名活动Live，非阻塞共同lease守卫持有期间仅 bootout/bootstrap 精确 RWI服务。新进程62262、实例35d5c087-8a7b-41da-abc6-c9777895ab90、映像inode142739714由实际进程映射及已加载MCP元数据核验；四项权限仍有效、DR仍为同一标识与24B346…leaf。
+- 一次已加载MCP的无输入recover_input实际通过：两表flags0、pressed_keys/buttons0、无自动release事件、无旧操作重放。该调用是资源协调而非纯查询，业务goal未验证。由于此时资源已释放，新增held拒绝diagnostic未在本次真机触发；旧拒绝原因/箭头secondaryFn假设与完整键盘矩阵均未改记通过。
+- MCP31191及调用方24435的进程身份、相关Host祖先进程、RWI非App受保护文件哈希前后相同；没有Host/MCP重启、配置/配对更改、未知键态强制释放、业务GUI或剪贴板操作。
+- 已严格验证真实签名app副本的旧→新→独立副本回滚旧→重应用新，原四文件哈希/DR恢复；生产未为验回滚而额外重启。更新守卫已退出且原生诊断操作终态释放，已交还调用方，要求fresh targets/新绑定。实际交还与原始记录位于 outputs/validation/f410-controlled-agent-only-update-2026-10-21/HANDOFF.json；未重跑1550项离线矩阵代替真机缺口。
