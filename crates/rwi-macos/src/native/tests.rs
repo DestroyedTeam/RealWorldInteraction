@@ -54,7 +54,7 @@ fn scoped_visibility_requires_an_exact_native_hit() {
     );
     assert_eq!(
         scoped_visibility(true, Some(false), Some(false)),
-        (Some(false), Some(true))
+        (None, None)
     );
     assert_eq!(scoped_visibility(true, Some(false), None), (None, None));
     assert_eq!(scoped_visibility(true, None, Some(true)), (None, None));

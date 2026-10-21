@@ -159,10 +159,15 @@ impl PixelAnchor {
         if pixel.iter().any(|value| !value.is_finite()) {
             return Err(CreationFailure::PixelNotFinite);
         }
-        if pixel[0] < f64::from(MIN_EDGE_CLEARANCE)
-            || pixel[1] < f64::from(MIN_EDGE_CLEARANCE)
-            || pixel[0] >= f64::from(image_size[0] - MIN_EDGE_CLEARANCE)
-            || pixel[1] >= f64::from(image_size[1] - MIN_EDGE_CLEARANCE)
+        // This comparator reads a complete, centered 96px patch. Requiring the
+        // red-marker detector's additional 64px clearance rejected ordinary
+        // toolbar controls even when every patch pixel was inside the image.
+        // Do not clip/shift the patch or relax any comparison budget.
+        let clearance = EDGE / 2;
+        if pixel[0] < f64::from(clearance)
+            || pixel[1] < f64::from(clearance)
+            || pixel[0] >= f64::from(image_size[0] - clearance)
+            || pixel[1] >= f64::from(image_size[1] - clearance)
         {
             return Err(CreationFailure::PixelEdgeClearance);
         }

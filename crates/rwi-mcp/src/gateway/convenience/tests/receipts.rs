@@ -1,6 +1,27 @@
 use super::*;
 
 #[test]
+fn f405_compact_pointer_transcript_keeps_counts_not_receiver_or_goal_claims() {
+    let raw = json!({"dispatch":"returned","system_accepted":null,"goal_verified":true,
+        "replay":"forbidden","pointer_dispatch":{"route":"background_window",
+        "api":"CGEventPostToPid","events":[{"click_count":1},{"click_count":1},{"click_count":2},{"click_count":2}],
+        "receiver_effect":"unobserved"}});
+    let compact = compact_action_reply(&raw, Some("full-event-details".into()));
+    assert_eq!(compact["pointer_dispatch"]["post_calls_returned"], 4);
+    assert_eq!(compact["pointer_dispatch"]["receiver_effect"], "unobserved");
+    assert!(compact["pointer_dispatch"].get("events").is_none());
+    assert_eq!(compact["system_accepted"], Value::Null);
+    assert_eq!(compact["goal_verified"], false);
+    assert_eq!(compact["replay"], "forbidden");
+    assert_eq!(compact["details_ref"], "full-event-details");
+    assert!(
+        compact_action_reply(&json!({"dispatch":"returned"}), None)
+            .get("pointer_dispatch")
+            .is_none()
+    );
+}
+
+#[test]
 fn f368_compact_click_receipt_keeps_explicit_source_and_subtype_without_attestation() {
     for (key, value) in [
         ("requested_event_source", json!("appkit_factory")),

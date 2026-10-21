@@ -65,6 +65,7 @@ impl Engine {
             dispatch_error: None,
             system_accepted: None,
             text_effect: None,
+            pointer_dispatch: None,
             goal_verified: false,
             replay: "forbidden".into(),
             deduplicated: false,
@@ -347,6 +348,7 @@ impl Engine {
             dispatch_error: None,
             system_accepted: None,
             text_effect: None,
+            pointer_dispatch: None,
             goal_verified: false,
             replay: "forbidden".into(),
             deduplicated: false,
@@ -376,6 +378,7 @@ impl Engine {
             .ok_or_else(|| fault("target_binding_unknown", "Native binding required."))?;
         let dispatch_before = self.backend(target)?.input_dispatch_count();
         let _ = self.backend(target)?.take_text_effect();
+        let _ = self.backend(target)?.take_pointer_dispatch();
         match operation::with_dispatch_deadline(held.deadline(lease, target, &key)?, || {
             if let (Intent::DragBetween(destination), Some(endpoint)) =
                 (&intent, &paired_destination)
@@ -409,6 +412,12 @@ impl Engine {
         }
         if matches!(intent, Intent::Text) {
             receipt.text_effect = self.backend(target)?.take_text_effect();
+        }
+        if matches!(
+            intent,
+            Intent::Click | Intent::DoubleClick | Intent::ContextMenu
+        ) {
+            receipt.pointer_dispatch = self.backend(target)?.take_pointer_dispatch();
         }
         write(&mut file, &receipt)?;
         drop(held);

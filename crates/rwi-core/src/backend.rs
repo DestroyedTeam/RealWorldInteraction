@@ -26,6 +26,10 @@ pub trait Backend: Send {
     fn take_text_effect(&mut self) -> Option<crate::text_effect::TextEffect> {
         None
     }
+    /// Drain only this backend's last synchronous pointer transcript; memory only.
+    fn take_pointer_dispatch(&mut self) -> Option<crate::pointer_dispatch::PointerDispatch> {
+        None
+    }
     fn identity(&self) -> Identity;
     fn capabilities(&self) -> serde_json::Value;
     /// Fresh device-scoped status, without taking an input slot or capturing UI.

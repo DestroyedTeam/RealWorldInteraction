@@ -1,5 +1,14 @@
 //! Input uncertainty is isolated to its native resource domain.
 use super::*;
+
+/// Keep original native read errors; a diagnostic never grants input authority.
+fn native_resource_fault(error: rwi_core::Fault) -> DeviceResult {
+    let mut reply = DeviceResult::error(&error.code, &error.next_step);
+    if let Some(diagnostic) = error.diagnostic {
+        reply.data["diagnostic"] = *diagnostic;
+    }
+    reply
+}
 impl Runtime {
     pub(super) fn is_fenced(&self, key: &str) -> bool {
         if let Ok(domains) = self.domains.lock()
@@ -61,7 +70,7 @@ impl Runtime {
         let native =
             match platform::backend(&self.config, policy, &uuid::Uuid::new_v4().to_string()) {
                 Ok(n) => n,
-                Err(e) => return DeviceResult::error(&e.code, &e.next_step),
+                Err(e) => return native_resource_fault(e),
             };
         if native.identity().key() != key {
             return DeviceResult::error(
@@ -104,7 +113,7 @@ impl Runtime {
         }
         let proof = match platform::input_resources(&self.config) {
             Ok(p) => p,
-            Err(e) => return DeviceResult::error(&e.code, &e.next_step),
+            Err(e) => return native_resource_fault(e),
         };
         if let Err(e) = rwi_core::operation::checkpoint("recovery_commit") {
             return DeviceResult::error(&e.code, &e.next_step);
@@ -117,6 +126,46 @@ impl Runtime {
             }
             Err(e) => DeviceResult::error("resource_reconciliation_failed", &e.to_string()),
         }
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    #[test]
+    fn f408_native_resource_fault_preserves_original_read_error() {
+        for code in [
+            "native_input_resources_held",
+            "ax_attribute_unavailable",
+            "reconciliation_context_changed",
+            "operation_cancelled",
+        ] {
+            let diagnostic = json!({"api":"AXUIElementCopyAttributeValue","attribute":"AXFocusedWindow","ax_error":-25204,"operation_kind":"read","replay_allowed":false});
+            let reply = native_resource_fault(rwi_core::Fault {
+                code: code.into(),
+                next_step: "original failure, no cleanup".into(),
+                diagnostic: Some(Box::new(diagnostic.clone())),
+            });
+            assert!(reply.is_error);
+            assert_eq!(reply.data["code"], code);
+            assert_eq!(reply.data["message"], "original failure, no cleanup");
+            assert_eq!(reply.data["diagnostic"], diagnostic);
+            assert_eq!(reply.data["goal_verified"], false);
+            assert!(reply.images.is_empty());
+        }
+    }
+    #[test]
+    fn f408_native_resource_fault_without_diagnostic_keeps_legacy_shape() {
+        let reply = native_resource_fault(rwi_core::fault(
+            "reconciliation_unavailable",
+            "original unavailable",
+        ));
+        assert_eq!(
+            reply.data,
+            DeviceResult::error("reconciliation_unavailable", "original unavailable").data
+        );
+        assert!(reply.is_error);
+        assert!(reply.images.is_empty());
     }
 }
 

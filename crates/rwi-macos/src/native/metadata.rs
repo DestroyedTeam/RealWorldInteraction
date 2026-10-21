@@ -42,6 +42,7 @@ impl NativeMac {
             objects: std::sync::Mutex::new(objects::Objects::default()),
             last_observation: std::sync::Mutex::new(serde_json::Value::Null),
             text_effect: None,
+            pointer_dispatch: None,
         })
     }
     pub(crate) fn window_name(&self) -> String {

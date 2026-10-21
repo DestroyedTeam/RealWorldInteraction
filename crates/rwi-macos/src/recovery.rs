@@ -19,26 +19,48 @@ fn require_released(states: &[State]) -> Result<()> {
     // do not attribute a user's keys in another app to an RWI operation.
     // Native AX actions acquire no held key/button resources and must not
     // enter this recovery path merely because their business effect is unknown.
-    // The hardware source (HIDSystemState, id 1) is the authority on physical
-    // input. A key that only the combined-session state still reports down is
-    // residue (e.g. a key-up swallowed by another process): our injected
-    // events are process-targeted and never touch the hardware source, and
-    // treating such residue as held deadlocks recovery forever (observed
-    // live: keycode 118 stuck in the session state while hardware was clean,
-    // fencing the input domain across agent restarts). Buttons and momentary
-    // modifiers still block from either source because they can represent an
-    // in-flight injected drag or a mid-chord state of ours.
+    // Preserve the existing policy: HID-system keys block, while buttons and
+    // momentary flags block from either table. Combined-session ordinary keys
+    // alone do not block (historically observed session keycode 118).
+    // Explicit global hotkeys also exist: insertion location is not a source
+    // table identity or evidence of which actor owns a reported down state.
     if states.iter().any(|s| {
         !s.buttons.is_empty()
             || s.flags & MOMENTARY_FLAGS != 0
             || (s.source == 1 && !s.keys.is_empty())
     }) {
-        return Err(fault(
+        let mut error = fault(
             "native_input_resources_held",
             "Global keys/buttons/modifiers are down; this does not identify an RWI-owned input. This legacy interrupted-event reconciliation cannot prove release. Do not inject cleanup or replay; require scoped ownership evidence or a fresh resource check.",
-        ));
+        );
+        error.diagnostic = Some(Box::new(held_resource_diagnostic(states)));
+        return Err(error);
     }
     Ok(())
+}
+
+/// Only format values already sampled by input_resources; never query or post.
+fn held_resource_diagnostic(states: &[State]) -> Value {
+    let rows = states.iter().take(2).map(|s| {
+        let modifiers = [(1 << 17, "shift"), (1 << 18, "control"),
+            (1 << 19, "option"), (1 << 20, "command"), (1 << 23, "fn")]
+            .into_iter().filter_map(|(mask,name)| (s.flags & mask != 0).then_some(name)).collect::<Vec<_>>();
+        json!({"state_id":s.source,
+            "keys":s.keys.iter().take(256).copied().collect::<Vec<_>>(),
+            "key_count":s.keys.len(),"keys_truncated":s.keys.len()>256,
+            "buttons":s.buttons.iter().take(32).copied().collect::<Vec<_>>(),
+            "button_count":s.buttons.len(),"buttons_truncated":s.buttons.len()>32,
+            "flags":s.flags.to_string(),"momentary_flags":(s.flags & MOMENTARY_FLAGS).to_string(),
+            "modifiers":modifiers,
+            "blocking":{"keys":s.source==1 && !s.keys.is_empty(),"buttons":!s.buttons.is_empty(),"modifiers":s.flags & MOMENTARY_FLAGS != 0}})
+    }).collect::<Vec<_>>();
+    json!({"scope":"current_input_resource_sample","atomic":false,
+        "source":"CGEventSourceKeyState/ButtonState/FlagsState",
+        "query_error_status":"not exposed by these native state queries",
+        "input_ownership":"unknown","resource_probe_sent_input":false,
+        "cleanup_authority":false,"replay_allowed":false,
+        "momentary_modifier_mask":MOMENTARY_FLAGS.to_string(),
+        "state_count":states.len(),"states_truncated":states.len()>2,"states":rows})
 }
 /// The caller must also hold the agent domain gate and prove all native writers idle.
 pub fn input_resources(uid: u32) -> Result<Value> {
@@ -114,6 +136,100 @@ mod dump_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn f408_resource_diagnostic_retains_exact_values_without_ownership() {
+        let error = require_released(&[
+            State {
+                source: 0,
+                keys: vec![124],
+                buttons: vec![0],
+                flags: 1 << 20,
+            },
+            State {
+                source: 1,
+                keys: vec![123],
+                buttons: vec![],
+                flags: 0,
+            },
+        ])
+        .unwrap_err();
+        assert_eq!(error.code, "native_input_resources_held");
+        let d = error.diagnostic.unwrap();
+        assert_eq!(d["states"][0]["keys"], json!([124]));
+        assert_eq!(d["states"][0]["buttons"], json!([0]));
+        assert_eq!(d["states"][0]["flags"], "1048576");
+        assert_eq!(d["states"][0]["modifiers"], json!(["command"]));
+        assert_eq!(
+            d["states"][0]["blocking"],
+            json!({"keys":false,"buttons":true,"modifiers":true})
+        );
+        assert_eq!(d["states"][1]["state_id"], 1);
+        assert_eq!(d["states"][1]["blocking"]["keys"], true);
+        assert_eq!(d["input_ownership"], "unknown");
+        for key in [
+            "resource_probe_sent_input",
+            "cleanup_authority",
+            "replay_allowed",
+            "atomic",
+        ] {
+            assert_eq!(d[key], false);
+        }
+    }
+
+    #[test]
+    fn f408_resource_diagnostic_keeps_existing_policy_matrix() {
+        for source in [0, 1, 9] {
+            for keys in [vec![], vec![124]] {
+                for buttons in [vec![], vec![0]] {
+                    for flags in [0, 1 << 16, 1 << 20, 1 << 23, 1 << 15] {
+                        let blocked = !buttons.is_empty()
+                            || flags & MOMENTARY_FLAGS != 0
+                            || (source == 1 && !keys.is_empty());
+                        let result = require_released(&[State {
+                            source,
+                            keys: keys.clone(),
+                            buttons: buttons.clone(),
+                            flags,
+                        }]);
+                        assert_eq!(result.is_err(), blocked);
+                        if let Err(error) = result {
+                            assert_eq!(error.code, "native_input_resources_held");
+                            assert_eq!(
+                                error.next_step,
+                                "Global keys/buttons/modifiers are down; this does not identify an RWI-owned input. This legacy interrupted-event reconciliation cannot prove release. Do not inject cleanup or replay; require scoped ownership evidence or a fresh resource check."
+                            );
+                            assert!(error.diagnostic.is_some());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn f408_resource_diagnostic_bounds_rows_arrays_and_full_width_flags() {
+        let state = || State {
+            source: 1,
+            keys: (0..300).collect(),
+            buttons: (0..40).collect(),
+            flags: u64::MAX,
+        };
+        let d = require_released(&[state(), state(), state()])
+            .unwrap_err()
+            .diagnostic
+            .unwrap();
+        assert_eq!(d["state_count"], 3);
+        assert_eq!(d["states_truncated"], true);
+        assert_eq!(d["states"].as_array().unwrap().len(), 2);
+        assert_eq!(d["states"][0]["keys"].as_array().unwrap().len(), 256);
+        assert_eq!(d["states"][0]["key_count"], 300);
+        assert_eq!(d["states"][0]["keys_truncated"], true);
+        assert_eq!(d["states"][0]["buttons"].as_array().unwrap().len(), 32);
+        assert_eq!(d["states"][0]["buttons_truncated"], true);
+        assert_eq!(d["states"][0]["flags"], u64::MAX.to_string());
+        assert!(serde_json::to_vec(&d).unwrap().len() < 8192);
+    }
     #[test]
     fn hardware_keys_buttons_and_momentary_modifiers_block_but_stale_session_keys_do_not() {
         let state = |source: i32, keys: Vec<u16>, buttons: Vec<u32>, flags: u64| State {

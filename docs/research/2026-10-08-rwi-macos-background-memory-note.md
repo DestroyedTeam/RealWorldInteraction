@@ -1,3 +1,13 @@
+## 2026-10-16 更新：Touch不是无焦点标志
+
+- 当前唯一Root为 `/Volumes/ChatGPT/Real World Interaction`；下方2026-10-08内容作为历史保留。
+- 已复核本机SDK：`NSEventSubtypeTouch = NX_SUBTYPE_MOUSE_TOUCH = 3`。CoreGraphics公开mouse-subtype枚举与AppKit枚举范围不能混为一谈；数值3可以被AppKit当Touch解码，但没有“禁止成为key window”的公共契约。
+- F187实际Rust原生内存实验：独立副本0/3→NSEvent subtype0/3，down/up类型、零修饰键和非零原始时间戳保持；未投递输入，虚构测试windowNumber不是可操作窗口或坐标证明。证据：`work/f187-same-pid-subtype-memory-2026-10-16/MEMORY_RESULT.json`及`SDK_SUBTYPE_EVIDENCE.json`。
+- F164同PID普通pointer的前台window变化仍是真实负例；不因这3个单元实验取消失败。下一候选必须显式选择Touch并保留普通点击默认、独立能力/身份/lease/no-replay；不得自动加Command或先抢焦点再恢复。
+- 来源：[Apple subtype](https://developer.apple.com/documentation/appkit/nsevent/subtype)、[Apple CGEvent桥接](https://developer.apple.com/documentation/appkit/nsevent/init(cgevent:)-4igjn)、本机NSEvent.h/IOLLEvent.h已保存hash。
+
+---
+
 # RWI macOS 后台事件：已复核基石与旧概括替代
 Date: 2026-10-08
 Project: /Users/vincentadamnemessis/AI Projects/Real World Interaction

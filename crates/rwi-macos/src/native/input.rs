@@ -7,6 +7,7 @@ pub(crate) use drag::NATIVE_SAMPLE_INTERVAL_MS;
 mod continuation;
 mod dispatch;
 mod mouse_gesture;
+mod pointer_dispatch;
 mod request;
 use request::native_action_request;
 mod pointer_surface;
@@ -29,6 +30,7 @@ impl NativeMac {
         value: Option<&str>,
     ) -> Result<Option<bool>> {
         self.text_effect = None;
+        self.pointer_dispatch = None;
         if !self.allow_input {
             return Err(fault(
                 "input_not_enabled",
@@ -182,6 +184,8 @@ impl NativeMac {
         // Keep it in the effect counter; prove separately whether the caller's
         // requested event sequence was reached before a returned failure.
         let requested_input_before = counter.load(std::sync::atomic::Ordering::Acquire);
+        let mut pointer_posts: Option<rwi_core::pointer_dispatch::PointerDispatch> = None;
+        let click_started = Instant::now();
         let result = (|| {
             match intent {
                 Intent::DragBetween(_) => {
@@ -295,13 +299,22 @@ impl NativeMac {
                                 |prepared| prepared.post(),
                             )?;
                         } else {
+                            let trace = pointer_posts.get_or_insert_with(
+                                rwi_core::pointer_dispatch::PointerDispatch::background_window,
+                            );
                             sequence.pair(
                                 expected,
                                 target,
                                 &counter,
                                 (press, release),
                                 |first| self.read_input_batch(first, expected, target, intent),
-                                |e| crate::background::deliver_pointer(e, &delivery, target.point),
+                                |e| {
+                                    crate::background::deliver_pointer(e, &delivery, target.point);
+                                    trace.record_returned(pointer_dispatch::sample(
+                                        e,
+                                        click_started,
+                                    ));
+                                },
                             )?;
                         }
                     }
@@ -373,6 +386,7 @@ impl NativeMac {
             // CGEventPost returns void: native dispatch is not an OS effect acknowledgement.
             Ok(None)
         })();
+        self.pointer_dispatch = pointer_posts.filter(|trace| !trace.events.is_empty());
         self.record_text_effect(text_witness, result.is_ok());
         result.map_err(|error| {
             dispatch::preparation_only_failure(

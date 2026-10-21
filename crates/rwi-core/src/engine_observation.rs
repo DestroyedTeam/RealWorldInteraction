@@ -227,10 +227,22 @@ impl Engine {
                         ));
                     }
                 } else if e.visible != Some(true) || e.occluded != Some(false) {
-                    return Err(fault(
+                    let unavailable = e.visible == Some(false) || e.occluded == Some(true);
+                    let mut error = fault(
                         "visibility_unknown",
-                        "Resolve occlusion before input.",
-                    ));
+                        if unavailable {
+                            "Control is not positively visible and unobstructed. Inspect retained native visibility metadata; no input sent, never replay."
+                        } else {
+                            "Native hit visibility is unproven, not confirmed occlusion. Inspect retained native hit metadata; no input sent, never replay."
+                        },
+                    );
+                    error.diagnostic = Some(Box::new(serde_json::json!({
+                        "reason": if unavailable { "native_visibility_unavailable" } else { "native_hit_visibility_unproven" },
+                        "visible": e.visible, "occluded": e.occluded,
+                        "retained_metadata_pointer": "/adapter_status/ax_hit_diagnostics",
+                        "input_authority": false, "native_input_dispatched": false, "replay_allowed": false,
+                    })));
+                    return Err(error);
                 }
                 scope.element = Some(e.id.clone());
                 element_revision = Some(e.action_revision(native_action));
@@ -386,6 +398,8 @@ impl Engine {
     }
 }
 
+#[cfg(test)]
+mod visibility_tests;
 #[cfg(all(test, feature = "fixture"))]
 mod observation_wall_tests {
     use super::*;

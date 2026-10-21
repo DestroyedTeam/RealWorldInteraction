@@ -12,6 +12,10 @@ pub struct Observed {
     pub entered: Arc<AtomicBool>,
 }
 impl Backend for Observed {
+    fn take_pointer_dispatch(&mut self) -> Option<rwi_core::pointer_dispatch::PointerDispatch> {
+        // Drain the selected backend's retained evidence only. This is not input.
+        self.inner.take_pointer_dispatch()
+    }
     fn take_text_effect(&mut self) -> Option<rwi_core::text_effect::TextEffect> {
         self.inner.take_text_effect()
     }
@@ -323,6 +327,8 @@ impl lifecycle::LifecycleDriver for ObservedLifecycle {
     }
 }
 
+#[cfg(test)]
+mod pointer_dispatch_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
